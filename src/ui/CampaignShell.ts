@@ -1,6 +1,8 @@
 import "../styles/campaign.css";
 import { AMSO_LOGO_DATA_URI } from "./brandLogo";
 import type { ControlMethod, GameSnapshot } from "../game/contracts";
+import { WorldVisualLayer } from "../visuals/WorldVisualLayer";
+import { sceneVisualState } from "../visuals/scene-manifest";
 import {
   fullscreenPreferenceFromElement,
   formatPowerUpHud,
@@ -12,6 +14,9 @@ import {
 } from "./story-presentation";
 
 export type { CampaignStoryScene, CampaignStorySceneInput } from "./story-presentation";
+
+const MAIN_LOCKUP_PATH = "/assets/milion-runner/brand/mz-main-lockup-v1.avif";
+const COMPACT_LOCKUP_PATH = "/assets/milion-runner/brand/mz-compact-lockup-v1.avif";
 
 export type CampaignMode = "story" | "challenge";
 
@@ -171,6 +176,35 @@ function formatInteger(value: number): string {
   return integerFormatter.format(Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0);
 }
 
+export function campaignWorldCounterValue(
+  mode: CampaignMode,
+  visualStateId: string,
+  storyCounterValue: number,
+): number {
+  if (mode === "challenge" && visualStateId === "epoch_5.wave") return 999_999;
+  return storyCounterValue;
+}
+
+export function campaignVisualStateAtProgress(
+  currentStateId: string,
+  nextStateId: string,
+  worldProgress: number,
+): string {
+  if (currentStateId === nextStateId) return currentStateId;
+  const current = sceneVisualState(currentStateId);
+  const next = sceneVisualState(nextStateId);
+  if (current.worldId !== next.worldId) return currentStateId;
+  const span = next.worldProgress - current.worldProgress;
+  if (span <= 0) return currentStateId;
+  const transitionProgress = (worldProgress - current.worldProgress) / span;
+  return transitionProgress >= 0.58 ? nextStateId : currentStateId;
+}
+
+export function isCampaignViewportTooNarrow(width: number, height: number): boolean {
+  const landscape = width > height;
+  return width < 390 || (landscape && height < 390);
+}
+
 function requiredElement<T extends Element>(root: ParentNode, selector: string): T {
   const element = root.querySelector<T>(selector);
   if (element === null) {
@@ -199,72 +233,140 @@ function isMobileLayout(): boolean {
   return coarsePointer || navigator.maxTouchPoints > 0;
 }
 
+function loadShareCardLockup(): Promise<HTMLImageElement | null> {
+  const image = document.createElement("img");
+  image.alt = "";
+  image.decoding = "async";
+
+  return new Promise((resolve) => {
+    let settled = false;
+    let timeout = 0;
+    const finish = (result: HTMLImageElement | null): void => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      image.onload = null;
+      image.onerror = null;
+      resolve(result);
+    };
+
+    timeout = window.setTimeout(() => finish(null), 2_500);
+    image.onload = () => finish(image.naturalWidth > 0 ? image : null);
+    image.onerror = () => finish(null);
+    image.src = COMPACT_LOCKUP_PATH;
+
+    if (image.complete) {
+      finish(image.naturalWidth > 0 ? image : null);
+    }
+  });
+}
+
+function drawShareCardLockup(
+  context: CanvasRenderingContext2D,
+  lockup: HTMLImageElement | null,
+): void {
+  if (lockup !== null) {
+    const lockupWidth = 430;
+    const lockupHeight = lockupWidth * (lockup.naturalHeight / lockup.naturalWidth);
+    context.drawImage(lockup, 596, 43, lockupWidth, lockupHeight);
+    return;
+  }
+
+  // Preserve a useful campaign fallback without redrawing the AMSO wordmark.
+  const fallbackGradient = context.createLinearGradient(610, 58, 1000, 252);
+  fallbackGradient.addColorStop(0, "#f47100");
+  fallbackGradient.addColorStop(0.52, "#f04f45");
+  fallbackGradient.addColorStop(1, "#eb32a4");
+  context.strokeStyle = fallbackGradient;
+  context.lineWidth = 10;
+  context.beginPath();
+  context.roundRect(624, 70, 352, 166, 34);
+  context.stroke();
+  context.fillStyle = "#faf7f0";
+  context.font = "950 49px system-ui, sans-serif";
+  context.textAlign = "center";
+  context.fillText("1 000 000", 800, 172, 300);
+  context.textAlign = "start";
+}
+
 function drawShareCard(
   context: CanvasRenderingContext2D,
   result: Pick<CampaignChallengeResult, "score" | "packages">,
   options: CampaignShareCardOptions,
+  lockup: HTMLImageElement | null,
 ): void {
   const { canvas } = context;
-  const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
-  gradient.addColorStop(0, "#061426");
-  gradient.addColorStop(0.56, "#0c294b");
-  gradient.addColorStop(1, "#123b68");
-  context.fillStyle = gradient;
+  context.fillStyle = "#faf7f0";
   context.fillRect(0, 0, canvas.width, canvas.height);
 
-  context.fillStyle = "rgba(255,255,255,0.035)";
-  for (let x = 0; x < canvas.width; x += 54) {
-    context.fillRect(x, 0, 2, canvas.height);
-  }
-  for (let y = 0; y < canvas.height; y += 54) {
-    context.fillRect(0, y, canvas.width, 2);
-  }
+  const brandGradient = context.createLinearGradient(0, 0, canvas.width, 0);
+  brandGradient.addColorStop(0, "#f47100");
+  brandGradient.addColorStop(0.5, "#f04f45");
+  brandGradient.addColorStop(1, "#eb32a4");
+  context.fillStyle = brandGradient;
+  context.fillRect(0, 0, canvas.width, 22);
 
-  context.fillStyle = "#ff6b00";
-  context.beginPath();
-  context.arc(885, 182, 220, 0, Math.PI * 2);
-  context.fill();
-  context.fillStyle = "rgba(255,255,255,0.13)";
-  context.beginPath();
-  context.arc(885, 182, 151, 0, Math.PI * 2);
-  context.fill();
+  context.fillStyle = "#171717";
+  context.fillRect(0, 22, canvas.width, 296);
+  context.fillStyle = "#faf7f0";
+  context.font = "800 26px system-ui, sans-serif";
+  context.fillText("KARTA WYNIKU", 72, 99);
+  context.font = "950 58px system-ui, sans-serif";
+  context.fillText(options.title ?? "Droga do Miliona", 72, 170, 470);
+  context.fillStyle = "#d8d2c8";
+  context.font = "650 24px system-ui, sans-serif";
+  context.fillText("Jubileuszowa gra", 72, 222);
+  drawShareCardLockup(context, lockup);
 
-  context.fillStyle = "#ff6b00";
-  context.font = "950 70px system-ui, sans-serif";
-  context.fillText("AMSO", 82, 125);
-  context.fillStyle = "#ffffff";
-  context.font = "800 34px system-ui, sans-serif";
-  context.fillText(options.title ?? "Droga do Miliona", 82, 177);
-
-  context.fillStyle = "#aebed0";
+  context.fillStyle = "#45413b";
   context.font = "750 29px system-ui, sans-serif";
-  context.fillText(options.scoreLabel ?? "MÓJ WYNIK", 82, 398);
-  context.fillStyle = "#ffffff";
-  context.font = "950 136px system-ui, sans-serif";
-  context.fillText(formatInteger(result.score), 76, 536);
+  context.fillText(options.scoreLabel ?? "MÓJ WYNIK", 72, 407);
+  context.fillStyle = "#171717";
+  context.font = "950 142px system-ui, sans-serif";
+  context.fillText(formatInteger(result.score), 66, 548, 940);
 
-  context.fillStyle = "#fff8ed";
+  context.fillStyle = brandGradient;
+  context.fillRect(72, 581, 936, 12);
+
+  context.fillStyle = "#171717";
   context.beginPath();
-  context.roundRect(76, 636, 928, 206, 38);
+  context.roundRect(72, 632, 936, 216, 38);
   context.fill();
-  context.fillStyle = "#607083";
+  context.fillStyle = "#d8d2c8";
   context.font = "800 28px system-ui, sans-serif";
-  context.fillText(options.packagesLabel ?? "DOSTARCZONE PACZKI", 124, 708);
-  context.fillStyle = "#071a31";
+  context.fillText(options.packagesLabel ?? "DOSTARCZONE PACZKI", 120, 705);
+  context.fillStyle = "#faf7f0";
   context.font = "950 78px system-ui, sans-serif";
-  context.fillText(formatInteger(result.packages), 124, 797);
+  context.fillText(formatInteger(result.packages), 120, 797, 560);
 
-  context.fillStyle = "#ffffff";
+  context.fillStyle = brandGradient;
+  context.beginPath();
+  context.roundRect(788, 669, 172, 142, 28);
+  context.fill();
+  context.fillStyle = "#171717";
+  context.font = "950 50px system-ui, sans-serif";
+  context.textAlign = "center";
+  context.fillText("×", 874, 754);
+  context.textAlign = "start";
+
+  context.fillStyle = "#171717";
   context.font = "900 50px system-ui, sans-serif";
-  context.fillText(options.callToAction ?? "Teraz Twoja kolej.", 82, 1019);
-  context.fillStyle = "#dce6f1";
-  context.font = "600 25px system-ui, sans-serif";
-  context.fillText("Sprawdź, jak daleko dojdziesz", 82, 1072);
-  context.fillText("w Drodze do Miliona.", 82, 1111);
+  context.fillText(options.callToAction ?? "Teraz Twoja kolej.", 72, 978, 936);
+  context.fillStyle = "#45413b";
+  context.font = "650 27px system-ui, sans-serif";
+  const publicationText = options.publicationText
+    ?? "Sprawdź, jak daleko dojdziesz w Drodze do Miliona.";
+  context.fillText(publicationText, 72, 1034, 936);
 
-  context.fillStyle = "rgba(255,255,255,0.72)";
+  context.fillStyle = "#171717";
+  context.beginPath();
+  context.roundRect(72, 1128, 936, 138, 30);
+  context.fill();
+  context.fillStyle = brandGradient;
+  context.fillRect(72, 1128, 18, 138);
+  context.fillStyle = "#faf7f0";
   context.font = "600 20px system-ui, sans-serif";
-  context.fillText(options.canonicalUrl, 82, 1269, 916);
+  context.fillText(options.canonicalUrl, 124, 1208, 830);
 }
 
 function canvasToBlob(canvas: HTMLCanvasElement): Blob {
@@ -292,7 +394,8 @@ export async function createCampaignShareCard(
   if (context === null) {
     throw new Error("share_card_canvas_unavailable");
   }
-  drawShareCard(context, result, options);
+  const lockup = await loadShareCardLockup();
+  drawShareCard(context, result, options, lockup);
   return canvasToBlob(canvas);
 }
 
@@ -363,6 +466,7 @@ export class CampaignShell {
 
   private readonly root: HTMLElement;
   private readonly stage: HTMLElement;
+  private readonly worldVisualLayer: WorldVisualLayer;
   private readonly landingScreen: HTMLElement;
   private readonly landingActions: HTMLElement;
   private readonly orientationScreen: HTMLElement;
@@ -414,6 +518,8 @@ export class CampaignShell {
   private muted = false;
   private paused = false;
   private trustCorridor = false;
+  private tooNarrowActive = false;
+  private activeModalScreen: HTMLElement | null = null;
   private destroyed = false;
   private pointerStartY: number | null = null;
   private pointerSwipedDown = false;
@@ -455,6 +561,7 @@ export class CampaignShell {
 
       <main class="amso-campaign__main">
         <section class="amso-campaign__stage" data-campaign-stage>
+          <div class="amso-campaign__world-visual" data-campaign-world-visual aria-hidden="true"></div>
           <canvas
             class="amso-campaign__canvas"
             data-campaign-canvas
@@ -492,15 +599,13 @@ export class CampaignShell {
           <section class="amso-campaign__screen amso-campaign__screen--landing" data-campaign-landing>
             <div class="amso-campaign__landing-copy">
               <p class="amso-campaign__eyebrow" data-campaign-copy="landingEyebrow">Jubileuszowa historia AMSO</p>
-              <h1><small data-campaign-copy="landingTitle">AMSO —</small> <span data-campaign-copy="landingTitleAccent">Droga do Miliona</span></h1>
+              <h1><span data-campaign-copy="landingTitleAccent">Droga do Miliona</span></h1>
               <p class="amso-campaign__lead" data-campaign-copy="landingLead">Jedna paczka rozpoczęła historię. Przebiegnij z nami drogę do zamówienia nr 1 000 000.</p>
               <p class="amso-campaign__meta" data-campaign-copy="landingMeta">5 minut gry · historia w Twoim tempie · skok i ślizg</p>
               <div class="amso-campaign__landing-actions" data-campaign-landing-actions></div>
             </div>
             <div class="amso-campaign__landing-art" aria-hidden="true">
-              <span class="amso-campaign__first-package">1</span>
-              <span class="amso-campaign__spark"></span>
-              <span class="amso-campaign__milestone">1 000 000</span>
+              <img class="amso-campaign__main-lockup" src="${MAIN_LOCKUP_PATH}" alt="" width="1600" height="1460" />
             </div>
           </section>
 
@@ -525,6 +630,7 @@ export class CampaignShell {
 
           <section class="amso-campaign__screen amso-campaign__screen--dialog" data-campaign-loading hidden>
             <div class="amso-campaign__card amso-campaign__card--loading">
+              <img class="amso-campaign__compact-lockup" src="${COMPACT_LOCKUP_PATH}" alt="" width="1600" height="924" />
               <span class="amso-campaign__loading-package" aria-hidden="true"></span>
               <h2 data-campaign-loading-text data-campaign-copy="loading">Przygotowujemy pierwszą paczkę…</h2>
               <progress data-campaign-loading-progress max="1"></progress>
@@ -564,6 +670,7 @@ export class CampaignShell {
 
           <section class="amso-campaign__screen amso-campaign__screen--result" data-campaign-story-result hidden>
             <div class="amso-campaign__result-card">
+              <img class="amso-campaign__result-lockup amso-campaign__result-lockup--main" src="${MAIN_LOCKUP_PATH}" alt="" width="1600" height="1460" />
               <p class="amso-campaign__eyebrow" data-campaign-copy="storyResultEyebrow">Dziękujemy za wspólną drogę</p>
               <h2 data-campaign-copy="storyResultTitle">Twoja Droga do Miliona</h2>
               <div class="amso-campaign__result-grid">
@@ -582,6 +689,7 @@ export class CampaignShell {
 
           <section class="amso-campaign__screen amso-campaign__screen--result" data-campaign-challenge-result hidden>
             <div class="amso-campaign__result-card">
+              <img class="amso-campaign__result-lockup" src="${COMPACT_LOCKUP_PATH}" alt="" width="1600" height="924" />
               <p class="amso-campaign__eyebrow" data-campaign-copy="challengeResultEyebrow">Próba Miliona</p>
               <h2 data-campaign-copy="challengeResultTitle">Koniec próby</h2>
               <div class="amso-campaign__result-grid amso-campaign__result-grid--challenge">
@@ -598,6 +706,7 @@ export class CampaignShell {
                 <a class="amso-campaign__text-link" data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
               </div>
               <div class="amso-campaign__share-panel" data-campaign-share-panel hidden>
+                <img class="amso-campaign__share-lockup" src="${COMPACT_LOCKUP_PATH}" alt="" width="1600" height="924" />
                 <p><strong data-campaign-copy="shareTurn">Teraz Twoja kolej.</strong> <span data-campaign-copy="shareLead">Wybierz, gdzie chcesz udostępnić kartę wyniku.</span></p>
                 <div class="amso-campaign__share-actions">
                   <button type="button" data-campaign-share="facebook" data-campaign-copy="facebook">Facebook</button>
@@ -605,6 +714,33 @@ export class CampaignShell {
                 </div>
                 <p class="amso-campaign__share-status" data-campaign-share-status role="status"></p>
               </div>
+            </div>
+          </section>
+
+          <section class="amso-campaign__story-presentation" data-campaign-story-presentation hidden>
+            <div class="amso-campaign__story-scrim" aria-hidden="true"></div>
+
+            <article
+              class="amso-campaign__story-scene-card"
+              data-campaign-story-scene
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="amso-campaign-story-scene-title"
+            >
+              <img class="amso-campaign__story-final-lockup" src="${MAIN_LOCKUP_PATH}" alt="" width="1600" height="1460" />
+              <p class="amso-campaign__story-scene-eyebrow" data-campaign-story-scene-eyebrow hidden></p>
+              <h2 id="amso-campaign-story-scene-title" data-campaign-story-scene-title></h2>
+              <div class="amso-campaign__story-scene-body" data-campaign-story-scene-body tabindex="0"></div>
+              <button
+                class="amso-campaign__button amso-campaign__button--primary amso-campaign__story-continue"
+                type="button"
+                data-campaign-story-continue
+              >Dalej</button>
+            </article>
+
+            <div class="amso-campaign__story-countdown" data-campaign-story-countdown hidden tabindex="-1" role="status" aria-live="assertive" aria-atomic="true">
+              <p data-campaign-story-countdown-label>Wracamy do gry</p>
+              <strong data-campaign-story-countdown-value>3</strong>
             </div>
           </section>
 
@@ -620,41 +756,14 @@ export class CampaignShell {
         <a data-campaign-link data-campaign-copy="footerCampaign">Strona kampanii</a>
       </footer>
 
-      <section class="amso-campaign__story-presentation" data-campaign-story-presentation hidden>
-        <div class="amso-campaign__story-vignette" data-campaign-story-vignette aria-hidden="true">
-          <span class="amso-campaign__story-vignette-shape amso-campaign__story-vignette-shape--primary"></span>
-          <span class="amso-campaign__story-vignette-shape amso-campaign__story-vignette-shape--secondary"></span>
-          <span class="amso-campaign__story-vignette-trail"></span>
-        </div>
-        <div class="amso-campaign__story-scrim" aria-hidden="true"></div>
-
-        <article
-          class="amso-campaign__story-scene-card"
-          data-campaign-story-scene
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="amso-campaign-story-scene-title"
-        >
-          <p class="amso-campaign__story-scene-eyebrow" data-campaign-story-scene-eyebrow hidden></p>
-          <h2 id="amso-campaign-story-scene-title" data-campaign-story-scene-title></h2>
-          <div class="amso-campaign__story-scene-body" data-campaign-story-scene-body tabindex="0"></div>
-          <button
-            class="amso-campaign__button amso-campaign__button--primary amso-campaign__story-continue"
-            type="button"
-            data-campaign-story-continue
-          >Dalej</button>
-        </article>
-
-        <div class="amso-campaign__story-countdown" data-campaign-story-countdown hidden tabindex="-1" role="status" aria-live="assertive" aria-atomic="true">
-          <p data-campaign-story-countdown-label>Wracamy do gry</p>
-          <strong data-campaign-story-countdown-value>3</strong>
-        </div>
-      </section>
       <div class="amso-campaign__sr-only" data-campaign-live aria-live="polite" aria-atomic="true"></div>
     `;
     host.replaceChildren(this.root);
 
     this.stage = requiredElement(this.root, "[data-campaign-stage]");
+    this.worldVisualLayer = new WorldVisualLayer(
+      requiredElement(this.root, "[data-campaign-world-visual]")
+    );
     this.canvas = requiredElement<HTMLCanvasElement>(this.root, "[data-campaign-canvas]");
     this.landingScreen = requiredElement(this.root, "[data-campaign-landing]");
     this.landingActions = requiredElement(this.root, "[data-campaign-landing-actions]");
@@ -697,7 +806,6 @@ export class CampaignShell {
     this.tooNarrow = requiredElement(this.root, "[data-campaign-too-narrow]");
     this.presentationBackground = [
       requiredElement(this.root, ".amso-campaign__header"),
-      requiredElement(this.root, ".amso-campaign__main"),
       requiredElement(this.root, ".amso-campaign__footer")
     ];
     this.orientationQuery = window.matchMedia?.("(orientation: landscape)") ?? null;
@@ -722,6 +830,7 @@ export class CampaignShell {
     this.fullscreenPreference = options.fullscreenPreference;
     this.fullscreenPromptSeen = options.fullscreenPreference !== null;
     this.setMuted(options.muted, false);
+    this.applyWorldVisual("first-mile", "intro.ready", "landing");
     this.setView("landing", this.landingScreen);
     this.renderLandingActions(options);
     this.canvas.tabIndex = -1;
@@ -732,6 +841,7 @@ export class CampaignShell {
   public showLoading(progress?: number, label?: string): void {
     if (this.destroyed) return;
     const loadingLabel = label ?? this.copy.loading;
+    this.applyWorldVisual("first-mile", "intro.ready", "landing");
     this.loadingText.textContent = loadingLabel;
     if (typeof progress === "number" && Number.isFinite(progress)) {
       this.loadingProgress.value = Math.min(1, Math.max(0, progress));
@@ -785,9 +895,10 @@ export class CampaignShell {
     this.activeMode = "story";
     this.root.dataset.mode = "story";
     this.root.dataset.view = "story_scene";
-    this.root.dataset.storyVignette = scene.vignette;
+    const visualState = sceneVisualState(scene.sceneId);
+    this.applyWorldVisual(visualState.worldId, visualState.stateId, "story");
     this.storyPresentation.dataset.state = "scene";
-    this.storyPresentation.dataset.vignette = scene.vignette;
+    this.storyPresentation.dataset.copyPlacement = visualState.copyPlacement;
     this.storyPresentation.hidden = false;
     this.storySceneCard.hidden = false;
     this.storyCountdown.hidden = true;
@@ -796,7 +907,7 @@ export class CampaignShell {
     this.gameplayHint.hidden = true;
     this.canvas.tabIndex = -1;
     this.canvas.setAttribute("aria-hidden", "true");
-    this.setPresentationBackgroundInert(true);
+    this.setScreenModal(this.storyPresentation);
 
     if (!isNewScene) return;
 
@@ -818,11 +929,35 @@ export class CampaignShell {
     this.announce([scene.eyebrow, scene.title, ...scene.body].filter(Boolean).join(". "));
   }
 
+  /** Gives the world camera its full 720 ms hand-off before the 3–2–1 starts. */
+  public showStoryReframe(): void {
+    if (this.destroyed) return;
+    this.worldVisualLayer.setPhase("game");
+    this.root.dataset.view = "story_reframe";
+    this.storyPresentation.dataset.state = "reframe";
+    this.storyPresentation.hidden = false;
+    this.storySceneCard.hidden = true;
+    this.storyCountdown.hidden = true;
+    this.hud.hidden = true;
+    this.storyCaption.hidden = true;
+    this.gameplayHint.hidden = true;
+    this.canvas.tabIndex = -1;
+    this.canvas.setAttribute("aria-hidden", "true");
+    this.storyContinueButton.disabled = true;
+    delete this.storyContinueButton.dataset.sceneId;
+    this.storyContinuationGate.clear();
+    this.setScreenModal(this.storyPresentation);
+    this.storyPresentation.tabIndex = -1;
+    this.storyPresentation.focus({ preventScroll: true });
+    this.announce(this.copy.storyCountdownLabel);
+  }
+
   public showStoryCountdown(
     value: CampaignStoryCountdownValue,
     label = this.copy.storyCountdownLabel
   ): void {
     if (this.destroyed) return;
+    this.worldVisualLayer.setPhase("game");
     this.root.dataset.view = "story_countdown";
     this.storyPresentation.dataset.state = "countdown";
     this.storyPresentation.hidden = false;
@@ -836,7 +971,7 @@ export class CampaignShell {
     this.storyContinueButton.disabled = true;
     delete this.storyContinueButton.dataset.sceneId;
     this.storyContinuationGate.clear();
-    this.setPresentationBackgroundInert(true);
+    this.setScreenModal(this.storyPresentation);
 
     this.storyCountdownLabel.textContent = label;
     this.storyCountdownValue.textContent = String(value);
@@ -883,6 +1018,21 @@ export class CampaignShell {
 
   public update(snapshot: GameSnapshot): void {
     if (this.destroyed) return;
+    const displayedVisualStateId = campaignVisualStateAtProgress(
+      snapshot.visualStateId,
+      snapshot.visualNextStateId,
+      snapshot.visualProgress,
+    );
+    this.applyWorldVisual(
+      snapshot.visualWorldId,
+      displayedVisualStateId,
+      this.root.dataset.view === "story_scene" ? "story" : "game"
+    );
+    this.worldVisualLayer.setCounterValue(campaignWorldCounterValue(
+      snapshot.mode,
+      displayedVisualStateId,
+      snapshot.storyObjectives.epoch5.counter.value,
+    ));
     this.hudPackages.textContent = formatInteger(snapshot.packagesCollected);
     this.hudScore.textContent = formatInteger(snapshot.score);
     this.hudCombo.textContent = `×${formatInteger(snapshot.combo)}`;
@@ -944,6 +1094,7 @@ export class CampaignShell {
   public showStoryResult(result: CampaignStoryResult): void {
     if (this.destroyed) return;
     this.activeMode = "story";
+    this.applyWorldVisual("million-finale", "final.thanks", "result");
     requiredElement(this.storyResultScreen, "[data-campaign-story-packages]").textContent = formatInteger(result.packages);
     requiredElement(this.storyResultScreen, "[data-campaign-story-score]").textContent = formatInteger(result.score);
     requiredElement(this.storyResultScreen, "[data-campaign-story-combo]").textContent = `×${formatInteger(result.bestCombo)}`;
@@ -958,6 +1109,7 @@ export class CampaignShell {
   public showChallengeResult(result: CampaignChallengeResult): void {
     if (this.destroyed) return;
     this.activeMode = "challenge";
+    this.applyWorldVisual("million-finale", "final.thanks", "result");
     this.challengeResult = result;
     requiredElement(this.challengeResultScreen, "[data-campaign-challenge-packages]").textContent = formatInteger(result.packages);
     requiredElement(this.challengeResultScreen, "[data-campaign-challenge-score]").textContent = formatInteger(result.score);
@@ -1143,23 +1295,22 @@ export class CampaignShell {
     delete this.storyContinueButton.dataset.sceneId;
     delete this.storySceneCard.dataset.sceneId;
     delete this.storyPresentation.dataset.state;
-    delete this.storyPresentation.dataset.vignette;
-    delete this.root.dataset.storyVignette;
+    delete this.storyPresentation.dataset.copyPlacement;
     this.lastCountdownValue = null;
     this.storyContinuationGate.clear();
-    this.setPresentationBackgroundInert(false);
-  }
-
-  private setPresentationBackgroundInert(inert: boolean): void {
-    for (const region of this.presentationBackground) region.inert = inert;
+    this.setScreenModal(null);
   }
 
   /** Keeps in-stage dialogs reachable without making their own ancestor inert. */
   private setScreenModal(screen: HTMLElement | null): void {
+    this.activeModalScreen = screen;
+    this.applyModalInertState();
+  }
+
+  private applyModalInertState(): void {
+    const screen = this.tooNarrowActive ? this.tooNarrow : this.activeModalScreen;
     const active = screen !== null;
-    const [header, , footer] = this.presentationBackground;
-    if (header) header.inert = active;
-    if (footer) footer.inert = active;
+    for (const region of this.presentationBackground) region.inert = active;
     for (const child of this.stage.children) {
       if (child instanceof HTMLElement) child.inert = active && child !== screen;
     }
@@ -1173,13 +1324,43 @@ export class CampaignShell {
   }
 
   private canControl(): boolean {
-    return this.activeMode !== null && !this.paused && !this.trustCorridor && this.root.dataset.view === "game";
+    return this.activeMode !== null && !this.paused && !this.trustCorridor &&
+      !this.tooNarrowActive && this.root.dataset.view === "game";
   }
 
   private updateNarrowState(): void {
-    const narrow = window.innerWidth < 360;
+    const narrow = isCampaignViewportTooNarrow(window.innerWidth, window.innerHeight);
+    const enteredNarrowState = narrow && !this.tooNarrowActive;
+    const leftNarrowState = !narrow && this.tooNarrowActive;
+    this.tooNarrowActive = narrow;
     this.tooNarrow.hidden = !narrow;
     this.root.toggleAttribute("data-too-narrow", narrow);
+    this.applyModalInertState();
+
+    const activeView = this.root.dataset.view;
+    if (enteredNarrowState && this.activeMode !== null && !this.paused &&
+        (activeView === "game" || activeView === "story_reframe" ||
+          activeView === "story_countdown")) {
+      this.callbacks.onPause("layout_change");
+    } else if (leftNarrowState && !this.pauseScreen.hidden) {
+      requiredElement<HTMLButtonElement>(this.pauseScreen, "[data-campaign-resume]")
+        .focus({ preventScroll: true });
+    }
+  }
+
+  private applyWorldVisual(
+    worldId: GameSnapshot["visualWorldId"],
+    stateId: string,
+    phase: "landing" | "story" | "game" | "result"
+  ): void {
+    const state = this.worldVisualLayer.show({
+      worldId,
+      stateId,
+      phase
+    });
+    this.root.dataset.visualWorld = state.worldId;
+    this.root.dataset.visualState = state.stateId;
+    this.root.dataset.copyPlacement = state.copyPlacement;
   }
 
   private readonly handleClick = (event: MouseEvent): void => {
@@ -1298,6 +1479,14 @@ export class CampaignShell {
         event.preventDefault();
         next.focus({ preventScroll: true });
       }
+      return;
+    }
+    if (!this.storyPresentation.hidden && this.storySceneCard.hidden && event.key === "Tab") {
+      event.preventDefault();
+      const focusTarget = this.storyCountdown.hidden
+        ? this.storyPresentation
+        : this.storyCountdown;
+      focusTarget.focus({ preventScroll: true });
       return;
     }
     if (!this.storyPresentation.hidden && !this.storySceneCard.hidden && event.key === "Tab") {

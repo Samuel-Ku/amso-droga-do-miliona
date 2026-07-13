@@ -14,6 +14,7 @@ import type {
 import type { LogisticWavePhase } from "./logistic-wave";
 import type { StoryClimaxPhase, StoryPositiveMotif } from "./story-climax";
 import type { StoryObjectiveId, StoryObjectivesSnapshot } from "./story-objectives";
+import type { CampaignWorldId } from "../visuals/scene-manifest";
 
 export type GameState = "ready" | "running" | "paused" | "game_over" | "destroyed";
 export type ControlMethod = "keyboard" | "pointer" | "touch";
@@ -22,6 +23,12 @@ export type GameMode = CampaignMode;
 
 export interface GameSnapshot {
   mode: GameMode;
+  visualWorldId: CampaignWorldId;
+  visualStateId: string;
+  visualNextStateId: string;
+  visualProgress: number;
+  visualWorldIndex: number;
+  visualTransitionPending: boolean;
   score: number;
   packagesCollected: number;
   collisions: number;

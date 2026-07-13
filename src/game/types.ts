@@ -4,6 +4,7 @@ import type { CampaignMode, PackageType, PowerUpKind } from "../shared/types";
 import type { StoryClimaxModel } from "./story-climax";
 import type { StoryObstacleTransformation } from "./story-effects";
 import type { StoryObjectivesSnapshot } from "./story-objectives";
+import type { CampaignWorldId } from "../visuals/scene-manifest";
 
 export type ObstacleKind = "box-stack" | "pallet" | "trolley" | "overhead";
 export type ObstacleSource = "normal" | "boss" | "story-climax" | "story-reward";
@@ -87,6 +88,12 @@ export interface RenderScene {
   epochName: string;
   epochYear: string;
   themeIndex: number;
+  worldVisual?: Readonly<{
+    worldId: CampaignWorldId;
+    stateId: string;
+    nextStateId: string;
+    progress: number;
+  }>;
   cutscene: CutsceneInfo | null;
   activePowerUps: readonly PowerUpKind[];
   /** Campaign presentation hints. Optional to preserve the legacy renderer contract. */

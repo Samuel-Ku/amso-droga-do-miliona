@@ -9,9 +9,18 @@ import {
   StoryContinuationGate
 } from "../src/ui/story-presentation";
 import { StoryObjectiveDirector } from "../src/game/story-objectives";
+import {
+  campaignVisualStateAtProgress,
+  campaignWorldCounterValue,
+  isCampaignViewportTooNarrow
+} from "../src/ui/CampaignShell";
 
 const campaignCss = readFileSync(
   new URL("../src/styles/campaign.css", import.meta.url),
+  "utf8"
+);
+const campaignShellSource = readFileSync(
+  new URL("../src/ui/CampaignShell.ts", import.meta.url),
   "utf8"
 );
 
@@ -122,5 +131,75 @@ describe("player-paced story presentation", () => {
     expect(compactHudCss).toContain("[data-campaign-hud-objective]");
     expect(compactHudCss).toContain("white-space: normal");
     expect(compactHudCss).toContain("text-overflow: clip");
+  });
+
+  it("uses the MZ palette and a shared semantic world instead of generic vignette blobs", () => {
+    expect(campaignCss).toContain("--campaign-orange: #f47100");
+    expect(campaignCss).toContain("--campaign-coral: #f04f45");
+    expect(campaignCss).toContain("--campaign-magenta: #eb32a4");
+    expect(campaignCss).toContain(".amso-campaign__world-visual");
+    expect(campaignCss).toContain(".amso-world-visual__semantic");
+    expect(campaignShellSource).toContain("data-campaign-world-visual");
+    expect(campaignShellSource).toContain("amso-campaign__story-final-lockup");
+    expect(campaignShellSource).not.toContain("story-vignette");
+  });
+
+  it("keeps story art visible beside copy and uses a portrait bottom sheet", () => {
+    expect(campaignCss).toContain('data-copy-placement="right"');
+    expect(campaignCss).toContain("grid-template-columns: minmax(19rem, 40%) minmax(0, 1fr)");
+    expect(campaignCss).toContain("@media (orientation: portrait) and (max-width: 760px)");
+    expect(campaignCss).toContain("max-height: 59%");
+    expect(campaignCss).not.toContain("backdrop-filter: blur(9px)");
+  });
+
+  it("keeps the countdown route visible after every responsive scrim rule", () => {
+    const countdownOverride =
+      '.amso-campaign__story-presentation[data-state="countdown"][data-copy-placement="right"]';
+    expect(campaignCss.lastIndexOf(countdownOverride)).toBeGreaterThan(
+      campaignCss.lastIndexOf("@media (orientation: portrait)")
+    );
+    expect(campaignCss.slice(campaignCss.lastIndexOf(countdownOverride)))
+      .toContain("background: rgb(250 247 240 / 8%)");
+  });
+
+  it("removes the runner from the three intro cards and keeps it quiet later", () => {
+    expect(campaignCss).toContain('[data-view="story_scene"] .amso-campaign__canvas');
+    expect(campaignCss).toContain('[data-visual-state^="intro."] .amso-campaign__canvas');
+    expect(campaignCss).toContain("opacity: 0.24");
+  });
+
+  it("enforces the approved 390 px minimum viewport", () => {
+    expect(isCampaignViewportTooNarrow(389, 844)).toBe(true);
+    expect(isCampaignViewportTooNarrow(390, 844)).toBe(false);
+    expect(isCampaignViewportTooNarrow(844, 389)).toBe(true);
+    expect(isCampaignViewportTooNarrow(844, 390)).toBe(false);
+    expect(campaignShellSource).toContain("this.callbacks.onPause(\"layout_change\")");
+    expect(campaignShellSource).toContain('activeView === "story_reframe"');
+    expect(campaignShellSource).toContain("!this.tooNarrowActive");
+  });
+
+  it("keeps the completed counter in direct challenge worlds", () => {
+    expect(campaignWorldCounterValue("challenge", "epoch_5.wave", 999_970))
+      .toBe(999_999);
+    expect(campaignWorldCounterValue("story", "epoch_5.wave", 999_982))
+      .toBe(999_982);
+  });
+
+  it("reveals the next semantic state as a gameplay segment develops", () => {
+    expect(campaignVisualStateAtProgress(
+      "epoch_2.setup",
+      "epoch_2.resolve",
+      0.35,
+    )).toBe("epoch_2.setup");
+    expect(campaignVisualStateAtProgress(
+      "epoch_2.setup",
+      "epoch_2.resolve",
+      0.8,
+    )).toBe("epoch_2.resolve");
+    expect(campaignVisualStateAtProgress(
+      "epoch_5.wave",
+      "epoch_5.wave",
+      1,
+    )).toBe("epoch_5.wave");
   });
 });

@@ -3,7 +3,10 @@ import {
   AssetBundleLoadError,
   AssetBundleLoader
 } from "./assets/AssetBundleLoader";
-import { requiredStartAssetBundles } from "./assets/asset-bundle-plan";
+import {
+  nextWorldAssetBundle,
+  requiredStartAssetBundles
+} from "./assets/asset-bundle-plan";
 import { CampaignAudio } from "./audio/CampaignAudio";
 import type {
   GameResult,
@@ -18,6 +21,11 @@ import {
   CampaignShell,
   type CampaignStartRequest
 } from "./ui/CampaignShell";
+import {
+  campaignWorld,
+  sceneVisualState,
+  type CampaignWorldId
+} from "./visuals/scene-manifest";
 
 type AnalyticsConsentWindow = Window & { AMSOAnalyticsConsent?: boolean };
 
@@ -48,6 +56,8 @@ export class CampaignController {
   private lastSnapshot: GameSnapshot | null = null;
   private lastTrustCorridor = false;
   private lastStorySegmentId = "";
+  private lastStorySceneId = "";
+  private lastVisualWorldId: CampaignWorldId | null = null;
   private lastLogisticPhase: GameSnapshot["logisticWavePhase"] = "inactive";
   private pendingTutorial: "jump" | "slide" | null = null;
   private readonly shownPowerUpHints = new Set<string>();
@@ -158,6 +168,8 @@ export class CampaignController {
     this.lastSnapshot = null;
     this.lastTrustCorridor = false;
     this.lastStorySegmentId = "";
+    this.lastStorySceneId = "";
+    this.lastVisualWorldId = null;
     this.lastLogisticPhase = "inactive";
     this.pendingTutorial = null;
     this.shownPowerUpHints.clear();
@@ -248,6 +260,7 @@ export class CampaignController {
   }
 
   private handleSnapshot(snapshot: GameSnapshot): void {
+    this.warmWorldAssetWindow(snapshot.visualWorldId);
     const previous = this.lastSnapshot;
     if (previous !== null) {
       if (snapshot.packagesCollected > previous.packagesCollected) {
@@ -316,6 +329,12 @@ export class CampaignController {
       this.lastTrustCorridor = update.trustCorridor;
     }
     if (update.state === "scene" && update.scene) {
+      const visualState = sceneVisualState(update.scene.id);
+      this.warmWorldAssetWindow(visualState.worldId);
+      if (update.scene.id !== this.lastStorySceneId) {
+        this.lastStorySceneId = update.scene.id;
+        this.audio.playCue(visualState.soundCue);
+      }
       this.shell.showStoryObjective(null);
       this.shell.showStoryScene({
         sceneId: update.scene.id,
@@ -325,6 +344,10 @@ export class CampaignController {
         vignette: update.scene.vignette,
         continueLabel: update.scene.continueLabel
       });
+      return;
+    }
+    if (update.state === "reframe") {
+      this.shell.showStoryReframe();
       return;
     }
     if (update.state === "countdown" && update.countdownValue !== null) {
@@ -415,6 +438,27 @@ export class CampaignController {
     if (this.powerUpHintTimer === null) return;
     window.clearTimeout(this.powerUpHintTimer);
     this.powerUpHintTimer = null;
+  }
+
+  /**
+   * Keeps the displayed world and its successor warm without blocking scene
+   * presentation. A world transition is the retry boundary after an offline or
+   * interrupted preload, while repeated animation snapshots remain no-ops.
+   */
+  private warmWorldAssetWindow(worldId: CampaignWorldId): void {
+    if (this.destroyed || worldId === this.lastVisualWorldId) return;
+    this.lastVisualWorldId = worldId;
+
+    const currentBundle = campaignWorld(worldId).bundleId;
+    const nextBundle = nextWorldAssetBundle(currentBundle);
+    const bundleWindow = [currentBundle, nextBundle]
+      .filter((bundleId): bundleId is NonNullable<typeof bundleId> => bundleId !== null)
+      .filter((bundleId) => !this.assetLoader.isBundleReady(bundleId));
+    if (bundleWindow.length === 0) return;
+
+    // Artwork has a semantic vector fallback, so background transport failures
+    // must never replace a readable scene with the global loading error.
+    void this.assetLoader.warmBundles(bundleWindow).catch(() => undefined);
   }
 
   private uiCopy(key: string, fallback: string): string {

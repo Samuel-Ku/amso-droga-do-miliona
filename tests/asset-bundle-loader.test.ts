@@ -76,9 +76,14 @@ describe("AssetBundleLoader", () => {
     expect(loadResource).toHaveBeenCalledTimes(2);
   });
 
-  it("records an optional failure without stopping a critical bundle", async () => {
-    const loadResource = vi.fn(async (asset: AssetResourceConfig) => {
-      if (asset.id === "spark") throw new Error("optional unavailable");
+  it("starts optional loading immediately without delaying critical readiness", async () => {
+    let rejectOptional!: (reason?: unknown) => void;
+    const pendingOptional = new Promise<void>((_resolve, reject) => {
+      rejectOptional = reject;
+    });
+    const loadResource = vi.fn((asset: AssetResourceConfig) => {
+      if (asset.id === "spark") return pendingOptional;
+      return Promise.resolve();
     });
     const loader = new AssetBundleLoader([
       bundle("epoch_3", [
@@ -89,9 +94,48 @@ describe("AssetBundleLoader", () => {
 
     await expect(loader.ensureBundles(["epoch_3"])).resolves.toEqual({
       readyBundles: ["epoch_3"],
-      failedOptional: [{ bundleId: "epoch_3", resourceId: "spark" }]
+      failedOptional: []
     });
+    expect(loadResource.mock.calls.map(([asset]) => asset.id).sort()).toEqual([
+      "scene",
+      "spark"
+    ]);
     expect(loader.isBundleReady("epoch_3")).toBe(true);
+
+    rejectOptional(new Error("optional unavailable"));
+    await vi.waitFor(async () => {
+      await expect(loader.ensureBundles(["epoch_3"])).resolves.toEqual({
+        readyBundles: ["epoch_3"],
+        failedOptional: [{ bundleId: "epoch_3", resourceId: "spark" }]
+      });
+    });
+  });
+
+  it("does not wait for an optional resource when the critical resource is already ready", async () => {
+    let releaseOptional!: () => void;
+    const pendingOptional = new Promise<void>((resolve) => {
+      releaseOptional = resolve;
+    });
+    const loadResource = vi.fn((asset: AssetResourceConfig) =>
+      asset.critical ? Promise.resolve() : pendingOptional
+    );
+    const loader = new AssetBundleLoader([
+      bundle("epoch_4", [
+        resource("scene", "procedural:epoch-4"),
+        resource("background", "/assets/milion-runner/epoch-4.avif", false)
+      ])
+    ], { loadResource });
+
+    const readiness = loader.ensureBundles(["epoch_4"]);
+
+    await expect(readiness).resolves.toMatchObject({
+      readyBundles: ["epoch_4"],
+      failedOptional: []
+    });
+    expect(loader.isBundleReady("epoch_4")).toBe(true);
+    expect(loadResource).toHaveBeenCalledTimes(2);
+
+    releaseOptional();
   });
 
   it("deduplicates concurrent resources and reuses ready bundles", async () => {

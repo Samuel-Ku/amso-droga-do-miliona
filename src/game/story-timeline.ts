@@ -7,7 +7,9 @@ import type {
 } from "../shared/types";
 import { STORY_SYMBOL_COUNT } from "./story-effects";
 
-export type StoryState = "scene" | "countdown" | "play" | "completed";
+export const STORY_REFRAME_SECONDS = 0.72;
+
+export type StoryState = "scene" | "reframe" | "countdown" | "play" | "completed";
 export type StoryPhase = "prologue" | "epoch" | "finale" | "completed";
 
 export interface StoryTimelineSnapshot {
@@ -64,6 +66,7 @@ export class StoryTimeline {
   private segmentElapsedSeconds = 0;
   private totalActiveElapsedSeconds = 0;
   private countdownSecondsRemaining = 0;
+  private reframeSecondsRemaining = 0;
   private pendingStepIndex: number | null = null;
   private readonly collectedStorySymbols = new Set<number>();
 
@@ -86,9 +89,9 @@ export class StoryTimeline {
       this.enterStep(nextIndex);
       return true;
     }
-    this.state = "countdown";
+    this.state = "reframe";
     this.pendingStepIndex = nextIndex;
-    this.countdownSecondsRemaining = this.story.resumeCountdownSeconds;
+    this.reframeSecondsRemaining = STORY_REFRAME_SECONDS;
     return true;
   }
 
@@ -112,6 +115,16 @@ export class StoryTimeline {
     let remaining = Math.max(0, deltaSeconds);
     while (remaining > 0) {
       if (this.state === "scene" || this.state === "completed") break;
+      if (this.state === "reframe") {
+        const step = Math.min(remaining, this.reframeSecondsRemaining);
+        this.reframeSecondsRemaining = Math.max(0, this.reframeSecondsRemaining - step);
+        remaining -= step;
+        if (this.reframeSecondsRemaining <= Number.EPSILON) {
+          this.state = "countdown";
+          this.countdownSecondsRemaining = this.story.resumeCountdownSeconds;
+        }
+        continue;
+      }
       if (this.state === "countdown") {
         const step = Math.min(remaining, this.countdownSecondsRemaining);
         this.countdownSecondsRemaining = Math.max(0, this.countdownSecondsRemaining - step);
@@ -150,7 +163,8 @@ export class StoryTimeline {
     const sceneIndex = scene === null
       ? -1
       : this.story.scenes.findIndex(({ id }) => id === scene.id);
-    const trustCorridor = this.state === "scene" || this.state === "countdown";
+    const trustCorridor = this.state === "scene" || this.state === "reframe" ||
+      this.state === "countdown";
     return {
       state: this.state,
       phase,
@@ -189,6 +203,7 @@ export class StoryTimeline {
     this.stepIndex = Math.max(0, index);
     this.segmentElapsedSeconds = 0;
     this.countdownSecondsRemaining = 0;
+    this.reframeSecondsRemaining = 0;
     this.state = this.stateForStep(this.currentStep);
   }
 

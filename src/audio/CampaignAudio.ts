@@ -5,7 +5,13 @@ export const CAMPAIGN_AUDIO_CUES = [
   "power-up",
   "collision",
   "corridor-enter",
-  "corridor-exit"
+  "corridor-exit",
+  "tape",
+  "laptop-start",
+  "test-signal",
+  "scanner",
+  "conveyor",
+  "counter"
 ] as const;
 
 export type CampaignAudioCue = (typeof CAMPAIGN_AUDIO_CUES)[number];
@@ -217,6 +223,38 @@ export class CampaignAudio {
           break;
         case "corridor-exit":
           this.playSequence([659.25, 523.25, 392], 0.1, 0.2, 0.42, "sine");
+          break;
+        case "tape":
+          this.playSequence([1_680, 1_280], 0.055, 0.07, 0.28, "square");
+          break;
+        case "laptop-start":
+          this.playSequence([220, 440, 659.25], 0.07, 0.12, 0.34, "sine");
+          break;
+        case "test-signal":
+          this.playSequence([880, 1_046.5], 0.09, 0.08, 0.3, "square");
+          break;
+        case "scanner":
+          this.playTone({
+            frequency: 520,
+            frequencyEnd: 1_240,
+            duration: 0.2,
+            volume: 0.32,
+            type: "sine",
+            destination: this.cueGain
+          });
+          break;
+        case "conveyor":
+          this.playTone({
+            frequency: 105,
+            frequencyEnd: 155,
+            duration: 0.24,
+            volume: 0.25,
+            type: "triangle",
+            destination: this.cueGain
+          });
+          break;
+        case "counter":
+          this.playSequence([523.25, 659.25, 783.99], 0.065, 0.085, 0.31, "triangle");
           break;
       }
     } catch {

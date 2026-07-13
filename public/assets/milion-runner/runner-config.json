@@ -95,56 +95,65 @@
           { "id": "courier-animation", "type": "procedural", "source": "procedural:courier-animation", "critical": true },
           { "id": "base-ui", "type": "procedural", "source": "procedural:base-ui", "critical": true },
           { "id": "first-audio-cues", "type": "procedural", "source": "procedural:first-audio-cues", "critical": true },
-          { "id": "ambient-spark", "type": "procedural", "source": "procedural:ambient-spark", "critical": false }
+          { "id": "ambient-spark", "type": "procedural", "source": "procedural:ambient-spark", "critical": false },
+          { "id": "mz-main-lockup-v1", "type": "image", "source": "/assets/milion-runner/brand/mz-main-lockup-v1.avif", "critical": false },
+          { "id": "mz-compact-lockup-v1", "type": "image", "source": "/assets/milion-runner/brand/mz-compact-lockup-v1.avif", "critical": false }
         ]
       },
       {
         "id": "prologue",
         "resources": [
           { "id": "first-package", "type": "procedural", "source": "procedural:first-package", "critical": true },
-          { "id": "manual-label", "type": "procedural", "source": "procedural:manual-label", "critical": true }
+          { "id": "manual-label", "type": "procedural", "source": "procedural:manual-label", "critical": true },
+          { "id": "world-first-mile-v1", "type": "image", "source": "/assets/milion-runner/worlds/world-01-first-mile-v1.avif", "critical": false }
         ]
       },
       {
         "id": "epoch_1",
         "resources": [
           { "id": "small-warehouse", "type": "procedural", "source": "procedural:small-warehouse", "critical": true },
-          { "id": "cable-chaos", "type": "procedural", "source": "procedural:cable-chaos", "critical": true }
+          { "id": "cable-chaos", "type": "procedural", "source": "procedural:cable-chaos", "critical": true },
+          { "id": "world-cable-route-v1", "type": "image", "source": "/assets/milion-runner/worlds/world-02-cable-route-v1.avif", "critical": false }
         ]
       },
       {
         "id": "epoch_2",
         "resources": [
           { "id": "quality-service", "type": "procedural", "source": "procedural:quality-service", "critical": true },
-          { "id": "doubt-cloud", "type": "procedural", "source": "procedural:doubt-cloud", "critical": true }
+          { "id": "doubt-cloud", "type": "procedural", "source": "procedural:doubt-cloud", "critical": true },
+          { "id": "world-quality-service-v1", "type": "image", "source": "/assets/milion-runner/worlds/world-03-quality-service-v1.avif", "critical": false }
         ]
       },
       {
         "id": "epoch_3",
         "resources": [
           { "id": "customer-stories", "type": "procedural", "source": "procedural:customer-stories", "critical": true },
-          { "id": "budget-eater", "type": "procedural", "source": "procedural:budget-eater", "critical": true }
+          { "id": "budget-eater", "type": "procedural", "source": "procedural:budget-eater", "critical": true },
+          { "id": "world-client-paths-v1", "type": "image", "source": "/assets/milion-runner/worlds/world-04-client-paths-v1.avif", "critical": false }
         ]
       },
       {
         "id": "epoch_4",
         "resources": [
           { "id": "warehouse-scale", "type": "procedural", "source": "procedural:warehouse-scale", "critical": true },
-          { "id": "logistic-hydra", "type": "procedural", "source": "procedural:logistic-hydra", "critical": true }
+          { "id": "logistic-hydra", "type": "procedural", "source": "procedural:logistic-hydra", "critical": true },
+          { "id": "world-scale-logistics-v1", "type": "image", "source": "/assets/milion-runner/worlds/world-05-scale-logistics-v1.avif", "critical": false }
         ]
       },
       {
         "id": "epoch_5",
         "resources": [
           { "id": "million-wave", "type": "procedural", "source": "procedural:million-wave", "critical": true },
-          { "id": "final-symbols", "type": "procedural", "source": "procedural:final-symbols", "critical": true }
+          { "id": "final-symbols", "type": "procedural", "source": "procedural:final-symbols", "critical": true },
+          { "id": "world-million-approach-v1", "type": "image", "source": "/assets/milion-runner/worlds/world-06-million-approach-v1.avif", "critical": false }
         ]
       },
       {
         "id": "finale",
         "resources": [
           { "id": "million-package", "type": "procedural", "source": "procedural:million-package", "critical": true },
-          { "id": "poland-lights", "type": "procedural", "source": "procedural:poland-lights", "critical": true }
+          { "id": "poland-lights", "type": "procedural", "source": "procedural:poland-lights", "critical": true },
+          { "id": "world-million-finale-v1", "type": "image", "source": "/assets/milion-runner/worlds/world-07-million-finale-v1.avif", "critical": false }
         ]
       },
       {

@@ -64,6 +64,13 @@ import {
   type StoryObjectivesSnapshot,
   type StoryObjectiveUpdate
 } from "./story-objectives";
+import {
+  CAMPAIGN_WORLD_IDS,
+  ChallengeWorldDirector,
+  resolvePlaySegmentVisual,
+  sceneVisualState,
+  type CampaignWorldId
+} from "../visuals/scene-manifest";
 
 const CUTSCENE_SECONDS = 2.6;
 const MILLION_GUIDED_PHASE_COUNT = 4;
@@ -140,6 +147,7 @@ export class RunnerGame implements RunnerGameApi {
   private storyOrderPatternIndex = 0;
   private storyObjectivePatternIndex = 0;
   private readonly logisticWaveDirector: LogisticWaveDirector;
+  private readonly challengeWorldDirector = new ChallengeWorldDirector("direct");
   private currentEpoch = 0;
   private epochElapsed = 0;
   private cutsceneRemaining = 0;
@@ -184,7 +192,7 @@ export class RunnerGame implements RunnerGameApi {
     callbacks: RunnerGameCallbacks = {},
     options: RunnerGameOptions = {}
   ) {
-    const context = canvas.getContext("2d", { alpha: false, desynchronized: true });
+    const context = canvas.getContext("2d", { alpha: true, desynchronized: true });
     if (!context) throw new Error("RunnerGame requires a Canvas 2D context.");
 
     this.context = context;
@@ -338,6 +346,7 @@ export class RunnerGame implements RunnerGameApi {
     this.elapsedSeconds = 0;
     this.visualElapsedSeconds = 0;
     this.challengeElapsedSeconds = 0;
+    this.challengeWorldDirector.reset("direct");
     this.distancePixels = 0;
     this.visualDistancePixels = 0;
     this.packagesCollected = 0;
@@ -748,6 +757,13 @@ export class RunnerGame implements RunnerGameApi {
           bossHazardActive
         )
       : { type: "none" } as const;
+
+    if (this.mode === "challenge") {
+      const visualRouteClear = routeClear &&
+        this.bossDirector.model.phase === "inactive" &&
+        this.logisticWaveDirector.snapshot.phase === "inactive";
+      this.challengeWorldDirector.advance(activeDeltaSeconds, visualRouteClear);
+    }
 
     if (logisticCommand.type === "attack") {
       activateWave(
@@ -1249,6 +1265,7 @@ export class RunnerGame implements RunnerGameApi {
     this.epochCollisions = 0;
     this.storyGapAssist = 0;
     this.challengeElapsedSeconds = 0;
+    this.challengeWorldDirector.reset("story-continuation");
     this.recoverySeconds = 0;
     this.crouchHeld = false;
     this.runner.crouching = false;
@@ -1397,8 +1414,15 @@ export class RunnerGame implements RunnerGameApi {
         active && storyOrder === true && x + size >= this.runner.x
       )
       .map(({ packageType }) => packageType);
+    const visual = this.currentWorldVisual();
     return {
       mode: this.mode,
+      visualWorldId: visual.worldId,
+      visualStateId: visual.stateId,
+      visualNextStateId: visual.nextStateId,
+      visualProgress: visual.progress,
+      visualWorldIndex: visual.worldIndex,
+      visualTransitionPending: visual.transitionPending,
       score: calculateScore(this.distancePixels, this.packagesCollected, this.bonusScore),
       packagesCollected: this.packagesCollected,
       collisions: this.collisions,
@@ -1447,6 +1471,64 @@ export class RunnerGame implements RunnerGameApi {
     };
   }
 
+  private currentWorldVisual(): {
+    worldId: CampaignWorldId;
+    stateId: string;
+    nextStateId: string;
+    progress: number;
+    worldIndex: number;
+    transitionPending: boolean;
+  } {
+    if (this.mode === "challenge") {
+      const challenge = this.challengeWorldDirector.snapshot;
+      return {
+        worldId: challenge.worldId,
+        stateId: challenge.stateId,
+        nextStateId: challenge.stateId,
+        progress: Math.min(1, challenge.worldElapsedSeconds / 45),
+        worldIndex: challenge.worldIndex,
+        transitionPending: challenge.transitionPending
+      };
+    }
+
+    const story = this.storyTimeline?.snapshot;
+    if (story?.scene) {
+      const state = sceneVisualState(story.scene.id);
+      return {
+        worldId: state.worldId,
+        stateId: state.stateId,
+        nextStateId: state.stateId,
+        progress: state.worldProgress,
+        worldIndex: CAMPAIGN_WORLD_IDS.indexOf(state.worldId),
+        transitionPending: false
+      };
+    }
+    if (story?.playSegment) {
+      const sectionProgress = story.sectionDurationSeconds <= 0
+        ? 0
+        : story.sectionElapsedSeconds / story.sectionDurationSeconds;
+      const play = resolvePlaySegmentVisual(story.playSegment.id, sectionProgress);
+      return {
+        worldId: play.worldId,
+        stateId: play.fromStateId,
+        nextStateId: play.toStateId,
+        progress: play.progress,
+        worldIndex: CAMPAIGN_WORLD_IDS.indexOf(play.worldId),
+        transitionPending: false
+      };
+    }
+
+    const fallback = sceneVisualState(story?.completed ? "final.thanks" : "intro.ready");
+    return {
+      worldId: fallback.worldId,
+      stateId: fallback.stateId,
+      nextStateId: fallback.stateId,
+      progress: fallback.worldProgress,
+      worldIndex: CAMPAIGN_WORLD_IDS.indexOf(fallback.worldId),
+      transitionPending: false
+    };
+  }
+
   private emitSnapshot(): void {
     this.invokeSnapshot(this.createSnapshot());
   }
@@ -1473,6 +1555,7 @@ export class RunnerGame implements RunnerGameApi {
   private render(): void {
     if (this._state === "destroyed") return;
     this.applyCanvasBuffer();
+    const worldVisual = this.currentWorldVisual();
     const scene: RenderScene = {
       state: this._state,
       runner: this.runner,
@@ -1488,6 +1571,12 @@ export class RunnerGame implements RunnerGameApi {
       epochName: this.narrative?.epochs[this.currentEpoch]?.name ?? "",
       epochYear: this.narrative?.epochs[this.currentEpoch]?.year ?? "",
       themeIndex: this.narrative?.epochs[this.currentEpoch]?.themeIndex ?? -1,
+      worldVisual: {
+        worldId: worldVisual.worldId,
+        stateId: worldVisual.stateId,
+        nextStateId: worldVisual.nextStateId,
+        progress: worldVisual.progress
+      },
       cutscene: this.cutscene,
       activePowerUps: this.activePowerUps.keys(),
       mode: this.mode,

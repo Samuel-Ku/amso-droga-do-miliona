@@ -4,7 +4,10 @@ import { parseRunnerConfig } from "../src/config/schema";
 import type { GameSnapshot } from "../src/game/contracts";
 import { resolveCollision } from "../src/game/mode-rules";
 import { RunnerGame } from "../src/game/RunnerGame";
-import type { StoryTimelineSnapshot } from "../src/game/story-timeline";
+import {
+  STORY_REFRAME_SECONDS,
+  type StoryTimelineSnapshot
+} from "../src/game/story-timeline";
 import type { StoryConfig } from "../src/shared/types";
 
 function createGameHarness(
@@ -207,22 +210,38 @@ describe("campaign collision contract", () => {
     harness.game.continueStoryScene("intro.ready");
     harness.game.continueStoryScene("intro.beginning");
     harness.game.continueStoryScene("intro.promise");
-    harness.advance(3.05);
+    harness.advance(STORY_REFRAME_SECONDS + 3.05);
+    expect(harness.storyUpdates.at(-1)?.state).toBe("play");
 
-    const jumpAt = [2.35, 8.2, 13.9, 19.7, 25.4];
-    const slideAround = [5.92, 11.73, 17.42, 23.18, 28.85];
-    const jumped = new Set<number>();
-    harness.advance(30.05, (elapsedSeconds) => {
-      for (const [index, time] of jumpAt.entries()) {
-        if (!jumped.has(index) && elapsedSeconds >= time) {
-          jumped.add(index);
+    let jumpedObstacle: object | null = null;
+    harness.advance(30.05, () => {
+      const internals = harness.game as unknown as {
+        obstacles: Array<{
+          active: boolean;
+          kind: "overhead" | "pallet" | "box-stack" | "trolley";
+          source: string;
+          x: number;
+          width: number;
+        }>;
+        runner: { grounded: boolean; x: number };
+      };
+      const obstacle = internals.obstacles
+        .filter(({ active, source, x, width }) =>
+          active && source === "story-reward" && x + width >= internals.runner.x - 12
+        )
+        .sort((left, right) => left.x - right.x)[0];
+      if (!obstacle) {
+        harness.game.crouch(false, "keyboard");
+      } else if (obstacle.kind === "overhead") {
+        jumpedObstacle = null;
+        harness.game.crouch(obstacle.x <= 330, "keyboard");
+      } else {
+        harness.game.crouch(false, "keyboard");
+        if (obstacle !== jumpedObstacle && obstacle.x <= 220 && internals.runner.grounded) {
+          jumpedObstacle = obstacle;
           harness.game.jump("keyboard");
         }
       }
-      const sliding = slideAround.some(
-        (time) => elapsedSeconds >= time - 0.58 && elapsedSeconds <= time + 0.08
-      );
-      harness.game.crouch(sliding, "keyboard");
     });
 
     expect(harness.storyUpdates.at(-1)?.scene?.id).toBe("epoch_1.challenge");
@@ -241,11 +260,11 @@ describe("campaign collision contract", () => {
     harness.game.continueStoryScene("intro.ready");
     harness.game.continueStoryScene("intro.beginning");
     harness.game.continueStoryScene("intro.promise");
-    harness.advance(3.05);
+    harness.advance(STORY_REFRAME_SECONDS + 3.05);
     harness.advance(30.05);
     expect(harness.storyUpdates.at(-1)?.scene?.id).toBe("epoch_1.challenge");
     harness.game.continueStoryScene("epoch_1.challenge");
-    harness.advance(3.05);
+    harness.advance(STORY_REFRAME_SECONDS + 3.05);
 
     const jumpAt = [4.1, 9.65];
     const slideAround = [7.55, 13.06];
@@ -286,7 +305,9 @@ describe("campaign collision contract", () => {
       mode: "story",
       score: 0,
       durationSeconds: 0,
-      trustCorridor: true
+      trustCorridor: true,
+      visualWorldId: "first-mile",
+      visualStateId: "intro.ready"
     });
 
     harness.driveStory();
@@ -307,7 +328,9 @@ describe("campaign collision contract", () => {
       epochName: "",
       epochYear: "",
       epochIndex: 0,
-      epochIndexMax: 0
+      epochIndexMax: 0,
+      visualWorldId: "million-finale",
+      visualStateId: "final.thanks"
     });
     expect(challengeSnapshot?.durationSeconds).toBeGreaterThanOrEqual(300);
     expect(challengeSnapshot?.score).toBeGreaterThanOrEqual(config.story.firstCompletionBonusScore);
@@ -324,6 +347,19 @@ describe("campaign collision contract", () => {
       mode: "challenge",
       bossPhase: "inactive",
       logisticWavePhase: "inactive"
+    });
+    harness.game.destroy();
+  });
+
+  it("starts a direct challenge in the first-mile gameplay world", () => {
+    const harness = createGameHarness("challenge");
+    harness.game.start("keyboard");
+
+    expect(harness.snapshots.at(-1)).toMatchObject({
+      mode: "challenge",
+      visualWorldId: "first-mile",
+      visualStateId: "intro.promise",
+      visualWorldIndex: 0
     });
     harness.game.destroy();
   });
@@ -414,7 +450,7 @@ describe("campaign collision contract", () => {
     expect(harness.storyUpdates.at(-1)?.scene?.id).toBe("epoch_5.wave");
 
     harness.game.continueStoryScene("epoch_5.wave");
-    harness.advance(3.05);
+    harness.advance(STORY_REFRAME_SECONDS + 3.05);
     harness.advance(46);
     expect(harness.snapshots.at(-1)).toMatchObject({
       mode: "story",
@@ -452,7 +488,7 @@ describe("campaign collision contract", () => {
       else harness.advance(story?.state === "countdown" ? 3.05 : 1);
     }
     harness.game.continueStoryScene("epoch_5.wave");
-    harness.advance(3.05);
+    harness.advance(STORY_REFRAME_SECONDS + 3.05);
     harness.advance(54);
     expect(harness.snapshots.at(-1)).toMatchObject({ bossPhase: "inactive", bossesDefeated: 0 });
 
@@ -475,7 +511,7 @@ describe("story lifecycle pauses", () => {
 
     harness.hideDocument();
     expect(harness.game.state).toBe("running");
-    harness.advance(3.05);
+    harness.advance(STORY_REFRAME_SECONDS + 3.05);
     expect(harness.storyUpdates.at(-1)?.state).toBe("play");
 
     harness.blurWindow();

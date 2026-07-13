@@ -10,16 +10,18 @@ npm run build:all
 
 ## Macierz urządzeń
 
-Sprawdź co najmniej 360 × 800, 390 × 844, 412/430 px portrait, krótki
-landscape mobile oraz desktop 1280 i 1920 px. Na realnych telefonach potwierdź
+Sprawdź co najmniej 390 × 844, 412/430 px portrait, 844 × 390 landscape mobile
+oraz desktop 1280 i 1920 px. Widok mniejszy niż 390 px (lub niższy niż 390 px
+w landscape) ma zatrzymać grę i pokazać blokadę rozmiaru. Na realnych telefonach potwierdź
 gest ślizgu, fullscreen, obrót bez resetu i płynność przy 1,55×.
 
 ## Scenariusze krytyczne
 
 1. Nowy profil widzi wyłącznie „Rozpocznij historię”.
 2. Każda z 18 scen pozostaje bez zmian aż do naciśnięcia przycisku.
-3. Podczas sceny HUD jest ukryty, tekst wyśrodkowany i przewijalny, a przeszkód,
-   paczek, nagród i symboli nie ma na trasie.
+3. Podczas sceny HUD jest ukryty, tekst pozostaje w czytelnej bocznej karcie
+   (w portrait — dolnym panelu), a większość wspólnego tła nadal opowiada historię.
+   Przeszkód, paczek, nagród i symboli nie ma wtedy na trasie.
 4. Minuta oczekiwania na pierwszej scenie nie zwiększa czasu ani wyniku.
 5. Po scenie rozgrywkę poprzedza pełne `Wracamy do gry · 3–2–1`.
 6. Aktywne czasy epok wynoszą 45/55/60/65/75 s, razem 300 s.
@@ -40,6 +42,10 @@ gest ślizgu, fullscreen, obrót bez resetu i płynność przy 1,55×.
     Fali Miliona z liczbą zebranych symboli.
 17. Boss Fali Miliona pozostaje nieaktywny przez licznik i pierwsze cztery fazy;
     startuje dopiero w końcowej 1/5 czasu segmentu także po zmianie jego długości.
+18. Wszystkie 7 światów ma konkretną ilustrację i semantic fallback; challenge
+    zmienia świat mniej więcej co 45 s dopiero na czystej trasie.
+19. `droga-do-miliona-qa.html` działa offline z osadzonymi ilustracjami, a build
+    produkcyjny pozostawia je jako zewnętrzne, wersjonowane pliki AVIF.
 
 ## Treść
 

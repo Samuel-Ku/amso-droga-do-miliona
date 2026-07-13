@@ -73,6 +73,11 @@ export class AssetBundleLoader {
   private readonly bundleResults = new Map<AssetBundleId, BundleResult>();
   private readonly resourcePromises = new Map<string, Promise<void>>();
   private readonly readyResources = new Set<string>();
+  private readonly optionalLoadsStarted = new Set<string>();
+  private readonly optionalFailures = new Map<
+    AssetBundleId,
+    Map<string, OptionalAssetFailure>
+  >();
 
   public constructor(
     bundles: readonly AssetBundleConfig[],
@@ -138,6 +143,8 @@ export class AssetBundleLoader {
     bundle: AssetBundleConfig,
     onCriticalReady: (resource: AssetResourceConfig) => void
   ): Promise<BundleResult> {
+    this.startOptionalLoads(bundle);
+
     const ready = this.bundleResults.get(bundle.id);
     if (ready !== undefined) {
       for (const resource of bundle.resources) {
@@ -155,20 +162,17 @@ export class AssetBundleLoader {
       });
     }
 
-    const promise = Promise.all(bundle.resources.map(async (resource) => {
+    const criticalResources = bundle.resources.filter(({ critical }) => critical);
+    const promise = Promise.all(criticalResources.map(async (resource) => {
       try {
         await this.loadOnce(resource);
-        if (resource.critical) onCriticalReady(resource);
-        return null;
+        onCriticalReady(resource);
       } catch {
-        if (resource.critical) throw new AssetBundleLoadError(bundle.id);
-        return { bundleId: bundle.id, resourceId: resource.id };
+        throw new AssetBundleLoadError(bundle.id);
       }
-    })).then((failures): BundleResult => {
+    })).then((): BundleResult => {
       const result = {
-        failedOptional: failures.filter(
-          (failure): failure is OptionalAssetFailure => failure !== null
-        )
+        failedOptional: this.optionalFailuresFor(bundle)
       };
       this.bundleResults.set(bundle.id, result);
       return result;
@@ -178,6 +182,53 @@ export class AssetBundleLoader {
     });
     this.bundlePromises.set(bundle.id, promise);
     return promise;
+  }
+
+  /**
+   * Optional resources warm the browser cache, but are never part of a
+   * bundle's readiness promise. The terminal catch is attached immediately so
+   * a background rejection cannot become an unhandled promise rejection.
+   */
+  private startOptionalLoads(bundle: AssetBundleConfig): void {
+    for (const resource of bundle.resources) {
+      if (resource.critical) continue;
+      const startKey = `${bundle.id}:${resource.id}:${resourceKey(resource)}`;
+      if (this.optionalLoadsStarted.has(startKey)) continue;
+      this.optionalLoadsStarted.add(startKey);
+
+      void this.loadOnce(resource).catch(() => {
+        this.recordOptionalFailure(bundle, resource);
+      });
+    }
+  }
+
+  private recordOptionalFailure(
+    bundle: AssetBundleConfig,
+    resource: AssetResourceConfig
+  ): void {
+    const failures = this.optionalFailures.get(bundle.id) ?? new Map();
+    failures.set(resource.id, {
+      bundleId: bundle.id,
+      resourceId: resource.id
+    });
+    this.optionalFailures.set(bundle.id, failures);
+
+    if (this.bundleResults.has(bundle.id)) {
+      this.bundleResults.set(bundle.id, {
+        failedOptional: this.optionalFailuresFor(bundle)
+      });
+    }
+  }
+
+  private optionalFailuresFor(
+    bundle: AssetBundleConfig
+  ): OptionalAssetFailure[] {
+    const failures = this.optionalFailures.get(bundle.id);
+    if (failures === undefined) return [];
+    return bundle.resources.flatMap((resource) => {
+      const failure = failures.get(resource.id);
+      return failure === undefined ? [] : [failure];
+    });
   }
 
   private loadOnce(resource: AssetResourceConfig): Promise<void> {

@@ -69,6 +69,7 @@ pełna modalna kopia gry nie jest utrzymywana.
 
 ## Przed publikacją
 
-Wymagane są jeszcze playtesty na realnych telefonach (360, 390, 412/430 px
-oraz landscape), potwierdzenie maksymalnej prędkości i ewentualny tuning wartości w
+Wymagane są jeszcze playtesty na realnych telefonach (minimum 390 × 844,
+412/430 px oraz minimum 844 × 390 w landscape), potwierdzenie maksymalnej
+prędkości i ewentualny tuning wartości w
 `runner-config.json`. Lista odbiorowa znajduje się w [`docs/QA_V4.md`](./docs/QA_V4.md).

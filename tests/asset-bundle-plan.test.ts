@@ -1,25 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { requiredStartAssetBundles } from "../src/assets/asset-bundle-plan";
+import {
+  nextWorldAssetBundle,
+  requiredStartAssetBundles
+} from "../src/assets/asset-bundle-plan";
 
 describe("campaign asset bundle plan", () => {
-  it("guarantees every critical story chapter before the uninterrupted run starts", () => {
+  it("loads only the current and next story world before the first frame", () => {
     expect(requiredStartAssetBundles("story")).toEqual([
       "common",
       "prologue",
-      "epoch_1",
-      "epoch_2",
-      "epoch_3",
-      "epoch_4",
-      "epoch_5",
-      "finale",
+      "epoch_1"
+    ]);
+  });
+
+  it("starts direct challenge in the first warehouse with challenge mechanics", () => {
+    expect(requiredStartAssetBundles("challenge")).toEqual([
+      "common",
+      "prologue",
       "challenge"
     ]);
   });
 
-  it("loads only common and challenge bundles for the unlocked challenge", () => {
-    expect(requiredStartAssetBundles("challenge")).toEqual([
-      "common",
-      "challenge"
-    ]);
+  it("warms one world ahead in narrative order", () => {
+    expect(nextWorldAssetBundle("prologue")).toBe("epoch_1");
+    expect(nextWorldAssetBundle("epoch_3")).toBe("epoch_4");
+    expect(nextWorldAssetBundle("finale")).toBeNull();
+    expect(nextWorldAssetBundle("common")).toBeNull();
   });
 });

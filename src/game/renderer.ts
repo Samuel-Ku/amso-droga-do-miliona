@@ -10,19 +10,19 @@ import type { PackageType, PowerUpKind } from "../shared/types";
 import type { StoryObstacleTransformation } from "./story-effects";
 
 const COLORS = {
-  ink: "#17313b",
-  inkSoft: "#36515b",
-  red: "#e30613",
-  redDark: "#b60510",
-  orange: "#f4a124",
-  wall: "#eaf1f3",
-  wallShade: "#d9e4e7",
-  floor: "#cbd5d8",
-  floorDark: "#aab8bc",
+  ink: "#171717",
+  inkSoft: "#44413d",
+  red: "#f04f45",
+  redDark: "#eb32a4",
+  orange: "#f47100",
+  wall: "#faf7f0",
+  wallShade: "#e4ded5",
+  floor: "#d8d2c8",
+  floorDark: "#aaa39a",
   white: "#ffffff",
-  cardboard: "#c98d4f",
-  cardboardLight: "#e1ad6d",
-  blue: "#4e91ad"
+  cardboard: "#c8a27b",
+  cardboardLight: "#dfbd98",
+  blue: "#eb32a4"
 } as const;
 
 const INTEGER_FORMATTER = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
@@ -326,7 +326,7 @@ function drawCheckMark(
   x: number,
   y: number,
   size: number,
-  color = "#1f9d55"
+  color = "#eb32a4"
 ): void {
   context.strokeStyle = color;
   context.lineWidth = Math.max(2, size * 0.16);
@@ -434,7 +434,7 @@ function drawServiceVignette(
   context.beginPath();
   context.arc(x + 195, y - 7, 28, 0, Math.PI * 2);
   context.stroke();
-  drawCheckMark(context, x + 177, y - 13, 32, "#1f9d55");
+  drawCheckMark(context, x + 177, y - 13, 32, "#eb32a4");
   context.fillStyle = COLORS.orange;
   context.fillRect(x + 188, y + 43, 15, 7);
   context.fillRect(x + 208, y + 35, 7, 15);
@@ -479,7 +479,7 @@ function drawClientsVignette(
   }
   context.globalAlpha = 0.9;
 
-  context.fillStyle = "#e08a2b";
+  context.fillStyle = "#f47100";
   context.beginPath();
   context.ellipse(x + 316, baseY + 1, 27, 20, 0, 0, Math.PI * 2);
   context.fill();
@@ -593,7 +593,7 @@ function drawStorySymbol(
       context.fill();
       break;
     case 1:
-      drawCheckMark(context, left, top + size * 0.16, size * 0.72, active ? "#1f9d55" : COLORS.inkSoft);
+      drawCheckMark(context, left, top + size * 0.16, size * 0.72, active ? "#eb32a4" : COLORS.inkSoft);
       break;
     case 2:
       context.beginPath();
@@ -638,7 +638,7 @@ function drawStorySymbol(
       break;
     case 6:
       fillRoundedRectangle(context, x - size * 0.22, top, size * 0.44, size * 0.58, size * 0.08, COLORS.inkSoft);
-      context.fillStyle = active ? "#46d783" : COLORS.wallShade;
+      context.fillStyle = active ? "#f04f45" : COLORS.wallShade;
       context.fillRect(x - size * 0.13, top + size * 0.1, size * 0.26, size * 0.16);
       context.strokeStyle = COLORS.inkSoft;
       context.beginPath();
@@ -881,7 +881,7 @@ function drawStoryClimax(
   context.fillText(climax.challengeName, 791, 83);
 
   if (climax.identity === "cable-chaos") {
-    context.strokeStyle = positive ? "#1f9d55" : COLORS.red;
+    context.strokeStyle = positive ? "#eb32a4" : COLORS.red;
     context.lineWidth = 6;
     for (let cable = 0; cable < 3; cable += 1) {
       context.beginPath();
@@ -895,7 +895,7 @@ function drawStoryClimax(
     }
     if (positive) drawCheckMark(context, x + 74, y - 4, 25);
   } else if (climax.identity === "doubt-cloud") {
-    context.fillStyle = positive ? "#d9f4e4" : "rgba(83,106,115,0.88)";
+    context.fillStyle = positive ? "#fff0f8" : "rgba(68,65,61,0.88)";
     for (const [dx, dy, radius] of [[-35, 0, 36], [3, -18, 44], [46, 3, 34]] as const) {
       context.beginPath();
       context.arc(x + dx, y + dy, radius, 0, Math.PI * 2);
@@ -909,7 +909,7 @@ function drawStoryClimax(
       context.fillText("?  ?  ?", x + 4, y + 13);
     }
   } else if (climax.identity === "budget-eater") {
-    context.fillStyle = positive ? "#f4a124" : COLORS.red;
+    context.fillStyle = positive ? "#f47100" : COLORS.red;
     context.beginPath();
     context.ellipse(x, y, 66, 43, 0, 0, Math.PI * 2);
     context.fill();
@@ -919,7 +919,7 @@ function drawStoryClimax(
     context.fillRect(x + 48, y + 29, 12, 22);
     context.fillRect(x - 50, y + 29, 12, 22);
   } else {
-    context.strokeStyle = positive ? "#1f9d55" : COLORS.red;
+    context.strokeStyle = positive ? "#eb32a4" : COLORS.red;
     context.lineWidth = 7;
     const rootY = y + 44;
     const completedPhases = scene.storyObjectives?.epoch4.hydra.phasesCompleted ?? 0;
@@ -930,7 +930,7 @@ function drawStoryClimax(
       context.moveTo(x, rootY);
       context.quadraticCurveTo(x + (head - 1) * 24, y, targetX, y - 35);
       context.stroke();
-      context.fillStyle = headResolved ? "#d9f4e4" : COLORS.red;
+      context.fillStyle = headResolved ? "#fff0f8" : COLORS.red;
       context.beginPath();
       context.arc(targetX, y - 35, 13, 0, Math.PI * 2);
       context.fill();
@@ -953,7 +953,7 @@ function drawTransformedObstacle(
   context.globalAlpha = 0.9 - transformation.progress * 0.24;
   context.translate(0, -lift);
   if (transformation.motif === "ordered-cables") {
-    context.strokeStyle = "#1f9d55";
+    context.strokeStyle = "#eb32a4";
     context.lineWidth = 4;
     for (let line = 0; line < 3; line += 1) {
       context.beginPath();
@@ -962,7 +962,7 @@ function drawTransformedObstacle(
       context.stroke();
     }
   } else if (transformation.motif === "quality-mark") {
-    context.fillStyle = "rgba(217,244,228,0.94)";
+    context.fillStyle = "rgba(255,240,248,0.94)";
     context.beginPath();
     context.arc(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2, 26, 0, Math.PI * 2);
     context.fill();
@@ -975,7 +975,7 @@ function drawTransformedObstacle(
     context.fillStyle = COLORS.ink;
     context.fillRect(obstacle.x + obstacle.width / 2 - 10, GROUND_Y - 51, 21, 4);
   } else if (obstacle.obstacleKind === "overhead") {
-    context.strokeStyle = "#1f9d55";
+    context.strokeStyle = "#eb32a4";
     context.lineWidth = 5;
     context.beginPath();
     context.moveTo(obstacle.x, obstacle.y + obstacle.height);
@@ -1000,9 +1000,9 @@ function drawTransformedObstacle(
 }
 
 const POWER_UP_COLORS: Readonly<Record<PowerUpKind, string>> = {
-  gwarancja_48: "#1f9d55",
-  audyt_jakosci: "#3aa6c2",
-  drugie_zycie: "#e08a2b"
+  gwarancja_48: "#eb32a4",
+  audyt_jakosci: "#f04f45",
+  drugie_zycie: "#f47100"
 };
 
 const POWER_UP_GLYPH: Readonly<Record<PowerUpKind, string>> = {
@@ -1012,10 +1012,10 @@ const POWER_UP_GLYPH: Readonly<Record<PowerUpKind, string>> = {
 };
 
 const PACKAGE_TYPE_ACCENT: Readonly<Record<PackageType, string>> = {
-  notebook: "#3aa6c2",
-  telefon: "#7b492d",
-  pc: "#536a73",
-  lcd: "#5a8aa0"
+  notebook: "#f04f45",
+  telefon: "#f47100",
+  pc: "#44413d",
+  lcd: "#eb32a4"
 };
 
 function drawParcel(
@@ -1143,7 +1143,7 @@ function drawBossStatus(
   context: CanvasRenderingContext2D,
   boss: Readonly<BossModel>
 ): void {
-  const color = boss.phase === "reward" ? "#1f9d55" : COLORS.red;
+  const color = boss.phase === "reward" ? "#eb32a4" : COLORS.red;
   const segmentGap = 6;
   const segmentWidth = 70;
   const totalWidth = boss.attackCount * segmentWidth + (boss.attackCount - 1) * segmentGap;
@@ -1214,7 +1214,7 @@ function drawForkliftBoss(
   context.beginPath();
   context.arc(x + 55, y + 53, 8, 0, Math.PI * 2);
   context.fill();
-  context.fillStyle = boss.phase === "reward" ? "#46d783" : "#ffec8a";
+  context.fillStyle = boss.phase === "reward" ? "#f04f45" : "#ffec8a";
   context.beginPath();
   context.arc(x + 55, y + 53, 4, 0, Math.PI * 2);
   context.fill();
@@ -1592,6 +1592,36 @@ function drawCourier(
   context.lineCap = "butt";
 }
 
+/**
+ * The generated world plate is framed independently of the fixed 960×540
+ * gameplay viewport. This foreground route gives the runner, parcels and
+ * obstacles one explicit shared ground line at every stage aspect ratio.
+ */
+function drawGameplayRoute(context: CanvasRenderingContext2D): void {
+  context.save();
+  context.lineCap = "round";
+  context.strokeStyle = COLORS.ink;
+  context.lineWidth = 18;
+  context.beginPath();
+  context.moveTo(-12, GROUND_Y + 5);
+  context.lineTo(WORLD_WIDTH + 12, GROUND_Y + 5);
+  context.stroke();
+
+  context.lineWidth = 7;
+  for (const [from, to, color] of [
+    [-12, WORLD_WIDTH * 0.34, COLORS.orange],
+    [WORLD_WIDTH * 0.34, WORLD_WIDTH * 0.68, COLORS.red],
+    [WORLD_WIDTH * 0.68, WORLD_WIDTH + 12, COLORS.redDark]
+  ] as const) {
+    context.strokeStyle = color;
+    context.beginPath();
+    context.moveTo(from, GROUND_Y);
+    context.lineTo(to, GROUND_Y);
+    context.stroke();
+  }
+  context.restore();
+}
+
 export class WarehouseRenderer {
   render(
     context: CanvasRenderingContext2D,
@@ -1601,8 +1631,13 @@ export class WarehouseRenderer {
   ): void {
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.globalAlpha = 1;
-    context.fillStyle = COLORS.ink;
-    context.fillRect(0, 0, pixelWidth, pixelHeight);
+    const externalWorldVisual = scene.worldVisual !== undefined;
+    if (externalWorldVisual) {
+      context.clearRect(0, 0, pixelWidth, pixelHeight);
+    } else {
+      context.fillStyle = COLORS.ink;
+      context.fillRect(0, 0, pixelWidth, pixelHeight);
+    }
 
     const scale = Math.min(pixelWidth / WORLD_WIDTH, pixelHeight / WORLD_HEIGHT);
     const viewportWidth = WORLD_WIDTH * scale;
@@ -1624,14 +1659,18 @@ export class WarehouseRenderer {
         ? BACKGROUND_THEMES[scene.themeIndex]!
         : selectBackgroundTheme(scene.distancePixels, BACKGROUND.zonePixels);
 
-    drawWarehouse(
-      context,
-      scene.distancePixels,
-      scene.elapsedSeconds,
-      scene.reducedMotion,
-      theme
-    );
-    drawNarrativeVignette(context, scene, theme);
+    if (!externalWorldVisual) {
+      drawWarehouse(
+        context,
+        scene.distancePixels,
+        scene.elapsedSeconds,
+        scene.reducedMotion,
+        theme
+      );
+      drawNarrativeVignette(context, scene, theme);
+    } else {
+      drawGameplayRoute(context);
+    }
     drawTrustCorridor(context, scene, theme);
     drawStoryClimax(context, scene);
     drawForkliftBoss(

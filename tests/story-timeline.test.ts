@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import productionConfig from "../public/assets/milion-runner/runner-config.json";
 import { parseRunnerConfig } from "../src/config/schema";
-import { StoryTimeline } from "../src/game/story-timeline";
+import { STORY_REFRAME_SECONDS, StoryTimeline } from "../src/game/story-timeline";
 import type { StoryConfig } from "../src/shared/types";
 
 function playerPacedStory(): StoryConfig {
@@ -73,6 +73,11 @@ describe("player-paced story timeline", () => {
     timeline.continueScene("intro.ready");
     timeline.continueScene("intro.promise");
 
+    expect(timeline.snapshot.state).toBe("reframe");
+    expect(timeline.snapshot.countdownValue).toBeNull();
+    timeline.advance(STORY_REFRAME_SECONDS - 0.01);
+    expect(timeline.snapshot.state).toBe("reframe");
+    timeline.advance(0.01);
     expect(timeline.snapshot.state).toBe("countdown");
     expect(timeline.snapshot.countdownValue).toBe(3);
     expect(timeline.snapshot.controlsEnabled).toBe(false);
@@ -97,6 +102,8 @@ describe("player-paced story timeline", () => {
       if (snapshot.state === "scene" && snapshot.scene) {
         seen.push(snapshot.scene.id);
         expect(timeline.continueScene(snapshot.scene.id)).toBe(true);
+      } else if (snapshot.state === "reframe") {
+        timeline.advance(STORY_REFRAME_SECONDS);
       } else if (snapshot.state === "countdown") {
         timeline.advance(snapshot.countdownSecondsRemaining);
       } else if (snapshot.state === "play" && snapshot.playSegment) {
