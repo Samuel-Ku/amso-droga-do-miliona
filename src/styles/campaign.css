@@ -31,6 +31,160 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
+.amso-campaign-boot,
+.amso-campaign-boot * {
+  box-sizing: border-box;
+}
+
+.amso-campaign-boot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  min-width: 0;
+  padding: 32px;
+  place-items: center;
+  overflow: auto;
+  background:
+    radial-gradient(circle at 78% 18%, rgb(235 50 164 / 20%), transparent 28rem),
+    radial-gradient(circle at 12% 82%, rgb(244 113 0 / 22%), transparent 26rem),
+    #171717;
+  color: #faf7f0;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-align: center;
+}
+
+.amso-campaign-boot__card {
+  width: 100%;
+  max-width: 620px;
+  min-width: 0;
+  padding: clamp(28px, 6vw, 56px);
+  border: 1px solid rgb(250 247 240 / 22%);
+  border-radius: 28px;
+  background: rgb(23 23 23 / 78%);
+  box-shadow: 0 28px 80px rgb(0 0 0 / 35%);
+  overflow-wrap: anywhere;
+}
+
+.amso-campaign-boot__eyebrow {
+  margin: 0 0 12px;
+  color: #f47100;
+  font-size: 0.75rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.amso-campaign-boot h1 {
+  margin: 0;
+  font-size: clamp(2.6rem, 10vw, 5.5rem);
+  font-weight: 950;
+  letter-spacing: -0.06em;
+  line-height: 0.94;
+}
+
+.amso-campaign-boot__status {
+  margin: 22px 0 0;
+  color: #d8d2c8;
+  font-size: clamp(1rem, 2.6vw, 1.2rem);
+  line-height: 1.5;
+}
+
+.amso-campaign-boot__retry {
+  display: inline-flex;
+  min-height: 48px;
+  margin: 8px 0 0;
+  padding: 0 22px;
+  border-radius: 14px;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(105deg, #f47100, #f04f45 52%, #eb32a4);
+  color: #171717;
+  font-size: 0.95rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.amso-campaign-boot__retry:focus-visible {
+  outline: 3px solid #faf7f0;
+  outline-offset: 4px;
+}
+
+.amso-campaign-boot__help {
+  display: none;
+  margin: 18px 0 0;
+  color: #d8d2c8;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  opacity: 0;
+  visibility: hidden;
+}
+
+html[data-campaign-scripting="enabled"] .amso-campaign-boot__help {
+  display: block;
+  animation: amso-campaign-boot-help 0s linear 8s forwards;
+}
+
+.amso-campaign-boot[data-campaign-boot-state="error"] .amso-campaign-boot__help {
+  display: block;
+  opacity: 1;
+  visibility: visible;
+  animation: none;
+}
+
+.amso-campaign-boot__accent {
+  width: min(100%, 360px);
+  height: 8px;
+  margin: 28px auto 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f47100, #f04f45 52%, #eb32a4);
+}
+
+[data-campaign-js-only] {
+  display: none;
+}
+
+html[data-campaign-scripting="enabled"] [data-campaign-js-only] {
+  display: inline;
+}
+
+html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
+  display: none;
+}
+
+@keyframes amso-campaign-boot-help {
+  to {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 430px) {
+  .amso-campaign-boot {
+    padding: 14px;
+  }
+
+  .amso-campaign-boot__card {
+    padding: 18px 26px;
+  }
+
+  .amso-campaign-boot h1 {
+    font-size: clamp(2rem, 16vh, 3.5rem);
+  }
+
+  .amso-campaign-boot__status,
+  .amso-campaign-boot__help {
+    margin-top: 10px;
+  }
+
+  .amso-campaign-boot__accent {
+    height: 6px;
+    margin-top: 14px;
+  }
+}
+
 .amso-campaign,
 .amso-campaign * {
   box-sizing: border-box;

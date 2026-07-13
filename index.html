@@ -7,7 +7,7 @@
       name="description"
       content="Jedna paczka rozpoczęła historię. Przebiegnij z AMSO drogę do zamówienia nr 1 000 000."
     />
-    <meta name="theme-color" content="#061426" />
+    <meta name="theme-color" content="#171717" />
     <link rel="canonical" href="https://amso.pl/milion" />
     <meta property="og:locale" content="pl_PL" />
     <meta property="og:type" content="website" />
@@ -19,12 +19,29 @@
       content="Sprawdź, jak daleko dojdziesz w Drodze do Miliona."
     />
     <title>AMSO — Droga do Miliona</title>
+    <script src="/assets/milion-runner/boot-watchdog.js"></script>
     <script type="module" src="/src/demo.ts"></script>
   </head>
   <body>
-    <main id="amso-campaign-root" aria-label="AMSO — Droga do Miliona"></main>
-    <noscript>
-      Do uruchomienia gry AMSO — Droga do Miliona potrzebna jest obsługa JavaScript.
-    </noscript>
+    <main id="amso-campaign-root" aria-label="AMSO — Droga do Miliona">
+      <section class="amso-campaign-boot" data-campaign-boot role="status" aria-live="polite">
+        <div class="amso-campaign-boot__card">
+          <p class="amso-campaign-boot__eyebrow">
+            <span data-campaign-js-only>Jubileuszowa historia AMSO</span>
+            <span data-campaign-noscript>JavaScript jest wyłączony</span>
+          </p>
+          <h1>Droga do Miliona</h1>
+          <p class="amso-campaign-boot__status">
+            <span data-campaign-js-only>Uruchamiamy trasę…</span>
+            <span data-campaign-noscript>Do uruchomienia gry potrzebna jest obsługa JavaScript.</span>
+          </p>
+          <p class="amso-campaign-boot__help">
+            Uruchamianie trwa dłużej? Odśwież stronę albo otwórz ją w innej przeglądarce.
+            <a class="amso-campaign-boot__retry" href="">Odśwież stronę</a>
+          </p>
+          <div class="amso-campaign-boot__accent" aria-hidden="true"></div>
+        </div>
+      </section>
+    </main>
   </body>
 </html>

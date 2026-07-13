@@ -5,6 +5,14 @@ const qaPreview = readFileSync(
   new URL("../droga-do-miliona-qa.html", import.meta.url),
   "utf8"
 );
+const productionEntry = readFileSync(
+  new URL("../index.html", import.meta.url),
+  "utf8"
+);
+const campaignStyles = readFileSync(
+  new URL("../src/styles/campaign.css", import.meta.url),
+  "utf8"
+);
 
 const campaignAvifPaths = [
   "/assets/milion-runner/brand/mz-main-lockup-v1.avif",
@@ -19,6 +27,54 @@ const campaignAvifPaths = [
 ] as const;
 
 describe("single-file QA artwork", () => {
+  it("keeps the production entry compatible with a self-only script and style CSP", () => {
+    expect(productionEntry).not.toContain("<style");
+    const scripts = [...productionEntry.matchAll(/<script([^>]*)><\/script>/gi)];
+    expect(scripts.length).toBeGreaterThan(0);
+    for (const script of scripts) {
+      expect(script[1]).toMatch(/\bsrc="[^"]+"/i);
+    }
+  });
+
+  it("shows a readable boot state before JavaScript initializes the campaign", () => {
+    const campaignRoot = qaPreview.match(
+      /<main id="amso-campaign-root"[^>]*>([\s\S]*?)<\/main>/
+    )?.[1];
+
+    expect(campaignRoot).toContain("data-campaign-boot");
+    expect(campaignRoot).toContain("Droga do Miliona");
+  });
+
+  it("provides recovery states when campaign JavaScript fails or is disabled", () => {
+    expect(qaPreview).toContain("campaignScripting");
+    expect(qaPreview).toContain("data-campaign-noscript");
+    expect(qaPreview).toContain("otwórz ją w innej przeglądarce");
+    expect(campaignStyles).toMatch(
+      /\[data-campaign-js-only\]\s*{\s*display:\s*none;/
+    );
+    expect(campaignStyles).toMatch(
+      /html\[data-campaign-scripting="enabled"\]\s+\[data-campaign-js-only\]\s*{\s*display:\s*inline;/
+    );
+    expect(campaignStyles).toMatch(
+      /html\[data-campaign-scripting="enabled"\]\s+\[data-campaign-noscript\]\s*{\s*display:\s*none;/
+    );
+  });
+
+  it("inlines parseable watchdog and app scripts for direct file opening", () => {
+    expect(qaPreview).not.toMatch(/<script[^>]+src=/i);
+    expect(qaPreview).not.toMatch(/<link[^>]+rel="stylesheet"/i);
+
+    const inlineScripts = [
+      ...qaPreview.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)
+    ];
+    expect(inlineScripts).toHaveLength(2);
+    expect(inlineScripts[0]?.[1]).toContain("campaignScripting");
+    expect(inlineScripts[1]?.[1]).toContain("AMSO campaign bootstrap failed");
+    for (const script of inlineScripts) {
+      expect(() => new Function(script[1] ?? "")).not.toThrow();
+    }
+  });
+
   it("embeds every campaign AVIF instead of retaining public URLs", () => {
     for (const assetPath of campaignAvifPaths) {
       expect(qaPreview).not.toContain(assetPath);
