@@ -53,6 +53,7 @@ a {
   --campaign-muted: #aebed0;
   position: relative;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   width: 100%;
   height: 100vh;
@@ -130,12 +131,10 @@ a {
   gap: 12px;
 }
 
-.amso-campaign__brand-name {
-  color: var(--campaign-orange-500);
-  font-size: clamp(1.45rem, 3vw, 1.9rem);
-  font-weight: 950;
-  letter-spacing: -0.075em;
-  line-height: 1;
+.amso-campaign__brand-logo {
+  display: block;
+  height: clamp(20px, 3.4vw, 30px);
+  width: auto;
 }
 
 .amso-campaign__brand-edition {
@@ -760,11 +759,17 @@ a {
   z-index: 100;
   inset: 0;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   padding: 24px;
   place-content: center;
   gap: 8px;
   background: var(--campaign-navy-950);
   text-align: center;
+}
+
+.amso-campaign__too-narrow > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .amso-campaign__too-narrow strong {
@@ -941,6 +946,16 @@ a {
     top: 48%;
     left: 50%;
     width: min(66vw, 280px);
+  }
+}
+
+@media (max-width: 359px) {
+  .amso-campaign__brand-edition {
+    display: none;
+  }
+
+  .amso-campaign__brand-logo {
+    height: 18px;
   }
 }
 

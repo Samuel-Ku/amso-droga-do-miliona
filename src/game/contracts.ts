@@ -13,6 +13,7 @@ import type {
   StoryTimelineSnapshot
 } from "./story-timeline";
 import type { LogisticWavePhase } from "./logistic-wave";
+import type { StoryClimaxPhase, StoryPositiveMotif } from "./story-climax";
 
 export type GameState = "ready" | "running" | "paused" | "game_over" | "destroyed";
 export type ControlMethod = "keyboard" | "pointer" | "touch";
@@ -33,6 +34,12 @@ export interface GameSnapshot {
   activeStoryBeatIds: string[];
   trustCorridor: boolean;
   storySymbols: number;
+  activeStorySymbolIds: number[];
+  storySymbolRespawns: number;
+  storyClimaxName: string;
+  storyClimaxPhase: StoryClimaxPhase;
+  storyClimaxesCompleted: number[];
+  storyTransformationMotifs: StoryPositiveMotif[];
   logisticWavePhase: LogisticWavePhase;
   logisticWaveProgress: number;
   bossesDefeated: number;

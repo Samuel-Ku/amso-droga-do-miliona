@@ -17,7 +17,7 @@ bez JavaScriptu.
 
 ## 2. Opcjonalny fallback migracyjny
 
-`npm run build` nadal tworzy zasoby starego embeddowalnego runtime'u w `dist/`:
+`npm run build` nadal tworzy adapter migracyjny oraz publiczne API strony w `dist/`:
 
 ~~~text
 /assets/milion-runner/runner-loader.iife.js
@@ -26,8 +26,9 @@ bez JavaScriptu.
 /assets/milion-runner/runner-config.json
 ~~~
 
-Nie należy utrzymywać go jako równoległej, pełnej wersji kampanii. Może tymczasowo
-przekierowywać istniejące triggery do dedykowanej strony podczas migracji szablonów.
+Adapter nie zawiera drugiej modalnej wersji kampanii. Istniejący trigger po intencji
+użytkownika wywołuje wyłącznie przekierowanie do dedykowanej strony podczas migracji
+szablonów.
 
 ## 3. Cache i CSP
 
@@ -52,4 +53,3 @@ opisanych w [`TRACKING_PLAN.md`](./TRACKING_PLAN.md).
 - zmiana karty/orientacji pauzuje i wymaga świadomego wznowienia;
 - odrzucenie zgody nie blokuje gry i nie tworzy eventów;
 - linki kampanii oraz karta FB/IG zawierają kanoniczny URL.
-

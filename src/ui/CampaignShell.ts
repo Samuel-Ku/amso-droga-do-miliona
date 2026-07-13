@@ -1,4 +1,5 @@
 import "../styles/campaign.css";
+import { AMSO_LOGO_DATA_URI } from "./brandLogo";
 import type { ControlMethod, GameSnapshot } from "../game/contracts";
 
 export type CampaignMode = "story" | "challenge";
@@ -96,6 +97,7 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   resume: "Wznów",
   returnToMenu: "Wróć do menu",
   corridorEyebrow: "Bezpieczny odcinek — historia biegnie dalej",
+  corridorResume: "Biegniemy dalej.",
   storyResultEyebrow: "Dziękujemy za wspólną drogę",
   storyResultTitle: "Twoja Droga do Miliona",
   resultPackages: "Dostarczone paczki",
@@ -112,6 +114,7 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   retryChallenge: "Spróbuj jeszcze raz",
   shareResult: "Udostępnij wynik",
   shareLead: "Wybierz, gdzie chcesz udostępnić kartę wyniku.",
+  shareScoreLabel: "Mój wynik",
   shareTurn: "Teraz Twoja kolej.",
   sharePublication: "Sprawdź, jak daleko dojdziesz w Drodze do Miliona.",
   sharePreparing: "Przygotowujemy kartę wyniku…",
@@ -319,27 +322,20 @@ export async function downloadCampaignShareCard(
 
 export async function shareCampaignResult(request: CampaignShareRequest): Promise<CampaignShareMethod> {
   const text = request.publicationText ?? "Sprawdź, jak daleko dojdziesz w Drodze do Miliona.";
-  if (request.platform === "facebook" && typeof navigator.share !== "function") {
-    const shareUrl = new URL("https://www.facebook.com/sharer/sharer.php");
-    shareUrl.searchParams.set("u", request.canonicalUrl);
-    const popup = window.open(shareUrl.href, "amso-facebook-share", "popup,width=680,height=620");
-    if (popup !== null) {
-      popup.opener = null;
-      return "facebook_url";
-    }
-  }
-
   const blob = await createCampaignShareCard(request.result, request);
   const filename = `amso-droga-do-miliona-${Math.floor(request.result.score)}.png`;
-  const file = new File([blob], filename, { type: "image/png" });
+  const file = typeof File === "function"
+    ? new File([blob], filename, { type: "image/png" })
+    : null;
   const shareData: ShareData = {
     title: request.title ?? "AMSO — Droga do Miliona",
     text,
     url: request.canonicalUrl,
-    files: [file],
+    ...(file === null ? {} : { files: [file] }),
   };
 
   if (
+    file !== null &&
     typeof navigator.share === "function" &&
     (typeof navigator.canShare !== "function" || navigator.canShare(shareData))
   ) {
@@ -437,7 +433,7 @@ export class CampaignShell {
       <div class="amso-campaign__backdrop" aria-hidden="true"></div>
       <header class="amso-campaign__header">
         <a class="amso-campaign__brand" data-campaign-link>
-          <span class="amso-campaign__brand-name">AMSO</span>
+          <img class="amso-campaign__brand-logo" src="${AMSO_LOGO_DATA_URI}" alt="AMSO" />
           <span class="amso-campaign__brand-edition" data-campaign-copy="brandEdition">Droga do Miliona</span>
         </a>
         <div class="amso-campaign__tools">
@@ -699,7 +695,7 @@ export class CampaignShell {
     this.canvas.tabIndex = 0;
     this.canvas.setAttribute("aria-hidden", "false");
     this.canvas.focus({ preventScroll: true });
-    this.announce(mode === "story" ? "Rozpoczynamy Drogę do Miliona." : "Rozpoczynamy Próbę Miliona.");
+    this.announce(mode === "story" ? this.copy.storyMode : this.copy.challengeMode);
   }
 
   public setPaused(paused: boolean): void {
@@ -710,10 +706,10 @@ export class CampaignShell {
     this.canvas.tabIndex = paused ? -1 : 0;
     if (paused) {
       requiredElement<HTMLButtonElement>(this.pauseScreen, "[data-campaign-resume]").focus({ preventScroll: true });
-      this.announce("Gra wstrzymana. Twój postęp jest bezpieczny.");
+      this.announce(`${this.copy.pauseTitle}. ${this.copy.pauseBody}`);
     } else {
       this.canvas.focus({ preventScroll: true });
-      this.announce("Biegniemy dalej.");
+      this.announce(this.copy.corridorResume);
     }
   }
 
@@ -771,7 +767,10 @@ export class CampaignShell {
     requiredElement(this.storyResultScreen, "[data-campaign-story-combo]").textContent = `×${formatInteger(result.bestCombo)}`;
     this.setView("story_result", this.storyResultScreen);
     requiredElement<HTMLButtonElement>(this.storyResultScreen, "[data-campaign-start-challenge]").focus({ preventScroll: true });
-    this.announce(`Twoja Droga do Miliona. Dostarczone paczki: ${formatInteger(result.packages)}. Wynik: ${formatInteger(result.score)}.`);
+    this.announce(
+      `${this.copy.storyResultTitle}. ${this.copy.resultPackages}: ${formatInteger(result.packages)}. ` +
+      `${this.copy.resultScore}: ${formatInteger(result.score)}.`
+    );
   }
 
   public showChallengeResult(result: CampaignChallengeResult): void {
@@ -787,7 +786,10 @@ export class CampaignShell {
     this.shareStatus.textContent = "";
     this.setView("challenge_result", this.challengeResultScreen);
     requiredElement<HTMLButtonElement>(this.challengeResultScreen, "[data-campaign-restart-challenge]").focus({ preventScroll: true });
-    this.announce(`Koniec próby. Wynik: ${formatInteger(result.score)}. Dostarczone paczki: ${formatInteger(result.packages)}.`);
+    this.announce(
+      `${this.copy.challengeResultTitle}. ${this.copy.resultScore}: ${formatInteger(result.score)}. ` +
+      `${this.copy.resultPackages}: ${formatInteger(result.packages)}.`
+    );
   }
 
   public setMuted(muted: boolean, notify = true): void {
@@ -1010,7 +1012,7 @@ export class CampaignShell {
       if (platform === "download") {
         await downloadCampaignShareCard(this.challengeResult, {
           canonicalUrl: this.canonicalUrl,
-          scoreLabel: this.copy.resultScore.toLocaleUpperCase("pl-PL"),
+          scoreLabel: this.copy.shareScoreLabel.toLocaleUpperCase("pl-PL"),
           packagesLabel: this.copy.resultPackages.toLocaleUpperCase("pl-PL"),
           callToAction: this.copy.shareTurn,
           publicationText: this.copy.sharePublication,
@@ -1023,7 +1025,7 @@ export class CampaignShell {
         platform,
         result: this.challengeResult,
         canonicalUrl: this.canonicalUrl,
-        scoreLabel: this.copy.resultScore.toLocaleUpperCase("pl-PL"),
+        scoreLabel: this.copy.shareScoreLabel.toLocaleUpperCase("pl-PL"),
         packagesLabel: this.copy.resultPackages.toLocaleUpperCase("pl-PL"),
         callToAction: this.copy.shareTurn,
         publicationText: this.copy.sharePublication,

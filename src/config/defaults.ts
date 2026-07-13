@@ -51,5 +51,18 @@ export const DEFAULT_DISABLED_RUNNER_CONFIG: Readonly<RunnerConfig> = Object.fre
     warrantyOneUse: true
   }),
   audio: Object.freeze({ enabled: true }),
+  assets: Object.freeze({
+    bundles: [
+      Object.freeze({
+        id: "common" as const,
+        resources: [Object.freeze({
+          id: "disabled-placeholder",
+          type: "procedural" as const,
+          source: "procedural:disabled-placeholder",
+          critical: true
+        })]
+      })
+    ]
+  }),
   narrativeMode: false
 });

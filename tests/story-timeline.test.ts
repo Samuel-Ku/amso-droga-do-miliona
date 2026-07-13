@@ -59,10 +59,15 @@ describe("story timeline", () => {
     expect(timeline.snapshot.totalElapsedSeconds).toBe(95);
   });
 
-  it("returns all eight finale symbols before entering the finale chapter", () => {
+  it("counts eight unique collected symbols instead of deriving them from time", () => {
     const timeline = new StoryTimeline(productionStory(), "epoch_5");
-    timeline.advance(20);
-    expect(timeline.snapshot.phase).toBe("finale");
+    timeline.advance(10);
+    expect(timeline.snapshot.symbolsCollected).toBe(0);
+
+    for (let index = 0; index < 8; index += 1) {
+      expect(timeline.collectStorySymbol(index)).toBe(true);
+    }
+    expect(timeline.collectStorySymbol(7)).toBe(false);
     expect(timeline.snapshot.symbolsCollected).toBe(8);
   });
 

@@ -4,6 +4,7 @@ import type {
   StoryEpochConfig,
   StorySectionConfig
 } from "../shared/types";
+import { STORY_SYMBOL_COUNT } from "./story-effects";
 
 export type StoryPhase = "prologue" | "epoch" | "finale" | "completed";
 export type StoryStartCheckpoint =
@@ -36,6 +37,7 @@ export interface StoryTimelineSnapshot {
   sectionId: string;
   epochIndex: number;
   sectionElapsedSeconds: number;
+  sectionDurationSeconds: number;
   totalElapsedSeconds: number;
   progress: number;
   activeBeats: readonly StoryBeatConfig[];
@@ -167,6 +169,7 @@ export class StoryTimeline {
   private readonly totalDurationSeconds: number;
   private sectionIndex: number;
   private elapsedInSection = 0;
+  private readonly collectedStorySymbols = new Set<number>();
 
   public constructor(
     story: StoryConfig,
@@ -179,6 +182,29 @@ export class StoryTimeline {
       0
     );
     this.sectionIndex = Math.min(checkpointIndex(checkpoint), this.sections.length);
+    if (this.sectionIndex >= this.sections.length - 1) {
+      for (let index = 0; index < STORY_SYMBOL_COUNT; index += 1) {
+        this.collectedStorySymbols.add(index);
+      }
+    }
+  }
+
+  public collectStorySymbol(index: number): boolean {
+    if (!Number.isInteger(index) || index < 0 || index >= STORY_SYMBOL_COUNT ||
+        this.collectedStorySymbols.has(index)) {
+      return false;
+    }
+    this.collectedStorySymbols.add(index);
+    return true;
+  }
+
+  public get collectedStorySymbolIndices(): readonly number[] {
+    return [...this.collectedStorySymbols].sort((left, right) => left - right);
+  }
+
+  public get missingStorySymbolIndices(): readonly number[] {
+    return Array.from({ length: STORY_SYMBOL_COUNT }, (_, index) => index)
+      .filter((index) => !this.collectedStorySymbols.has(index));
   }
 
   public advance(deltaSeconds: number): StoryTimelineSnapshot {
@@ -206,11 +232,12 @@ export class StoryTimeline {
         sectionId: "completed",
         epochIndex: 4,
         sectionElapsedSeconds: 0,
+        sectionDurationSeconds: 0,
         totalElapsedSeconds: this.totalDurationSeconds,
         progress: 1,
         activeBeats: [],
         trustCorridor: false,
-        symbolsCollected: 8,
+        symbolsCollected: this.collectedStorySymbols.size,
         completed: true
       };
     }
@@ -227,27 +254,17 @@ export class StoryTimeline {
     const trustCorridor = section.phase === "prologue" || section.phase === "finale" ||
       activeBeats.length > 0 || elapsed - latestFinishedAt < HAND_BACK_SECONDS;
     const totalElapsedSeconds = section.startsAtSeconds + elapsed;
-    const epochProgress = section.phase === "epoch"
-      ? Math.min(1, elapsed / section.durationSeconds)
-      : section.phase === "finale"
-        ? 1
-        : 0;
-    const symbolsCollected = section.phase === "finale"
-      ? 8
-      : section.phase === "epoch" && section.epochIndex === 4
-        ? Math.min(8, Math.floor(epochProgress * 9))
-        : 0;
-
     return {
       phase: section.phase,
       sectionId: section.id,
       epochIndex: section.epochIndex,
       sectionElapsedSeconds: elapsed,
+      sectionDurationSeconds: section.durationSeconds,
       totalElapsedSeconds,
       progress: Math.min(1, totalElapsedSeconds / this.totalDurationSeconds),
       activeBeats,
       trustCorridor,
-      symbolsCollected,
+      symbolsCollected: this.collectedStorySymbols.size,
       completed: false
     };
   }

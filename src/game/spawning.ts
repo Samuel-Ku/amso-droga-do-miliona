@@ -164,16 +164,28 @@ function buildPackagePattern(
       };
     });
   }
-  const goldenIndex = random.next() < 0.16 ? random.integer(1, packCount - 2) : -1;
+  const specialRoll = random.next();
+  const powerUpIndex = specialRoll < 0.18 ? random.integer(1, packCount - 2) : -1;
+  const goldenIndex = powerUpIndex < 0 && specialRoll < 0.34
+    ? random.integer(1, packCount - 2)
+    : -1;
+  const powerUpKind = powerUpIndex >= 0
+    ? (POWER_UP_VALUES[random.integer(0, POWER_UP_VALUES.length - 1)] ?? "gwarancja_48")
+    : null;
   return heights.map((height, index) => {
     const centering = packCount > 1 ? index / (packCount - 1) - 0.5 : 0;
     const offset = span * centering;
+    const isPowerUp = index === powerUpIndex && powerUpKind !== null;
     return {
       x: obstacleX + offset,
       y: GROUND_Y - height - 15,
       phase: random.range(0, Math.PI * 2),
-      kind: index === goldenIndex ? "golden" : "standard",
-      scoreValue: index === goldenIndex ? GAMEPLAY.goldenPackageScore : GAMEPLAY.packageScore,
+      kind: isPowerUp ? powerUpKind : index === goldenIndex ? "golden" : "standard",
+      scoreValue: isPowerUp
+        ? 0
+        : index === goldenIndex
+          ? GAMEPLAY.goldenPackageScore
+          : GAMEPLAY.packageScore,
       packageType,
       weightKg: 0
     };
@@ -305,7 +317,7 @@ export function createBossAttackWave(kind: ObstacleKind, spawnX: number): SpawnW
     source: "boss",
     pattern: "low-line",
     x: spawnX,
-    y: GROUND_Y - spec.height,
+    y: kind === "overhead" ? OVERHEAD.topY : GROUND_Y - spec.height,
     width: spec.width,
     height: spec.height,
     packages: [],

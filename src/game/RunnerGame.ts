@@ -1,6 +1,6 @@
 import { collidesWithObstacle, collectsPackage } from "./collision";
 import { BossDirector } from "./boss";
-import { BOSS, CANVAS_LIMITS, GAMEPLAY, WORLD_HEIGHT, WORLD_WIDTH } from "./constants";
+import { BOSS, CANVAS_LIMITS, GAMEPLAY, GROUND_Y, WORLD_HEIGHT, WORLD_WIDTH } from "./constants";
 import type {
   ControlMethod,
   GameResult,
@@ -49,6 +49,14 @@ import {
   type StoryTimelineSnapshot
 } from "./story-timeline";
 import { LogisticWaveDirector } from "./logistic-wave";
+import {
+  StoryClimaxDirector,
+  type StoryPositiveMotif
+} from "./story-climax";
+import {
+  FinaleSymbolDirector,
+  StoryObstacleTransformer
+} from "./story-effects";
 
 const CUTSCENE_SECONDS = 2.6;
 
@@ -78,6 +86,10 @@ export class RunnerGame implements RunnerGameApi {
   private readonly obstacles: ObstacleModel[] = createObstaclePool();
   private readonly packages: PackageModel[] = createPackagePool();
   private readonly bossDirector = new BossDirector();
+  private readonly storyClimaxDirector = new StoryClimaxDirector();
+  private readonly finaleSymbolDirector = new FinaleSymbolDirector();
+  private readonly storyObstacleTransformer = new StoryObstacleTransformer();
+  private readonly storyClimaxesCompleted = new Set<number>();
   private runner: RunnerModel = createRunnerModel();
   private spawner!: FairSpawner;
   private runIndex = 0;
@@ -98,6 +110,8 @@ export class RunnerGame implements RunnerGameApi {
   private lastStorySignal = "";
   private lastStoryCheckpoint: StoryStartCheckpoint | null = null;
   private storyCompleteEmitted = false;
+  private lastTrustCorridor = false;
+  private symbolSpawnCooldown = 0;
   private readonly logisticWaveDirector: LogisticWaveDirector;
   private currentEpoch = 0;
   private epochElapsed = 0;
@@ -287,6 +301,9 @@ export class RunnerGame implements RunnerGameApi {
     this.bonusScore = 0;
     this.bossesDefeated = 0;
     this.bossDirector.reset();
+    this.storyClimaxDirector.reset();
+    this.storyObstacleTransformer.reset();
+    this.storyClimaxesCompleted.clear();
     this.logisticWaveDirector.reset();
     this.bossStarted = false;
     this.crouchHeld = false;
@@ -318,6 +335,10 @@ export class RunnerGame implements RunnerGameApi {
     this.lastStorySignal = "";
     this.lastStoryCheckpoint = null;
     this.storyCompleteEmitted = false;
+    this.lastTrustCorridor = this.storyTimeline?.snapshot.trustCorridor ?? false;
+    this.symbolSpawnCooldown = 0;
+    const collectedSymbols = this.storyTimeline?.collectedStorySymbolIndices ?? [];
+    this.finaleSymbolDirector.reset(collectedSymbols);
     for (const type of Object.keys(this.packageTypeCounts) as PackageType[]) {
       this.packageTypeCounts[type] = 0;
     }
@@ -338,6 +359,20 @@ export class RunnerGame implements RunnerGameApi {
         this.story ? storyPowerUpsForEpoch(this.currentEpoch) : undefined
       );
       this.speed = epochSpeed(epoch, 0);
+      this.storyClimaxDirector.enterEpoch(
+        this.currentEpoch,
+        epoch.challengeName ?? epoch.name,
+        epoch.durationSeconds
+      );
+      const storyPhase = this.storyTimeline?.snapshot.phase;
+      const completedBefore = storyPhase === "finale" || storyPhase === "completed"
+        ? 4
+        : storyPhase === "epoch"
+          ? Math.min(4, this.currentEpoch)
+          : 0;
+      for (let index = 0; index < completedBefore; index += 1) {
+        this.storyClimaxesCompleted.add(index);
+      }
       this.difficultyLevel = 1;
       this.pendingEpoch = this.currentEpoch;
       if (this.storyTimeline === null) {
@@ -389,6 +424,11 @@ export class RunnerGame implements RunnerGameApi {
     let storyCompletedThisStep = false;
     if (this.storyTimeline !== null) {
       const previousStory = this.storyTimeline.snapshot;
+      if (previousStory.phase === "epoch" && previousStory.epochIndex === 4 &&
+          previousStory.sectionDurationSeconds - previousStory.sectionElapsedSeconds <=
+            deltaSeconds + 0.05) {
+        this.guaranteeFinaleSymbols();
+      }
       const nextStory = this.storyTimeline.advance(deltaSeconds);
       this.syncStorySection(previousStory, nextStory);
       this.emitStorySignals();
@@ -408,6 +448,8 @@ export class RunnerGame implements RunnerGameApi {
     this.recoverySeconds = Math.max(0, this.recoverySeconds - deltaSeconds);
     this.impactSeconds = Math.max(0, this.impactSeconds - deltaSeconds);
     this.impact = this.impactSeconds > 0;
+    this.storyObstacleTransformer.advance(deltaSeconds);
+    this.symbolSpawnCooldown = Math.max(0, this.symbolSpawnCooldown - deltaSeconds);
     if (storyCompletedThisStep) {
       this.completeStoryRun();
       return;
@@ -417,6 +459,16 @@ export class RunnerGame implements RunnerGameApi {
     if (this.mode === "story" && !trustCorridor && this.recoverySeconds <= 0) {
       this.storyGapAssist = recoverStoryGapAssist(this.storyGapAssist, deltaSeconds);
     }
+    if (trustCorridor && !this.lastTrustCorridor) {
+      const activeObstacles = this.obstacles.filter(({ active }) => active);
+      if (activeObstacles.length > 0) {
+        this.storyObstacleTransformer.begin(
+          activeObstacles,
+          this.positiveMotifForEpoch(this.currentEpoch)
+        );
+      }
+    }
+    this.lastTrustCorridor = trustCorridor;
     if (trustCorridor) {
       this.crouchHeld = false;
       this.runner.crouching = false;
@@ -461,7 +513,12 @@ export class RunnerGame implements RunnerGameApi {
     for (const parcel of this.packages) {
       if (!parcel.active) continue;
       parcel.x -= travelledPixels;
-      if (parcel.x + parcel.size < -40) parcel.active = false;
+      if (parcel.x + parcel.size < -40) {
+        if (parcel.kind === "story-symbol" && parcel.storySymbolIndex !== undefined) {
+          this.finaleSymbolDirector.recordMiss(parcel.storySymbolIndex);
+        }
+        parcel.active = false;
+      }
     }
 
     const bossHazardActive = this.obstacles.some(
@@ -470,16 +527,61 @@ export class RunnerGame implements RunnerGameApi {
         obstacle.source === "boss" &&
         obstacle.x + obstacle.width >= this.runner.x
     );
+    const climaxHazardActive = this.obstacles.some(
+      (obstacle) =>
+        obstacle.active &&
+        obstacle.source === "story-climax" &&
+        obstacle.x + obstacle.width >= this.runner.x
+    );
     const routeClear = !this.obstacles.some(
       (obstacle) => obstacle.active && obstacle.x + obstacle.width >= this.runner.x
     );
 
     const epoch = this.narrative?.epochs[this.currentEpoch];
+    const climaxCommand = this.storyTimeline?.snapshot.phase === "epoch" &&
+        this.currentEpoch < 4
+      ? this.storyClimaxDirector.advance(
+          deltaSeconds,
+          this.epochElapsed,
+          trustCorridor,
+          routeClear,
+          climaxHazardActive
+        )
+      : { type: "none" } as const;
+
+    if (climaxCommand.type === "attack") {
+      activateWave(
+        {
+          ...createBossAttackWave(climaxCommand.kind, WORLD_WIDTH - 130),
+          source: "story-climax"
+        },
+        this.obstacles,
+        this.packages
+      );
+    } else if (climaxCommand.type === "complete") {
+      this.storyClimaxesCompleted.add(this.currentEpoch);
+      const climaxObstacles = this.obstacles.filter(
+        ({ active, source }) => active && source === "story-climax"
+      );
+      if (climaxObstacles.length > 0) {
+        this.storyObstacleTransformer.begin(
+          climaxObstacles,
+          this.positiveMotifForEpoch(this.currentEpoch)
+        );
+      }
+      for (const obstacle of climaxObstacles) obstacle.active = false;
+    }
+
     const bossStartFraction = this.storyTimeline === null ? 0.55 : 0.2;
     if (epoch?.bossClimax && !this.bossStarted &&
         this.epochElapsed >= epoch.durationSeconds * bossStartFraction) {
       this.bossDirector.forceEncounter();
       this.bossStarted = true;
+      if (this.storyTimeline !== null && this.currentEpoch === 4) {
+        // The final wave explicitly brings back all three learned AMSO values
+        // before its attacks; this trail contains every power-up at least once.
+        activateBossReward(this.packages, true);
+      }
     }
 
     const runBoss = this.mode !== "challenge" && (!this.narrative || epoch?.bossClimax === true);
@@ -525,9 +627,15 @@ export class RunnerGame implements RunnerGameApi {
       }
     }
 
+    if (this.storyTimeline?.snapshot.phase === "epoch" &&
+        this.currentEpoch === 4 && this.bossStarted) {
+      this.spawnFinaleSymbols();
+    }
+
     if (!trustCorridor && this.recoverySeconds <= 0 &&
         !this.bossDirector.blocksRegularSpawns &&
-        !this.logisticWaveDirector.blocksRegularSpawns) {
+        !this.logisticWaveDirector.blocksRegularSpawns &&
+        !this.storyClimaxDirector.blocksRegularSpawns) {
       const wave = this.spawner.advance(
         spawnTravelDistance(travelledPixels, this.activePowerUps.has("audyt_jakosci")),
         this.speed,
@@ -616,6 +724,14 @@ export class RunnerGame implements RunnerGameApi {
 
   private collectPackage(parcel: PackageModel): void {
     parcel.active = false;
+    if (parcel.kind === "story-symbol") {
+      const symbolIndex = parcel.storySymbolIndex;
+      if (symbolIndex !== undefined && this.storyTimeline?.collectStorySymbol(symbolIndex)) {
+        this.finaleSymbolDirector.recordCollected(symbolIndex);
+      }
+      this.emitSnapshot();
+      return;
+    }
     const collection = resolvePackageCollection(
       parcel.kind,
       parcel.scoreValue,
@@ -634,6 +750,71 @@ export class RunnerGame implements RunnerGameApi {
       this.activatePowerUp(parcel.kind);
     }
     this.emitUnlockedFacts();
+  }
+
+  private spawnFinaleSymbols(): void {
+    if (this.symbolSpawnCooldown > 0 || !this.storyTimeline) return;
+    const active = this.packages
+      .filter(({ active: isActive, kind }) => isActive && kind === "story-symbol")
+      .map(({ storySymbolIndex }) => storySymbolIndex)
+      .filter((index): index is number => index !== undefined);
+    const planned = this.finaleSymbolDirector.planSpawns(
+      this.storyTimeline.collectedStorySymbolIndices,
+      active,
+      1
+    );
+    const symbolIndex = planned[0];
+    if (symbolIndex === undefined || !this.placeStorySymbol(symbolIndex, false)) return;
+    this.symbolSpawnCooldown = 0.58;
+  }
+
+  private guaranteeFinaleSymbols(): void {
+    if (!this.storyTimeline) return;
+    const planned = this.finaleSymbolDirector.planGuaranteedSpawns(
+      this.storyTimeline.collectedStorySymbolIndices
+    );
+    for (const symbolIndex of planned) {
+      if (!this.placeStorySymbol(symbolIndex, true)) continue;
+      const parcel = this.packages.find(
+        ({ active, kind, storySymbolIndex: activeIndex }) =>
+          active && kind === "story-symbol" && activeIndex === symbolIndex
+      );
+      if (parcel && collectsPackage(this.runner, parcel)) this.collectPackage(parcel);
+    }
+  }
+
+  private placeStorySymbol(symbolIndex: number, guaranteed: boolean): boolean {
+    let parcel = this.packages.find(
+      ({ active, kind, storySymbolIndex: activeIndex }) =>
+        active && kind === "story-symbol" && activeIndex === symbolIndex
+    );
+    parcel ??= this.packages.find(({ active }) => !active);
+    if (!parcel && guaranteed) {
+      parcel = this.packages.find(({ kind }) => kind !== "story-symbol");
+    }
+    if (!parcel) return false;
+
+    parcel.active = true;
+    parcel.kind = "story-symbol";
+    parcel.storySymbolIndex = symbolIndex;
+    parcel.scoreValue = 0;
+    parcel.size = 30;
+    parcel.x = guaranteed ? this.runner.x + 18 : WORLD_WIDTH - 150;
+    parcel.y = guaranteed ? this.runner.y + 28 : GROUND_Y - parcel.size - 8;
+    parcel.phase = symbolIndex * 0.7;
+    parcel.packageType = "notebook";
+    parcel.weightKg = 0;
+    this.finaleSymbolDirector.recordSpawn(symbolIndex);
+    return true;
+  }
+
+  private positiveMotifForEpoch(epochIndex: number): StoryPositiveMotif {
+    return [
+      "ordered-cables",
+      "quality-mark",
+      "piggy-bank",
+      "sorting-network"
+    ][Math.max(0, Math.min(3, epochIndex))] as StoryPositiveMotif;
   }
 
   private activatePowerUp(kind: PowerUpKind): void {
@@ -684,6 +865,7 @@ export class RunnerGame implements RunnerGameApi {
       this.epochElapsed = next.sectionElapsedSeconds;
     } else if (next.phase === "finale") {
       for (const obstacle of this.obstacles) obstacle.active = false;
+      this.storyClimaxDirector.reset();
       this.bossDirector.reset();
       this.bossStarted = false;
     }
@@ -768,6 +950,11 @@ export class RunnerGame implements RunnerGameApi {
       true,
       this.story ? storyPowerUpsForEpoch(index) : undefined
     );
+    this.storyClimaxDirector.enterEpoch(
+      index,
+      epoch.challengeName ?? epoch.name,
+      epoch.durationSeconds
+    );
     this.speed = epochSpeed(epoch, 0);
   }
 
@@ -816,6 +1003,11 @@ export class RunnerGame implements RunnerGameApi {
     const epochMax = this.narrative ? this.narrative.epochs.length - 1 : 0;
     const epochDuration = epoch?.durationSeconds ?? 1;
     const storySnapshot = this.storyTimeline?.snapshot;
+    const activeStorySymbolIds = this.packages
+      .filter(({ active, kind }) => active && kind === "story-symbol")
+      .map(({ storySymbolIndex }) => storySymbolIndex)
+      .filter((index): index is number => index !== undefined)
+      .sort((left, right) => left - right);
     return {
       mode: this.mode,
       score: calculateScore(this.distancePixels, this.packagesCollected, this.bonusScore),
@@ -830,6 +1022,16 @@ export class RunnerGame implements RunnerGameApi {
       activeStoryBeatIds: storySnapshot?.activeBeats.map(({ id }) => id) ?? [],
       trustCorridor: storySnapshot?.trustCorridor ?? false,
       storySymbols: storySnapshot?.symbolsCollected ?? 0,
+      activeStorySymbolIds,
+      storySymbolRespawns: this.finaleSymbolDirector.respawnCount,
+      storyClimaxName: this.storyClimaxDirector.model.challengeName,
+      storyClimaxPhase: this.storyClimaxDirector.model.phase,
+      storyClimaxesCompleted: [...this.storyClimaxesCompleted].sort(
+        (left, right) => left - right
+      ),
+      storyTransformationMotifs: [
+        ...new Set(this.storyObstacleTransformer.models.map(({ motif }) => motif))
+      ],
       logisticWavePhase: this.logisticWaveDirector.snapshot.phase,
       logisticWaveProgress: this.logisticWaveDirector.snapshot.patternsCompleted,
       bossesDefeated: this.bossesDefeated,
@@ -901,7 +1103,9 @@ export class RunnerGame implements RunnerGameApi {
       recoverySeconds: this.recoverySeconds,
       storyPhase: this.storyTimeline?.snapshot.phase ?? null,
       storyProgress: this.storyTimeline?.snapshot.progress ?? 0,
-      storySymbols: this.storyTimeline?.snapshot.symbolsCollected ?? 0
+      storySymbols: this.storyTimeline?.snapshot.symbolsCollected ?? 0,
+      storyClimax: this.storyClimaxDirector.model,
+      obstacleTransformations: this.storyObstacleTransformer.models
     };
     this.renderer.render(this.context, this.canvas.width, this.canvas.height, scene);
   }

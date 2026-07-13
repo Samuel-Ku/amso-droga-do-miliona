@@ -196,6 +196,18 @@ describe("campaign collision contract", () => {
     expect(harness.snapshots.some(({ bossPhase }) => bossPhase === "attacking")).toBe(true);
     expect(Math.max(...harness.snapshots.map(({ bossProgress }) => bossProgress))).toBe(3);
     expect(harness.snapshots.some(({ bossesDefeated }) => bossesDefeated === 1)).toBe(true);
+    expect(harness.snapshots.some(({ activePowerUps }) =>
+      ["gwarancja_48", "audyt_jakosci", "drugie_zycie"].every((kind) =>
+        activePowerUps.includes(kind as typeof activePowerUps[number])
+      )
+    )).toBe(true);
+    expect(harness.snapshots.some(({ activeStorySymbolIds }) =>
+      activeStorySymbolIds.length > 0
+    )).toBe(true);
+    expect([
+      ...new Set(harness.snapshots.map(({ storyClimaxName }) => storyClimaxName).filter(Boolean))
+    ]).toEqual(config.story.epochs.slice(0, 4).map(({ challengeName }) => challengeName));
+    expect(harness.snapshots.at(-1)?.storyClimaxesCompleted).toEqual([0, 1, 2, 3]);
     expect(harness.snapshots.at(-1)).toMatchObject({
       storyPhase: "completed",
       storyProgress: 1,

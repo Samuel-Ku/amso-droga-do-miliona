@@ -37,7 +37,9 @@ npm run build:all
 - skok oraz ślizg na klawiaturze, pointerze i touchu;
 - fabularna regeneracja po kolizji bez zmiany prędkości ani trajektorii;
 - seria, iskra, trzy power-upy, adaptacyjne odstępy i finalna Fala Miliona;
-- osiem symboli finału oraz zawsze jedno pozytywne zakończenie;
+- cztery różne mikro-kulminacje, transformacje przeszkód i pozytywne motywy;
+- osiem fizycznie zbieranych symboli finału oraz gwarantowane domknięcie;
+- krytyczne paczki assetów ładowane przed właściwym rozdziałem, z retry;
 - trwałe checkpointy, unlock Próby Miliona, rekordy, mute i preferencja fullscreen;
 - logistyczne fale 45–60 s, limit prędkości 1,55× i share card FB/IG;
 - lekka muzyka/efekty Web Audio uruchamiane dopiero po geście użytkownika;
@@ -59,12 +61,12 @@ public/assets/milion-runner/
   runner-config.json               # produkcyjne copy i parametry v3
 ~~~
 
-Stary modal pozostaje tylko technicznym fallbackiem migracyjnym w `src/RunnerController.ts`.
-Kanoniczne doświadczenie montuje `CampaignController` na osobnej stronie.
+Kanoniczne doświadczenie montuje `mountCampaign()` na osobnej stronie. Stare
+triggery sklepu korzystają wyłącznie z adaptera przekierowującego do `/milion`;
+pełna modalna kopia gry nie jest utrzymywana.
 
 ## Przed publikacją
 
 Wymagane są jeszcze playtesty na realnych telefonach (360, 375, 390, 412/430 px
 oraz landscape), potwierdzenie maksymalnej prędkości i ewentualny tuning wartości w
 `runner-config.json`. Lista odbiorowa znajduje się w [`docs/QA_V3.md`](./docs/QA_V3.md).
-

@@ -1,4 +1,12 @@
 import { DataLayerTracker } from "./analytics/data-layer";
+import {
+  AssetBundleLoadError,
+  AssetBundleLoader
+} from "./assets/AssetBundleLoader";
+import {
+  assetBundleForStoryCheckpoint,
+  requiredStartAssetBundles
+} from "./assets/asset-bundle-plan";
 import { CampaignAudio } from "./audio/CampaignAudio";
 import type {
   GameResult,
@@ -11,7 +19,11 @@ import {
   PlayerProfileStore,
   type StoryCheckpoint
 } from "./profile";
-import type { RunnerConfig, StoryBeatConfig } from "./shared/types";
+import type {
+  AssetBundleId,
+  RunnerConfig,
+  StoryBeatConfig
+} from "./shared/types";
 import {
   CampaignShell,
   type CampaignCheckpointOption,
@@ -39,14 +51,15 @@ function nextPaint(): Promise<void> {
 
 function storyCaption(
   beats: readonly StoryBeatConfig[],
-  trustCorridor: boolean
+  trustCorridor: boolean,
+  corridorEyebrow: string
 ): Parameters<CampaignShell["showStoryBeat"]>[0] {
   if (beats.length === 0) return null;
   const title = beats.find(({ kind }) => kind === "title");
   const body = beats.filter((beat) => beat !== title).map(({ text }) => text);
   return {
     id: beats.map(({ id }) => id).join("+"),
-    ...(trustCorridor ? { eyebrow: "Bezpieczny odcinek — historia biegnie dalej" } : {}),
+    ...(trustCorridor ? { eyebrow: corridorEyebrow } : {}),
     ...(title === undefined ? {} : { title: title.text }),
     body: title === undefined ? beats.map(({ text }) => text) : body
   };
@@ -57,6 +70,7 @@ export class CampaignController {
   private readonly tracker: DataLayerTracker;
   private readonly shell: CampaignShell;
   private readonly audio: CampaignAudio;
+  private readonly assetLoader: AssetBundleLoader;
   private game: RunnerGame | null = null;
   private lastSnapshot: GameSnapshot | null = null;
   private lastTrustCorridor = false;
@@ -65,13 +79,15 @@ export class CampaignController {
   private readonly shownPowerUpHints = new Set<string>();
   private powerUpHintTimer: number | null = null;
   private pendingStart: CampaignStartRequest | null = null;
+  private assetGatePending = false;
   private startToken = 0;
   private destroyed = false;
 
   public constructor(
     host: HTMLElement,
     private readonly config: RunnerConfig,
-    profile = new PlayerProfileStore()
+    profile = new PlayerProfileStore(),
+    assetLoader = new AssetBundleLoader(config.assets.bundles)
   ) {
     this.profile = profile;
     this.tracker = new DataLayerTracker({
@@ -79,6 +95,7 @@ export class CampaignController {
       consentGranted: hasAnalyticsConsent
     });
     this.audio = new CampaignAudio({ muted: profile.snapshot.soundMuted });
+    this.assetLoader = assetLoader;
     this.shell = new CampaignShell(host, {
       onStart: (request) => {
         void this.startRun(request);
@@ -137,6 +154,7 @@ export class CampaignController {
     this.startToken += 1;
     this.game?.destroy();
     this.game = null;
+    this.assetGatePending = false;
     this.shell.destroy();
     this.clearPowerUpHintTimer();
     void this.audio.destroy();
@@ -177,6 +195,7 @@ export class CampaignController {
     this.lastTrustCorridor = false;
     this.lastLogisticPhase = "inactive";
     this.pendingTutorial = null;
+    this.assetGatePending = false;
     this.shownPowerUpHints.clear();
     this.clearPowerUpHintTimer();
     this.shell.showLoading(undefined);
@@ -184,12 +203,24 @@ export class CampaignController {
     if (this.config.audio.enabled) void this.audio.start();
 
     try {
+      const checkpoint = this.storyCheckpointFor(safeRequest);
+      const requiredBundles = requiredStartAssetBundles(safeRequest.mode, checkpoint);
+      await this.assetLoader.ensureBundles(requiredBundles, ({
+        readyCritical,
+        totalCritical
+      }) => {
+        if (!this.destroyed && token === this.startToken) {
+          this.shell.showLoading(
+            totalCritical === 0 ? 1 : readyCritical / totalCritical,
+            this.uiCopy("loading", "Przygotowujemy pierwszą paczkę…")
+          );
+        }
+      });
       // The page shell is already present; this paint is the real hand-off from
-      // intent/loading state to Canvas/context readiness, without a fake percent.
+      // resource readiness to Canvas/context readiness.
       await nextPaint();
       if (this.destroyed || token !== this.startToken) return;
       const callbacks = this.createGameCallbacks();
-      const checkpoint = this.storyCheckpointFor(safeRequest);
       this.game = new RunnerGame(this.shell.canvas, callbacks, {
         reducedMotion: prefersReducedMotion(),
         mode: safeRequest.mode,
@@ -200,10 +231,14 @@ export class CampaignController {
       this.shell.showGame(safeRequest.mode);
       this.game.start("pointer");
       this.tracker.track("game_started", { mode: safeRequest.mode });
-    } catch {
+      this.warmRemainingBundles(requiredBundles);
+    } catch (error: unknown) {
       this.game?.destroy();
       this.game = null;
-      this.tracker.loadFailed("runtime_init_failed");
+      this.assetGatePending = false;
+      this.tracker.loadFailed(
+        error instanceof AssetBundleLoadError ? error.code : "runtime_init_failed"
+      );
       this.shell.showError();
     }
   }
@@ -217,7 +252,7 @@ export class CampaignController {
   private createGameCallbacks(): RunnerGameCallbacks {
     return {
       onStateChange: (state) => {
-        if (state === "paused") this.shell.setPaused(true);
+        if (state === "paused" && !this.assetGatePending) this.shell.setPaused(true);
       },
       onSnapshot: (snapshot) => this.handleSnapshot(snapshot),
       onGameOver: (result) => this.handleGameOver(result),
@@ -226,6 +261,7 @@ export class CampaignController {
         this.profile.setStoryCheckpoint(checkpoint);
         if (checkpoint === "epoch_1") this.pendingTutorial = "jump";
         if (checkpoint === "epoch_2") this.pendingTutorial = "slide";
+        void this.ensureCheckpointAssets(checkpoint);
       },
       onStoryComplete: () => {
         this.profile.completeStory();
@@ -311,7 +347,11 @@ export class CampaignController {
       this.lastTrustCorridor = update.trustCorridor;
     }
     this.shell.showStoryBeat(
-      storyCaption(update.activeBeats, update.trustCorridor),
+      storyCaption(
+        update.activeBeats,
+        update.trustCorridor,
+        this.uiCopy("corridorEyebrow", "Bezpieczny odcinek — historia biegnie dalej")
+      ),
       update.trustCorridor
     );
     if (!update.trustCorridor && this.pendingTutorial !== null) {
@@ -362,11 +402,57 @@ export class CampaignController {
 
   private returnToMenu(): void {
     this.startToken += 1;
+    this.assetGatePending = false;
     this.game?.destroy();
     this.game = null;
     this.audio.stop();
     this.clearPowerUpHintTimer();
     this.showLanding();
+  }
+
+  private warmRemainingBundles(requiredBundles: readonly AssetBundleId[]): void {
+    const required = new Set(requiredBundles);
+    const remaining = this.config.assets.bundles
+      .map(({ id }) => id)
+      .filter((bundleId) => !required.has(bundleId));
+    void this.assetLoader.warmBundles(remaining).catch(() => {
+      // A background failure only becomes blocking if that chapter is reached.
+    });
+  }
+
+  private async ensureCheckpointAssets(checkpoint: StoryCheckpoint): Promise<void> {
+    const bundleId = assetBundleForStoryCheckpoint(checkpoint);
+    const game = this.game;
+    if (bundleId === null || game === null || this.assetLoader.isBundleReady(bundleId)) return;
+
+    const token = this.startToken;
+    this.assetGatePending = true;
+    game.pause();
+    this.shell.showStoryBeat({
+      id: "system.asset-preparing",
+      eyebrow: this.uiCopy("corridorEyebrow", "Bezpieczny odcinek — historia biegnie dalej"),
+      body: this.uiCopy(
+        "assetPreparing",
+        "Bezpieczny odcinek — przygotowujemy kolejny rozdział."
+      )
+    }, true);
+
+    try {
+      await this.assetLoader.ensureBundles([bundleId]);
+      if (this.destroyed || token !== this.startToken || game !== this.game) return;
+      this.assetGatePending = false;
+      this.shell.showStoryBeat(null, false);
+      game.resume();
+    } catch {
+      if (this.destroyed || token !== this.startToken || game !== this.game) return;
+      this.assetGatePending = false;
+      game.destroy();
+      this.game = null;
+      this.audio.stop();
+      this.pendingStart = { mode: "story", checkpoint, restartStory: false };
+      this.tracker.loadFailed("critical_asset_failed");
+      this.shell.showError();
+    }
   }
 
   private clearPowerUpHintTimer(): void {

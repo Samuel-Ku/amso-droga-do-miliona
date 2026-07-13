@@ -6,6 +6,11 @@ import {
   RUNNER_SCHEMA_VERSION
 } from "./defaults";
 import type {
+  AssetBundleConfig,
+  AssetBundleId,
+  AssetResourceConfig,
+  AssetResourceType,
+  AssetsConfig,
   ChallengeConfig,
   PowerUpKind,
   RunnerConfig,
@@ -35,6 +40,14 @@ const CRITICAL_UI_KEYS = [
   "startChallenge", "fullStory", "loading", "errorTitle", "errorBody",
   "pauseTitle", "pauseBody", "narrowTitle", "narrowBody", "sharePublication"
 ] as const;
+const ASSET_BUNDLE_IDS: readonly AssetBundleId[] = [
+  "common", "prologue", "epoch_1", "epoch_2", "epoch_3", "epoch_4", "epoch_5",
+  "finale", "challenge"
+];
+const ASSET_RESOURCE_TYPES: readonly AssetResourceType[] = ["procedural", "image", "audio"];
+const PROCEDURAL_SOURCE_PATTERN = /^procedural:[a-z0-9][a-z0-9_.-]{0,63}$/;
+const IMAGE_SOURCE_PATTERN = /\.(?:avif|gif|jpe?g|png|svg|webp)$/i;
+const AUDIO_SOURCE_PATTERN = /\.(?:aac|m4a|mp3|ogg|wav)$/i;
 
 function issue(code: RunnerConfigIssue["code"], path: string): RunnerConfigValidationResult {
   return { success: false, issues: [{ code, path }] };
@@ -107,6 +120,65 @@ export function isAllowedAssetPath(path: unknown, extension: ".js" | ".css"): pa
     !path.includes("/./") &&
     !path.includes("%") &&
     !path.includes("\\");
+}
+
+export function isAllowedCampaignResourceSource(
+  source: unknown,
+  type: AssetResourceType
+): source is string {
+  if (typeof source !== "string") return false;
+  if (type === "procedural") return PROCEDURAL_SOURCE_PATTERN.test(source);
+  const extensionMatches = type === "image"
+    ? IMAGE_SOURCE_PATTERN.test(source)
+    : AUDIO_SOURCE_PATTERN.test(source);
+  return source.startsWith("/assets/milion-runner/") &&
+    extensionMatches &&
+    ASSET_PATH_PATTERN.test(source) &&
+    !source.includes("//") &&
+    !source.includes("/../") &&
+    !source.includes("/./") &&
+    !source.includes("%") &&
+    !source.includes("\\");
+}
+
+function parseAssetResource(value: unknown): AssetResourceConfig | null {
+  if (!isRecord(value) || !hasExactKeys(
+    value,
+    ["id", "type", "source", "critical"],
+    ["id", "type", "source", "critical"]
+  )) return null;
+  if (!isIdentifier(value.id) || typeof value.type !== "string" ||
+      !(ASSET_RESOURCE_TYPES as readonly string[]).includes(value.type) ||
+      typeof value.critical !== "boolean") return null;
+  const type = value.type as AssetResourceType;
+  if (!isAllowedCampaignResourceSource(value.source, type)) return null;
+  return { id: value.id, type, source: value.source, critical: value.critical };
+}
+
+function parseAssets(value: unknown): AssetsConfig | null {
+  if (!isRecord(value) || !hasExactKeys(value, ["bundles"], ["bundles"]) ||
+      !Array.isArray(value.bundles) || value.bundles.length !== ASSET_BUNDLE_IDS.length) {
+    return null;
+  }
+  const bundles: AssetBundleConfig[] = [];
+  for (const [index, rawBundle] of value.bundles.entries()) {
+    if (!isRecord(rawBundle) || !hasExactKeys(
+      rawBundle,
+      ["id", "resources"],
+      ["id", "resources"]
+    ) || rawBundle.id !== ASSET_BUNDLE_IDS[index] || !Array.isArray(rawBundle.resources) ||
+        rawBundle.resources.length === 0) return null;
+    const resources = rawBundle.resources.map(parseAssetResource);
+    if (resources.some((resource) => resource === null)) return null;
+    const typedResources = resources as AssetResourceConfig[];
+    if (!typedResources.some(({ critical }) => critical) ||
+        new Set(typedResources.map(({ id }) => id)).size !== typedResources.length) return null;
+    bundles.push({
+      id: rawBundle.id as AssetBundleId,
+      resources: typedResources
+    });
+  }
+  return { bundles };
 }
 
 function parseBeat(value: unknown): StoryBeatConfig | null {
@@ -287,12 +359,15 @@ export function validateRunnerConfig(
   if (!isRecord(value)) return issue("invalid_type", "$" );
   const rootKeys = [
     "schemaVersion", "enabled", "gameVersion", "claim", "modulePath", "stylePath",
-    "triggerSelector", "cta", "story", "challenge", "audio", "ui"
+    "triggerSelector", "cta", "story", "challenge", "audio", "assets", "ui"
   ];
   if (!hasExactKeys(
     value,
     rootKeys,
-    ["schemaVersion", "enabled", "gameVersion", "claim", "cta", "story", "challenge", "audio", "ui"]
+    [
+      "schemaVersion", "enabled", "gameVersion", "claim", "cta", "story", "challenge",
+      "audio", "assets", "ui"
+    ]
   )) return issue("unknown_key", "$" );
   if (value.schemaVersion !== RUNNER_SCHEMA_VERSION) return issue("unsupported_schema", "$.schemaVersion");
   if (typeof value.enabled !== "boolean" || !isVersion(value.gameVersion) || !isSafeText(value.claim, 80)) {
@@ -316,6 +391,8 @@ export function validateRunnerConfig(
   if (!challenge) return issue("invalid_value", "$.challenge");
   if (!isRecord(value.audio) || !hasExactKeys(value.audio, ["enabled"], ["enabled"]) ||
       typeof value.audio.enabled !== "boolean") return issue("invalid_value", "$.audio");
+  const assets = parseAssets(value.assets);
+  if (assets === null) return issue("invalid_value", "$.assets");
   const ui = parseUiCopy(value.ui);
   if (ui === null) return issue("invalid_value", "$.ui");
 
@@ -340,6 +417,7 @@ export function validateRunnerConfig(
       story,
       challenge,
       audio: { enabled: value.audio.enabled },
+      assets,
       ui,
       narrativeMode: true,
       narrative: { epochs: story.epochs, facts: [] }

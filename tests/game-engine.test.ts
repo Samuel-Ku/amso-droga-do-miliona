@@ -73,14 +73,17 @@ describe("game random and spawning", () => {
     const spawner = new FairSpawner(new SeededRandom(44), difficulty.speed);
     const patterns = new Set<string>();
     let goldenPackages = 0;
+    let waves = 0;
 
-    for (let index = 0; index < 5_000 && patterns.size < 4; index += 1) {
+    for (let index = 0; index < 20_000 && waves < 80; index += 1) {
       const wave = spawner.advance(8, difficulty.speed, difficulty, 1_032);
       if (!wave) continue;
+      waves += 1;
       patterns.add(wave.pattern);
       goldenPackages += wave.packages.filter((parcel) => parcel.kind === "golden").length;
     }
 
+    expect(waves).toBe(80);
     expect(patterns.size).toBe(4);
     expect(goldenPackages).toBeGreaterThan(0);
   });

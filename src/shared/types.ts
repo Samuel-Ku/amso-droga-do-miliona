@@ -92,6 +92,36 @@ export interface AudioConfig {
   enabled: boolean;
 }
 
+export type AssetBundleId =
+  | "common"
+  | "prologue"
+  | "epoch_1"
+  | "epoch_2"
+  | "epoch_3"
+  | "epoch_4"
+  | "epoch_5"
+  | "finale"
+  | "challenge";
+
+export type AssetResourceType = "procedural" | "image" | "audio";
+
+/** A preloadable unit. Procedural entries declare renderer/audio resources generated in code. */
+export interface AssetResourceConfig {
+  id: string;
+  type: AssetResourceType;
+  source: string;
+  critical: boolean;
+}
+
+export interface AssetBundleConfig {
+  id: AssetBundleId;
+  resources: AssetResourceConfig[];
+}
+
+export interface AssetsConfig {
+  bundles: AssetBundleConfig[];
+}
+
 export interface NarrativeConfig {
   epochs: EpochConfig[];
   facts: NarrativeFact[];
@@ -121,6 +151,7 @@ export interface RunnerConfig {
   story: StoryConfig;
   challenge: ChallengeConfig;
   audio: AudioConfig;
+  assets: AssetsConfig;
   /** Production page/UI copy; code-level strings are only fail-safe defaults. */
   ui?: Readonly<Record<string, string>>;
   /** Enables the 5-epoch narrative campaign instead of the legacy single run. */

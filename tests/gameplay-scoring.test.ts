@@ -16,6 +16,15 @@ import {
 } from "../src/game/scoring";
 
 describe("package collection and scoring rules", () => {
+  it("does not count finale symbols as ordinary packages", () => {
+    expect(resolvePackageCollection("story-symbol", 500, 4, true)).toEqual({
+      countsAsPackage: false,
+      pointsAwarded: 0,
+      bonusScoreAwarded: 0,
+      nextCombo: 4
+    });
+  });
+
   it("does not count power-ups as delivered packages", () => {
     for (const kind of ["gwarancja_48", "audyt_jakosci", "drugie_zycie"] as const) {
       expect(resolvePackageCollection(kind, 0, 3, false)).toEqual({

@@ -34,7 +34,7 @@
     "resumeFrom": "Kontynuuj od:",
     "startOver": "Zacznij od początku",
     "orientationEyebrow": "Szerszy kadr",
-    "orientationTitle": "Chcesz zobaczyć więcej historii?",
+    "orientationTitle": "Chcesz zobaczyć szerszy kadr?",
     "orientationBody": "Obróć telefon i włącz pełny ekran. Możesz też grać pionowo.",
     "orientationFullscreen": "Włącz pełny ekran",
     "orientationPortrait": "Zostań w pionie",
@@ -66,6 +66,7 @@
     "retryChallenge": "Spróbuj jeszcze raz",
     "shareResult": "Udostępnij wynik",
     "shareLead": "Wybierz, gdzie chcesz udostępnić kartę wyniku.",
+    "shareScoreLabel": "Mój wynik",
     "shareTurn": "Teraz Twoja kolej.",
     "sharePublication": "Sprawdź, jak daleko dojdziesz w Drodze do Miliona.",
     "sharePreparing": "Przygotowujemy kartę wyniku…",
@@ -89,7 +90,77 @@
     "powerupSecondLife": "Drugie życie — każda paczka liczy się podwójnie.",
     "powerupWarranty": "Gwarancja 48 miesięcy — jedno bezpieczne uderzenie.",
     "logisticWarning": "Uwaga: fala logistyczna",
-    "logisticReward": "Fala opanowana — złote paczki są Twoje."
+    "logisticReward": "Fala opanowana — złote paczki są Twoje.",
+    "assetPreparing": "Bezpieczny odcinek — przygotowujemy kolejny rozdział."
+  },
+  "assets": {
+    "bundles": [
+      {
+        "id": "common",
+        "resources": [
+          { "id": "courier-animation", "type": "procedural", "source": "procedural:courier-animation", "critical": true },
+          { "id": "base-ui", "type": "procedural", "source": "procedural:base-ui", "critical": true },
+          { "id": "first-audio-cues", "type": "procedural", "source": "procedural:first-audio-cues", "critical": true },
+          { "id": "ambient-spark", "type": "procedural", "source": "procedural:ambient-spark", "critical": false }
+        ]
+      },
+      {
+        "id": "prologue",
+        "resources": [
+          { "id": "first-package", "type": "procedural", "source": "procedural:first-package", "critical": true },
+          { "id": "manual-label", "type": "procedural", "source": "procedural:manual-label", "critical": true }
+        ]
+      },
+      {
+        "id": "epoch_1",
+        "resources": [
+          { "id": "small-warehouse", "type": "procedural", "source": "procedural:small-warehouse", "critical": true },
+          { "id": "cable-chaos", "type": "procedural", "source": "procedural:cable-chaos", "critical": true }
+        ]
+      },
+      {
+        "id": "epoch_2",
+        "resources": [
+          { "id": "quality-service", "type": "procedural", "source": "procedural:quality-service", "critical": true },
+          { "id": "doubt-cloud", "type": "procedural", "source": "procedural:doubt-cloud", "critical": true }
+        ]
+      },
+      {
+        "id": "epoch_3",
+        "resources": [
+          { "id": "customer-stories", "type": "procedural", "source": "procedural:customer-stories", "critical": true },
+          { "id": "budget-eater", "type": "procedural", "source": "procedural:budget-eater", "critical": true }
+        ]
+      },
+      {
+        "id": "epoch_4",
+        "resources": [
+          { "id": "warehouse-scale", "type": "procedural", "source": "procedural:warehouse-scale", "critical": true },
+          { "id": "logistic-hydra", "type": "procedural", "source": "procedural:logistic-hydra", "critical": true }
+        ]
+      },
+      {
+        "id": "epoch_5",
+        "resources": [
+          { "id": "million-wave", "type": "procedural", "source": "procedural:million-wave", "critical": true },
+          { "id": "final-symbols", "type": "procedural", "source": "procedural:final-symbols", "critical": true }
+        ]
+      },
+      {
+        "id": "finale",
+        "resources": [
+          { "id": "million-package", "type": "procedural", "source": "procedural:million-package", "critical": true },
+          { "id": "poland-lights", "type": "procedural", "source": "procedural:poland-lights", "critical": true }
+        ]
+      },
+      {
+        "id": "challenge",
+        "resources": [
+          { "id": "contemporary-world", "type": "procedural", "source": "procedural:contemporary-world", "critical": true },
+          { "id": "logistic-waves", "type": "procedural", "source": "procedural:logistic-waves", "critical": true }
+        ]
+      }
+    ]
   },
   "story": {
     "durationSeconds": 175,
@@ -125,7 +196,7 @@
         "id": "drugie_zycie",
         "name": "Drugie życie sprzętu",
         "year": "Jakość i zaufanie",
-        "themeIndex": 2,
+        "themeIndex": 1,
         "durationSeconds": 20,
         "obstaclePool": ["box-stack", "pallet", "overhead"],
         "difficultyStart": 1,
@@ -146,7 +217,7 @@
         "id": "historie_klientow",
         "name": "Ludzie rosną razem ze sprzętem",
         "year": "Trzy prawdziwe historie",
-        "themeIndex": 3,
+        "themeIndex": 2,
         "durationSeconds": 45,
         "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"],
         "difficultyStart": 1.1,
@@ -173,7 +244,7 @@
         "id": "skala",
         "name": "Skala potrzebuje systemu",
         "year": "3 000 m²",
-        "themeIndex": 1,
+        "themeIndex": 3,
         "durationSeconds": 35,
         "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"],
         "difficultyStart": 1.25,

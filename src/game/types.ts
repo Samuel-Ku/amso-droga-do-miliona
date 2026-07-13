@@ -1,10 +1,12 @@
 import type { GameState } from "./contracts";
 import type { StoryPhase } from "./story-timeline";
 import type { CampaignMode, PackageType, PowerUpKind } from "../shared/types";
+import type { StoryClimaxModel } from "./story-climax";
+import type { StoryObstacleTransformation } from "./story-effects";
 
 export type ObstacleKind = "box-stack" | "pallet" | "trolley" | "overhead";
-export type ObstacleSource = "normal" | "boss";
-export type PackageKind = "standard" | "golden" | PowerUpKind;
+export type ObstacleSource = "normal" | "boss" | "story-climax";
+export type PackageKind = "standard" | "golden" | "story-symbol" | PowerUpKind;
 export type BossPhase = "inactive" | "pending" | "warning" | "attacking" | "reward";
 
 export interface RunnerModel {
@@ -41,6 +43,8 @@ export interface PackageModel {
   packageType: PackageType;
   /** Shipping weight in kilograms, accumulated for the collect_weight trigger. */
   weightKg: number;
+  /** Zero-based identity for one of the eight physical finale keepsakes. */
+  storySymbolIndex?: number;
 }
 
 export interface BossModel {
@@ -86,4 +90,6 @@ export interface RenderScene {
   storyPhase?: StoryPhase | null;
   storyProgress?: number;
   storySymbols?: number;
+  storyClimax?: Readonly<StoryClimaxModel>;
+  obstacleTransformations?: readonly Readonly<StoryObstacleTransformation>[];
 }

@@ -7,6 +7,7 @@ import type {
   RunnerModel
 } from "./types";
 import type { PackageType, PowerUpKind } from "../shared/types";
+import type { StoryObstacleTransformation } from "./story-effects";
 
 const COLORS = {
   ink: "#17313b",
@@ -843,14 +844,118 @@ function drawTrustCorridor(
   context.restore();
 }
 
+function drawStoryClimax(
+  context: CanvasRenderingContext2D,
+  scene: Readonly<RenderScene>
+): void {
+  const climax = scene.storyClimax;
+  if (!climax?.identity || climax.phase === "inactive") return;
+  const positive = climax.phase === "transforming" || climax.phase === "completed";
+  const bob = scene.reducedMotion ? 0 : Math.sin(scene.elapsedSeconds * 3) * 5;
+  const x = 760;
+  const y = 302 + bob;
+
+  context.save();
+  context.globalAlpha = positive ? 0.92 : 0.82;
+  fillRoundedRectangle(context, 654, 58, 274, 38, 10, "rgba(23,49,59,0.88)");
+  context.fillStyle = COLORS.white;
+  context.font = "800 16px system-ui, sans-serif";
+  context.textAlign = "center";
+  context.fillText(climax.challengeName, 791, 83);
+
+  if (climax.identity === "cable-chaos") {
+    context.strokeStyle = positive ? "#1f9d55" : COLORS.red;
+    context.lineWidth = 6;
+    for (let cable = 0; cable < 3; cable += 1) {
+      context.beginPath();
+      context.moveTo(x - 62, y + cable * 15);
+      if (positive) {
+        context.lineTo(x + 66, y + cable * 15);
+      } else {
+        context.bezierCurveTo(x - 18, y - 48, x + 12, y + 64, x + 66, y - 8 + cable * 12);
+      }
+      context.stroke();
+    }
+    if (positive) drawCheckMark(context, x + 74, y - 4, 25);
+  } else if (climax.identity === "doubt-cloud") {
+    context.fillStyle = positive ? "#d9f4e4" : "rgba(83,106,115,0.88)";
+    for (const [dx, dy, radius] of [[-35, 0, 36], [3, -18, 44], [46, 3, 34]] as const) {
+      context.beginPath();
+      context.arc(x + dx, y + dy, radius, 0, Math.PI * 2);
+      context.fill();
+    }
+    if (positive) {
+      drawCheckMark(context, x - 14, y - 17, 46);
+    } else {
+      context.fillStyle = COLORS.white;
+      context.font = "900 34px system-ui, sans-serif";
+      context.fillText("?  ?  ?", x + 4, y + 13);
+    }
+  } else if (climax.identity === "budget-eater") {
+    context.fillStyle = positive ? "#f4a124" : COLORS.red;
+    context.beginPath();
+    context.ellipse(x, y, 66, 43, 0, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = positive ? COLORS.ink : COLORS.white;
+    context.font = "900 25px system-ui, sans-serif";
+    context.fillText(positive ? "PLN" : "- - -", x, y + 8);
+    context.fillRect(x + 48, y + 29, 12, 22);
+    context.fillRect(x - 50, y + 29, 12, 22);
+  } else {
+    context.strokeStyle = positive ? "#1f9d55" : COLORS.red;
+    context.lineWidth = 7;
+    const rootY = y + 44;
+    for (let head = 0; head < 4; head += 1) {
+      const targetX = x - 66 + head * 44;
+      context.beginPath();
+      context.moveTo(x, rootY);
+      context.quadraticCurveTo(x + (head - 1.5) * 20, y, targetX, y - 35);
+      context.stroke();
+      context.fillStyle = positive ? "#d9f4e4" : COLORS.red;
+      context.beginPath();
+      context.arc(targetX, y - 35, 13, 0, Math.PI * 2);
+      context.fill();
+      if (positive) drawCheckMark(context, targetX - 7, y - 42, 14);
+    }
+  }
+  context.textAlign = "start";
+  context.restore();
+}
+
 function drawTransformedObstacle(
   context: CanvasRenderingContext2D,
-  obstacle: Readonly<ObstacleModel>
+  transformation: Readonly<StoryObstacleTransformation>,
+  reducedMotion: boolean
 ): void {
-  if (!obstacle.active) return;
+  if (!transformation.active) return;
+  const obstacle = transformation;
+  const lift = reducedMotion ? 0 : transformation.progress * 14;
   context.save();
-  context.globalAlpha = 0.68;
-  if (obstacle.kind === "overhead") {
+  context.globalAlpha = 0.9 - transformation.progress * 0.24;
+  context.translate(0, -lift);
+  if (transformation.motif === "ordered-cables") {
+    context.strokeStyle = "#1f9d55";
+    context.lineWidth = 4;
+    for (let line = 0; line < 3; line += 1) {
+      context.beginPath();
+      context.moveTo(obstacle.x - 8, obstacle.y + 12 + line * 10);
+      context.lineTo(obstacle.x + obstacle.width + 8, obstacle.y + 12 + line * 10);
+      context.stroke();
+    }
+  } else if (transformation.motif === "quality-mark") {
+    context.fillStyle = "rgba(217,244,228,0.94)";
+    context.beginPath();
+    context.arc(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2, 26, 0, Math.PI * 2);
+    context.fill();
+    drawCheckMark(context, obstacle.x + obstacle.width / 2 - 14, obstacle.y + obstacle.height / 2 - 12, 28);
+  } else if (transformation.motif === "piggy-bank") {
+    context.fillStyle = COLORS.orange;
+    context.beginPath();
+    context.ellipse(obstacle.x + obstacle.width / 2, GROUND_Y - 30, 34, 23, 0, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = COLORS.ink;
+    context.fillRect(obstacle.x + obstacle.width / 2 - 10, GROUND_Y - 51, 21, 4);
+  } else if (obstacle.obstacleKind === "overhead") {
     context.strokeStyle = "#1f9d55";
     context.lineWidth = 5;
     context.beginPath();
@@ -906,6 +1011,16 @@ function drawParcel(
   const x = parcel.x;
   const y = parcel.y + bob;
   const size = parcel.size;
+
+  if (parcel.kind === "story-symbol") {
+    const symbolIndex = parcel.storySymbolIndex ?? 0;
+    context.save();
+    context.shadowColor = "rgba(244,161,36,0.7)";
+    context.shadowBlur = scene.reducedMotion ? 6 : 10;
+    drawStorySymbol(context, symbolIndex, x + size / 2, y + size / 2, size, true);
+    context.restore();
+    return;
+  }
 
   if (parcel.kind === "golden") {
     context.save();
@@ -1466,6 +1581,7 @@ export class WarehouseRenderer {
     );
     drawNarrativeVignette(context, scene, theme);
     drawTrustCorridor(context, scene, theme);
+    drawStoryClimax(context, scene);
     drawForkliftBoss(
       context,
       scene.boss,
@@ -1474,8 +1590,10 @@ export class WarehouseRenderer {
     );
     for (const parcel of scene.packages) drawParcel(context, parcel, scene);
     for (const obstacle of scene.obstacles) {
-      if (scene.trustCorridor === true) drawTransformedObstacle(context, obstacle);
-      else drawObstacle(context, obstacle);
+      drawObstacle(context, obstacle);
+    }
+    for (const transformation of scene.obstacleTransformations ?? []) {
+      drawTransformedObstacle(context, transformation, scene.reducedMotion);
     }
     drawCourier(context, scene.runner, scene);
     drawTrustSpark(context, scene.runner, scene);
