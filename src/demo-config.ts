@@ -2,7 +2,7 @@ import rawConfig from "../public/assets/milion-runner/runner-config.json";
 import { parseRunnerConfig } from "./config/schema";
 import type { RunnerConfig } from "./shared/types";
 
-const parsed = parseRunnerConfig(rawConfig);
+const parsed = parseRunnerConfig(rawConfig, { allowEmbeddedImageSources: true });
 if (parsed === null) {
   throw new Error("The bundled Droga do Miliona v3 config is invalid.");
 }

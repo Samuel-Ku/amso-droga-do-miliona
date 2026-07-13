@@ -7,6 +7,20 @@ const root = path.resolve(here, "..");
 const demoDir = path.join(root, "dist-demo");
 const indexPath = path.join(demoDir, "index.html");
 const outputPath = path.join(root, "droga-do-miliona-qa.html");
+const embeddedResourcePolicyPath = path.join(
+  root,
+  "src",
+  "config",
+  "embedded-resource-policy.json",
+);
+const embeddedResourcePolicy = JSON.parse(
+  fs.readFileSync(embeddedResourcePolicyPath, "utf8"),
+);
+const embeddedAvifMaxLength =
+  embeddedResourcePolicy.maxEmbeddedAvifDataUriLength;
+if (!Number.isSafeInteger(embeddedAvifMaxLength) || embeddedAvifMaxLength <= 0) {
+  throw new Error("Nieprawidlowy limit osadzonych plikow AVIF");
+}
 const campaignAssetDir = path.join(
   root,
   "public",
@@ -45,6 +59,11 @@ function inlineCampaignAvifAssets(document) {
       .join("/");
     const publicPath = `/${assetRelativePath}`;
     const dataUri = `data:image/avif;base64,${fs.readFileSync(assetPath).toString("base64")}`;
+    if (dataUri.length > embeddedAvifMaxLength) {
+      throw new Error(
+        `Osadzony AVIF ${assetRelativePath} przekracza limit ${embeddedAvifMaxLength} znakow`,
+      );
+    }
     const sourceVariants = [`.${publicPath}`, publicPath, assetRelativePath];
 
     for (const source of sourceVariants) {
@@ -91,7 +110,7 @@ for (const scriptMatch of scriptMatches) {
     html = html.replace(scriptMatch[0], "");
     deferredScripts.push(inlineScript);
   } else {
-    // Keep the small bootstrap watchdog in <head>, before the deferred app.
+    // Preserve the watchdog after the parsed fallback and before the deferred app.
     html = html.replace(scriptMatch[0], inlineScript);
   }
 }
@@ -115,6 +134,7 @@ html = html.replace(
 // so it remains complete when opened directly via file:// without a web server.
 const inlineResult = inlineCampaignAvifAssets(html);
 html = inlineResult.html;
+html = html.replace(/^[\t ]+$/gmu, "");
 
 fs.writeFileSync(outputPath, html, "utf8");
 console.log(

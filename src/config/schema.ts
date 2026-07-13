@@ -27,6 +27,7 @@ import type {
   RunnerConfigValidationOptions,
   RunnerConfigValidationResult
 } from "./types";
+import embeddedResourcePolicy from "./embedded-resource-policy.json";
 
 const IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9_.-]{0,63}$/;
 const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$/;
@@ -76,6 +77,10 @@ const ASSET_RESOURCE_TYPES: readonly AssetResourceType[] = ["procedural", "image
 const PROCEDURAL_SOURCE_PATTERN = /^procedural:[a-z0-9][a-z0-9_.-]{0,63}$/;
 const IMAGE_SOURCE_PATTERN = /\.(?:avif|gif|jpe?g|png|svg|webp)$/i;
 const AUDIO_SOURCE_PATTERN = /\.(?:aac|m4a|mp3|ogg|wav)$/i;
+const EMBEDDED_AVIF_PREFIX = "data:image/avif;base64,";
+export const EMBEDDED_AVIF_MAX_LENGTH =
+  embeddedResourcePolicy.maxEmbeddedAvifDataUriLength;
+const BASE64_PAYLOAD_PATTERN = /^[A-Za-z0-9+/]+={0,2}$/;
 
 function issue(code: RunnerConfigIssue["code"], path: string): RunnerConfigValidationResult {
   return { success: false, issues: [{ code, path }] };
@@ -152,10 +157,21 @@ export function isAllowedAssetPath(path: unknown, extension: ".js" | ".css"): pa
 
 export function isAllowedCampaignResourceSource(
   source: unknown,
-  type: AssetResourceType
+  type: AssetResourceType,
+  allowEmbeddedImageSources = false
 ): source is string {
   if (typeof source !== "string") return false;
   if (type === "procedural") return PROCEDURAL_SOURCE_PATTERN.test(source);
+  if (
+    type === "image" &&
+    allowEmbeddedImageSources &&
+    source.startsWith(EMBEDDED_AVIF_PREFIX) &&
+    source.length <= EMBEDDED_AVIF_MAX_LENGTH
+  ) {
+    const payload = source.slice(EMBEDDED_AVIF_PREFIX.length);
+    return payload.length >= 4 && payload.length % 4 === 0 &&
+      BASE64_PAYLOAD_PATTERN.test(payload);
+  }
   const extensionMatches = type === "image"
     ? IMAGE_SOURCE_PATTERN.test(source)
     : AUDIO_SOURCE_PATTERN.test(source);
@@ -169,7 +185,10 @@ export function isAllowedCampaignResourceSource(
     !source.includes("\\");
 }
 
-function parseAssetResource(value: unknown): AssetResourceConfig | null {
+function parseAssetResource(
+  value: unknown,
+  allowEmbeddedImageSources: boolean
+): AssetResourceConfig | null {
   if (!isRecord(value) || !hasExactKeys(
     value,
     ["id", "type", "source", "critical"],
@@ -179,11 +198,18 @@ function parseAssetResource(value: unknown): AssetResourceConfig | null {
       !(ASSET_RESOURCE_TYPES as readonly string[]).includes(value.type) ||
       typeof value.critical !== "boolean") return null;
   const type = value.type as AssetResourceType;
-  if (!isAllowedCampaignResourceSource(value.source, type)) return null;
+  if (!isAllowedCampaignResourceSource(
+    value.source,
+    type,
+    allowEmbeddedImageSources
+  )) return null;
   return { id: value.id, type, source: value.source, critical: value.critical };
 }
 
-function parseAssets(value: unknown): AssetsConfig | null {
+function parseAssets(
+  value: unknown,
+  allowEmbeddedImageSources: boolean
+): AssetsConfig | null {
   if (!isRecord(value) || !hasExactKeys(value, ["bundles"], ["bundles"]) ||
       !Array.isArray(value.bundles) || value.bundles.length !== ASSET_BUNDLE_IDS.length) {
     return null;
@@ -196,7 +222,9 @@ function parseAssets(value: unknown): AssetsConfig | null {
       ["id", "resources"]
     ) || rawBundle.id !== ASSET_BUNDLE_IDS[index] || !Array.isArray(rawBundle.resources) ||
         rawBundle.resources.length === 0) return null;
-    const resources = rawBundle.resources.map(parseAssetResource);
+    const resources = rawBundle.resources.map((resource) =>
+      parseAssetResource(resource, allowEmbeddedImageSources)
+    );
     if (resources.some((resource) => resource === null)) return null;
     const typedResources = resources as AssetResourceConfig[];
     if (!typedResources.some(({ critical }) => critical) ||
@@ -438,7 +466,7 @@ export function filterValidFacts(facts: readonly RunnerFact[], now: Date = new D
 
 export function validateRunnerConfig(
   value: unknown,
-  _options: RunnerConfigValidationOptions = {}
+  options: RunnerConfigValidationOptions = {}
 ): RunnerConfigValidationResult {
   if (!isRecord(value)) return issue("invalid_type", "$" );
   const rootKeys = [
@@ -475,7 +503,10 @@ export function validateRunnerConfig(
   if (!challenge) return issue("invalid_value", "$.challenge");
   if (!isRecord(value.audio) || !hasExactKeys(value.audio, ["enabled"], ["enabled"]) ||
       typeof value.audio.enabled !== "boolean") return issue("invalid_value", "$.audio");
-  const assets = parseAssets(value.assets);
+  const assets = parseAssets(
+    value.assets,
+    options.allowEmbeddedImageSources === true
+  );
   if (assets === null) return issue("invalid_value", "$.assets");
   const ui = parseUiCopy(value.ui);
   if (ui === null) return issue("invalid_value", "$.ui");

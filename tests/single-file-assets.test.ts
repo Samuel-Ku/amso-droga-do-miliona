@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { EMBEDDED_AVIF_MAX_LENGTH } from "../src/config/schema";
 
 const qaPreview = readFileSync(
   new URL("../droga-do-miliona-qa.html", import.meta.url),
@@ -36,6 +37,14 @@ describe("single-file QA artwork", () => {
     }
   });
 
+  it("parses the visible boot fallback before loading its watchdog", () => {
+    const bootPosition = productionEntry.indexOf("data-campaign-boot");
+    const watchdogPosition = productionEntry.indexOf("boot-watchdog.js");
+
+    expect(bootPosition).toBeGreaterThan(-1);
+    expect(watchdogPosition).toBeGreaterThan(bootPosition);
+  });
+
   it("shows a readable boot state before JavaScript initializes the campaign", () => {
     const campaignRoot = qaPreview.match(
       /<main id="amso-campaign-root"[^>]*>([\s\S]*?)<\/main>/
@@ -70,6 +79,14 @@ describe("single-file QA artwork", () => {
     expect(inlineScripts).toHaveLength(2);
     expect(inlineScripts[0]?.[1]).toContain("campaignScripting");
     expect(inlineScripts[1]?.[1]).toContain("AMSO campaign bootstrap failed");
+    const bootMarkupPosition = qaPreview.indexOf(
+      '<section class="amso-campaign-boot" data-campaign-boot'
+    );
+    const watchdogPosition = qaPreview.indexOf("campaignScripting");
+    const appPosition = qaPreview.indexOf("AMSO campaign bootstrap failed");
+    expect(bootMarkupPosition).toBeGreaterThan(-1);
+    expect(watchdogPosition).toBeGreaterThan(bootMarkupPosition);
+    expect(appPosition).toBeGreaterThan(watchdogPosition);
     for (const script of inlineScripts) {
       expect(() => new Function(script[1] ?? "")).not.toThrow();
     }
@@ -85,5 +102,10 @@ describe("single-file QA artwork", () => {
     );
 
     expect(embeddedAvifs.size).toBe(campaignAvifPaths.length);
+    for (const embeddedAvif of embeddedAvifs) {
+      expect(embeddedAvif.length).toBeLessThanOrEqual(
+        EMBEDDED_AVIF_MAX_LENGTH
+      );
+    }
   });
 });

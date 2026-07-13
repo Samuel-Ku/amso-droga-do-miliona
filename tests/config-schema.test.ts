@@ -10,6 +10,7 @@ import {
   parseRunnerConfig,
   validateRunnerConfig
 } from "../src/config/schema";
+import type { RunnerConfigValidationOptions } from "../src/config/types";
 
 function validConfig(): Record<string, unknown> {
   return structuredClone(productionConfig) as Record<string, unknown>;
@@ -174,5 +175,63 @@ describe("runner config v4 story validation", () => {
       asset.critical = false;
     });
     expect(parseRunnerConfig(optionalOnly)).toBeNull();
+  });
+
+  it("accepts embedded AVIF resources only for the trusted single-file build", () => {
+    const embedded = validConfig();
+    const bundles = ((embedded.assets as Record<string, unknown>)
+      .bundles as Array<Record<string, unknown>>);
+    for (const bundle of bundles) {
+      const resources = bundle.resources as Array<Record<string, unknown>>;
+      for (const resource of resources) {
+        if (resource.type === "image") {
+          resource.source = "data:image/avif;base64,AAAA";
+        }
+      }
+    }
+    const trustedOptions: RunnerConfigValidationOptions & {
+      allowEmbeddedImageSources: true;
+    } = { allowEmbeddedImageSources: true };
+
+    expect(parseRunnerConfig(embedded)).toBeNull();
+    expect(parseRunnerConfig(embedded, trustedOptions)).not.toBeNull();
+  });
+
+  it("rejects unsafe embedded resources even for the trusted single-file build", () => {
+    const trustedOptions: RunnerConfigValidationOptions & {
+      allowEmbeddedImageSources: true;
+    } = { allowEmbeddedImageSources: true };
+    const withFirstImage = (
+      source: string,
+      type = "image"
+    ): Record<string, unknown> => {
+      const config = validConfig();
+      const bundles = ((config.assets as Record<string, unknown>)
+        .bundles as Array<Record<string, unknown>>);
+      const image = bundles
+        .flatMap((bundle) => bundle.resources as Array<Record<string, unknown>>)
+        .find((resource) => resource.type === "image");
+      if (!image) throw new Error("production config should contain an image resource");
+      image.type = type;
+      image.source = source;
+      return config;
+    };
+
+    expect(parseRunnerConfig(
+      withFirstImage("data:image/avif;base64,***="),
+      trustedOptions
+    )).toBeNull();
+    expect(parseRunnerConfig(
+      withFirstImage("data:image/png;base64,AAAA"),
+      trustedOptions
+    )).toBeNull();
+    expect(parseRunnerConfig(
+      withFirstImage(`data:image/avif;base64,${"A".repeat(512_000)}`),
+      trustedOptions
+    )).toBeNull();
+    expect(parseRunnerConfig(
+      withFirstImage("data:audio/mpeg;base64,AAAA", "audio"),
+      trustedOptions
+    )).toBeNull();
   });
 });
