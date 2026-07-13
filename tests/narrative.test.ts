@@ -86,11 +86,11 @@ describe("epochSpeed", () => {
   });
 });
 
-describe("v3 migration boundary", () => {
+describe("v4 migration boundary", () => {
   it("accepts the production story and derives only a transitional narrative view", () => {
     const config = parseRunnerConfig(productionConfig);
     expect(config).not.toBeNull();
-    expect(config?.schemaVersion).toBe(3);
+    expect(config?.schemaVersion).toBe(4);
     expect(config?.story.epochs).toHaveLength(5);
     expect(config?.narrative?.epochs).toHaveLength(5);
   });

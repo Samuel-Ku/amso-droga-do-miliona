@@ -30,25 +30,50 @@ class MemoryStorage implements Storage {
 }
 
 describe("PlayerProfileStore", () => {
-  it("starts at the prologue with only story mode available", () => {
+  it("starts with a minimal unfinished profile and only story mode available", () => {
     const store = new PlayerProfileStore(new MemoryStorage());
 
-    expect(store.snapshot.storyCheckpoint).toBe("prologue");
-    expect(store.snapshot.storyCompleted).toBe(false);
+    expect(store.snapshot).toEqual({
+      schemaVersion: 4,
+      storyCompleted: false,
+      bestChallengeScore: 0,
+      bestChallengePackages: 0,
+      soundMuted: false,
+      fullscreenPreference: null
+    });
+    expect(store.snapshot).not.toHaveProperty("storyCheckpoint");
     expect(store.availableModes).toEqual(["story"]);
   });
 
-  it("restores an epoch checkpoint without unlocking the challenge at the finale", () => {
+  it("ignores a legacy checkpoint so an unfinished reload starts from the intro", () => {
     const storage = new MemoryStorage();
-    const first = new PlayerProfileStore(storage);
-    first.setStoryCheckpoint("epoch_3");
+    storage.setItem("amso_milion_runner_profile", JSON.stringify({
+      schemaVersion: 3,
+      storyCheckpoint: "epoch_5",
+      storyCompleted: false,
+      bestChallengeScore: 900,
+      bestChallengePackages: 7,
+      soundMuted: false,
+      fullscreenPromptSeen: false,
+      discoveredFactIds: ["legacy-fact"],
+      furthestEpoch: 4,
+      runsPlayed: 3
+    }));
 
-    expect(new PlayerProfileStore(storage).snapshot.storyCheckpoint).toBe("epoch_3");
+    const restored = new PlayerProfileStore(storage);
+    expect(restored.snapshot).not.toHaveProperty("storyCheckpoint");
+    expect(restored.snapshot.storyCompleted).toBe(false);
+    expect(restored.availableModes).toEqual(["story"]);
 
-    first.setStoryCheckpoint("finale");
-    const atFinale = new PlayerProfileStore(storage);
-    expect(atFinale.snapshot.storyCompleted).toBe(false);
-    expect(atFinale.availableModes).toEqual(["story"]);
+    restored.setSoundMuted(true);
+    expect(JSON.parse(storage.getItem("amso_milion_runner_profile") ?? "null")).toEqual({
+      schemaVersion: 4,
+      storyCompleted: false,
+      bestChallengeScore: 900,
+      bestChallengePackages: 7,
+      soundMuted: true,
+      fullscreenPreference: null
+    });
   });
 
   it("unlocks challenge only when the full story is completed", () => {
@@ -57,20 +82,8 @@ describe("PlayerProfileStore", () => {
     first.completeStory();
 
     const restored = new PlayerProfileStore(storage);
-    expect(restored.snapshot.storyCheckpoint).toBe("completed");
     expect(restored.snapshot.storyCompleted).toBe(true);
-    expect(restored.availableModes).toEqual(["story", "challenge"]);
-  });
-
-  it("keeps challenge unlocked while a completed player replays the story", () => {
-    const storage = new MemoryStorage();
-    const first = new PlayerProfileStore(storage);
-    first.completeStory();
-    first.setStoryCheckpoint("epoch_2");
-
-    const restored = new PlayerProfileStore(storage);
-    expect(restored.snapshot.storyCompleted).toBe(true);
-    expect(restored.snapshot.storyCheckpoint).toBe("epoch_2");
+    expect(restored.snapshot).not.toHaveProperty("storyCheckpoint");
     expect(restored.availableModes).toEqual(["story", "challenge"]);
   });
 
@@ -80,23 +93,25 @@ describe("PlayerProfileStore", () => {
     first.recordChallengeResult(12_450, 87);
     first.recordChallengeResult(8_000, 102);
     first.setSoundMuted(true);
-    first.markFullscreenPromptSeen();
+    first.setFullscreenPreference("fullscreen");
 
     const restored = new PlayerProfileStore(storage);
     expect(restored.snapshot.bestChallengeScore).toBe(12_450);
     expect(restored.snapshot.bestChallengePackages).toBe(102);
     expect(restored.snapshot.soundMuted).toBe(true);
-    expect(restored.snapshot.fullscreenPromptSeen).toBe(true);
+    expect(restored.snapshot.fullscreenPreference).toBe("fullscreen");
   });
 
   it("keeps an in-memory story profile when storage is missing or corrupt", () => {
     const unavailable = new PlayerProfileStore(null);
-    unavailable.setStoryCheckpoint("epoch_5");
     unavailable.completeStory();
     expect(unavailable.availableModes).toEqual(["story", "challenge"]);
 
     const corrupt = new MemoryStorage();
     corrupt.setItem("amso_milion_runner_profile", "{broken");
-    expect(new PlayerProfileStore(corrupt).snapshot.storyCheckpoint).toBe("prologue");
+    const restored = new PlayerProfileStore(corrupt);
+    expect(restored.snapshot.storyCompleted).toBe(false);
+    expect(restored.snapshot).not.toHaveProperty("storyCheckpoint");
+    expect(restored.availableModes).toEqual(["story"]);
   });
 });

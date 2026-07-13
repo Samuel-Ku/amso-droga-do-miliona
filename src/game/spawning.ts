@@ -1,4 +1,12 @@
-import { GAMEPLAY, GROUND_Y, OVERHEAD, OVERHEAD_BEAM_HEIGHT, PHYSICS } from "./constants";
+import {
+  GAMEPLAY,
+  GROUND_Y,
+  OVERHEAD,
+  OVERHEAD_BEAM_HEIGHT,
+  PHYSICS,
+  RUNNER_WIDTH,
+  RUNNER_X
+} from "./constants";
 import { PACKAGE_TYPE_VALUES, POWER_UP_VALUES } from "./narrative";
 import type { Difficulty } from "./difficulty";
 import { SeededRandom } from "./random";
@@ -24,6 +32,9 @@ export interface PackageSpawn {
   scoreValue: number;
   packageType: PackageType;
   weightKg: number;
+  storySymbolIndex?: number;
+  storyRewardPattern?: boolean;
+  storyOrder?: boolean;
 }
 
 export type PackagePattern = "arc" | "low-line" | "high-arc" | "staircase";
@@ -38,6 +49,76 @@ export interface SpawnWave {
   height: number;
   packages: readonly PackageSpawn[];
   gapPixels: number;
+}
+
+export type AuthoredRewardAction = "jump" | "slide";
+
+export interface AuthoredRewardSpec {
+  kind: PackageKind;
+  storySymbolIndex?: number;
+  packageType?: PackageType;
+  storyOrder?: boolean;
+}
+
+export interface AuthoredRewardWaveOptions {
+  action: AuthoredRewardAction;
+  spawnX: number;
+  speed: number;
+  rewards: readonly AuthoredRewardSpec[];
+  patternIndex?: number;
+  source?: ObstacleSource;
+}
+
+export const MIN_AUTHORED_REACTION_SECONDS = 1.6;
+
+export interface SafeCollectiblePlacement {
+  preferredX: number;
+  y: number;
+  size: number;
+  minX: number;
+  maxX: number;
+  obstacles: readonly Readonly<ObstacleModel>[];
+  packages: readonly Readonly<PackageModel>[];
+  padding?: number;
+}
+
+function overlaps(
+  left: { x: number; y: number; width: number; height: number },
+  right: { x: number; y: number; width: number; height: number }
+): boolean {
+  return left.x < right.x + right.width && left.x + left.width > right.x &&
+    left.y < right.y + right.height && left.y + left.height > right.y;
+}
+
+/** Finds a readable collectible lane without placing a reward inside a hazard. */
+export function findSafeCollectibleX(options: SafeCollectiblePlacement): number | null {
+  const size = Math.max(1, options.size);
+  const minimum = Math.min(options.minX, options.maxX);
+  const maximum = Math.max(options.minX, options.maxX);
+  const padding = Math.max(0, options.padding ?? 18);
+  const step = size + padding + 4;
+  const candidates: number[] = [];
+  for (let offset = 0; offset <= maximum - minimum + step; offset += step) {
+    for (const direction of offset === 0 ? [1] : [-1, 1]) {
+      const candidate = Math.max(minimum, Math.min(maximum, options.preferredX + offset * direction));
+      if (!candidates.includes(candidate)) candidates.push(candidate);
+    }
+  }
+
+  for (const x of candidates) {
+    const padded = {
+      x: x - padding,
+      y: options.y - padding,
+      width: size + padding * 2,
+      height: size + padding * 2
+    };
+    const blockedByObstacle = options.obstacles.some((obstacle) => obstacle.active &&
+      overlaps(padded, obstacle));
+    const blockedByPackage = options.packages.some((parcel) => parcel.active &&
+      overlaps(padded, { x: parcel.x, y: parcel.y, width: parcel.size, height: parcel.size }));
+    if (!blockedByObstacle && !blockedByPackage) return x;
+  }
+  return null;
 }
 
 export const OBSTACLE_SPECS: Readonly<Record<ObstacleKind, ObstacleSpec>> = {
@@ -260,6 +341,80 @@ export class FairSpawner {
   }
 }
 
+/**
+ * Builds one indivisible obstacle + reward pattern. The authored collectible
+ * positions use the same proven jump/crouch trajectories as ordinary waves,
+ * while a hard reaction-time floor lets the caller defer unsafe placement.
+ */
+export function createAuthoredRewardWave(
+  options: AuthoredRewardWaveOptions
+): SpawnWave | null {
+  const speed = Math.max(1, options.speed);
+  const reactionSeconds = (options.spawnX - (RUNNER_X + RUNNER_WIDTH)) / speed;
+  if (reactionSeconds < MIN_AUTHORED_REACTION_SECONDS ||
+      options.rewards.length < 1 || options.rewards.length > 2) return null;
+  if (options.rewards.some(({ kind, storySymbolIndex, packageType, storyOrder }) =>
+    (kind === "story-symbol"
+      ? !Number.isInteger(storySymbolIndex) || (storySymbolIndex ?? -1) < 0 ||
+        (storySymbolIndex ?? -1) >= 8
+      : storySymbolIndex !== undefined) ||
+    (storyOrder === true &&
+      (packageType === undefined || (kind !== "standard" && kind !== "golden")))
+  )) return null;
+
+  const patternIndex = Math.max(0, Math.floor(options.patternIndex ?? 0));
+  const jumpKinds: readonly ObstacleKind[] = ["pallet", "box-stack", "trolley"];
+  const kind = options.action === "slide"
+    ? "overhead"
+    : jumpKinds[patternIndex % jumpKinds.length] ?? "pallet";
+  const spec = OBSTACLE_SPECS[kind];
+  const heights = kind === "overhead"
+    ? OVERHEAD_PACKAGE_HEIGHTS
+    : PACKAGE_PATTERN_HEIGHTS["high-arc"];
+  const span = speed * JUMP_FLIGHT_SECONDS * PACKAGE_ARC_SPAN_FRACTION;
+  const rewardSlots = options.action === "slide"
+    ? options.rewards.length === 1 ? [3] : [3, 4]
+    : options.rewards.length === 1 ? [2] : [2, 3];
+  const packageTypes = PACKAGE_TYPE_VALUES;
+  const packages = heights.map((height, index): PackageSpawn => {
+    const centering = index / (heights.length - 1) - 0.5;
+    const rewardIndex = rewardSlots.indexOf(index);
+    const reward = rewardIndex >= 0 ? options.rewards[rewardIndex] : undefined;
+    const packageKind = reward?.kind ?? "standard";
+    return {
+      x: options.spawnX + span * centering,
+      y: GROUND_Y - height - 15,
+      phase: (patternIndex + index) * 0.73,
+      kind: packageKind,
+      scoreValue: packageKind === "golden"
+        ? GAMEPLAY.goldenPackageScore
+        : packageKind === "standard"
+          ? GAMEPLAY.packageScore
+          : 0,
+      packageType: reward?.packageType ??
+        packageTypes[(patternIndex + index) % packageTypes.length] ?? "notebook",
+      weightKg: 0,
+      ...(reward?.storySymbolIndex === undefined
+        ? {}
+        : { storySymbolIndex: reward.storySymbolIndex }),
+      storyRewardPattern: true,
+      ...(reward?.storyOrder === true ? { storyOrder: true } : {})
+    };
+  });
+
+  return {
+    kind,
+    source: options.source ?? "story-reward",
+    pattern: options.action === "slide" ? "low-line" : "high-arc",
+    x: options.spawnX,
+    y: kind === "overhead" ? OVERHEAD.topY : GROUND_Y - spec.height,
+    width: spec.width,
+    height: spec.height,
+    packages,
+    gapPixels: speed * MIN_AUTHORED_REACTION_SECONDS
+  };
+}
+
 export function activateTutorialPackages(packages: PackageModel[]): void {
   const positions = [520, 600, 680, 760];
   for (let index = 0; index < positions.length; index += 1) {
@@ -274,6 +429,9 @@ export function activateTutorialPackages(packages: PackageModel[]): void {
     parcel.phase = index * 0.9;
     parcel.packageType = "notebook";
     parcel.weightKg = 0;
+    delete parcel.storySymbolIndex;
+    parcel.storyRewardPattern = false;
+    delete parcel.storyOrder;
   }
 }
 
@@ -293,6 +451,7 @@ export function activateWave(
   obstacle.y = wave.y;
   obstacle.width = wave.width;
   obstacle.height = wave.height;
+  obstacle.objectiveCredited = false;
 
   for (let index = 0; index < wave.packages.length; index += 1) {
     const spawn = wave.packages[index];
@@ -306,6 +465,11 @@ export function activateWave(
     parcel.phase = spawn.phase;
     parcel.packageType = spawn.packageType;
     parcel.weightKg = spawn.weightKg;
+    if (spawn.storySymbolIndex === undefined) delete parcel.storySymbolIndex;
+    else parcel.storySymbolIndex = spawn.storySymbolIndex;
+    parcel.storyRewardPattern = spawn.storyRewardPattern === true;
+    if (spawn.storyOrder === true) parcel.storyOrder = true;
+    else delete parcel.storyOrder;
   }
   return true;
 }
@@ -323,28 +487,4 @@ export function createBossAttackWave(kind: ObstacleKind, spawnX: number): SpawnW
     packages: [],
     gapPixels: 0
   };
-}
-
-export function activateBossReward(packages: PackageModel[], usePowerUps = false): number {
-  const positions = [440, 515, 590, 665, 740];
-  const freePackages = packages.filter((candidate) => !candidate.active);
-  if (freePackages.length < positions.length) return 0;
-  let activated = 0;
-  for (let index = 0; index < positions.length; index += 1) {
-    const parcel = freePackages[index];
-    const x = positions[index];
-    if (!parcel || x === undefined) break;
-    parcel.active = true;
-    parcel.kind = usePowerUps
-      ? (POWER_UP_VALUES[index % POWER_UP_VALUES.length] ?? "gwarancja_48")
-      : "golden";
-    parcel.scoreValue = usePowerUps ? 0 : GAMEPLAY.goldenPackageScore;
-    parcel.x = x;
-    parcel.y = GROUND_Y - parcel.size - 17;
-    parcel.phase = index * 0.75;
-    parcel.packageType = "notebook";
-    parcel.weightKg = 0;
-    activated += 1;
-  }
-  return activated;
 }

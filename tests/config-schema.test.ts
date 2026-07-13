@@ -15,29 +15,32 @@ function validConfig(): Record<string, unknown> {
   return structuredClone(productionConfig) as Record<string, unknown>;
 }
 
-describe("runner config v3 validation", () => {
-  it("parses the production story as prologue, five epochs and finale", () => {
+describe("runner config v4 story validation", () => {
+  it("parses the production story as 18 player-paced scenes and five minutes of play", () => {
     const result = validateRunnerConfig(validConfig());
 
     expect(result.success).toBe(true);
     if (!result.success) return;
 
-    expect(result.data.schemaVersion).toBe(3);
+    expect(result.data.schemaVersion).toBe(4);
     expect(result.data.modulePath).toBe(DEFAULT_RUNNER_MODULE_PATH);
     expect(result.data.stylePath).toBe(DEFAULT_RUNNER_STYLE_PATH);
-    expect(result.data.story.durationSeconds).toBeGreaterThanOrEqual(150);
-    expect(result.data.story.durationSeconds).toBeLessThanOrEqual(180);
-    expect(result.data.story.prologue.id).toBe("prologue");
+    expect(result.data.story.activeDurationSeconds).toBe(300);
+    expect(result.data.story.readingSpeedMultiplier).toBe(0.3);
+    expect(result.data.story.speedStartMultiplier).toBe(0.8);
+    expect(result.data.story.speedMaxMultiplier).toBe(1.15);
+    expect(result.data.story.resumeCountdownSeconds).toBe(3);
+    expect(result.data.story.scenes).toHaveLength(18);
+    expect(result.data.story.scenes[0]?.id).toBe("intro.ready");
+    expect(result.data.story.scenes.at(-1)?.id).toBe("final.thanks");
+    expect(result.data.story.scenes.at(-1)?.continueLabel)
+      .toBe("Jedziemy dalej — Próba Miliona");
     expect(result.data.story.epochs.map(({ index }) => index)).toEqual([0, 1, 2, 3, 4]);
-    expect(result.data.story.finale.id).toBe("finale");
-
-    const beats = [
-      ...result.data.story.prologue.beats,
-      ...result.data.story.epochs.flatMap(({ beats: epochBeats }) => epochBeats),
-      ...result.data.story.finale.beats
-    ];
-    expect(new Set(beats.map(({ id }) => id)).size).toBe(beats.length);
-    expect(beats.find(({ id }) => id === "final.thanks")?.text).toContain("1 000 000");
+    expect(result.data.story.epochs.map(({ durationSeconds }) => durationSeconds))
+      .toEqual([45, 55, 60, 65, 75]);
+    expect(result.data.story.sequence
+      .filter((step) => step.type === "play")
+      .reduce((total, step) => total + step.durationSeconds, 0)).toBe(300);
     expect(result.data.cta.challengeLabel).toBe("Gramy dalej — tryb wyzwania");
     expect(result.data.ui?.landingLead).toContain("1 000 000");
     expect(result.data.ui?.sharePublication).toContain("Drodze do Miliona");
@@ -62,17 +65,60 @@ describe("runner config v3 validation", () => {
       );
   });
 
-  it("fails closed for duplicate copy ids and a story outside the 150–180 second budget", () => {
+  it("fails below the five-minute floor but allows a consistent post-playtest extension", () => {
     const duplicate = validConfig();
     const story = duplicate.story as Record<string, unknown>;
-    const prologue = story.prologue as Record<string, unknown>;
-    const beats = prologue.beats as Array<Record<string, unknown>>;
-    beats.push({ ...beats[0] });
+    const scenes = story.scenes as Array<Record<string, unknown>>;
+    scenes.push({ ...scenes[0] });
     expect(parseRunnerConfig(duplicate)).toBeNull();
 
-    const tooLong = validConfig();
-    (tooLong.story as Record<string, unknown>).durationSeconds = 181;
-    expect(parseRunnerConfig(tooLong)).toBeNull();
+    const tooShort = validConfig();
+    (tooShort.story as Record<string, unknown>).activeDurationSeconds = 299;
+    expect(parseRunnerConfig(tooShort)).toBeNull();
+
+    const tuned = validConfig();
+    const tunedStory = tuned.story as Record<string, unknown>;
+    tunedStory.activeDurationSeconds = 310;
+    const tunedSequence = tunedStory.sequence as Array<Record<string, unknown>>;
+    const finalPlay = tunedSequence.find(({ id }) => id === "epoch_5.million_wave");
+    if (!finalPlay) throw new Error("final play segment should exist");
+    finalPlay.durationSeconds = 70;
+    const tunedEpochs = tunedStory.epochs as Array<Record<string, unknown>>;
+    tunedEpochs[4]!.durationSeconds = 85;
+    expect(parseRunnerConfig(tuned)).not.toBeNull();
+  });
+
+  it("requires the complete three-second return-to-game countdown", () => {
+    for (const invalidCountdown of [2, 5]) {
+      const config = validConfig();
+      (config.story as Record<string, unknown>).resumeCountdownSeconds = invalidCountdown;
+
+      expect(parseRunnerConfig(config)).toBeNull();
+    }
+  });
+
+  it("rejects reordered or renamed canonical sequence steps", () => {
+    const reordered = validConfig();
+    const reorderedSequence = (reordered.story as Record<string, unknown>)
+      .sequence as Array<Record<string, unknown>>;
+    [reorderedSequence[0], reorderedSequence[1]] = [reorderedSequence[1]!, reorderedSequence[0]!];
+    expect(parseRunnerConfig(reordered)).toBeNull();
+
+    const renamed = validConfig();
+    const renamedSequence = (renamed.story as Record<string, unknown>)
+      .sequence as Array<Record<string, unknown>>;
+    const training = renamedSequence.find(({ id }) => id === "epoch_1.training");
+    if (!training) throw new Error("training step should exist");
+    training.id = "epoch_1.renamed";
+    expect(parseRunnerConfig(renamed)).toBeNull();
+
+    const wrongEpoch = validConfig();
+    const wrongEpochSequence = (wrongEpoch.story as Record<string, unknown>)
+      .sequence as Array<Record<string, unknown>>;
+    const hydra = wrongEpochSequence.find(({ id }) => id === "epoch_4.logistic_hydra");
+    if (!hydra) throw new Error("hydra step should exist");
+    hydra.epochIndex = 2;
+    expect(parseRunnerConfig(wrongEpoch)).toBeNull();
   });
 
   it("rejects malformed modes, unsafe paths, unknown keys and the removed discount config", () => {

@@ -313,6 +313,10 @@ a {
   white-space: nowrap;
 }
 
+.amso-campaign__hud-context [data-campaign-hud-powerups] {
+  color: #b8f5ce;
+}
+
 .amso-campaign__hud-stats {
   display: flex;
   min-height: 48px;
@@ -409,6 +413,292 @@ a {
   font-weight: 850;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.amso-campaign__story-presentation {
+  position: absolute;
+  z-index: 150;
+  inset: 0;
+  isolation: isolate;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding:
+    max(16px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+  place-items: center;
+  background: rgb(3 12 24 / 62%);
+  backdrop-filter: blur(9px) saturate(0.82);
+}
+
+.amso-campaign__story-scrim,
+.amso-campaign__story-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.amso-campaign__story-scrim {
+  z-index: -1;
+  background:
+    radial-gradient(circle at 50% 48%, rgb(6 20 38 / 22%) 0 20rem, rgb(3 12 24 / 78%) 72%),
+    linear-gradient(180deg, rgb(3 12 24 / 28%), rgb(3 12 24 / 72%));
+}
+
+.amso-campaign__story-vignette {
+  z-index: -2;
+  overflow: hidden;
+  opacity: 0.64;
+}
+
+.amso-campaign__story-vignette-shape,
+.amso-campaign__story-vignette-trail {
+  position: absolute;
+  display: block;
+  border: 2px solid rgb(255 255 255 / 24%);
+  box-shadow: 0 30px 80px rgb(0 0 0 / 28%);
+}
+
+.amso-campaign__story-vignette-shape--primary {
+  bottom: 8%;
+  left: 5%;
+  width: clamp(150px, 29vmin, 360px);
+  aspect-ratio: 1;
+  border-radius: 28% 72% 62% 38% / 42% 38% 62% 58%;
+  background:
+    radial-gradient(circle at 34% 31%, rgb(255 210 63 / 78%) 0 8%, transparent 9%),
+    linear-gradient(145deg, rgb(255 107 0 / 76%), rgb(18 59 104 / 50%));
+  transform: rotate(-8deg);
+}
+
+.amso-campaign__story-vignette-shape--secondary {
+  top: 6%;
+  right: 3%;
+  width: clamp(180px, 35vmin, 460px);
+  aspect-ratio: 1.25;
+  border-radius: 50%;
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 9%) 0 2px, transparent 2px 42px),
+    repeating-linear-gradient(rgb(255 255 255 / 8%) 0 2px, transparent 2px 42px),
+    rgb(12 41 75 / 58%);
+  transform: rotate(7deg);
+}
+
+.amso-campaign__story-vignette-trail {
+  right: -6%;
+  bottom: 17%;
+  width: 48%;
+  height: 4px;
+  border: 0;
+  background: linear-gradient(90deg, transparent, #ff8533 30% 72%, transparent);
+  box-shadow:
+    0 -36px 0 rgb(255 255 255 / 12%),
+    0 36px 0 rgb(255 210 63 / 18%);
+  transform: rotate(-13deg);
+}
+
+.amso-campaign__story-presentation:is(
+  [data-vignette="first-package"],
+  [data-vignette="small-warehouse"],
+  [data-vignette="cable-route"],
+  [data-vignette="warehouse-scale"],
+  [data-vignette="product-stream"],
+  [data-vignette="delivery-map"]
+) .amso-campaign__story-vignette-shape--primary {
+  border-radius: 18px;
+  background:
+    linear-gradient(90deg, transparent 47%, rgb(126 78 37 / 62%) 47% 53%, transparent 53%),
+    linear-gradient(#e3ad70 0 23%, #c78a4e 23% 100%);
+  box-shadow:
+    14px 14px 0 rgb(7 26 49 / 40%),
+    0 30px 80px rgb(0 0 0 / 28%);
+}
+
+.amso-campaign__story-presentation:is(
+  [data-vignette="tested-device"],
+  [data-vignette="quality-stamp"]
+) .amso-campaign__story-vignette-shape--primary {
+  border: 10px solid rgb(70 215 131 / 64%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(217 244 228 / 38%), rgb(18 59 104 / 54%) 70%);
+  box-shadow:
+    0 0 0 24px rgb(70 215 131 / 8%),
+    0 30px 80px rgb(0 0 0 / 28%);
+}
+
+.amso-campaign__story-presentation:is(
+  [data-vignette="creative-desk"],
+  [data-vignette="growing-business"],
+  [data-vignette="long-trust"]
+) .amso-campaign__story-vignette-shape--secondary {
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgb(255 248 237 / 48%), rgb(18 59 104 / 72%));
+  box-shadow:
+    -54px 42px 0 rgb(255 255 255 / 8%),
+    -108px 84px 0 rgb(255 133 51 / 10%),
+    0 30px 80px rgb(0 0 0 / 28%);
+}
+
+.amso-campaign__story-presentation:is(
+  [data-vignette="million-counter"],
+  [data-vignette="million-wave"],
+  [data-vignette="million-package"],
+  [data-vignette="thank-you"]
+) .amso-campaign__story-vignette-shape--secondary {
+  border: 12px solid rgb(255 107 0 / 58%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 210 63 / 28%), rgb(6 20 38 / 56%) 68%);
+  box-shadow:
+    0 0 0 38px rgb(255 107 0 / 7%),
+    0 0 110px rgb(255 107 0 / 28%);
+}
+
+.amso-campaign__story-scene-card {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  width: min(100%, 44rem);
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: clamp(24px, 4.5vmin, 48px);
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: clamp(20px, 3vmin, 32px);
+  background: rgb(6 20 38 / 96%);
+  box-shadow:
+    0 34px 100px rgb(0 4 12 / 62%),
+    inset 0 1px rgb(255 255 255 / 9%);
+  text-align: center;
+  animation: campaign-story-card-in 260ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+@keyframes campaign-story-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.amso-campaign__story-scene-eyebrow {
+  margin: 0 0 clamp(8px, 1.7vmin, 14px);
+  color: var(--campaign-orange-400);
+  font-size: clamp(0.78rem, 1.4vmin, 0.9rem);
+  font-weight: 850;
+  letter-spacing: 0.11em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.amso-campaign__story-scene-card h2 {
+  max-width: 18ch;
+  margin: 0 auto;
+  color: #fff;
+  font-size: clamp(1.75rem, 4.6vmin, 3.25rem);
+  font-weight: 950;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+.amso-campaign__story-scene-body {
+  width: min(100%, 60ch);
+  min-height: 0;
+  margin: clamp(16px, 2.8vmin, 26px) auto 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 1px 6px 3px;
+  color: #f2f6fa;
+  font-size: clamp(1.125rem, 1.2vw + 0.78rem, 1.34rem);
+  line-height: 1.58;
+  scrollbar-gutter: stable;
+  text-wrap: pretty;
+}
+
+.amso-campaign__story-scene-body p {
+  margin: 0;
+}
+
+.amso-campaign__story-scene-body p + p {
+  margin-top: 0.8em;
+}
+
+.amso-campaign__story-scene-body:focus-visible {
+  border-radius: 8px;
+  outline: 2px solid #ffad70;
+  outline-offset: 2px;
+}
+
+.amso-campaign__story-continue {
+  min-width: min(100%, 12rem);
+  margin: clamp(18px, 3vmin, 30px) auto 0;
+  flex: none;
+}
+
+.amso-campaign__story-continue:disabled {
+  cursor: wait;
+  opacity: 0.62;
+  transform: none;
+}
+
+.amso-campaign__story-countdown {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+}
+
+.amso-campaign__story-countdown p {
+  margin: 0 0 0.12em;
+  color: #f2f6fa;
+  font-size: clamp(1rem, 2.4vmin, 1.35rem);
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.amso-campaign__story-countdown strong {
+  display: block;
+  color: #fff;
+  font-size: clamp(5rem, 20vmin, 11rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 950;
+  letter-spacing: -0.08em;
+  line-height: 0.92;
+  text-shadow: 0 12px 48px rgb(0 0 0 / 48%);
+}
+
+.amso-campaign__story-countdown strong[data-value="3"] {
+  animation: campaign-countdown-three 800ms ease-out both;
+}
+
+.amso-campaign__story-countdown strong[data-value="2"] {
+  animation: campaign-countdown-two 800ms ease-out both;
+}
+
+.amso-campaign__story-countdown strong[data-value="1"] {
+  animation: campaign-countdown-one 800ms ease-out both;
+}
+
+@keyframes campaign-countdown-three {
+  from { opacity: 0.32; transform: scale(1.14); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes campaign-countdown-two {
+  from { opacity: 0.32; transform: scale(1.14); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes campaign-countdown-one {
+  from { opacity: 0.32; transform: scale(1.14); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .amso-campaign__screen {
@@ -599,7 +889,7 @@ a {
 .amso-campaign__button--primary {
   background: var(--campaign-orange-500);
   box-shadow: 0 12px 28px rgb(238 93 0 / 28%);
-  color: #fff;
+  color: var(--campaign-ink);
 }
 
 .amso-campaign__button--secondary {
@@ -689,6 +979,17 @@ a {
   font-style: normal;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+.amso-campaign__result-grid i {
+  display: inline;
+  margin-top: 0;
+}
+
+.amso-campaign__result-grid--challenge strong,
+.amso-campaign__result-grid--challenge i {
+  font-size: clamp(1.05rem, 2.2vw, 1.6rem);
 }
 
 .amso-campaign__result-intro {
@@ -823,6 +1124,47 @@ a {
   }
 }
 
+@media (max-width: 720px) {
+  .amso-campaign__hud {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "context pause"
+      "stats stats";
+    align-items: start;
+    gap: 6px;
+  }
+
+  .amso-campaign__hud-context {
+    grid-area: context;
+    width: 100%;
+    min-height: 43px;
+    padding: 5px 8px;
+  }
+
+  .amso-campaign__hud-context [data-campaign-hud-objective],
+  .amso-campaign__hud-context [data-campaign-hud-powerups] {
+    overflow: visible;
+    line-height: 1.25;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .amso-campaign__hud-stats {
+    position: static;
+    grid-area: stats;
+    justify-self: start;
+    min-height: 39px;
+    padding: 5px 9px;
+    gap: 12px;
+  }
+
+  .amso-campaign__pause-button {
+    grid-area: pause;
+    min-height: 42px;
+    padding: 0 10px;
+  }
+}
+
 @media (max-width: 600px) {
   .amso-campaign__header {
     min-height: 56px;
@@ -868,30 +1210,6 @@ a {
     width: 100%;
   }
 
-  .amso-campaign__hud {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 6px;
-  }
-
-  .amso-campaign__hud-context {
-    min-height: 43px;
-    padding: 5px 8px;
-  }
-
-  .amso-campaign__hud-stats {
-    position: absolute;
-    top: 52px;
-    left: 0;
-    min-height: 39px;
-    padding: 5px 9px;
-    gap: 12px;
-  }
-
-  .amso-campaign__pause-button {
-    min-height: 42px;
-    padding: 0 10px;
-  }
-
   .amso-campaign__story-caption {
     right: 10px;
     bottom: 10px;
@@ -909,6 +1227,38 @@ a {
   .amso-campaign__story-caption p {
     font-size: 0.92rem;
     line-height: 1.42;
+  }
+
+  .amso-campaign__story-presentation {
+    padding:
+      max(12px, env(safe-area-inset-top))
+      max(12px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+  }
+
+  .amso-campaign__story-scene-card {
+    width: 100%;
+    padding: clamp(20px, 6vw, 30px) clamp(16px, 5vw, 26px);
+    border-radius: 20px;
+  }
+
+  .amso-campaign__story-scene-card h2 {
+    font-size: clamp(1.7rem, 8vw, 2.55rem);
+  }
+
+  .amso-campaign__story-scene-body {
+    font-size: clamp(1.125rem, 4.8vw, 1.24rem);
+    line-height: 1.55;
+  }
+
+  .amso-campaign__story-continue {
+    width: 100%;
+    min-height: 52px;
+  }
+
+  .amso-campaign__story-vignette {
+    opacity: 0.42;
   }
 
   .amso-campaign__screen--dialog,
@@ -1030,6 +1380,50 @@ a {
     font-size: 0.82rem;
   }
 
+  .amso-campaign__story-presentation {
+    padding:
+      max(9px, env(safe-area-inset-top))
+      max(12px, env(safe-area-inset-right))
+      max(9px, env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+  }
+
+  .amso-campaign__story-scene-card {
+    width: min(100%, 52rem);
+    padding: 14px clamp(20px, 4vw, 34px);
+    border-radius: 18px;
+  }
+
+  .amso-campaign__story-scene-eyebrow {
+    margin-bottom: 5px;
+    font-size: 0.72rem;
+  }
+
+  .amso-campaign__story-scene-card h2 {
+    max-width: 24ch;
+    font-size: clamp(1.5rem, 6.2vh, 2.2rem);
+  }
+
+  .amso-campaign__story-scene-body {
+    width: min(100%, 68ch);
+    margin-top: 8px;
+    font-size: 1rem;
+    line-height: 1.44;
+  }
+
+  .amso-campaign__story-continue {
+    min-height: 48px;
+    margin-top: 10px;
+  }
+
+  .amso-campaign__story-countdown p {
+    font-size: 0.92rem;
+  }
+
+  .amso-campaign__story-countdown strong {
+    font-size: clamp(4rem, 38vh, 8rem);
+  }
+
   .amso-campaign__screen--result {
     padding: 8px 20px;
   }
@@ -1099,7 +1493,23 @@ a {
   }
 
   .amso-campaign__landing-art,
+  .amso-campaign__story-vignette,
+  .amso-campaign__story-scrim,
   .amso-campaign__trust-sphere {
     display: none;
+  }
+
+  .amso-campaign__story-scene-card {
+    border: 2px solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .amso-campaign__story-scene-body,
+  .amso-campaign__story-scene-card h2,
+  .amso-campaign__story-countdown,
+  .amso-campaign__story-countdown p,
+  .amso-campaign__story-countdown strong {
+    color: CanvasText;
   }
 }

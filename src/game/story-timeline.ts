@@ -1,199 +1,100 @@
 import type {
   StoryBeatConfig,
   StoryConfig,
-  StoryEpochConfig,
-  StorySectionConfig
+  StoryPlayStepConfig,
+  StorySceneConfig,
+  StorySequenceStepConfig
 } from "../shared/types";
 import { STORY_SYMBOL_COUNT } from "./story-effects";
 
+export type StoryState = "scene" | "countdown" | "play" | "completed";
 export type StoryPhase = "prologue" | "epoch" | "finale" | "completed";
-export type StoryStartCheckpoint =
-  | "prologue"
-  | "epoch_1"
-  | "epoch_2"
-  | "epoch_3"
-  | "epoch_4"
-  | "epoch_5"
-  | "finale"
-  | "completed";
-
-interface TimelineSection {
-  phase: Exclude<StoryPhase, "completed">;
-  id: string;
-  durationSeconds: number;
-  beats: readonly StoryBeatConfig[];
-  epochIndex: number;
-  startsAtSeconds: number;
-}
-
-interface BeatWindow {
-  beat: StoryBeatConfig;
-  startsAt: number;
-  endsAt: number;
-}
 
 export interface StoryTimelineSnapshot {
+  state: StoryState;
   phase: StoryPhase;
   sectionId: string;
   epochIndex: number;
   sectionElapsedSeconds: number;
   sectionDurationSeconds: number;
   totalElapsedSeconds: number;
+  totalActiveElapsedSeconds: number;
+  totalActiveDurationSeconds: number;
+  countdownSecondsRemaining: number;
+  countdownValue: number | null;
   progress: number;
+  sceneIndex: number;
+  sceneCount: number;
+  scene: Readonly<StorySceneConfig> | null;
+  playSegment: Readonly<StoryPlayStepConfig> | null;
   activeBeats: readonly StoryBeatConfig[];
   trustCorridor: boolean;
+  controlsEnabled: boolean;
+  worldSpeedScale: number;
   symbolsCollected: number;
   completed: boolean;
 }
 
-const HAND_BACK_SECONDS = 2;
-
-function asSection(
-  phase: "prologue" | "finale",
-  section: StorySectionConfig,
-  startsAtSeconds: number
-): TimelineSection {
-  return {
-    phase,
-    id: section.id,
-    durationSeconds: section.durationSeconds,
-    beats: section.beats,
-    epochIndex: phase === "prologue" ? 0 : 4,
-    startsAtSeconds
-  };
+function chapterPhase(scene: Readonly<StorySceneConfig> | null): StoryPhase {
+  if (scene?.chapter === "prologue" || scene?.id.startsWith("intro.")) return "prologue";
+  if (scene?.chapter === "finale" || scene?.id.startsWith("final.")) return "finale";
+  return "epoch";
 }
 
-function asEpoch(epoch: StoryEpochConfig, startsAtSeconds: number): TimelineSection {
-  return {
-    phase: "epoch",
-    id: epoch.id,
-    durationSeconds: epoch.durationSeconds,
-    beats: epoch.beats,
-    epochIndex: epoch.index,
-    startsAtSeconds
-  };
-}
-
-function buildSections(story: StoryConfig): TimelineSection[] {
-  const sections: TimelineSection[] = [];
-  let offset = 0;
-  sections.push(asSection("prologue", story.prologue, offset));
-  offset += story.prologue.durationSeconds;
-  for (const epoch of story.epochs) {
-    sections.push(asEpoch(epoch, offset));
-    offset += epoch.durationSeconds;
+function sceneEpochIndex(scene: Readonly<StorySceneConfig> | null): number {
+  const chapter = scene?.chapter;
+  if (chapter?.startsWith("epoch_")) {
+    const parsed = Number(chapter.slice("epoch_".length));
+    if (Number.isInteger(parsed)) return Math.max(0, Math.min(4, parsed - 1));
   }
-  sections.push(asSection("finale", story.finale, offset));
-  return sections;
+  return chapter === "finale" || scene?.id.startsWith("final.") ? 4 : 0;
 }
 
 /**
- * Places every copy beat inside its configured chapter. Long chapters get quiet
- * gaps; dense chapters overlap adjacent cards instead of dropping copy or
- * running beyond the approved 175-second story budget.
+ * Player-paced narrative sequencer. Scene time is intentionally not measured:
+ * only explicit continuation can replace copy, and only play steps advance the
+ * five-minute active story clock.
  */
-function createBeatWindows(section: TimelineSection): BeatWindow[] {
-  const beats = section.beats;
-  if (beats.length === 0) return [];
-
-  if (section.phase === "epoch") {
-    const groupCount = beats.length <= 6 ? 2 : 3;
-    const groupSize = Math.ceil(beats.length / groupCount);
-    const groups = Array.from({ length: groupCount }, (_, index) =>
-      beats.slice(index * groupSize, (index + 1) * groupSize)
-    ).filter((group) => group.length > 0);
-    const margin = 0.5;
-
-    return groups.flatMap((group, groupIndex) => {
-      const longestExposure = Math.max(...group.map(({ maxExposureSeconds }) => maxExposureSeconds));
-      const lastStart = section.epochIndex === 4
-        ? section.durationSeconds - 2
-        : Math.max(margin, section.durationSeconds - longestExposure - margin);
-      const startsAt = groups.length === 1
-        ? margin
-        : groupIndex === 0
-          ? margin
-          : groupIndex === groups.length - 1
-            ? lastStart
-            : (section.durationSeconds - longestExposure) / 2;
-      return group.map((beat) => ({
-        beat,
-        startsAt,
-        endsAt: Math.min(section.durationSeconds, startsAt + beat.maxExposureSeconds)
-      }));
-    });
-  }
-
-  const totalExposure = beats.reduce(
-    (total, beat) => total + beat.maxExposureSeconds,
-    0
-  );
-  if (totalExposure <= section.durationSeconds) {
-    const gap = (section.durationSeconds - totalExposure) / (beats.length + 1);
-    let cursor = gap;
-    return beats.map((beat) => {
-      const startsAt = cursor;
-      const endsAt = startsAt + beat.maxExposureSeconds;
-      cursor = endsAt + gap;
-      return { beat, startsAt, endsAt };
-    });
-  }
-
-  const lastBeat = beats[beats.length - 1]!;
-  const startSpan = Math.max(0, section.durationSeconds - lastBeat.maxExposureSeconds);
-  return beats.map((beat, index) => {
-    const startsAt = beats.length === 1
-      ? startSpan
-      : (startSpan * index) / (beats.length - 1);
-    return {
-      beat,
-      startsAt,
-      endsAt: Math.min(section.durationSeconds, startsAt + beat.maxExposureSeconds)
-    };
-  });
-}
-
-function checkpointIndex(checkpoint: StoryStartCheckpoint): number {
-  if (checkpoint === "prologue") return 0;
-  if (checkpoint === "finale") return 6;
-  if (checkpoint === "completed") return 7;
-  const epochNumber = Number(checkpoint.slice("epoch_".length));
-  return Number.isInteger(epochNumber) && epochNumber >= 1 && epochNumber <= 5
-    ? epochNumber
-    : 0;
-}
-
 export class StoryTimeline {
-  private readonly sections: readonly TimelineSection[];
-  private readonly windows: readonly (readonly BeatWindow[])[];
-  private readonly totalDurationSeconds: number;
-  private sectionIndex: number;
-  private elapsedInSection = 0;
+  private readonly scenes: ReadonlyMap<string, Readonly<StorySceneConfig>>;
+  private readonly sequence: readonly Readonly<StorySequenceStepConfig>[];
+  private readonly totalActiveDurationSeconds: number;
+  private stepIndex = 0;
+  private state: StoryState;
+  private segmentElapsedSeconds = 0;
+  private totalActiveElapsedSeconds = 0;
+  private countdownSecondsRemaining = 0;
+  private pendingStepIndex: number | null = null;
   private readonly collectedStorySymbols = new Set<number>();
 
-  public constructor(
-    story: StoryConfig,
-    checkpoint: StoryStartCheckpoint = "prologue"
-  ) {
-    this.sections = buildSections(story);
-    this.windows = this.sections.map(createBeatWindows);
-    this.totalDurationSeconds = this.sections.reduce(
-      (total, section) => total + section.durationSeconds,
+  public constructor(private readonly story: StoryConfig) {
+    this.scenes = new Map(story.scenes.map((scene) => [scene.id, scene]));
+    this.sequence = story.sequence;
+    this.totalActiveDurationSeconds = story.sequence.reduce(
+      (total, step) => total + (step.type === "play" ? step.durationSeconds : 0),
       0
     );
-    this.sectionIndex = Math.min(checkpointIndex(checkpoint), this.sections.length);
-    if (this.sectionIndex >= this.sections.length - 1) {
-      for (let index = 0; index < STORY_SYMBOL_COUNT; index += 1) {
-        this.collectedStorySymbols.add(index);
-      }
+    this.state = this.stateForStep(this.currentStep);
+  }
+
+  public continueScene(expectedSceneId: string): boolean {
+    if (this.state !== "scene" || this.currentStep?.type !== "scene") return false;
+    if (this.currentStep.sceneId !== expectedSceneId) return false;
+    const nextIndex = this.stepIndex + 1;
+    const next = this.sequence[nextIndex];
+    if (next?.type === "scene") {
+      this.enterStep(nextIndex);
+      return true;
     }
+    this.state = "countdown";
+    this.pendingStepIndex = nextIndex;
+    this.countdownSecondsRemaining = this.story.resumeCountdownSeconds;
+    return true;
   }
 
   public collectStorySymbol(index: number): boolean {
     if (!Number.isInteger(index) || index < 0 || index >= STORY_SYMBOL_COUNT ||
-        this.collectedStorySymbols.has(index)) {
-      return false;
-    }
+        this.collectedStorySymbols.has(index)) return false;
     this.collectedStorySymbols.add(index);
     return true;
   }
@@ -209,63 +110,90 @@ export class StoryTimeline {
 
   public advance(deltaSeconds: number): StoryTimelineSnapshot {
     let remaining = Math.max(0, deltaSeconds);
-    while (remaining > 0 && this.sectionIndex < this.sections.length) {
-      const section = this.sections[this.sectionIndex]!;
-      const available = section.durationSeconds - this.elapsedInSection;
-      const step = Math.min(remaining, available);
-      this.elapsedInSection += step;
-      remaining -= step;
+    while (remaining > 0) {
+      if (this.state === "scene" || this.state === "completed") break;
+      if (this.state === "countdown") {
+        const step = Math.min(remaining, this.countdownSecondsRemaining);
+        this.countdownSecondsRemaining = Math.max(0, this.countdownSecondsRemaining - step);
+        remaining -= step;
+        if (this.countdownSecondsRemaining <= Number.EPSILON) {
+          this.enterStep(this.pendingStepIndex ?? this.sequence.length);
+          this.pendingStepIndex = null;
+        }
+        continue;
+      }
 
-      if (this.elapsedInSection + Number.EPSILON >= section.durationSeconds) {
-        this.sectionIndex += 1;
-        this.elapsedInSection = 0;
+      const play = this.currentStep;
+      if (play?.type !== "play") {
+        this.state = "completed";
+        break;
+      }
+      const available = Math.max(0, play.durationSeconds - this.segmentElapsedSeconds);
+      const step = Math.min(remaining, available);
+      this.segmentElapsedSeconds += step;
+      this.totalActiveElapsedSeconds += step;
+      remaining -= step;
+      if (this.segmentElapsedSeconds + Number.EPSILON >= play.durationSeconds) {
+        this.enterStep(this.stepIndex + 1);
       }
     }
     return this.snapshot;
   }
 
   public get snapshot(): StoryTimelineSnapshot {
-    const section = this.sections[this.sectionIndex];
-    if (!section) {
-      return {
-        phase: "completed",
-        sectionId: "completed",
-        epochIndex: 4,
-        sectionElapsedSeconds: 0,
-        sectionDurationSeconds: 0,
-        totalElapsedSeconds: this.totalDurationSeconds,
-        progress: 1,
-        activeBeats: [],
-        trustCorridor: false,
-        symbolsCollected: this.collectedStorySymbols.size,
-        completed: true
-      };
-    }
-
-    const elapsed = this.elapsedInSection;
-    const windows = this.windows[this.sectionIndex] ?? [];
-    const activeBeats = windows
-      .filter(({ startsAt, endsAt }) => elapsed >= startsAt && elapsed < endsAt)
-      .map(({ beat }) => beat);
-    const latestFinishedAt = windows.reduce(
-      (latest, window) => window.endsAt <= elapsed ? Math.max(latest, window.endsAt) : latest,
-      Number.NEGATIVE_INFINITY
-    );
-    const trustCorridor = section.phase === "prologue" || section.phase === "finale" ||
-      activeBeats.length > 0 || elapsed - latestFinishedAt < HAND_BACK_SECONDS;
-    const totalElapsedSeconds = section.startsAtSeconds + elapsed;
+    const step = this.currentStep;
+    const scene = step?.type === "scene" ? this.scenes.get(step.sceneId) ?? null : null;
+    const playSegment = step?.type === "play" ? step : null;
+    const completed = this.state === "completed";
+    const phase = completed ? "completed" : playSegment ? "epoch" : chapterPhase(scene);
+    const epochIndex = playSegment?.epochIndex ?? sceneEpochIndex(scene);
+    const sceneIndex = scene === null
+      ? -1
+      : this.story.scenes.findIndex(({ id }) => id === scene.id);
+    const trustCorridor = this.state === "scene" || this.state === "countdown";
     return {
-      phase: section.phase,
-      sectionId: section.id,
-      epochIndex: section.epochIndex,
-      sectionElapsedSeconds: elapsed,
-      sectionDurationSeconds: section.durationSeconds,
-      totalElapsedSeconds,
-      progress: Math.min(1, totalElapsedSeconds / this.totalDurationSeconds),
-      activeBeats,
+      state: this.state,
+      phase,
+      sectionId: scene?.chapter ?? playSegment?.id ?? (completed ? "completed" : "prologue"),
+      epochIndex,
+      sectionElapsedSeconds: playSegment ? this.segmentElapsedSeconds : 0,
+      sectionDurationSeconds: playSegment?.durationSeconds ?? 0,
+      totalElapsedSeconds: this.totalActiveElapsedSeconds,
+      totalActiveElapsedSeconds: this.totalActiveElapsedSeconds,
+      totalActiveDurationSeconds: this.totalActiveDurationSeconds,
+      countdownSecondsRemaining: this.countdownSecondsRemaining,
+      countdownValue: this.state === "countdown"
+        ? Math.max(1, Math.ceil(this.countdownSecondsRemaining))
+        : null,
+      progress: this.totalActiveDurationSeconds <= 0
+        ? Number(completed)
+        : Math.min(1, this.totalActiveElapsedSeconds / this.totalActiveDurationSeconds),
+      sceneIndex,
+      sceneCount: this.story.scenes.length,
+      scene,
+      playSegment,
+      activeBeats: [],
       trustCorridor,
+      controlsEnabled: this.state === "play",
+      worldSpeedScale: trustCorridor ? this.story.readingSpeedMultiplier : 1,
       symbolsCollected: this.collectedStorySymbols.size,
-      completed: false
+      completed
     };
+  }
+
+  private get currentStep(): Readonly<StorySequenceStepConfig> | undefined {
+    return this.sequence[this.stepIndex];
+  }
+
+  private enterStep(index: number): void {
+    this.stepIndex = Math.max(0, index);
+    this.segmentElapsedSeconds = 0;
+    this.countdownSecondsRemaining = 0;
+    this.state = this.stateForStep(this.currentStep);
+  }
+
+  private stateForStep(step: Readonly<StorySequenceStepConfig> | undefined): StoryState {
+    if (step === undefined) return "completed";
+    return step.type === "scene" ? "scene" : "play";
   }
 }

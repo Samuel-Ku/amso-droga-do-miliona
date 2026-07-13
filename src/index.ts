@@ -1,5 +1,6 @@
 import "./styles/campaign.css";
 import { CampaignController } from "./CampaignController";
+import { RUNNER_SCHEMA_VERSION } from "./config/defaults";
 import type {
   RunnerConfig,
   RunnerOpenOptions,
@@ -19,7 +20,7 @@ function requireEnabledConfig(value: RunnerConfig): RunnerConfig {
   // Public runtime entry points receive the already validated value produced by
   // the loader. Re-parsing would reject the parser's own derived compatibility
   // fields (`facts`, `narrativeMode`, etc.) under the strict wire schema.
-  if (value.schemaVersion !== 3 || !value.enabled) {
+  if (value.schemaVersion !== RUNNER_SCHEMA_VERSION || !value.enabled) {
     throw new Error("runner_config_disabled_or_invalid");
   }
   return value;
@@ -30,7 +31,7 @@ function browserNavigate(path: string): void {
 }
 
 /**
- * Mounts the canonical, page-level v3 experience. The campaign owns only the
+ * Mounts the canonical, page-level v4 experience. The campaign owns only the
  * supplied host, which keeps CMS integration explicit and testable.
  */
 export function mountCampaign(

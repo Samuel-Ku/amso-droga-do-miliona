@@ -2,14 +2,13 @@ import { describe, expect, it } from "vitest";
 import { BossDirector } from "../src/game/boss";
 import { collectsPackage, collidesWithObstacle, rectanglesOverlap } from "../src/game/collision";
 import { BOSS, GAMEPLAY, GROUND_Y } from "../src/game/constants";
-import { getDifficulty } from "../src/game/difficulty";
+import { getDifficulty, getStoryDifficulty } from "../src/game/difficulty";
 import { createRunnerModel, queueJump, stepRunnerPhysics } from "../src/game/physics";
 import { SeededRandom } from "../src/game/random";
 import { RunnerGame } from "../src/game/RunnerGame";
 import { WarehouseRenderer } from "../src/game/renderer";
 import { calculateScore, distanceInMeters, packageBonusScore } from "../src/game/scoring";
 import {
-  activateBossReward,
   activateWave,
   calculateSpawnGap,
   createObstaclePool,
@@ -88,19 +87,6 @@ describe("game random and spawning", () => {
     expect(goldenPackages).toBeGreaterThan(0);
   });
 
-  it("creates an all-golden reward trail after a boss", () => {
-    const packages = createPackagePool(8);
-    expect(activateBossReward(packages)).toBe(5);
-    const active = packages.filter((parcel) => parcel.active);
-    expect(active).toHaveLength(5);
-    expect(active.every((parcel) => parcel.kind === "golden")).toBe(true);
-    expect(active.every((parcel) => parcel.scoreValue === GAMEPLAY.goldenPackageScore)).toBe(true);
-
-    const insufficientPool = createPackagePool(4);
-    expect(activateBossReward(insufficientPool)).toBe(0);
-    expect(insufficientPool.some((parcel) => parcel.active)).toBe(false);
-  });
-
   it("does not partially activate a wave when the package pool is exhausted", () => {
     const difficulty = getDifficulty(35);
     const spawner = new FairSpawner(new SeededRandom(91), difficulty.speed);
@@ -149,7 +135,7 @@ describe("boss encounter", () => {
       if (resolution.type === "complete") completionCount += 1;
     }
 
-    expect(attackKinds).toEqual(["pallet", "trolley", "box-stack"]);
+    expect(attackKinds).toEqual(["pallet", "overhead", "trolley"]);
     expect(boss.model.attacksSurvived).toBe(3);
     expect(boss.model.phase).toBe("reward");
     expect(completionCount).toBe(1);
@@ -262,6 +248,14 @@ describe("collision and scoring", () => {
 });
 
 describe("difficulty and responsive canvas", () => {
+  it("ramps the five-minute story from 0.8x to 1.15x using active play only", () => {
+    const settings = { speedStartMultiplier: 0.8, speedMaxMultiplier: 1.15 };
+    expect(getStoryDifficulty(0, 300, settings).speedMultiplier).toBe(0.8);
+    expect(getStoryDifficulty(150, 300, settings).speedMultiplier).toBeCloseTo(0.975);
+    expect(getStoryDifficulty(300, 300, settings).speedMultiplier).toBe(1.15);
+    expect(getStoryDifficulty(600, 300, settings).speedMultiplier).toBe(1.15);
+  });
+
   it("follows the intended speed plateaus without exceeding 1.55x", () => {
     expect(getDifficulty(0).speedMultiplier).toBe(1);
     expect(getDifficulty(15).speedMultiplier).toBe(1);

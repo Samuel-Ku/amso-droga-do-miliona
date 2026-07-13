@@ -15,11 +15,12 @@ import type {
   PowerUpKind,
   RunnerConfig,
   RunnerFact,
-  StoryBeatConfig,
-  StoryBeatKind,
+  StoryChapterId,
   StoryConfig,
   StoryEpochConfig,
-  StorySectionConfig
+  StorySceneConfig,
+  StorySequenceStepConfig,
+  StoryVignette
 } from "../shared/types";
 import type {
   RunnerConfigIssue,
@@ -31,9 +32,36 @@ const IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9_.-]{0,63}$/;
 const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$/;
 const ASSET_PATH_PATTERN = /^\/[A-Za-z0-9._/-]+$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const BEAT_KINDS: readonly StoryBeatKind[] = ["title", "dialogue", "copy", "stat", "challenge"];
 const POWER_UPS: readonly PowerUpKind[] = ["gwarancja_48", "audyt_jakosci", "drugie_zycie"];
 const OBSTACLE_KINDS = ["box-stack", "pallet", "trolley", "overhead"] as const;
+const STORY_CHAPTERS: readonly StoryChapterId[] = [
+  "prologue", "epoch_1", "epoch_2", "epoch_3", "epoch_4", "epoch_5", "finale"
+];
+const STORY_VIGNETTES: readonly StoryVignette[] = [
+  "first-package", "small-warehouse", "tested-device", "cable-route", "quality-stamp",
+  "creative-desk", "growing-business", "long-trust", "warehouse-scale", "product-stream",
+  "delivery-map", "million-counter", "million-wave", "million-package", "thank-you"
+];
+const CANONICAL_SCENE_ORDER = [
+  "intro.ready", "intro.beginning", "intro.promise", "epoch_1.challenge",
+  "epoch_1.resolve", "epoch_2.setup", "epoch_2.resolve", "epoch_3.people",
+  "epoch_3.designer", "epoch_3.business", "epoch_3.b2b", "epoch_4.scale",
+  "epoch_4.numbers", "epoch_4.resolve", "epoch_5.approach", "epoch_5.wave",
+  "final.moments", "final.thanks"
+] as const;
+const CANONICAL_SEQUENCE = [
+  "scene:intro.ready", "scene:intro.beginning", "scene:intro.promise",
+  "play:epoch_1.training:0", "scene:epoch_1.challenge", "play:epoch_1.cable_chaos:0",
+  "scene:epoch_1.resolve", "scene:epoch_2.setup", "play:epoch_2.quality_series:1",
+  "play:epoch_2.doubt_cloud:1", "scene:epoch_2.resolve", "scene:epoch_3.people",
+  "scene:epoch_3.designer", "play:epoch_3.creative_contract:2",
+  "scene:epoch_3.business", "play:epoch_3.growth_contract:2", "scene:epoch_3.b2b",
+  "play:epoch_3.trust_contract:2", "play:epoch_3.budget_eater:2",
+  "scene:epoch_4.scale", "scene:epoch_4.numbers", "play:epoch_4.orders:3",
+  "play:epoch_4.logistic_hydra:3", "scene:epoch_4.resolve",
+  "scene:epoch_5.approach", "play:epoch_5.counter:4", "scene:epoch_5.wave",
+  "play:epoch_5.million_wave:4", "scene:final.moments", "scene:final.thanks"
+] as const;
 const UI_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9]{0,63}$/;
 const CRITICAL_UI_KEYS = [
   "landingLead", "startStory", "choosePath", "replayStory", "challengeMode",
@@ -181,37 +209,53 @@ function parseAssets(value: unknown): AssetsConfig | null {
   return { bundles };
 }
 
-function parseBeat(value: unknown): StoryBeatConfig | null {
+function parseScene(value: unknown): StorySceneConfig | null {
   if (!isRecord(value) || !hasExactKeys(
     value,
-    ["id", "text", "maxExposureSeconds", "kind"],
-    ["id", "text", "maxExposureSeconds", "kind"]
+    ["id", "chapter", "eyebrow", "title", "body", "vignette", "continueLabel"],
+    ["id", "chapter", "eyebrow", "title", "body", "vignette", "continueLabel"]
   )) return null;
-  if (!isIdentifier(value.id) || !isSafeText(value.text, 420)) return null;
-  if (!finiteInRange(value.maxExposureSeconds, 0.5, 10)) return null;
-  if (typeof value.kind !== "string" || !(BEAT_KINDS as readonly string[]).includes(value.kind)) {
-    return null;
-  }
+  if (!isIdentifier(value.id) || typeof value.chapter !== "string" ||
+      !(STORY_CHAPTERS as readonly string[]).includes(value.chapter) ||
+      !isSafeText(value.eyebrow, 80) || !isSafeText(value.title, 160) ||
+      !Array.isArray(value.body) || value.body.length < 1 || value.body.length > 2 ||
+      value.body.some((paragraph) => !isSafeText(paragraph, 420)) ||
+      typeof value.vignette !== "string" ||
+      !(STORY_VIGNETTES as readonly string[]).includes(value.vignette) ||
+      !isSafeText(value.continueLabel, 80)) return null;
   return {
     id: value.id,
-    text: value.text,
-    maxExposureSeconds: value.maxExposureSeconds,
-    kind: value.kind as StoryBeatKind
+    chapter: value.chapter as StoryChapterId,
+    eyebrow: value.eyebrow,
+    title: value.title,
+    body: value.body as string[],
+    vignette: value.vignette as StoryVignette,
+    continueLabel: value.continueLabel
   };
 }
 
-function parseSection(value: unknown, expectedId: "prologue" | "finale"): StorySectionConfig | null {
-  if (!isRecord(value) || !hasExactKeys(
-    value,
-    ["id", "durationSeconds", "beats"],
-    ["id", "durationSeconds", "beats"]
-  )) return null;
-  if (value.id !== expectedId || !finiteInRange(value.durationSeconds, 1, 90) || !Array.isArray(value.beats)) {
-    return null;
+function parseSequenceStep(value: unknown): StorySequenceStepConfig | null {
+  if (!isRecord(value) || typeof value.type !== "string") return null;
+  if (value.type === "scene") {
+    if (!hasExactKeys(value, ["type", "sceneId"], ["type", "sceneId"]) ||
+        !isIdentifier(value.sceneId)) return null;
+    return { type: "scene", sceneId: value.sceneId };
   }
-  const beats = value.beats.map(parseBeat);
-  if (beats.length === 0 || beats.some((beat) => beat === null)) return null;
-  return { id: expectedId, durationSeconds: value.durationSeconds, beats: beats as StoryBeatConfig[] };
+  if (value.type === "play") {
+    if (!hasExactKeys(
+      value,
+      ["type", "id", "epochIndex", "durationSeconds"],
+      ["type", "id", "epochIndex", "durationSeconds"]
+    ) || !isIdentifier(value.id) || !Number.isInteger(value.epochIndex) ||
+        !finiteInRange(value.durationSeconds, 1, 90)) return null;
+    return {
+      type: "play",
+      id: value.id,
+      epochIndex: value.epochIndex as number,
+      durationSeconds: value.durationSeconds
+    };
+  }
+  return null;
 }
 
 function parseEpoch(value: unknown): StoryEpochConfig | null {
@@ -219,11 +263,11 @@ function parseEpoch(value: unknown): StoryEpochConfig | null {
     value,
     [
       "index", "id", "name", "year", "themeIndex", "durationSeconds", "obstaclePool",
-      "difficultyStart", "difficultyEnd", "challengeName", "powerUpDebut", "beats"
+      "difficultyStart", "difficultyEnd", "challengeName", "powerUpDebut"
     ],
     [
       "index", "id", "name", "year", "themeIndex", "durationSeconds", "obstaclePool",
-      "difficultyStart", "difficultyEnd", "challengeName", "beats"
+      "difficultyStart", "difficultyEnd", "challengeName"
     ]
   )) return null;
   if (!Number.isInteger(value.index) || !isIdentifier(value.id) || !isSafeText(value.name, 80) ||
@@ -233,13 +277,11 @@ function parseEpoch(value: unknown): StoryEpochConfig | null {
         typeof kind !== "string" || !(OBSTACLE_KINDS as readonly string[]).includes(kind)) ||
       !finiteInRange(value.difficultyStart, 0.5, 2) ||
       !finiteInRange(value.difficultyEnd, value.difficultyStart, 2) ||
-      !isSafeText(value.challengeName, 80) || !Array.isArray(value.beats)) return null;
+      !isSafeText(value.challengeName, 80)) return null;
   if (value.powerUpDebut !== undefined &&
       (typeof value.powerUpDebut !== "string" || !(POWER_UPS as readonly string[]).includes(value.powerUpDebut))) {
     return null;
   }
-  const beats = value.beats.map(parseBeat);
-  if (beats.length === 0 || beats.some((beat) => beat === null)) return null;
   return {
     index: value.index as number,
     id: value.id,
@@ -252,7 +294,6 @@ function parseEpoch(value: unknown): StoryEpochConfig | null {
     difficultyEnd: value.difficultyEnd,
     challengeName: value.challengeName,
     ...(typeof value.powerUpDebut === "string" ? { powerUpDebut: value.powerUpDebut as PowerUpKind } : {}),
-    beats: beats as StoryBeatConfig[],
     ...(value.index === 4 ? { bossClimax: true } : {})
   };
 }
@@ -260,27 +301,70 @@ function parseEpoch(value: unknown): StoryEpochConfig | null {
 function parseStory(value: unknown): StoryConfig | null {
   if (!isRecord(value) || !hasExactKeys(
     value,
-    ["durationSeconds", "prologue", "epochs", "finale"],
-    ["durationSeconds", "prologue", "epochs", "finale"]
+    [
+      "activeDurationSeconds", "readingSpeedMultiplier", "speedStartMultiplier",
+      "speedMaxMultiplier", "resumeCountdownSeconds", "firstCompletionBonusScore",
+      "scenes", "sequence", "epochs"
+    ],
+    [
+      "activeDurationSeconds", "readingSpeedMultiplier", "speedStartMultiplier",
+      "speedMaxMultiplier", "resumeCountdownSeconds", "firstCompletionBonusScore",
+      "scenes", "sequence", "epochs"
+    ]
   )) return null;
-  if (!finiteInRange(value.durationSeconds, 150, 180) || !Array.isArray(value.epochs)) return null;
-  const prologue = parseSection(value.prologue, "prologue");
-  const finale = parseSection(value.finale, "finale");
+  if (!finiteInRange(value.activeDurationSeconds, 300, 600) ||
+      !finiteInRange(value.readingSpeedMultiplier, 0.1, 0.5) ||
+      !finiteInRange(value.speedStartMultiplier, 0.5, 1.5) ||
+      !finiteInRange(value.speedMaxMultiplier, value.speedStartMultiplier, 1.5) ||
+      value.resumeCountdownSeconds !== 3 ||
+      !finiteInRange(value.firstCompletionBonusScore, 0, 1_000_000) ||
+      !Number.isInteger(value.firstCompletionBonusScore) ||
+      !Array.isArray(value.scenes) || !Array.isArray(value.sequence) ||
+      !Array.isArray(value.epochs)) return null;
+  const scenes = value.scenes.map(parseScene);
+  const sequence = value.sequence.map(parseSequenceStep);
   const epochs = value.epochs.map(parseEpoch);
-  if (!prologue || !finale || epochs.length !== 5 || epochs.some((epoch) => epoch === null)) return null;
+  if (scenes.length !== 18 || scenes.some((scene) => scene === null) ||
+      sequence.length === 0 || sequence.some((step) => step === null) ||
+      epochs.length !== 5 || epochs.some((epoch) => epoch === null)) return null;
+  const typedScenes = scenes as StorySceneConfig[];
+  const typedSequence = sequence as StorySequenceStepConfig[];
   const typedEpochs = epochs as StoryEpochConfig[];
   if (typedEpochs.some((epoch, index) => epoch.index !== index)) return null;
-  const computedDuration = prologue.durationSeconds + finale.durationSeconds +
-    typedEpochs.reduce((total, epoch) => total + epoch.durationSeconds, 0);
-  if (Math.abs(computedDuration - value.durationSeconds) > 0.001) return null;
-  const beats = [
-    ...prologue.beats,
-    ...typedEpochs.flatMap((epoch) => epoch.beats ?? []),
-    ...finale.beats
-  ];
-  const ids = new Set(beats.map((beat) => beat.id));
-  if (ids.size !== beats.length || !ids.has("final.thanks")) return null;
-  return { durationSeconds: value.durationSeconds, prologue, epochs: typedEpochs, finale };
+  const sceneIds = new Set(typedScenes.map((scene) => scene.id));
+  if (sceneIds.size !== typedScenes.length || !sceneIds.has("final.thanks")) return null;
+  if (typedScenes.some((scene, index) => scene.id !== CANONICAL_SCENE_ORDER[index])) return null;
+  const sequenceKeys = typedSequence.map((step) => step.type === "scene"
+    ? `scene:${step.sceneId}`
+    : `play:${step.id}:${step.epochIndex}`);
+  if (sequenceKeys.length !== CANONICAL_SEQUENCE.length ||
+      sequenceKeys.some((key, index) => key !== CANONICAL_SEQUENCE[index])) return null;
+  const sceneSteps = typedSequence.filter((step) => step.type === "scene");
+  if (sceneSteps.length !== typedScenes.length ||
+      new Set(sceneSteps.map((step) => step.sceneId)).size !== sceneSteps.length ||
+      sceneSteps.some((step) => !sceneIds.has(step.sceneId)) ||
+      sceneSteps.at(-1)?.sceneId !== "final.thanks") return null;
+  const playSteps = typedSequence.filter((step) => step.type === "play");
+  if (playSteps.some((step) => step.epochIndex < 0 || step.epochIndex >= typedEpochs.length) ||
+      playSteps.reduce((total, step) => total + step.durationSeconds, 0) !==
+        value.activeDurationSeconds) return null;
+  for (const epoch of typedEpochs) {
+    const epochDuration = playSteps
+      .filter((step) => step.epochIndex === epoch.index)
+      .reduce((total, step) => total + step.durationSeconds, 0);
+    if (epochDuration !== epoch.durationSeconds) return null;
+  }
+  return {
+    activeDurationSeconds: value.activeDurationSeconds,
+    readingSpeedMultiplier: value.readingSpeedMultiplier,
+    speedStartMultiplier: value.speedStartMultiplier,
+    speedMaxMultiplier: value.speedMaxMultiplier,
+    resumeCountdownSeconds: value.resumeCountdownSeconds,
+    firstCompletionBonusScore: value.firstCompletionBonusScore,
+    scenes: typedScenes,
+    sequence: typedSequence,
+    epochs: typedEpochs
+  };
 }
 
 function parseChallenge(value: unknown): ChallengeConfig | null {
@@ -399,7 +483,7 @@ export function validateRunnerConfig(
   return {
     success: true,
     data: {
-      schemaVersion: 3,
+      schemaVersion: RUNNER_SCHEMA_VERSION,
       enabled: value.enabled,
       gameVersion: value.gameVersion,
       claim: value.claim,

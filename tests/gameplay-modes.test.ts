@@ -4,14 +4,19 @@ import { parseRunnerConfig } from "../src/config/schema";
 import type { GameSnapshot } from "../src/game/contracts";
 import { resolveCollision } from "../src/game/mode-rules";
 import { RunnerGame } from "../src/game/RunnerGame";
+import type { StoryTimelineSnapshot } from "../src/game/story-timeline";
 import type { StoryConfig } from "../src/shared/types";
 
 function createGameHarness(
   mode: "story" | "challenge",
-  storyOverride?: StoryConfig
+  storyOverride?: StoryConfig,
+  awardStoryCompletionBonus = true
 ) {
   const frames = new Map<number, FrameRequestCallback>();
   let nextFrameId = 0;
+  let visibilityState: DocumentVisibilityState = "visible";
+  let visibilityListener: (() => void) | null = null;
+  let blurListener: (() => void) | null = null;
   const view = {
     devicePixelRatio: 1,
     requestAnimationFrame(callback: FrameRequestCallback): number {
@@ -22,15 +27,23 @@ function createGameHarness(
     cancelAnimationFrame(id: number): void {
       frames.delete(id);
     },
-    addEventListener(): void {},
-    removeEventListener(): void {},
+    addEventListener(type: string, listener: () => void): void {
+      if (type === "blur") blurListener = listener;
+    },
+    removeEventListener(type: string): void {
+      if (type === "blur") blurListener = null;
+    },
     matchMedia: () => ({ matches: false, addEventListener(): void {}, removeEventListener(): void {} })
   };
   const documentMock = {
     defaultView: view,
-    visibilityState: "visible",
-    addEventListener(): void {},
-    removeEventListener(): void {}
+    get visibilityState(): DocumentVisibilityState { return visibilityState; },
+    addEventListener(type: string, listener: () => void): void {
+      if (type === "visibilitychange") visibilityListener = listener;
+    },
+    removeEventListener(type: string): void {
+      if (type === "visibilitychange") visibilityListener = null;
+    }
   };
   const contextTarget: Record<PropertyKey, unknown> = {};
   const context = new Proxy(contextTarget, {
@@ -55,10 +68,11 @@ function createGameHarness(
   const config = parseRunnerConfig(productionConfig);
   if (!config) throw new Error("production config should parse");
   const snapshots: GameSnapshot[] = [];
-  const activeBeatIds = new Set<string>();
-  const checkpoints: string[] = [];
+  const storyUpdates: StoryTimelineSnapshot[] = [];
+  const modeChanges: string[] = [];
   let gameOvers = 0;
   let storyCompletions = 0;
+  let narrativeEnds = 0;
   let outcome: string | null = null;
   const game = new RunnerGame(
     canvas,
@@ -68,10 +82,9 @@ function createGameHarness(
         gameOvers += 1;
         outcome = result.outcome;
       },
-      onStoryUpdate: ({ activeBeats }) => {
-        for (const beat of activeBeats) activeBeatIds.add(beat.id);
-      },
-      onStoryCheckpoint: (checkpoint) => checkpoints.push(checkpoint),
+      onStoryUpdate: (snapshot) => storyUpdates.push(snapshot),
+      onModeChange: (mode) => modeChanges.push(mode),
+      onNarrativeEnd: () => { narrativeEnds += 1; },
       onStoryComplete: () => { storyCompletions += 1; }
     },
     {
@@ -79,28 +92,51 @@ function createGameHarness(
       reducedMotion: true,
       mode,
       story: storyOverride ?? config.story,
-      challenge: config.challenge
+      challenge: config.challenge,
+      awardStoryCompletionBonus
     }
   );
 
   return {
     game,
     snapshots,
-    activeBeatIds,
-    checkpoints,
+    storyUpdates,
+    modeChanges,
     get gameOvers() { return gameOvers; },
     get storyCompletions() { return storyCompletions; },
+    get narrativeEnds() { return narrativeEnds; },
     get outcome() { return outcome; },
+    blurWindow(): void {
+      blurListener?.();
+    },
+    hideDocument(): void {
+      visibilityState = "hidden";
+      visibilityListener?.();
+    },
     timestamp: 0,
-    advance(seconds: number): void {
+    advance(seconds: number, beforeFrame?: (elapsedSeconds: number) => void): void {
       const frameCount = Math.ceil(seconds * 60);
       for (let index = 0; index <= frameCount && game.state === "running"; index += 1) {
         const entry = frames.entries().next().value as [number, FrameRequestCallback] | undefined;
         if (!entry) break;
         frames.delete(entry[0]);
+        beforeFrame?.(index / 60);
         this.timestamp += 1000 / 60;
         entry[1](this.timestamp);
       }
+    },
+    driveStory(): void {
+      for (let guard = 0; guard < 2_000; guard += 1) {
+        const gameSnapshot = snapshots.at(-1);
+        if (gameSnapshot?.mode === "challenge") return;
+        const storySnapshot = storyUpdates.at(-1);
+        if (storySnapshot?.state === "scene" && storySnapshot.scene) {
+          game.continueStoryScene(storySnapshot.scene.id);
+          continue;
+        }
+        this.advance(storySnapshot?.state === "countdown" ? 3.05 : 1);
+      }
+      throw new Error("story did not enter challenge");
     }
   };
 }
@@ -142,9 +178,11 @@ describe("campaign collision contract", () => {
     };
     const harness = createGameHarness("story", collisionStory);
     harness.game.start("keyboard");
-    harness.advance(10);
-    expect(harness.snapshots.every(({ collisions }) => collisions === 0)).toBe(true);
-    harness.advance(15);
+    harness.game.continueStoryScene("intro.ready");
+    harness.game.continueStoryScene("intro.beginning");
+    harness.game.continueStoryScene("intro.promise");
+    harness.advance(4);
+    harness.advance(25);
 
     expect(harness.game.state).toBe("running");
     expect(harness.gameOvers).toBe(0);
@@ -163,57 +201,285 @@ describe("campaign collision contract", () => {
     harness.game.destroy();
   });
 
-  it("drives the complete configured story once and exposes every content id", () => {
+  it("lets a player clear all ten tutorial actions inside the production training window", () => {
+    const harness = createGameHarness("story");
+    harness.game.start("keyboard");
+    harness.game.continueStoryScene("intro.ready");
+    harness.game.continueStoryScene("intro.beginning");
+    harness.game.continueStoryScene("intro.promise");
+    harness.advance(3.05);
+
+    const jumpAt = [2.35, 8.2, 13.9, 19.7, 25.4];
+    const slideAround = [5.92, 11.73, 17.42, 23.18, 28.85];
+    const jumped = new Set<number>();
+    harness.advance(30.05, (elapsedSeconds) => {
+      for (const [index, time] of jumpAt.entries()) {
+        if (!jumped.has(index) && elapsedSeconds >= time) {
+          jumped.add(index);
+          harness.game.jump("keyboard");
+        }
+      }
+      const sliding = slideAround.some(
+        (time) => elapsedSeconds >= time - 0.58 && elapsedSeconds <= time + 0.08
+      );
+      harness.game.crouch(sliding, "keyboard");
+    });
+
+    expect(harness.storyUpdates.at(-1)?.scene?.id).toBe("epoch_1.challenge");
+    expect(harness.snapshots.at(-1)?.storyObjectives.epoch1.training).toMatchObject({
+      jumps: 5,
+      slides: 5,
+      completed: true
+    });
+    expect(harness.snapshots.at(-1)?.storyObjectivesCompleted).toContain("epoch_1.training");
+    harness.game.destroy();
+  });
+
+  it("lets a player resolve all four Cable Chaos attacks before its production finale ends", () => {
+    const harness = createGameHarness("story");
+    harness.game.start("keyboard");
+    harness.game.continueStoryScene("intro.ready");
+    harness.game.continueStoryScene("intro.beginning");
+    harness.game.continueStoryScene("intro.promise");
+    harness.advance(3.05);
+    harness.advance(30.05);
+    expect(harness.storyUpdates.at(-1)?.scene?.id).toBe("epoch_1.challenge");
+    harness.game.continueStoryScene("epoch_1.challenge");
+    harness.advance(3.05);
+
+    const jumpAt = [4.1, 9.65];
+    const slideAround = [7.55, 13.06];
+    const jumped = new Set<number>();
+    harness.advance(15.05, (elapsedSeconds) => {
+      for (const [index, time] of jumpAt.entries()) {
+        if (!jumped.has(index) && elapsedSeconds >= time) {
+          jumped.add(index);
+          harness.game.jump("keyboard");
+        }
+      }
+      const sliding = slideAround.some(
+        (time) => elapsedSeconds >= time - 0.58 && elapsedSeconds <= time + 0.08
+      );
+      harness.game.crouch(sliding, "keyboard");
+    });
+
+    expect(harness.storyUpdates.at(-1)?.scene?.id).toBe("epoch_1.resolve");
+    expect(harness.snapshots.at(-1)?.storyObjectives.epoch1.cableChaos).toMatchObject({
+      bestAlternation: 4,
+      completed: true
+    });
+    expect(harness.snapshots.at(-1)?.storyObjectivesCompleted)
+      .toContain("epoch_1.cable_chaos");
+    expect(harness.snapshots.at(-1)?.storyClimaxesCompleted).toContain(0);
+    harness.game.destroy();
+  });
+
+  it("holds story scenes indefinitely, then keeps one score while entering challenge", () => {
     const config = parseRunnerConfig(productionConfig);
     if (!config) throw new Error("production config should parse");
-    const configuredIds = [
-      ...config.story.prologue.beats,
-      ...config.story.epochs.flatMap(({ beats }) => beats),
-      ...config.story.finale.beats
-    ].map(({ id }) => id);
     const harness = createGameHarness("story");
 
     harness.game.start("keyboard");
-    harness.advance(180);
-
-    expect(harness.game.state).toBe("game_over");
-    expect(harness.outcome).toBe("victory");
-    expect(harness.storyCompletions).toBe(1);
-    expect([...harness.activeBeatIds].sort()).toEqual([...configuredIds].sort());
-    expect(harness.checkpoints).toEqual([
-      "prologue",
-      "epoch_1",
-      "epoch_2",
-      "epoch_3",
-      "epoch_4",
-      "epoch_5",
-      "finale",
-      "completed"
-    ]);
-    expect(harness.snapshots.some(({ activeStoryBeatIds }) =>
-      activeStoryBeatIds.includes("final.thanks")
-    )).toBe(true);
-    expect(harness.snapshots.some(({ bossPhase }) => bossPhase === "attacking")).toBe(true);
-    expect(Math.max(...harness.snapshots.map(({ bossProgress }) => bossProgress))).toBe(3);
-    expect(harness.snapshots.some(({ bossesDefeated }) => bossesDefeated === 1)).toBe(true);
-    expect(harness.snapshots.some(({ activePowerUps }) =>
-      ["gwarancja_48", "audyt_jakosci", "drugie_zycie"].every((kind) =>
-        activePowerUps.includes(kind as typeof activePowerUps[number])
-      )
-    )).toBe(true);
-    expect(harness.snapshots.some(({ activeStorySymbolIds }) =>
-      activeStorySymbolIds.length > 0
-    )).toBe(true);
-    expect([
-      ...new Set(harness.snapshots.map(({ storyClimaxName }) => storyClimaxName).filter(Boolean))
-    ]).toEqual(config.story.epochs.slice(0, 4).map(({ challengeName }) => challengeName));
-    expect(harness.snapshots.at(-1)?.storyClimaxesCompleted).toEqual([0, 1, 2, 3]);
+    harness.advance(60);
+    expect(harness.storyUpdates.at(-1)?.scene?.id).toBe("intro.ready");
     expect(harness.snapshots.at(-1)).toMatchObject({
-      storyPhase: "completed",
-      storyProgress: 1,
-      trustCorridor: false,
-      storySymbols: 8
+      mode: "story",
+      score: 0,
+      durationSeconds: 0,
+      trustCorridor: true
     });
+
+    harness.driveStory();
+
+    expect(harness.game.state).toBe("running");
+    expect(harness.gameOvers).toBe(0);
+    expect(harness.storyCompletions).toBe(1);
+    expect(harness.modeChanges).toEqual(["challenge"]);
+    expect(harness.storyUpdates.filter(({ state }) => state === "scene")
+      .map(({ scene }) => scene?.id)
+      .filter((id, index, ids) => index === 0 || id !== ids[index - 1]))
+      .toEqual(config.story.scenes.map(({ id }) => id));
+    const challengeSnapshot = harness.snapshots.at(-1);
+    expect(challengeSnapshot).toMatchObject({
+      mode: "challenge",
+      storyPhase: null,
+      storyObjectiveSegmentId: "",
+      epochName: "",
+      epochYear: "",
+      epochIndex: 0,
+      epochIndexMax: 0
+    });
+    expect(challengeSnapshot?.durationSeconds).toBeGreaterThanOrEqual(300);
+    expect(challengeSnapshot?.score).toBeGreaterThanOrEqual(config.story.firstCompletionBonusScore);
+    expect(challengeSnapshot?.storyObjectivesCompleted).toEqual(expect.arrayContaining([
+      "epoch_4.logistic_hydra",
+      "epoch_5.counter",
+      "epoch_5.million_wave"
+    ]));
+
+    harness.advance(1);
+    expect(harness.game.state).toBe("running");
+    expect(harness.gameOvers).toBe(0);
+    expect(harness.snapshots.at(-1)).toMatchObject({
+      mode: "challenge",
+      bossPhase: "inactive",
+      logisticWavePhase: "inactive"
+    });
+    harness.game.destroy();
+  });
+
+  it("adds the configured completion bonus only when the profile marks this as the first pass", () => {
+    const config = parseRunnerConfig(productionConfig);
+    if (!config) throw new Error("production config should parse");
+    const firstPass = createGameHarness("story", undefined, true);
+    const replay = createGameHarness("story", undefined, false);
+
+    firstPass.game.start("keyboard");
+    replay.game.start("keyboard");
+    firstPass.driveStory();
+    replay.driveStory();
+
+    expect(firstPass.snapshots.at(-1)!.score - replay.snapshots.at(-1)!.score)
+      .toBe(config.story.firstCompletionBonusScore);
+    firstPass.game.destroy();
+    replay.game.destroy();
+  });
+
+  it("does not emit a legacy narrative ending when the seamless challenge ends", () => {
+    const harness = createGameHarness("story");
+    harness.game.start("keyboard");
+    harness.driveStory();
+    harness.advance(90);
+
+    expect(harness.gameOvers).toBe(1);
+    expect(harness.narrativeEnds).toBe(0);
+    harness.game.destroy();
+  });
+
+  it("resets a completed seamless run as a pure challenge without reviving story state", () => {
+    const harness = createGameHarness("story");
+    harness.game.start("keyboard");
+    harness.driveStory();
+
+    harness.game.reset();
+
+    expect(harness.snapshots.at(-1)).toMatchObject({
+      mode: "challenge",
+      storyPhase: null,
+      durationSeconds: 0,
+      score: 0
+    });
+    expect(harness.game.continueStoryScene("intro.ready")).toBe(false);
+    harness.game.destroy();
+  });
+
+  it("derives timed objective completion from a shortened configured segment", () => {
+    const config = parseRunnerConfig(productionConfig);
+    if (!config) throw new Error("production config should parse");
+    const shortened: StoryConfig = {
+      ...config.story,
+      activeDurationSeconds: 290,
+      sequence: config.story.sequence.map((step) =>
+        step.type === "play" && step.id === "epoch_4.logistic_hydra"
+          ? { ...step, durationSeconds: 10 }
+          : step
+      ),
+      epochs: config.story.epochs.map((epoch) =>
+        epoch.index === 3 ? { ...epoch, durationSeconds: 55 } : epoch
+      )
+    };
+    const harness = createGameHarness("story", shortened);
+    harness.game.start("keyboard");
+    harness.driveStory();
+
+    expect(harness.snapshots.at(-1)?.storyObjectivesCompleted)
+      .toContain("epoch_4.logistic_hydra");
+    expect(harness.snapshots.at(-1)?.storyObjectives.epoch4.hydra)
+      .toMatchObject({ elapsedSeconds: 10, completed: true });
+    harness.game.destroy();
+  });
+
+  it("reserves the boss and its earned power-up patterns for the final 12 seconds", () => {
+    const harness = createGameHarness("story");
+    harness.game.start("keyboard");
+    for (let guard = 0; guard < 2_000; guard += 1) {
+      const story = harness.storyUpdates.at(-1);
+      if (story?.state === "scene" && story.scene?.id === "epoch_5.wave") break;
+      if (story?.state === "scene" && story.scene) {
+        harness.game.continueStoryScene(story.scene.id);
+      } else {
+        harness.advance(story?.state === "countdown" ? 3.05 : 1);
+      }
+    }
+    expect(harness.storyUpdates.at(-1)?.scene?.id).toBe("epoch_5.wave");
+
+    harness.game.continueStoryScene("epoch_5.wave");
+    harness.advance(3.05);
+    harness.advance(46);
+    expect(harness.snapshots.at(-1)).toMatchObject({
+      mode: "story",
+      storyObjectiveSegmentId: "epoch_5.million_wave",
+      bossPhase: "inactive",
+      bossesDefeated: 0
+    });
+
+    harness.advance(3);
+    expect(harness.snapshots.at(-1)?.bossPhase).not.toBe("inactive");
+    harness.game.destroy();
+  });
+
+  it("derives the final boss window from a tuned 70-second million wave", () => {
+    const config = parseRunnerConfig(productionConfig);
+    if (!config) throw new Error("production config should parse");
+    const tuned: StoryConfig = {
+      ...config.story,
+      activeDurationSeconds: 310,
+      sequence: config.story.sequence.map((step) =>
+        step.type === "play" && step.id === "epoch_5.million_wave"
+          ? { ...step, durationSeconds: 70 }
+          : step
+      ),
+      epochs: config.story.epochs.map((epoch) =>
+        epoch.index === 4 ? { ...epoch, durationSeconds: 85 } : epoch
+      )
+    };
+    const harness = createGameHarness("story", tuned);
+    harness.game.start("keyboard");
+    for (let guard = 0; guard < 2_000; guard += 1) {
+      const story = harness.storyUpdates.at(-1);
+      if (story?.state === "scene" && story.scene?.id === "epoch_5.wave") break;
+      if (story?.state === "scene" && story.scene) harness.game.continueStoryScene(story.scene.id);
+      else harness.advance(story?.state === "countdown" ? 3.05 : 1);
+    }
+    harness.game.continueStoryScene("epoch_5.wave");
+    harness.advance(3.05);
+    harness.advance(54);
+    expect(harness.snapshots.at(-1)).toMatchObject({ bossPhase: "inactive", bossesDefeated: 0 });
+
+    harness.advance(3);
+    expect(harness.snapshots.at(-1)?.bossPhase).not.toBe("inactive");
+    harness.game.destroy();
+  });
+});
+
+describe("story lifecycle pauses", () => {
+  it("ignores blur and visibility while a story scene or countdown owns focus", () => {
+    const harness = createGameHarness("story");
+    harness.game.start("keyboard");
+
+    harness.blurWindow();
+    expect(harness.game.state).toBe("running");
+    expect(harness.game.continueStoryScene("intro.ready")).toBe(true);
+    expect(harness.game.continueStoryScene("intro.beginning")).toBe(true);
+    expect(harness.game.continueStoryScene("intro.promise")).toBe(true);
+
+    harness.hideDocument();
+    expect(harness.game.state).toBe("running");
+    harness.advance(3.05);
+    expect(harness.storyUpdates.at(-1)?.state).toBe("play");
+
+    harness.blurWindow();
+    expect(harness.game.state).toBe("paused");
     harness.game.destroy();
   });
 });

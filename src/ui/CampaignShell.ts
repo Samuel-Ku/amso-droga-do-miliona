@@ -1,36 +1,32 @@
 import "../styles/campaign.css";
 import { AMSO_LOGO_DATA_URI } from "./brandLogo";
 import type { ControlMethod, GameSnapshot } from "../game/contracts";
+import {
+  fullscreenPreferenceFromElement,
+  formatPowerUpHud,
+  formatStoryObjectiveHud,
+  getTrappedFocusIndex,
+  snapshotStoryScene,
+  StoryContinuationGate,
+  type CampaignStorySceneInput
+} from "./story-presentation";
+
+export type { CampaignStoryScene, CampaignStorySceneInput } from "./story-presentation";
 
 export type CampaignMode = "story" | "challenge";
 
-export type CampaignCheckpointId =
-  | "prologue"
-  | "epoch_1"
-  | "epoch_2"
-  | "epoch_3"
-  | "epoch_4"
-  | "epoch_5"
-  | "finale"
-  | "completed";
-
-export interface CampaignCheckpointOption {
-  id: CampaignCheckpointId;
-  label: string;
-}
-
 export interface CampaignLandingOptions {
   challengeUnlocked: boolean;
-  checkpoint?: CampaignCheckpointOption;
-  fullscreenPromptSeen: boolean;
+  fullscreenPreference: "fullscreen" | "portrait" | null;
   muted: boolean;
 }
 
 export interface CampaignStartRequest {
   mode: CampaignMode;
-  checkpoint?: CampaignCheckpointId;
   restartStory: boolean;
 }
+
+export type CampaignStoryCountdownValue = 3 | 2 | 1;
 
 export type CampaignPauseReason = "user" | "layout_change" | "visibility";
 
@@ -55,7 +51,7 @@ export interface CampaignChallengeResult {
   warrantySaves: number;
 }
 
-export type CampaignSharePlatform = "facebook" | "instagram" | "download";
+export type CampaignSharePlatform = "facebook" | "instagram";
 export type CampaignShareMethod = "web_share" | "facebook_url" | "download" | "cancelled";
 
 export const DEFAULT_CAMPAIGN_SHELL_COPY = {
@@ -73,13 +69,10 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   landingTitle: "AMSO —",
   landingTitleAccent: "Droga do Miliona",
   landingLead: "Jedna paczka rozpoczęła historię. Przebiegnij z nami drogę do zamówienia nr 1 000 000.",
-  landingMeta: "Około 3 minut · skok i ślizg · historia ma gwarantowany finał",
+  landingMeta: "5 minut gry · historia w Twoim tempie · skok i ślizg",
   startStory: "Rozpocznij historię",
   choosePath: "Wybierz swoją drogę",
   replayStory: "Przejdź historię ponownie",
-  resumeQuestion: "Wrócić na Drogę do Miliona?",
-  resumeFrom: "Kontynuuj od:",
-  startOver: "Zacznij od początku",
   orientationEyebrow: "Szerszy kadr",
   orientationTitle: "Chcesz zobaczyć więcej historii?",
   orientationBody: "Obróć telefon i włącz pełny ekran. Możesz też grać pionowo.",
@@ -98,6 +91,7 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   returnToMenu: "Wróć do menu",
   corridorEyebrow: "Bezpieczny odcinek — historia biegnie dalej",
   corridorResume: "Biegniemy dalej.",
+  storyCountdownLabel: "Wracamy do gry",
   storyResultEyebrow: "Dziękujemy za wspólną drogę",
   storyResultTitle: "Twoja Droga do Miliona",
   resultPackages: "Dostarczone paczki",
@@ -119,13 +113,12 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   sharePublication: "Sprawdź, jak daleko dojdziesz w Drodze do Miliona.",
   sharePreparing: "Przygotowujemy kartę wyniku…",
   shareReady: "Karta wyniku jest gotowa do udostępnienia.",
+  shareFacebookReady: "Facebook otwarty. Dołącz pobraną kartę wyniku do posta.",
   shareDownloaded: "Zapisaliśmy kartę. Dodaj ją do relacji lub posta.",
-  shareDownloadReady: "Karta jest gotowa do dodania na Facebooku lub Instagramie.",
   shareCancelled: "Udostępnianie anulowane.",
   shareFailure: "Nie udało się przygotować karty. Spróbuj ponownie.",
   facebook: "Facebook",
   instagram: "Instagram",
-  downloadCard: "Pobierz kartę",
   narrowTitle: "Potrzebujemy trochę więcej miejsca.",
   narrowBody: "Obróć urządzenie, żeby rozpocząć grę.",
   footerTagline: "AMSO. Sprzęt z przeszłością. Na przyszłość.",
@@ -146,7 +139,8 @@ export interface CampaignShellCallbacks {
   onJump(method: ControlMethod): void;
   onSlide(active: boolean, method: ControlMethod): void;
   onMuteChange(muted: boolean): void;
-  onFullscreenPromptHandled(choice: "fullscreen" | "portrait"): void;
+  onFullscreenPreferenceChange(choice: "fullscreen" | "portrait"): void;
+  onStoryContinue(sceneId: string): void;
   onShare?(platform: CampaignSharePlatform, method: CampaignShareMethod): void;
 }
 
@@ -167,7 +161,7 @@ export interface CampaignShareCardOptions {
 }
 
 export interface CampaignShareRequest extends CampaignShareCardOptions {
-  platform: Exclude<CampaignSharePlatform, "download">;
+  platform: CampaignSharePlatform;
   result: Pick<CampaignChallengeResult, "score" | "packages">;
 }
 
@@ -189,6 +183,8 @@ function canonicalPageUrl(): string {
   if (typeof window === "undefined") {
     return "/gra/droga-do-miliona";
   }
+  const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href;
+  if (canonical?.startsWith("https://") || canonical?.startsWith("http://")) return canonical;
   const url = new URL(window.location.href);
   url.search = "";
   url.hash = "";
@@ -312,14 +308,6 @@ function downloadBlob(blob: Blob, filename: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
-export async function downloadCampaignShareCard(
-  result: Pick<CampaignChallengeResult, "score" | "packages">,
-  options: CampaignShareCardOptions,
-): Promise<void> {
-  const blob = await createCampaignShareCard(result, options);
-  downloadBlob(blob, `amso-droga-do-miliona-${Math.floor(result.score)}.png`);
-}
-
 export async function shareCampaignResult(request: CampaignShareRequest): Promise<CampaignShareMethod> {
   const text = request.publicationText ?? "Sprawdź, jak daleko dojdziesz w Drodze do Miliona.";
   const blob = await createCampaignShareCard(request.result, request);
@@ -367,13 +355,14 @@ export async function shareCampaignResult(request: CampaignShareRequest): Promis
 }
 
 /**
- * Dedicated, page-level DOM view for the v3 campaign. It owns presentation and
+ * Dedicated, page-level DOM view for the campaign. It owns presentation and
  * browser input only; gameplay, persistence and analytics remain coordinator concerns.
  */
 export class CampaignShell {
   public readonly canvas: HTMLCanvasElement;
 
   private readonly root: HTMLElement;
+  private readonly stage: HTMLElement;
   private readonly landingScreen: HTMLElement;
   private readonly landingActions: HTMLElement;
   private readonly orientationScreen: HTMLElement;
@@ -389,12 +378,25 @@ export class CampaignShell {
   private readonly storyEyebrow: HTMLElement;
   private readonly storyTitle: HTMLElement;
   private readonly storyBody: HTMLElement;
+  private readonly storyPresentation: HTMLElement;
+  private readonly storySceneCard: HTMLElement;
+  private readonly storySceneEyebrow: HTMLElement;
+  private readonly storySceneTitle: HTMLElement;
+  private readonly storySceneBody: HTMLElement;
+  private readonly storyContinueButton: HTMLButtonElement;
+  private readonly storyCountdown: HTMLElement;
+  private readonly storyCountdownLabel: HTMLElement;
+  private readonly storyCountdownValue: HTMLElement;
+  private readonly presentationBackground: readonly HTMLElement[];
   private readonly gameplayHint: HTMLElement;
   private readonly hud: HTMLElement;
   private readonly hudMode: HTMLElement;
   private readonly hudEpoch: HTMLElement;
+  private readonly hudObjective: HTMLElement;
+  private readonly hudPowerUps: HTMLElement;
   private readonly hudPackages: HTMLElement;
   private readonly hudScore: HTMLElement;
+  private readonly hudCombo: HTMLElement;
   private readonly muteButton: HTMLButtonElement;
   private readonly fullscreenButton: HTMLButtonElement;
   private readonly liveRegion: HTMLElement;
@@ -408,6 +410,7 @@ export class CampaignShell {
   private activeMode: CampaignMode | null = null;
   private pendingStart: CampaignStartRequest | null = null;
   private fullscreenPromptSeen = false;
+  private fullscreenPreference: "fullscreen" | "portrait" | null = null;
   private muted = false;
   private paused = false;
   private trustCorridor = false;
@@ -415,6 +418,8 @@ export class CampaignShell {
   private pointerStartY: number | null = null;
   private pointerSwipedDown = false;
   private challengeResult: CampaignChallengeResult | null = null;
+  private lastCountdownValue: CampaignStoryCountdownValue | null = null;
+  private readonly storyContinuationGate = new StoryContinuationGate();
   private readonly orientationQuery: MediaQueryList | null;
 
   public constructor(
@@ -465,10 +470,13 @@ export class CampaignShell {
             <div class="amso-campaign__hud-context">
               <strong data-campaign-hud-mode></strong>
               <span data-campaign-hud-epoch></span>
+              <span data-campaign-hud-objective hidden></span>
+              <span data-campaign-hud-powerups hidden></span>
             </div>
             <div class="amso-campaign__hud-stats">
               <span><small data-campaign-copy="hudPackages">Paczki</small> <strong data-campaign-hud-packages>0</strong></span>
               <span><small data-campaign-copy="hudScore">Wynik</small> <strong data-campaign-hud-score>0</strong></span>
+              <span><small>Seria</small> <strong data-campaign-hud-combo>×1</strong></span>
             </div>
             <button class="amso-campaign__pause-button" type="button" data-campaign-pause data-campaign-copy="pauseAction">Pauza</button>
           </section>
@@ -486,7 +494,7 @@ export class CampaignShell {
               <p class="amso-campaign__eyebrow" data-campaign-copy="landingEyebrow">Jubileuszowa historia AMSO</p>
               <h1><small data-campaign-copy="landingTitle">AMSO —</small> <span data-campaign-copy="landingTitleAccent">Droga do Miliona</span></h1>
               <p class="amso-campaign__lead" data-campaign-copy="landingLead">Jedna paczka rozpoczęła historię. Przebiegnij z nami drogę do zamówienia nr 1 000 000.</p>
-              <p class="amso-campaign__meta" data-campaign-copy="landingMeta">Około 3 minut · skok i ślizg · historia ma gwarantowany finał</p>
+              <p class="amso-campaign__meta" data-campaign-copy="landingMeta">5 minut gry · historia w Twoim tempie · skok i ślizg</p>
               <div class="amso-campaign__landing-actions" data-campaign-landing-actions></div>
             </div>
             <div class="amso-campaign__landing-art" aria-hidden="true">
@@ -496,10 +504,17 @@ export class CampaignShell {
             </div>
           </section>
 
-          <section class="amso-campaign__screen amso-campaign__screen--dialog" data-campaign-orientation hidden>
+          <section
+            class="amso-campaign__screen amso-campaign__screen--dialog"
+            data-campaign-orientation
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="amso-campaign-orientation-title"
+            hidden
+          >
             <div class="amso-campaign__card">
               <p class="amso-campaign__eyebrow" data-campaign-copy="orientationEyebrow">Szerszy kadr</p>
-              <h2 data-campaign-copy="orientationTitle">Chcesz zobaczyć więcej historii?</h2>
+              <h2 id="amso-campaign-orientation-title" data-campaign-copy="orientationTitle">Chcesz zobaczyć więcej historii?</h2>
               <p data-campaign-copy="orientationBody">Obróć telefon i włącz pełny ekran. Możesz też grać pionowo.</p>
               <div class="amso-campaign__actions">
                 <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-enter-fullscreen data-campaign-copy="orientationFullscreen">Włącz pełny ekran</button>
@@ -528,10 +543,17 @@ export class CampaignShell {
             </div>
           </section>
 
-          <section class="amso-campaign__screen amso-campaign__screen--dialog" data-campaign-pause-screen hidden>
+          <section
+            class="amso-campaign__screen amso-campaign__screen--dialog"
+            data-campaign-pause-screen
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="amso-campaign-pause-title"
+            hidden
+          >
             <div class="amso-campaign__card">
               <p class="amso-campaign__eyebrow" data-campaign-copy="pauseEyebrow">Bezpieczny przystanek</p>
-              <h2 data-campaign-copy="pauseTitle">Gra wstrzymana</h2>
+              <h2 id="amso-campaign-pause-title" data-campaign-copy="pauseTitle">Gra wstrzymana</h2>
               <p data-campaign-copy="pauseBody">Twój postęp jest bezpieczny.</p>
               <div class="amso-campaign__actions">
                 <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-resume data-campaign-copy="resume">Wznów</button>
@@ -580,7 +602,6 @@ export class CampaignShell {
                 <div class="amso-campaign__share-actions">
                   <button type="button" data-campaign-share="facebook" data-campaign-copy="facebook">Facebook</button>
                   <button type="button" data-campaign-share="instagram" data-campaign-copy="instagram">Instagram</button>
-                  <button type="button" data-campaign-share="download" data-campaign-copy="downloadCard">Pobierz kartę</button>
                 </div>
                 <p class="amso-campaign__share-status" data-campaign-share-status role="status"></p>
               </div>
@@ -598,10 +619,42 @@ export class CampaignShell {
         <span data-campaign-copy="footerTagline">AMSO. Sprzęt z przeszłością. Na przyszłość.</span>
         <a data-campaign-link data-campaign-copy="footerCampaign">Strona kampanii</a>
       </footer>
+
+      <section class="amso-campaign__story-presentation" data-campaign-story-presentation hidden>
+        <div class="amso-campaign__story-vignette" data-campaign-story-vignette aria-hidden="true">
+          <span class="amso-campaign__story-vignette-shape amso-campaign__story-vignette-shape--primary"></span>
+          <span class="amso-campaign__story-vignette-shape amso-campaign__story-vignette-shape--secondary"></span>
+          <span class="amso-campaign__story-vignette-trail"></span>
+        </div>
+        <div class="amso-campaign__story-scrim" aria-hidden="true"></div>
+
+        <article
+          class="amso-campaign__story-scene-card"
+          data-campaign-story-scene
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="amso-campaign-story-scene-title"
+        >
+          <p class="amso-campaign__story-scene-eyebrow" data-campaign-story-scene-eyebrow hidden></p>
+          <h2 id="amso-campaign-story-scene-title" data-campaign-story-scene-title></h2>
+          <div class="amso-campaign__story-scene-body" data-campaign-story-scene-body tabindex="0"></div>
+          <button
+            class="amso-campaign__button amso-campaign__button--primary amso-campaign__story-continue"
+            type="button"
+            data-campaign-story-continue
+          >Dalej</button>
+        </article>
+
+        <div class="amso-campaign__story-countdown" data-campaign-story-countdown hidden tabindex="-1" role="status" aria-live="assertive" aria-atomic="true">
+          <p data-campaign-story-countdown-label>Wracamy do gry</p>
+          <strong data-campaign-story-countdown-value>3</strong>
+        </div>
+      </section>
       <div class="amso-campaign__sr-only" data-campaign-live aria-live="polite" aria-atomic="true"></div>
     `;
     host.replaceChildren(this.root);
 
+    this.stage = requiredElement(this.root, "[data-campaign-stage]");
     this.canvas = requiredElement<HTMLCanvasElement>(this.root, "[data-campaign-canvas]");
     this.landingScreen = requiredElement(this.root, "[data-campaign-landing]");
     this.landingActions = requiredElement(this.root, "[data-campaign-landing-actions]");
@@ -618,18 +671,35 @@ export class CampaignShell {
     this.storyEyebrow = requiredElement(this.root, "[data-campaign-story-eyebrow]");
     this.storyTitle = requiredElement(this.root, "[data-campaign-story-title]");
     this.storyBody = requiredElement(this.root, "[data-campaign-story-body]");
+    this.storyPresentation = requiredElement(this.root, "[data-campaign-story-presentation]");
+    this.storySceneCard = requiredElement(this.root, "[data-campaign-story-scene]");
+    this.storySceneEyebrow = requiredElement(this.root, "[data-campaign-story-scene-eyebrow]");
+    this.storySceneTitle = requiredElement(this.root, "[data-campaign-story-scene-title]");
+    this.storySceneBody = requiredElement(this.root, "[data-campaign-story-scene-body]");
+    this.storyContinueButton = requiredElement(this.root, "[data-campaign-story-continue]");
+    this.storyCountdown = requiredElement(this.root, "[data-campaign-story-countdown]");
+    this.storyCountdownLabel = requiredElement(this.root, "[data-campaign-story-countdown-label]");
+    this.storyCountdownValue = requiredElement(this.root, "[data-campaign-story-countdown-value]");
     this.gameplayHint = requiredElement(this.root, "[data-campaign-gameplay-hint]");
     this.hud = requiredElement(this.root, "[data-campaign-hud]");
     this.hudMode = requiredElement(this.root, "[data-campaign-hud-mode]");
     this.hudEpoch = requiredElement(this.root, "[data-campaign-hud-epoch]");
+    this.hudObjective = requiredElement(this.root, "[data-campaign-hud-objective]");
+    this.hudPowerUps = requiredElement(this.root, "[data-campaign-hud-powerups]");
     this.hudPackages = requiredElement(this.root, "[data-campaign-hud-packages]");
     this.hudScore = requiredElement(this.root, "[data-campaign-hud-score]");
+    this.hudCombo = requiredElement(this.root, "[data-campaign-hud-combo]");
     this.muteButton = requiredElement(this.root, "[data-campaign-mute]");
     this.fullscreenButton = requiredElement(this.root, "[data-campaign-fullscreen]");
     this.liveRegion = requiredElement(this.root, "[data-campaign-live]");
     this.sharePanel = requiredElement(this.root, "[data-campaign-share-panel]");
     this.shareStatus = requiredElement(this.root, "[data-campaign-share-status]");
     this.tooNarrow = requiredElement(this.root, "[data-campaign-too-narrow]");
+    this.presentationBackground = [
+      requiredElement(this.root, ".amso-campaign__header"),
+      requiredElement(this.root, ".amso-campaign__main"),
+      requiredElement(this.root, ".amso-campaign__footer")
+    ];
     this.orientationQuery = window.matchMedia?.("(orientation: landscape)") ?? null;
 
     this.applyCopy();
@@ -649,11 +719,13 @@ export class CampaignShell {
     if (this.destroyed) return;
     this.activeMode = null;
     this.challengeResult = null;
-    this.fullscreenPromptSeen = options.fullscreenPromptSeen;
+    this.fullscreenPreference = options.fullscreenPreference;
+    this.fullscreenPromptSeen = options.fullscreenPreference !== null;
     this.setMuted(options.muted, false);
     this.setView("landing", this.landingScreen);
     this.renderLandingActions(options);
     this.canvas.tabIndex = -1;
+    this.landingActions.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
     this.announce("Gra gotowa. Wybierz swoją drogę.");
   }
 
@@ -683,6 +755,7 @@ export class CampaignShell {
 
   public showGame(mode: CampaignMode): void {
     if (this.destroyed) return;
+    this.hideStoryPresentation();
     this.activeMode = mode;
     this.paused = false;
     this.challengeResult = null;
@@ -692,10 +765,103 @@ export class CampaignShell {
     this.hud.hidden = false;
     this.hudMode.textContent = mode === "story" ? this.copy.storyMode : this.copy.challengeMode;
     this.hudEpoch.hidden = mode === "challenge";
+    if (mode === "challenge") this.showStoryObjective(null);
     this.canvas.tabIndex = 0;
     this.canvas.setAttribute("aria-hidden", "false");
     this.canvas.focus({ preventScroll: true });
     this.announce(mode === "story" ? this.copy.storyMode : this.copy.challengeMode);
+  }
+
+  /**
+   * Shows one stable, player-paced story card above the entire campaign shell.
+   * Re-emitting the active scene id is intentionally a no-op: only a new id can
+   * replace visible copy or re-enable the continuation button.
+   */
+  public showStoryScene(input: CampaignStorySceneInput): void {
+    if (this.destroyed) return;
+    const scene = snapshotStoryScene(input);
+    const isNewScene = this.storyContinuationGate.arm(scene.sceneId);
+
+    this.activeMode = "story";
+    this.root.dataset.mode = "story";
+    this.root.dataset.view = "story_scene";
+    this.root.dataset.storyVignette = scene.vignette;
+    this.storyPresentation.dataset.state = "scene";
+    this.storyPresentation.dataset.vignette = scene.vignette;
+    this.storyPresentation.hidden = false;
+    this.storySceneCard.hidden = false;
+    this.storyCountdown.hidden = true;
+    this.hud.hidden = true;
+    this.storyCaption.hidden = true;
+    this.gameplayHint.hidden = true;
+    this.canvas.tabIndex = -1;
+    this.canvas.setAttribute("aria-hidden", "true");
+    this.setPresentationBackgroundInert(true);
+
+    if (!isNewScene) return;
+
+    this.lastCountdownValue = null;
+    this.storySceneCard.dataset.sceneId = scene.sceneId;
+    this.storySceneEyebrow.textContent = scene.eyebrow ?? "";
+    this.storySceneEyebrow.hidden = this.storySceneEyebrow.textContent.length === 0;
+    this.storySceneTitle.textContent = scene.title;
+    this.storySceneBody.replaceChildren(...scene.body.map((text) => {
+      const paragraph = document.createElement("p");
+      paragraph.textContent = text;
+      return paragraph;
+    }));
+    this.storySceneBody.scrollTop = 0;
+    this.storyContinueButton.textContent = scene.continueLabel;
+    this.storyContinueButton.dataset.sceneId = scene.sceneId;
+    this.storyContinueButton.disabled = false;
+    this.storyContinueButton.focus({ preventScroll: true });
+    this.announce([scene.eyebrow, scene.title, ...scene.body].filter(Boolean).join(". "));
+  }
+
+  public showStoryCountdown(
+    value: CampaignStoryCountdownValue,
+    label = this.copy.storyCountdownLabel
+  ): void {
+    if (this.destroyed) return;
+    this.root.dataset.view = "story_countdown";
+    this.storyPresentation.dataset.state = "countdown";
+    this.storyPresentation.hidden = false;
+    this.storySceneCard.hidden = true;
+    this.storyCountdown.hidden = false;
+    this.hud.hidden = true;
+    this.storyCaption.hidden = true;
+    this.gameplayHint.hidden = true;
+    this.canvas.tabIndex = -1;
+    this.canvas.setAttribute("aria-hidden", "true");
+    this.storyContinueButton.disabled = true;
+    delete this.storyContinueButton.dataset.sceneId;
+    this.storyContinuationGate.clear();
+    this.setPresentationBackgroundInert(true);
+
+    this.storyCountdownLabel.textContent = label;
+    this.storyCountdownValue.textContent = String(value);
+    this.storyCountdownValue.dataset.value = String(value);
+    if (value !== this.lastCountdownValue) {
+      this.lastCountdownValue = value;
+      this.storyCountdown.focus({ preventScroll: true });
+    }
+  }
+
+  /** Atomically restores HUD, focus and controls after the engine finishes 3–2–1. */
+  public returnToGame(): void {
+    if (this.destroyed || this.activeMode === null) return;
+    this.hideStoryPresentation();
+    this.hideScreens();
+    this.root.dataset.view = "game";
+    this.root.removeAttribute("data-trust-corridor");
+    this.trustCorridor = false;
+    this.hud.removeAttribute("data-muted");
+    this.hud.hidden = false;
+    this.hudEpoch.hidden = this.activeMode === "challenge";
+    this.canvas.tabIndex = 0;
+    this.canvas.setAttribute("aria-hidden", "false");
+    this.canvas.focus({ preventScroll: true });
+    this.announce(this.copy.corridorResume);
   }
 
   public setPaused(paused: boolean): void {
@@ -705,9 +871,11 @@ export class CampaignShell {
     this.root.toggleAttribute("data-paused", paused);
     this.canvas.tabIndex = paused ? -1 : 0;
     if (paused) {
+      this.setScreenModal(this.pauseScreen);
       requiredElement<HTMLButtonElement>(this.pauseScreen, "[data-campaign-resume]").focus({ preventScroll: true });
       this.announce(`${this.copy.pauseTitle}. ${this.copy.pauseBody}`);
     } else {
+      this.setScreenModal(null);
       this.canvas.focus({ preventScroll: true });
       this.announce(this.copy.corridorResume);
     }
@@ -717,11 +885,18 @@ export class CampaignShell {
     if (this.destroyed) return;
     this.hudPackages.textContent = formatInteger(snapshot.packagesCollected);
     this.hudScore.textContent = formatInteger(snapshot.score);
+    this.hudCombo.textContent = `×${formatInteger(snapshot.combo)}`;
+    const activePowerUps = formatPowerUpHud(snapshot.activePowerUps);
+    this.hudPowerUps.textContent = activePowerUps.length > 0 ? `Moc: ${activePowerUps}` : "";
+    this.hudPowerUps.hidden = activePowerUps.length === 0;
     if (this.activeMode === "story") {
       const progress = snapshot.epochIndexMax > 0
         ? `${snapshot.epochIndex + 1}/${snapshot.epochIndexMax + 1}`
         : "";
       this.hudEpoch.textContent = [snapshot.epochName, progress].filter(Boolean).join(" · ");
+      this.showStoryObjective(
+        formatStoryObjectiveHud(snapshot.storyObjectives, snapshot.activeStoryOrderTypes)
+      );
     }
   }
 
@@ -757,6 +932,13 @@ export class CampaignShell {
     this.gameplayHint.textContent = message ?? "";
     this.gameplayHint.hidden = message === null;
     if (message !== null) this.announce(message);
+  }
+
+  public showStoryObjective(message: string | null): void {
+    if (this.destroyed) return;
+    this.hudObjective.textContent = message ?? "";
+    this.hudObjective.title = message ?? "";
+    this.hudObjective.hidden = message === null;
   }
 
   public showStoryResult(result: CampaignStoryResult): void {
@@ -847,35 +1029,11 @@ export class CampaignShell {
 
   private renderLandingActions(options: CampaignLandingOptions): void {
     this.landingActions.replaceChildren();
-    if (options.checkpoint !== undefined && options.checkpoint.id !== "completed") {
-      const heading = document.createElement("h2");
-      heading.textContent = this.copy.resumeQuestion;
-      const continueButton = this.createActionButton(`${this.copy.resumeFrom} ${options.checkpoint.label}`, true);
-      continueButton.addEventListener("click", () => this.queueStart({
-        mode: "story",
-        checkpoint: options.checkpoint?.id,
-        restartStory: false,
-      }), { once: true });
-      const restartButton = this.createActionButton(this.copy.startOver, false);
-      restartButton.addEventListener("click", () => this.queueStart({
-        mode: "story",
-        checkpoint: "prologue",
-        restartStory: true,
-      }), { once: true });
-      this.landingActions.append(heading, continueButton, restartButton);
-      if (options.challengeUnlocked) {
-        const challengeButton = this.createActionButton(this.copy.challengeMode, false);
-        challengeButton.addEventListener("click", () => this.queueStart({ mode: "challenge", restartStory: false }), { once: true });
-        this.landingActions.append(challengeButton);
-      }
-      return;
-    }
-
     if (options.challengeUnlocked) {
       const heading = document.createElement("h2");
       heading.textContent = this.copy.choosePath;
       const storyButton = this.createActionButton(this.copy.replayStory, true);
-      storyButton.addEventListener("click", () => this.queueStart({ mode: "story", checkpoint: "prologue", restartStory: true }), { once: true });
+      storyButton.addEventListener("click", () => this.queueStart({ mode: "story", restartStory: true }), { once: true });
       const challengeButton = this.createActionButton(this.copy.challengeMode, false);
       challengeButton.addEventListener("click", () => this.queueStart({ mode: "challenge", restartStory: false }), { once: true });
       this.landingActions.append(heading, storyButton, challengeButton);
@@ -883,7 +1041,7 @@ export class CampaignShell {
     }
 
     const startButton = this.createActionButton(this.copy.startStory, true);
-    startButton.addEventListener("click", () => this.queueStart({ mode: "story", checkpoint: "prologue", restartStory: false }), { once: true });
+    startButton.addEventListener("click", () => this.queueStart({ mode: "story", restartStory: false }), { once: true });
     this.landingActions.append(startButton);
   }
 
@@ -903,14 +1061,26 @@ export class CampaignShell {
       requiredElement<HTMLButtonElement>(this.orientationScreen, "[data-campaign-enter-fullscreen]").focus({ preventScroll: true });
       return;
     }
+    if (this.fullscreenPreference === "fullscreen" && isMobileLayout() &&
+        document.fullscreenElement === null) {
+      void this.enterFullscreen().finally(() => this.callbacks.onStart(request));
+      return;
+    }
     this.callbacks.onStart(request);
   }
 
   private dispatchPendingStart(choice: "fullscreen" | "portrait"): void {
-    this.callbacks.onFullscreenPromptHandled(choice);
+    this.rememberFullscreenPreference(choice);
     const request = this.pendingStart;
     this.pendingStart = null;
     if (request !== null) this.callbacks.onStart(request);
+  }
+
+  private rememberFullscreenPreference(choice: "fullscreen" | "portrait"): void {
+    const changed = !this.fullscreenPromptSeen || this.fullscreenPreference !== choice;
+    this.fullscreenPromptSeen = true;
+    this.fullscreenPreference = choice;
+    if (changed) this.callbacks.onFullscreenPreferenceChange(choice);
   }
 
   private async enterFullscreen(): Promise<void> {
@@ -930,10 +1100,14 @@ export class CampaignShell {
       } else {
         await this.enterFullscreen();
       }
+      this.rememberFullscreenPreference(
+        fullscreenPreferenceFromElement(document.fullscreenElement, this.root)
+      );
     })();
   }
 
   private hideScreens(): void {
+    this.setScreenModal(null);
     [
       this.landingScreen,
       this.orientationScreen,
@@ -946,6 +1120,7 @@ export class CampaignShell {
   }
 
   private setView(view: string, visibleScreen: HTMLElement): void {
+    this.hideStoryPresentation();
     this.hideScreens();
     visibleScreen.hidden = false;
     this.root.dataset.view = view;
@@ -957,6 +1132,44 @@ export class CampaignShell {
     this.trustCorridor = false;
     this.canvas.tabIndex = -1;
     this.canvas.setAttribute("aria-hidden", "true");
+    if (visibleScreen === this.orientationScreen) this.setScreenModal(visibleScreen);
+  }
+
+  private hideStoryPresentation(): void {
+    this.storyPresentation.hidden = true;
+    this.storySceneCard.hidden = false;
+    this.storyCountdown.hidden = true;
+    this.storyContinueButton.disabled = true;
+    delete this.storyContinueButton.dataset.sceneId;
+    delete this.storySceneCard.dataset.sceneId;
+    delete this.storyPresentation.dataset.state;
+    delete this.storyPresentation.dataset.vignette;
+    delete this.root.dataset.storyVignette;
+    this.lastCountdownValue = null;
+    this.storyContinuationGate.clear();
+    this.setPresentationBackgroundInert(false);
+  }
+
+  private setPresentationBackgroundInert(inert: boolean): void {
+    for (const region of this.presentationBackground) region.inert = inert;
+  }
+
+  /** Keeps in-stage dialogs reachable without making their own ancestor inert. */
+  private setScreenModal(screen: HTMLElement | null): void {
+    const active = screen !== null;
+    const [header, , footer] = this.presentationBackground;
+    if (header) header.inert = active;
+    if (footer) footer.inert = active;
+    for (const child of this.stage.children) {
+      if (child instanceof HTMLElement) child.inert = active && child !== screen;
+    }
+    if (screen) screen.inert = false;
+  }
+
+  private activeKeyboardDialog(): HTMLElement | null {
+    if (!this.pauseScreen.hidden) return this.pauseScreen;
+    if (!this.orientationScreen.hidden) return this.orientationScreen;
+    return null;
   }
 
   private canControl(): boolean {
@@ -972,12 +1185,19 @@ export class CampaignShell {
   private readonly handleClick = (event: MouseEvent): void => {
     const target = event.target instanceof Element ? event.target.closest<HTMLElement>("button, a") : null;
     if (target === null) return;
-    if (target.matches("[data-campaign-mute]")) {
+    if (target.matches("[data-campaign-story-continue]")) {
+      const sceneId = target.dataset.sceneId;
+      if (sceneId === undefined || !this.storyContinuationGate.consume(sceneId)) return;
+      this.storyContinueButton.disabled = true;
+      this.callbacks.onStoryContinue(sceneId);
+    } else if (target.matches("[data-campaign-mute]")) {
       this.setMuted(!this.muted);
     } else if (target.matches("[data-campaign-fullscreen]")) {
       this.toggleFullscreen();
     } else if (target.matches("[data-campaign-enter-fullscreen]")) {
-      void this.enterFullscreen().finally(() => this.dispatchPendingStart("fullscreen"));
+      void this.enterFullscreen().finally(() => this.dispatchPendingStart(
+        fullscreenPreferenceFromElement(document.fullscreenElement, this.root)
+      ));
     } else if (target.matches("[data-campaign-stay-portrait]")) {
       this.dispatchPendingStart("portrait");
     } else if (target.matches("[data-campaign-pause]")) {
@@ -999,7 +1219,7 @@ export class CampaignShell {
       if (!this.sharePanel.hidden) requiredElement<HTMLButtonElement>(this.sharePanel, "[data-campaign-share]").focus({ preventScroll: true });
     } else if (target.matches("[data-campaign-share]")) {
       const platform = target.dataset.campaignShare;
-      if (platform === "facebook" || platform === "instagram" || platform === "download") {
+      if (platform === "facebook" || platform === "instagram") {
         void this.handleShare(platform);
       }
     }
@@ -1009,18 +1229,6 @@ export class CampaignShell {
     if (this.challengeResult === null) return;
     this.shareStatus.textContent = this.copy.sharePreparing;
     try {
-      if (platform === "download") {
-        await downloadCampaignShareCard(this.challengeResult, {
-          canonicalUrl: this.canonicalUrl,
-          scoreLabel: this.copy.shareScoreLabel.toLocaleUpperCase("pl-PL"),
-          packagesLabel: this.copy.resultPackages.toLocaleUpperCase("pl-PL"),
-          callToAction: this.copy.shareTurn,
-          publicationText: this.copy.sharePublication,
-        });
-        this.callbacks.onShare?.(platform, "download");
-        this.shareStatus.textContent = this.copy.shareDownloadReady;
-        return;
-      }
       const method = await shareCampaignResult({
         platform,
         result: this.challengeResult,
@@ -1035,7 +1243,9 @@ export class CampaignShell {
         ? this.copy.shareCancelled
         : method === "download"
           ? this.copy.shareDownloaded
-          : this.copy.shareReady;
+          : method === "facebook_url"
+            ? this.copy.shareFacebookReady
+            : this.copy.shareReady;
     } catch {
       this.shareStatus.textContent = this.copy.shareFailure;
     }
@@ -1076,6 +1286,32 @@ export class CampaignShell {
   };
 
   private readonly handleKeydown = (event: KeyboardEvent): void => {
+    const activeDialog = this.activeKeyboardDialog();
+    if (activeDialog !== null && event.key === "Tab") {
+      const focusable = [...activeDialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+      )];
+      const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
+      const nextIndex = getTrappedFocusIndex(currentIndex, focusable.length, event.shiftKey);
+      const next = focusable[nextIndex];
+      if (next !== undefined) {
+        event.preventDefault();
+        next.focus({ preventScroll: true });
+      }
+      return;
+    }
+    if (!this.storyPresentation.hidden && !this.storySceneCard.hidden && event.key === "Tab") {
+      const focusable = [this.storySceneBody, this.storyContinueButton]
+        .filter((element) => !(element instanceof HTMLButtonElement && element.disabled));
+      const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
+      const nextIndex = getTrappedFocusIndex(currentIndex, focusable.length, event.shiftKey);
+      const next = focusable[nextIndex];
+      if (next !== undefined) {
+        event.preventDefault();
+        next.focus({ preventScroll: true });
+      }
+      return;
+    }
     if (!this.canControl() || event.repeat) return;
     const interactive = event.target instanceof Element && event.target.closest("button, a, input") !== null;
     if (interactive) return;
@@ -1107,6 +1343,9 @@ export class CampaignShell {
     const fullscreen = document.fullscreenElement === this.root;
     this.fullscreenButton.setAttribute("aria-pressed", String(fullscreen));
     requiredElement(this.fullscreenButton, ".amso-campaign__tool-label").textContent = fullscreen ? this.copy.fullscreenExit : this.copy.fullscreenEnter;
+    this.rememberFullscreenPreference(
+      fullscreenPreferenceFromElement(document.fullscreenElement, this.root)
+    );
     if (this.canControl()) {
       this.paused = true;
       this.callbacks.onPause("layout_change");

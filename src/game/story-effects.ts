@@ -98,8 +98,34 @@ export class FinaleSymbolDirector {
     return unique;
   }
 
-  public planGuaranteedSpawns(collected: readonly number[]): number[] {
-    const unavailable = new Set([...collected, ...this.collected]);
+  /** Introduces every unique symbol once before scheduling missed retries. */
+  public planAuthoredSpawns(
+    collected: readonly number[],
+    active: readonly number[],
+    limit: number
+  ): number[] {
+    const unavailable = new Set([...collected, ...active, ...this.collected]);
+    const unintroduced = Array.from({ length: STORY_SYMBOL_COUNT }, (_, index) => index)
+      .filter((index) => (this.attempts[index] ?? 0) === 0);
+    const candidates = [
+      ...unintroduced,
+      ...[...this.missed].sort((left, right) => left - right),
+      ...Array.from({ length: STORY_SYMBOL_COUNT }, (_, index) => index)
+    ];
+    const unique: number[] = [];
+    for (const index of candidates) {
+      if (unavailable.has(index) || unique.includes(index)) continue;
+      unique.push(index);
+      if (unique.length >= Math.max(0, Math.floor(limit))) break;
+    }
+    return unique;
+  }
+
+  public planGuaranteedSpawns(
+    collected: readonly number[],
+    active: readonly number[] = []
+  ): number[] {
+    const unavailable = new Set([...collected, ...active, ...this.collected]);
     return Array.from({ length: STORY_SYMBOL_COUNT }, (_, index) => index)
       .filter((index) => !unavailable.has(index));
   }

@@ -6,7 +6,7 @@ export type BossCommand =
   | { type: "attack"; kind: ObstacleKind }
   | { type: "complete" };
 
-const ATTACK_ORDER: readonly ObstacleKind[] = ["pallet", "trolley", "box-stack"];
+const ATTACK_ORDER: readonly ObstacleKind[] = ["pallet", "overhead", "trolley"];
 
 function inactiveModel(): BossModel {
   return {

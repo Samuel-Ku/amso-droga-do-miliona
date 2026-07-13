@@ -69,14 +69,69 @@ export interface EpochConfig {
 
 export interface StoryEpochConfig extends EpochConfig {
   challengeName: string;
-  beats: StoryBeatConfig[];
+  beats?: StoryBeatConfig[];
 }
 
-export interface StoryConfig {
+export type StoryChapterId =
+  | "prologue"
+  | "epoch_1"
+  | "epoch_2"
+  | "epoch_3"
+  | "epoch_4"
+  | "epoch_5"
+  | "finale";
+
+export type StoryVignette =
+  | "first-package"
+  | "small-warehouse"
+  | "tested-device"
+  | "cable-route"
+  | "quality-stamp"
+  | "creative-desk"
+  | "growing-business"
+  | "long-trust"
+  | "warehouse-scale"
+  | "product-stream"
+  | "delivery-map"
+  | "million-counter"
+  | "million-wave"
+  | "million-package"
+  | "thank-you";
+
+export interface StorySceneConfig {
+  id: string;
+  chapter?: StoryChapterId;
+  eyebrow: string;
+  title: string;
+  body: string[];
+  vignette: StoryVignette;
+  continueLabel: string;
+}
+
+export interface StorySceneStepConfig {
+  type: "scene";
+  sceneId: string;
+}
+
+export interface StoryPlayStepConfig {
+  type: "play";
+  id: string;
+  epochIndex: number;
   durationSeconds: number;
-  prologue: StorySectionConfig;
+}
+
+export type StorySequenceStepConfig = StorySceneStepConfig | StoryPlayStepConfig;
+
+export interface StoryConfig {
+  activeDurationSeconds: number;
+  readingSpeedMultiplier: number;
+  speedStartMultiplier: number;
+  speedMaxMultiplier: number;
+  resumeCountdownSeconds: number;
+  firstCompletionBonusScore: number;
+  scenes: StorySceneConfig[];
+  sequence: StorySequenceStepConfig[];
   epochs: StoryEpochConfig[];
-  finale: StorySectionConfig;
 }
 
 export interface ChallengeConfig {
@@ -133,7 +188,7 @@ export interface DiscountCodeConfig {
 }
 
 export interface RunnerConfig {
-  schemaVersion: 3;
+  schemaVersion: 4;
   enabled: boolean;
   gameVersion: string;
   claim: string;

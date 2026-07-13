@@ -25,6 +25,8 @@ const COLORS = {
   blue: "#4e91ad"
 } as const;
 
+const INTEGER_FORMATTER = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
+
 interface BackgroundTheme {
   wall: string;
   band: string;
@@ -670,7 +672,7 @@ function drawMillionVignette(
     Math.min(
       8,
       Math.floor(
-        scene.storySymbols ??
+        scene.storyObjectives?.epoch5.symbols.collectedIds.length ?? scene.storySymbols ??
           (scene.storyPhase === "finale" || scene.storyPhase === "completed" ? 8 : 0)
       )
     )
@@ -694,6 +696,21 @@ function drawMillionVignette(
 
   const centerX = 741;
   const centerY = 212;
+
+  if (scene.storyObjectives?.activeSegmentId === "epoch_5.counter") {
+    fillRoundedRectangle(context, 570, 84, 342, 70, 18, "rgba(23,49,59,0.92)");
+    context.fillStyle = COLORS.white;
+    context.font = "900 36px system-ui, sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(
+      INTEGER_FORMATTER.format(scene.storyObjectives.epoch5.counter.value),
+      741,
+      119
+    );
+    context.textAlign = "start";
+    context.textBaseline = "alphabetic";
+  }
   context.strokeStyle = "rgba(244,161,36,0.52)";
   context.lineWidth = 3;
   context.beginPath();
@@ -905,17 +922,19 @@ function drawStoryClimax(
     context.strokeStyle = positive ? "#1f9d55" : COLORS.red;
     context.lineWidth = 7;
     const rootY = y + 44;
-    for (let head = 0; head < 4; head += 1) {
-      const targetX = x - 66 + head * 44;
+    const completedPhases = scene.storyObjectives?.epoch4.hydra.phasesCompleted ?? 0;
+    for (let head = 0; head < 3; head += 1) {
+      const targetX = x - 52 + head * 52;
+      const headResolved = positive || head < completedPhases;
       context.beginPath();
       context.moveTo(x, rootY);
-      context.quadraticCurveTo(x + (head - 1.5) * 20, y, targetX, y - 35);
+      context.quadraticCurveTo(x + (head - 1) * 24, y, targetX, y - 35);
       context.stroke();
-      context.fillStyle = positive ? "#d9f4e4" : COLORS.red;
+      context.fillStyle = headResolved ? "#d9f4e4" : COLORS.red;
       context.beginPath();
       context.arc(targetX, y - 35, 13, 0, Math.PI * 2);
       context.fill();
-      if (positive) drawCheckMark(context, targetX - 7, y - 42, 14);
+      if (headResolved) drawCheckMark(context, targetX - 7, y - 42, 14);
     }
   }
   context.textAlign = "start";
@@ -1018,6 +1037,39 @@ function drawParcel(
     context.shadowColor = "rgba(244,161,36,0.7)";
     context.shadowBlur = scene.reducedMotion ? 6 : 10;
     drawStorySymbol(context, symbolIndex, x + size / 2, y + size / 2, size, true);
+    context.restore();
+    return;
+  }
+
+  if (parcel.storyOrder === true) {
+    const orderLabel: Readonly<Record<PackageType, string>> = {
+      pc: "PC",
+      notebook: "NB",
+      lcd: "LCD",
+      telefon: "TEL"
+    };
+    context.save();
+    context.shadowColor = parcel.kind === "golden"
+      ? "rgba(255,210,63,0.72)"
+      : "rgba(78,145,173,0.62)";
+    context.shadowBlur = scene.reducedMotion ? 6 : 10;
+    fillRoundedRectangle(
+      context,
+      x - 3,
+      y - 3,
+      size + 6,
+      size + 6,
+      7,
+      parcel.kind === "golden" ? "#ffd23f" : COLORS.white
+    );
+    context.shadowBlur = 0;
+    context.fillStyle = PACKAGE_TYPE_ACCENT[parcel.packageType];
+    context.font = "900 10px system-ui, sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(orderLabel[parcel.packageType], x + size / 2, y + size / 2 + 1);
+    context.textAlign = "start";
+    context.textBaseline = "alphabetic";
     context.restore();
     return;
   }

@@ -9,11 +9,11 @@ import type {
 } from "../shared/types";
 import type {
   StoryPhase,
-  StoryStartCheckpoint,
   StoryTimelineSnapshot
 } from "./story-timeline";
 import type { LogisticWavePhase } from "./logistic-wave";
 import type { StoryClimaxPhase, StoryPositiveMotif } from "./story-climax";
+import type { StoryObjectiveId, StoryObjectivesSnapshot } from "./story-objectives";
 
 export type GameState = "ready" | "running" | "paused" | "game_over" | "destroyed";
 export type ControlMethod = "keyboard" | "pointer" | "touch";
@@ -34,6 +34,10 @@ export interface GameSnapshot {
   activeStoryBeatIds: string[];
   trustCorridor: boolean;
   storySymbols: number;
+  storyObjectiveSegmentId: string;
+  storyObjectivesCompleted: StoryObjectiveId[];
+  storyObjectives: StoryObjectivesSnapshot;
+  activeStoryOrderTypes: PackageType[];
   activeStorySymbolIds: number[];
   storySymbolRespawns: number;
   storyClimaxName: string;
@@ -77,8 +81,9 @@ export interface RunnerGameCallbacks {
   onCutscene?: (epochIndex: number, title: string, subtitle: string) => void;
   onNarrativeEnd?: (outcome: RunOutcome) => void;
   onStoryUpdate?: (snapshot: StoryTimelineSnapshot) => void;
-  onStoryCheckpoint?: (checkpoint: StoryStartCheckpoint) => void;
   onStoryComplete?: () => void;
+  onStoryObjectiveCompleted?: (objectiveId: StoryObjectiveId) => void;
+  onModeChange?: (mode: GameMode, previousMode: GameMode) => void;
 }
 
 export interface RunnerGameOptions {
@@ -86,7 +91,7 @@ export interface RunnerGameOptions {
   reducedMotion?: boolean;
   mode?: GameMode;
   story?: StoryConfig | null;
-  storyCheckpoint?: StoryStartCheckpoint;
+  awardStoryCompletionBonus?: boolean;
   challenge?: ChallengeConfig | null;
   narrative?: NarrativeConfig | null;
 }
@@ -94,6 +99,7 @@ export interface RunnerGameOptions {
 export interface RunnerGameApi {
   readonly state: GameState;
   start(controlMethod?: ControlMethod): void;
+  continueStoryScene(expectedSceneId: string): boolean;
   jump(controlMethod: ControlMethod): void;
   crouch(active: boolean, controlMethod: ControlMethod): void;
   pause(): void;

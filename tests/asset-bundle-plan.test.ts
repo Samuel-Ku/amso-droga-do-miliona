@@ -1,33 +1,25 @@
 import { describe, expect, it } from "vitest";
-import {
-  assetBundleForStoryCheckpoint,
-  requiredStartAssetBundles
-} from "../src/assets/asset-bundle-plan";
+import { requiredStartAssetBundles } from "../src/assets/asset-bundle-plan";
 
 describe("campaign asset bundle plan", () => {
-  it("requires common, prologue and epoch 1 before a fresh story", () => {
-    expect(requiredStartAssetBundles("story", "prologue")).toEqual([
-      "common",
-      "prologue",
-      "epoch_1"
-    ]);
-  });
-
-  it("adds the selected resume chapter to the initial critical gate", () => {
-    expect(requiredStartAssetBundles("story", "epoch_4")).toEqual([
+  it("guarantees every critical story chapter before the uninterrupted run starts", () => {
+    expect(requiredStartAssetBundles("story")).toEqual([
       "common",
       "prologue",
       "epoch_1",
-      "epoch_4"
+      "epoch_2",
+      "epoch_3",
+      "epoch_4",
+      "epoch_5",
+      "finale",
+      "challenge"
     ]);
-    expect(requiredStartAssetBundles("story", "finale")).toContain("finale");
   });
 
   it("loads only common and challenge bundles for the unlocked challenge", () => {
-    expect(requiredStartAssetBundles("challenge", "completed")).toEqual([
+    expect(requiredStartAssetBundles("challenge")).toEqual([
       "common",
       "challenge"
     ]);
-    expect(assetBundleForStoryCheckpoint("completed")).toBeNull();
   });
 });

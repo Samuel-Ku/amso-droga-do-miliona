@@ -1,7 +1,7 @@
 import { GAMEPLAY } from "./constants";
 import type { PackageKind } from "./types";
 
-export const MAX_COMBO_MULTIPLIER = 5;
+export const MAX_COMBO_MULTIPLIER = 8;
 
 export interface PackageCollectionResolution {
   countsAsPackage: boolean;

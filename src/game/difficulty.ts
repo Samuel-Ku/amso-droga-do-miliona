@@ -43,6 +43,24 @@ export interface ChallengeDifficultySettings {
   speedMaxMultiplier: number;
 }
 
+/** Story curve uses active gameplay seconds; reading and countdown never advance it. */
+export function getStoryDifficulty(
+  activeElapsedSeconds: number,
+  activeDurationSeconds: number,
+  settings: ChallengeDifficultySettings
+): Difficulty {
+  const duration = Math.max(1, activeDurationSeconds);
+  const start = Math.max(0.5, Math.min(1.5, settings.speedStartMultiplier));
+  const maximum = Math.max(start, Math.min(1.5, settings.speedMaxMultiplier));
+  const multiplier = lerp(start, maximum, Math.max(0, activeElapsedSeconds) / duration);
+  return {
+    level: Math.min(6, 1 + Math.floor(Math.max(0, activeElapsedSeconds) / 60)),
+    speed: BASE_SPEED * multiplier,
+    speedMultiplier: multiplier,
+    minimumGapSeconds: lerp(2.45, 1.9, (multiplier - start) / Math.max(0.01, maximum - start))
+  };
+}
+
 export function getChallengeDifficulty(
   elapsedSeconds: number,
   settings: ChallengeDifficultySettings

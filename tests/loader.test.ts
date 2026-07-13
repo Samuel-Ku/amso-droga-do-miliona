@@ -20,7 +20,7 @@ describe("production loader config", () => {
     );
 
     expect(result.enabled).toBe(true);
-    expect(result.schemaVersion).toBe(3);
+    expect(result.schemaVersion).toBe(4);
     expect(result.cta.path).toBe("/milion");
     expect(fetchMock).toHaveBeenCalledOnce();
   });

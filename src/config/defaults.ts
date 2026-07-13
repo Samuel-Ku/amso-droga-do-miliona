@@ -1,19 +1,12 @@
 import type { RunnerConfig } from "../shared/types";
 
-export const RUNNER_SCHEMA_VERSION = 3 as const;
+export const RUNNER_SCHEMA_VERSION = 4 as const;
 export const RUNNER_CONFIG_TTL_MS = 60_000;
 
 export const DEFAULT_RUNNER_MODULE_PATH = "/assets/milion-runner/runner.js";
 export const DEFAULT_RUNNER_STYLE_PATH = "/assets/milion-runner/runner.css";
 export const DEFAULT_RUNNER_TRIGGER_SELECTOR = "[data-amso-million-runner]";
 export const RUNNER_CTA_PATH_ALLOWLIST = Object.freeze(["/milion"] as const);
-
-const placeholderBeat = {
-  id: "disabled.placeholder",
-  text: "Droga do Miliona",
-  maxExposureSeconds: 2,
-  kind: "copy" as const
-};
 
 /** Fail-closed value used before a validated external campaign config is available. */
 export const DEFAULT_DISABLED_RUNNER_CONFIG: Readonly<RunnerConfig> = Object.freeze({
@@ -33,14 +26,15 @@ export const DEFAULT_DISABLED_RUNNER_CONFIG: Readonly<RunnerConfig> = Object.fre
   }),
   facts: [],
   story: Object.freeze({
-    durationSeconds: 150,
-    prologue: Object.freeze({ id: "prologue", durationSeconds: 10, beats: [placeholderBeat] }),
-    epochs: [],
-    finale: Object.freeze({
-      id: "finale",
-      durationSeconds: 10,
-      beats: [{ ...placeholderBeat, id: "disabled.finale" }]
-    })
+    activeDurationSeconds: 300,
+    readingSpeedMultiplier: 0.3,
+    speedStartMultiplier: 0.8,
+    speedMaxMultiplier: 1.15,
+    resumeCountdownSeconds: 3,
+    firstCompletionBonusScore: 0,
+    scenes: [],
+    sequence: [],
+    epochs: []
   }),
   challenge: Object.freeze({
     mode: "challenge",

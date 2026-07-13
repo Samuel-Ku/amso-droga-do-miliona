@@ -3,10 +3,7 @@ import {
   AssetBundleLoadError,
   AssetBundleLoader
 } from "./assets/AssetBundleLoader";
-import {
-  assetBundleForStoryCheckpoint,
-  requiredStartAssetBundles
-} from "./assets/asset-bundle-plan";
+import { requiredStartAssetBundles } from "./assets/asset-bundle-plan";
 import { CampaignAudio } from "./audio/CampaignAudio";
 import type {
   GameResult,
@@ -15,18 +12,10 @@ import type {
 } from "./game/contracts";
 import { RunnerGame } from "./game/RunnerGame";
 import type { StoryTimelineSnapshot } from "./game/story-timeline";
-import {
-  PlayerProfileStore,
-  type StoryCheckpoint
-} from "./profile";
-import type {
-  AssetBundleId,
-  RunnerConfig,
-  StoryBeatConfig
-} from "./shared/types";
+import { PlayerProfileStore } from "./profile";
+import type { RunnerConfig } from "./shared/types";
 import {
   CampaignShell,
-  type CampaignCheckpointOption,
   type CampaignStartRequest
 } from "./ui/CampaignShell";
 
@@ -49,22 +38,6 @@ function nextPaint(): Promise<void> {
   return new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
 }
 
-function storyCaption(
-  beats: readonly StoryBeatConfig[],
-  trustCorridor: boolean,
-  corridorEyebrow: string
-): Parameters<CampaignShell["showStoryBeat"]>[0] {
-  if (beats.length === 0) return null;
-  const title = beats.find(({ kind }) => kind === "title");
-  const body = beats.filter((beat) => beat !== title).map(({ text }) => text);
-  return {
-    id: beats.map(({ id }) => id).join("+"),
-    ...(trustCorridor ? { eyebrow: corridorEyebrow } : {}),
-    ...(title === undefined ? {} : { title: title.text }),
-    body: title === undefined ? beats.map(({ text }) => text) : body
-  };
-}
-
 export class CampaignController {
   private readonly profile: PlayerProfileStore;
   private readonly tracker: DataLayerTracker;
@@ -74,12 +47,12 @@ export class CampaignController {
   private game: RunnerGame | null = null;
   private lastSnapshot: GameSnapshot | null = null;
   private lastTrustCorridor = false;
+  private lastStorySegmentId = "";
   private lastLogisticPhase: GameSnapshot["logisticWavePhase"] = "inactive";
   private pendingTutorial: "jump" | "slide" | null = null;
   private readonly shownPowerUpHints = new Set<string>();
   private powerUpHintTimer: number | null = null;
   private pendingStart: CampaignStartRequest | null = null;
-  private assetGatePending = false;
   private startToken = 0;
   private destroyed = false;
 
@@ -105,7 +78,6 @@ export class CampaignController {
       onRestart: (mode) => {
         void this.startRun({
           mode,
-          ...(mode === "story" ? { checkpoint: "prologue" as const } : {}),
           restartStory: mode === "story"
         });
       },
@@ -116,8 +88,11 @@ export class CampaignController {
       },
       onJump: (method) => {
         if (this.pendingTutorial === "jump") {
-          this.pendingTutorial = null;
-          this.shell.showGameplayHint(null);
+          this.pendingTutorial = "slide";
+          this.shell.showGameplayHint(this.uiCopy(
+            "tutorialSlide",
+            "Teraz przesuń palcem w dół albo naciśnij ↓, żeby zrobić ślizg."
+          ));
         }
         this.audio.playCue("jump");
         this.game?.jump(method);
@@ -134,7 +109,10 @@ export class CampaignController {
         this.profile.setSoundMuted(muted);
         this.audio.setMuted(muted);
       },
-      onFullscreenPromptHandled: () => this.profile.markFullscreenPromptSeen()
+      onFullscreenPreferenceChange: (choice) => this.profile.setFullscreenPreference(choice),
+      onStoryContinue: (sceneId) => {
+        this.game?.continueStoryScene(sceneId);
+      }
     }, {
       campaignUrl: config.cta.path,
       fullStoryUrl: config.cta.path,
@@ -154,7 +132,6 @@ export class CampaignController {
     this.startToken += 1;
     this.game?.destroy();
     this.game = null;
-    this.assetGatePending = false;
     this.shell.destroy();
     this.clearPowerUpHintTimer();
     void this.audio.destroy();
@@ -162,30 +139,17 @@ export class CampaignController {
 
   private showLanding(): void {
     if (this.destroyed) return;
-    const checkpoint = this.checkpointOption();
     this.shell.showLanding({
       challengeUnlocked: this.profile.snapshot.storyCompleted,
-      ...(checkpoint === undefined ? {} : { checkpoint }),
-      fullscreenPromptSeen: this.profile.snapshot.fullscreenPromptSeen,
+      fullscreenPreference: this.profile.snapshot.fullscreenPreference,
       muted: this.profile.snapshot.soundMuted
     });
-  }
-
-  private checkpointOption(): CampaignCheckpointOption | undefined {
-    const checkpoint = this.profile.snapshot.storyCheckpoint;
-    if (checkpoint === "prologue" || checkpoint === "completed") return undefined;
-    if (checkpoint === "finale") {
-      return { id: checkpoint, label: this.uiCopy("checkpointFinale", "Zakończenie") };
-    }
-    const epochIndex = Number(checkpoint.slice("epoch_".length)) - 1;
-    const epoch = this.config.story.epochs[epochIndex];
-    return epoch === undefined ? undefined : { id: checkpoint, label: epoch.name };
   }
 
   private async startRun(request: CampaignStartRequest): Promise<void> {
     if (this.destroyed) return;
     const safeRequest = request.mode === "challenge" && !this.profile.snapshot.storyCompleted
-      ? { mode: "story" as const, checkpoint: "prologue" as const, restartStory: false }
+      ? { mode: "story" as const, restartStory: false }
       : request;
     this.pendingStart = safeRequest;
     const token = ++this.startToken;
@@ -193,9 +157,9 @@ export class CampaignController {
     this.game = null;
     this.lastSnapshot = null;
     this.lastTrustCorridor = false;
+    this.lastStorySegmentId = "";
     this.lastLogisticPhase = "inactive";
     this.pendingTutorial = null;
-    this.assetGatePending = false;
     this.shownPowerUpHints.clear();
     this.clearPowerUpHintTimer();
     this.shell.showLoading(undefined);
@@ -203,8 +167,7 @@ export class CampaignController {
     if (this.config.audio.enabled) void this.audio.start();
 
     try {
-      const checkpoint = this.storyCheckpointFor(safeRequest);
-      const requiredBundles = requiredStartAssetBundles(safeRequest.mode, checkpoint);
+      const requiredBundles = requiredStartAssetBundles(safeRequest.mode);
       await this.assetLoader.ensureBundles(requiredBundles, ({
         readyCritical,
         totalCritical
@@ -226,16 +189,15 @@ export class CampaignController {
         mode: safeRequest.mode,
         story: safeRequest.mode === "story" ? this.config.story : null,
         challenge: this.config.challenge,
-        ...(safeRequest.mode === "story" ? { storyCheckpoint: checkpoint } : {})
+        awardStoryCompletionBonus: safeRequest.mode === "story" &&
+          !this.profile.snapshot.storyCompleted
       });
       this.shell.showGame(safeRequest.mode);
       this.game.start("pointer");
       this.tracker.track("game_started", { mode: safeRequest.mode });
-      this.warmRemainingBundles(requiredBundles);
     } catch (error: unknown) {
       this.game?.destroy();
       this.game = null;
-      this.assetGatePending = false;
       this.tracker.loadFailed(
         error instanceof AssetBundleLoadError ? error.code : "runtime_init_failed"
       );
@@ -243,29 +205,44 @@ export class CampaignController {
     }
   }
 
-  private storyCheckpointFor(request: CampaignStartRequest): StoryCheckpoint {
-    if (request.restartStory) return "prologue";
-    const requested = request.checkpoint ?? this.profile.snapshot.storyCheckpoint;
-    return requested === "completed" ? "prologue" : requested;
-  }
-
   private createGameCallbacks(): RunnerGameCallbacks {
     return {
       onStateChange: (state) => {
-        if (state === "paused" && !this.assetGatePending) this.shell.setPaused(true);
+        if (state === "paused") this.shell.setPaused(true);
       },
       onSnapshot: (snapshot) => this.handleSnapshot(snapshot),
       onGameOver: (result) => this.handleGameOver(result),
       onStoryUpdate: (update) => this.handleStoryUpdate(update),
-      onStoryCheckpoint: (checkpoint) => {
-        this.profile.setStoryCheckpoint(checkpoint);
-        if (checkpoint === "epoch_1") this.pendingTutorial = "jump";
-        if (checkpoint === "epoch_2") this.pendingTutorial = "slide";
-        void this.ensureCheckpointAssets(checkpoint);
-      },
       onStoryComplete: () => {
         this.profile.completeStory();
         this.tracker.track("story_completed", {});
+      },
+      onStoryObjectiveCompleted: (objectiveId) => {
+        const label = {
+          "epoch_1.training": "Skok i ślizg opanowane.",
+          "epoch_1.cable_chaos": "Kablowy Chaos uporządkowany.",
+          "epoch_2.quality_series": "SPRAWDZONY — cztery serie ukończone.",
+          "epoch_3.creative_contract": "Kreatywny start ukończony.",
+          "epoch_3.growth_contract": "Kontrakt rozwoju ukończony.",
+          "epoch_3.trust_contract": "Kontrakt zaufania ukończony.",
+          "epoch_4.orders": "Sześć zamówień gotowych.",
+          "epoch_4.logistic_hydra": "Logistyczna Hydra opanowana.",
+          "epoch_5.counter": "Licznik: 999 999.",
+          "epoch_5.million_wave": "Fala Miliona ukończona.",
+          "epoch_5.symbols": "Osiem symboli zebranych."
+        }[objectiveId];
+        this.shell.showStoryObjective(`✓ ${label}`);
+        this.shell.showGameplayHint(label);
+        this.clearPowerUpHintTimer();
+        this.powerUpHintTimer = window.setTimeout(() => {
+          this.powerUpHintTimer = null;
+          this.shell.showGameplayHint(null);
+        }, 2_400);
+      },
+      onModeChange: (mode) => {
+        this.shell.showStoryObjective(null);
+        this.shell.showGame(mode);
+        this.tracker.track("game_started", { mode });
       }
     };
   }
@@ -315,22 +292,14 @@ export class CampaignController {
     if (snapshot.mode === "challenge" && snapshot.logisticWavePhase !== this.lastLogisticPhase) {
       this.lastLogisticPhase = snapshot.logisticWavePhase;
       if (snapshot.logisticWavePhase === "warning") {
-        this.shell.showStoryBeat({
-          id: "challenge.logistic_wave_warning",
-          eyebrow: this.uiCopy("challengeMode", "Próba Miliona"),
-          body: this.uiCopy("logisticWarning", "Uwaga: fala logistyczna")
-        }, false);
+        this.shell.announce(this.uiCopy("logisticWarning", "Uwaga: fala logistyczna"));
       } else if (snapshot.logisticWavePhase === "reward") {
-        this.shell.showStoryBeat({
-          id: "challenge.logistic_wave_reward",
-          body: this.uiCopy(
-            "logisticReward",
-            "Fala opanowana — złote paczki są Twoje."
-          )
-        }, false);
-      } else {
-        this.shell.showStoryBeat(null, false);
+        this.shell.announce(this.uiCopy(
+          "logisticReward",
+          "Fala opanowana — złote paczki są Twoje."
+        ));
       }
+      this.shell.showStoryBeat(null, false);
     }
   }
 
@@ -346,14 +315,47 @@ export class CampaignController {
       }
       this.lastTrustCorridor = update.trustCorridor;
     }
-    this.shell.showStoryBeat(
-      storyCaption(
-        update.activeBeats,
-        update.trustCorridor,
-        this.uiCopy("corridorEyebrow", "Bezpieczny odcinek — historia biegnie dalej")
-      ),
-      update.trustCorridor
-    );
+    if (update.state === "scene" && update.scene) {
+      this.shell.showStoryObjective(null);
+      this.shell.showStoryScene({
+        sceneId: update.scene.id,
+        eyebrow: update.scene.eyebrow,
+        title: update.scene.title,
+        body: update.scene.body,
+        vignette: update.scene.vignette,
+        continueLabel: update.scene.continueLabel
+      });
+      return;
+    }
+    if (update.state === "countdown" && update.countdownValue !== null) {
+      this.shell.showStoryCountdown(update.countdownValue as 3 | 2 | 1);
+      return;
+    }
+    if (update.state === "play") {
+      this.shell.returnToGame();
+      const segmentId = update.playSegment?.id ?? "";
+      if (segmentId !== this.lastStorySegmentId) {
+        this.lastStorySegmentId = segmentId;
+        const objective = {
+          "epoch_1.training": "Cel: 5 skoków i 5 ślizgów",
+          "epoch_1.cable_chaos": "Kablowy Chaos: skok i ślizg naprzemiennie",
+          "epoch_2.quality_series": "Cel: 4 serie po 3 udane akcje",
+          "epoch_2.doubt_cloud": "Chmura Wątpliwości: utrzymaj trasę",
+          "epoch_3.creative_contract": "Kreatywny start: zbierz 3 elementy",
+          "epoch_3.growth_contract": "Rozwój firmy: zbuduj combo ×8",
+          "epoch_3.trust_contract": "Zaufanie na lata: 12 czystych akcji",
+          "epoch_3.budget_eater": "Budżetożerca: przejdź finał kontraktów",
+          "epoch_4.orders": "Fala zamówień: przygotuj 6 paczek",
+          "epoch_4.logistic_hydra": "Logistyczna Hydra: przetrwaj 3 fazy",
+          "epoch_5.counter": "Licznik: dojdź do 999 999",
+          "epoch_5.million_wave": "Fala Miliona: zbierz 8 symboli"
+        }[segmentId] ?? null;
+        this.shell.showStoryObjective(objective);
+      }
+      if (update.playSegment?.id === "epoch_1.training" && this.pendingTutorial === null) {
+        this.pendingTutorial = "jump";
+      }
+    }
     if (!update.trustCorridor && this.pendingTutorial !== null) {
       this.shell.showGameplayHint(this.pendingTutorial === "jump"
         ? this.uiCopy("tutorialJump", "Tapnij lub naciśnij Spację, żeby skoczyć.")
@@ -402,57 +404,11 @@ export class CampaignController {
 
   private returnToMenu(): void {
     this.startToken += 1;
-    this.assetGatePending = false;
     this.game?.destroy();
     this.game = null;
     this.audio.stop();
     this.clearPowerUpHintTimer();
     this.showLanding();
-  }
-
-  private warmRemainingBundles(requiredBundles: readonly AssetBundleId[]): void {
-    const required = new Set(requiredBundles);
-    const remaining = this.config.assets.bundles
-      .map(({ id }) => id)
-      .filter((bundleId) => !required.has(bundleId));
-    void this.assetLoader.warmBundles(remaining).catch(() => {
-      // A background failure only becomes blocking if that chapter is reached.
-    });
-  }
-
-  private async ensureCheckpointAssets(checkpoint: StoryCheckpoint): Promise<void> {
-    const bundleId = assetBundleForStoryCheckpoint(checkpoint);
-    const game = this.game;
-    if (bundleId === null || game === null || this.assetLoader.isBundleReady(bundleId)) return;
-
-    const token = this.startToken;
-    this.assetGatePending = true;
-    game.pause();
-    this.shell.showStoryBeat({
-      id: "system.asset-preparing",
-      eyebrow: this.uiCopy("corridorEyebrow", "Bezpieczny odcinek — historia biegnie dalej"),
-      body: this.uiCopy(
-        "assetPreparing",
-        "Bezpieczny odcinek — przygotowujemy kolejny rozdział."
-      )
-    }, true);
-
-    try {
-      await this.assetLoader.ensureBundles([bundleId]);
-      if (this.destroyed || token !== this.startToken || game !== this.game) return;
-      this.assetGatePending = false;
-      this.shell.showStoryBeat(null, false);
-      game.resume();
-    } catch {
-      if (this.destroyed || token !== this.startToken || game !== this.game) return;
-      this.assetGatePending = false;
-      game.destroy();
-      this.game = null;
-      this.audio.stop();
-      this.pendingStart = { mode: "story", checkpoint, restartStory: false };
-      this.tracker.loadFailed("critical_asset_failed");
-      this.shell.showError();
-    }
   }
 
   private clearPowerUpHintTimer(): void {

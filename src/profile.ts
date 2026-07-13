@@ -1,52 +1,24 @@
 export type GameMode = "story" | "challenge";
-export type StoryCheckpoint =
-  | "prologue"
-  | "epoch_1"
-  | "epoch_2"
-  | "epoch_3"
-  | "epoch_4"
-  | "epoch_5"
-  | "finale"
-  | "completed";
 
 export interface PlayerProfile {
-  schemaVersion: 3;
-  storyCheckpoint: StoryCheckpoint;
+  schemaVersion: 4;
   storyCompleted: boolean;
   bestChallengeScore: number;
   bestChallengePackages: number;
   soundMuted: boolean;
-  fullscreenPromptSeen: boolean;
-  /** Legacy fields are retained only so an existing local profile can migrate safely. */
-  discoveredFactIds: string[];
-  furthestEpoch: number;
-  runsPlayed: number;
+  fullscreenPreference: "fullscreen" | "portrait" | null;
 }
 
 const STORAGE_KEY = "amso_milion_runner_profile";
-const CHECKPOINTS: readonly StoryCheckpoint[] = [
-  "prologue",
-  "epoch_1",
-  "epoch_2",
-  "epoch_3",
-  "epoch_4",
-  "epoch_5",
-  "finale",
-  "completed"
-];
 
 function emptyProfile(): PlayerProfile {
   return {
-    schemaVersion: 3,
-    storyCheckpoint: "prologue",
+    schemaVersion: 4,
     storyCompleted: false,
     bestChallengeScore: 0,
     bestChallengePackages: 0,
     soundMuted: false,
-    fullscreenPromptSeen: false,
-    discoveredFactIds: [],
-    furthestEpoch: 0,
-    runsPlayed: 0
+    fullscreenPreference: null
   };
 }
 
@@ -57,10 +29,6 @@ function safeStorage(): Storage | null {
   } catch {
     return null;
   }
-}
-
-function isCheckpoint(value: unknown): value is StoryCheckpoint {
-  return typeof value === "string" && (CHECKPOINTS as readonly string[]).includes(value);
 }
 
 function safeNonNegativeNumber(value: unknown): number {
@@ -86,13 +54,12 @@ export class PlayerProfileStore {
         bestPackages?: unknown;
       };
       const storyCompleted = parsed.storyCompleted === true;
+      const fullscreenPreference = parsed.fullscreenPreference === "fullscreen" ||
+        parsed.fullscreenPreference === "portrait"
+        ? parsed.fullscreenPreference
+        : null;
       return {
-        schemaVersion: 3,
-        storyCheckpoint: isCheckpoint(parsed.storyCheckpoint)
-          ? parsed.storyCheckpoint
-          : storyCompleted
-            ? "completed"
-            : "prologue",
+        schemaVersion: 4,
         storyCompleted,
         bestChallengeScore: Math.round(
           safeNonNegativeNumber(parsed.bestChallengeScore ?? parsed.bestScore)
@@ -101,12 +68,7 @@ export class PlayerProfileStore {
           safeNonNegativeNumber(parsed.bestChallengePackages ?? parsed.bestPackages)
         ),
         soundMuted: parsed.soundMuted === true,
-        fullscreenPromptSeen: parsed.fullscreenPromptSeen === true,
-        discoveredFactIds: Array.isArray(parsed.discoveredFactIds)
-          ? parsed.discoveredFactIds.filter((id): id is string => typeof id === "string")
-          : [],
-        furthestEpoch: Math.round(safeNonNegativeNumber(parsed.furthestEpoch)),
-        runsPlayed: Math.round(safeNonNegativeNumber(parsed.runsPlayed))
+        fullscreenPreference
       };
     } catch {
       return emptyProfile();
@@ -130,13 +92,7 @@ export class PlayerProfileStore {
     return this.profile.storyCompleted ? ["story", "challenge"] : ["story"];
   }
 
-  public setStoryCheckpoint(checkpoint: StoryCheckpoint): void {
-    this.profile.storyCheckpoint = checkpoint;
-    this.write();
-  }
-
   public completeStory(): void {
-    this.profile.storyCheckpoint = "completed";
     this.profile.storyCompleted = true;
     this.write();
   }
@@ -150,7 +106,6 @@ export class PlayerProfileStore {
       this.profile.bestChallengePackages,
       Math.round(safeNonNegativeNumber(packages))
     );
-    this.profile.runsPlayed += 1;
     this.write();
   }
 
@@ -159,49 +114,8 @@ export class PlayerProfileStore {
     this.write();
   }
 
-  public markFullscreenPromptSeen(): void {
-    this.profile.fullscreenPromptSeen = true;
-    this.write();
-  }
-
-  /** Compatibility during the v2-to-v3 controller migration. */
-  public hasDiscovered(factId: string): boolean {
-    return this.profile.discoveredFactIds.includes(factId);
-  }
-
-  /** Compatibility during the v2-to-v3 controller migration. */
-  public recordRun(
-    score: number,
-    packages: number,
-    furthestEpoch: number,
-    discoveredFactIds: readonly string[]
-  ): string[] {
-    const fresh: string[] = [];
-    for (const id of discoveredFactIds) {
-      if (!this.profile.discoveredFactIds.includes(id)) {
-        this.profile.discoveredFactIds.push(id);
-        fresh.push(id);
-      }
-    }
-    this.profile.bestChallengeScore = Math.max(
-      this.profile.bestChallengeScore,
-      Math.round(safeNonNegativeNumber(score))
-    );
-    this.profile.bestChallengePackages = Math.max(
-      this.profile.bestChallengePackages,
-      Math.round(safeNonNegativeNumber(packages))
-    );
-    this.profile.furthestEpoch = Math.max(
-      this.profile.furthestEpoch,
-      Math.round(safeNonNegativeNumber(furthestEpoch))
-    );
-    this.profile.runsPlayed += 1;
-    this.write();
-    return fresh;
-  }
-
-  public resetFacts(): void {
-    this.profile.discoveredFactIds = [];
+  public setFullscreenPreference(preference: "fullscreen" | "portrait"): void {
+    this.profile.fullscreenPreference = preference;
     this.write();
   }
 }

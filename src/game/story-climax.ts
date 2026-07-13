@@ -46,7 +46,7 @@ const DEFINITIONS: readonly StoryClimaxDefinition[] = [
   {
     identity: "cable-chaos",
     positiveMotif: "ordered-cables",
-    attacks: ["pallet", "pallet"]
+    attacks: ["pallet", "overhead", "box-stack", "overhead"]
   },
   {
     identity: "doubt-cloud",
@@ -61,7 +61,7 @@ const DEFINITIONS: readonly StoryClimaxDefinition[] = [
   {
     identity: "logistics-hydra",
     positiveMotif: "sorting-network",
-    attacks: ["box-stack", "overhead"]
+    attacks: ["box-stack", "overhead", "trolley"]
   }
 ];
 
@@ -153,11 +153,13 @@ export class StoryClimaxDirector {
       return { type: "none" };
     }
 
-    if (elapsed >= forcedTransformationAt) {
+    // Once a telegraphed attack is on the route, let the player finish it. Cutting
+    // it off here makes the final Cable Chaos alternation impossible to earn.
+    if (elapsed >= forcedTransformationAt && !this.awaitingResolution) {
       return this.completeIntoTransformation();
     }
 
-    if (this.model.phase === "inactive" && elapsed >= this.durationSeconds * 0.28) {
+    if (this.model.phase === "inactive" && elapsed >= this.durationSeconds * 0.08) {
       this.model.phase = "warning";
       this.warningRemaining = WARNING_SECONDS;
     }
