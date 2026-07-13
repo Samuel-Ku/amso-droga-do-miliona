@@ -1,0 +1,1090 @@
+:root {
+  color: #fff;
+  background: #061426;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#amso-campaign-root {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: #061426;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.amso-campaign,
+.amso-campaign * {
+  box-sizing: border-box;
+}
+
+.amso-campaign [hidden] {
+  display: none !important;
+}
+
+.amso-campaign {
+  --campaign-navy-950: #061426;
+  --campaign-navy-900: #081b32;
+  --campaign-navy-800: #0c294b;
+  --campaign-navy-700: #123b68;
+  --campaign-orange-600: #ee5d00;
+  --campaign-orange-500: #ff6b00;
+  --campaign-orange-400: #ff8533;
+  --campaign-cream: #fff8ed;
+  --campaign-ink: #071a31;
+  --campaign-muted: #aebed0;
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  color: #fff;
+  color-scheme: dark;
+  isolation: isolate;
+  overscroll-behavior: contain;
+}
+
+.amso-campaign__backdrop {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  background:
+    radial-gradient(circle at 86% 15%, rgb(255 107 0 / 22%), transparent 30rem),
+    radial-gradient(circle at 8% 90%, rgb(28 90 144 / 38%), transparent 34rem),
+    var(--campaign-navy-950);
+}
+
+.amso-campaign__backdrop::after {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 3%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 3%) 1px, transparent 1px);
+  background-size: 46px 46px;
+  content: "";
+  mask-image: linear-gradient(#000, transparent 82%);
+}
+
+.amso-campaign__header,
+.amso-campaign__footer {
+  position: relative;
+  z-index: 50;
+  display: flex;
+  width: min(1440px, 100%);
+  margin-inline: auto;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline:
+    max(16px, env(safe-area-inset-left))
+    max(16px, env(safe-area-inset-right));
+}
+
+.amso-campaign__header {
+  min-height: 64px;
+  padding-top: max(8px, env(safe-area-inset-top));
+  padding-bottom: 8px;
+}
+
+.amso-campaign__footer {
+  min-height: 38px;
+  padding-bottom: max(7px, env(safe-area-inset-bottom));
+  color: #9fb1c3;
+  font-size: 0.7rem;
+}
+
+.amso-campaign__footer a,
+.amso-campaign__brand {
+  color: inherit;
+  text-decoration: none;
+}
+
+.amso-campaign__footer a {
+  color: #dce6f1;
+  font-weight: 750;
+}
+
+.amso-campaign__brand {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.amso-campaign__brand-name {
+  color: var(--campaign-orange-500);
+  font-size: clamp(1.45rem, 3vw, 1.9rem);
+  font-weight: 950;
+  letter-spacing: -0.075em;
+  line-height: 1;
+}
+
+.amso-campaign__brand-edition {
+  overflow: hidden;
+  color: #dce6f1;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.amso-campaign__tools {
+  display: flex;
+  gap: 8px;
+}
+
+.amso-campaign__icon-button,
+.amso-campaign__pause-button,
+.amso-campaign__button,
+.amso-campaign__text-link,
+.amso-campaign__share-actions button {
+  appearance: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.amso-campaign__icon-button {
+  display: inline-flex;
+  min-height: 42px;
+  padding: 0 13px;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 12px;
+  align-items: center;
+  gap: 7px;
+  background: rgb(8 27 50 / 78%);
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 800;
+  backdrop-filter: blur(10px);
+}
+
+.amso-campaign__icon-button[aria-pressed="true"] {
+  border-color: rgb(255 133 51 / 70%);
+  background: rgb(238 93 0 / 88%);
+}
+
+.amso-campaign__main {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  padding-inline:
+    max(10px, env(safe-area-inset-left))
+    max(10px, env(safe-area-inset-right));
+  place-items: center;
+}
+
+.amso-campaign__stage {
+  position: relative;
+  width: min(1440px, 100%);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: clamp(16px, 2.2vw, 30px);
+  background: linear-gradient(180deg, #174b79 0%, #123b68 53%, #0b213a 100%);
+  box-shadow:
+    0 30px 80px rgb(0 5 15 / 50%),
+    inset 0 1px rgb(255 255 255 / 9%);
+  contain: layout paint;
+}
+
+.amso-campaign__canvas {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  touch-action: none;
+}
+
+.amso-campaign:not([data-view="game"]) .amso-campaign__canvas {
+  pointer-events: none;
+  touch-action: auto;
+}
+
+.amso-campaign__canvas:focus-visible,
+.amso-campaign :is(button, a):focus-visible {
+  outline: 3px solid #ffad70;
+  outline-offset: 3px;
+}
+
+.amso-campaign__trust-sphere {
+  position: absolute;
+  z-index: 10;
+  top: 50%;
+  left: 16%;
+  width: clamp(150px, 28vw, 360px);
+  aspect-ratio: 1;
+  border: 3px solid rgb(255 210 63 / 72%);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -42%) scale(0.22);
+  background: radial-gradient(circle, rgb(255 236 138 / 20%), rgb(255 107 0 / 8%) 56%, transparent 72%);
+  box-shadow:
+    0 0 48px rgb(255 210 63 / 35%),
+    inset 0 0 44px rgb(255 255 255 / 20%);
+  transition:
+    opacity 280ms ease,
+    transform 520ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.amso-campaign[data-trust-corridor] .amso-campaign__trust-sphere {
+  opacity: 1;
+  transform: translate(-50%, -42%) scale(1);
+}
+
+.amso-campaign__hud {
+  position: absolute;
+  z-index: 25;
+  top: clamp(10px, 2vw, 20px);
+  right: clamp(10px, 2vw, 20px);
+  left: clamp(10px, 2vw, 20px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.amso-campaign__hud[data-muted] {
+  opacity: 0.28;
+}
+
+.amso-campaign__hud-context,
+.amso-campaign__hud-stats,
+.amso-campaign__pause-button {
+  border: 1px solid rgb(255 255 255 / 17%);
+  background: rgb(6 20 38 / 82%);
+  box-shadow: 0 8px 24px rgb(0 6 17 / 24%);
+  backdrop-filter: blur(12px);
+}
+
+.amso-campaign__hud-context {
+  display: flex;
+  width: fit-content;
+  min-width: 0;
+  min-height: 48px;
+  padding: 7px 13px;
+  border-radius: 14px;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.amso-campaign__hud-context strong {
+  overflow: hidden;
+  color: #ffd23f;
+  font-size: 0.73rem;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.amso-campaign__hud-context span {
+  overflow: hidden;
+  color: #dbe7f2;
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.amso-campaign__hud-stats {
+  display: flex;
+  min-height: 48px;
+  padding: 7px 13px;
+  border-radius: 14px;
+  align-items: center;
+  gap: 17px;
+  color: var(--campaign-muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.amso-campaign__hud-stats strong {
+  display: block;
+  color: #fff;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.amso-campaign__hud-stats small {
+  font: inherit;
+}
+
+.amso-campaign__pause-button {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 13px;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 850;
+  pointer-events: auto;
+}
+
+.amso-campaign__story-caption {
+  position: absolute;
+  z-index: 24;
+  right: clamp(14px, 4vw, 54px);
+  bottom: clamp(14px, 3vw, 38px);
+  left: clamp(14px, 4vw, 54px);
+  width: min(760px, calc(100% - 28px));
+  max-height: 42%;
+  margin-inline: auto;
+  overflow: auto;
+  padding: clamp(16px, 2.7vw, 28px);
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: clamp(15px, 2vw, 22px);
+  background: rgb(6 20 38 / 90%);
+  box-shadow: 0 22px 60px rgb(0 5 15 / 38%);
+  text-align: center;
+  pointer-events: none;
+  backdrop-filter: blur(16px);
+}
+
+.amso-campaign__gameplay-hint {
+  position: absolute;
+  z-index: 8;
+  right: 50%;
+  bottom: clamp(1rem, 4vh, 2.5rem);
+  max-width: min(90%, 38rem);
+  padding: 0.7rem 1rem;
+  border: 1px solid rgb(255 255 255 / 28%);
+  border-radius: 999px;
+  background: rgb(6 20 38 / 84%);
+  box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 22%);
+  color: #fff;
+  font-size: clamp(0.78rem, 1.6vw, 0.95rem);
+  font-weight: 800;
+  text-align: center;
+  transform: translateX(50%);
+}
+
+.amso-campaign__story-caption h2 {
+  margin: 0 0 8px;
+  font-size: clamp(1.45rem, 3.8vw, 2.4rem);
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+.amso-campaign__story-caption p {
+  max-width: 680px;
+  margin: 4px auto 0;
+  color: #edf3f8;
+  font-size: clamp(0.95rem, 1.8vw, 1.14rem);
+  line-height: 1.5;
+}
+
+.amso-campaign__eyebrow {
+  margin: 0 0 10px;
+  color: var(--campaign-orange-400);
+  font-size: clamp(0.67rem, 1.5vw, 0.8rem);
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.amso-campaign__screen {
+  position: absolute;
+  z-index: 30;
+  inset: 0;
+  overflow: auto;
+}
+
+.amso-campaign__screen--landing {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(340px, 1.1fr);
+  padding: clamp(24px, 5vw, 78px);
+  align-items: center;
+  gap: clamp(24px, 5vw, 84px);
+  background: linear-gradient(90deg, rgb(6 20 38 / 96%), rgb(6 20 38 / 72%) 52%, rgb(6 20 38 / 18%));
+}
+
+.amso-campaign__landing-copy {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 650px);
+}
+
+.amso-campaign__landing-copy h1,
+.amso-campaign__card h2,
+.amso-campaign__result-card h2 {
+  margin: 0;
+  font-weight: 950;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.amso-campaign__landing-copy h1 {
+  font-size: clamp(2.8rem, 6.2vw, 6rem);
+}
+
+.amso-campaign__landing-copy h1 small {
+  font: inherit;
+}
+
+.amso-campaign__landing-copy h1 span {
+  display: block;
+  color: var(--campaign-orange-500);
+}
+
+.amso-campaign__lead {
+  max-width: 590px;
+  margin: clamp(18px, 3vw, 28px) 0 12px;
+  color: #dce6f1;
+  font-size: clamp(1rem, 1.8vw, 1.18rem);
+  line-height: 1.55;
+}
+
+.amso-campaign__meta {
+  margin: 0 0 22px;
+  color: var(--campaign-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.amso-campaign__landing-actions {
+  display: flex;
+  max-width: 570px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.amso-campaign__landing-actions h2 {
+  width: 100%;
+  margin: 0 0 4px;
+  font-size: clamp(1.25rem, 2.4vw, 1.75rem);
+}
+
+.amso-campaign__landing-art {
+  position: relative;
+  min-height: min(56vh, 560px);
+}
+
+.amso-campaign__first-package,
+.amso-campaign__milestone {
+  position: absolute;
+  display: grid;
+  border: 3px solid var(--campaign-ink);
+  place-items: center;
+  box-shadow: 12px 12px 0 rgb(7 26 49 / 48%);
+  font-weight: 950;
+}
+
+.amso-campaign__first-package {
+  bottom: 16%;
+  left: 8%;
+  width: clamp(130px, 17vw, 220px);
+  aspect-ratio: 1;
+  background: #d29a5d;
+  color: #fff;
+  font-size: clamp(3rem, 8vw, 7rem);
+  transform: rotate(-6deg);
+}
+
+.amso-campaign__milestone {
+  top: 13%;
+  right: 4%;
+  min-width: 65%;
+  padding: clamp(20px, 4vw, 45px);
+  border-radius: 18px;
+  background: var(--campaign-cream);
+  color: var(--campaign-ink);
+  font-size: clamp(2.1rem, 5vw, 5.3rem);
+  transform: rotate(3deg);
+}
+
+.amso-campaign__spark {
+  position: absolute;
+  z-index: 2;
+  top: 49%;
+  left: 48%;
+  width: 44px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #ffd23f;
+  box-shadow:
+    0 0 22px #ffd23f,
+    0 0 70px rgb(255 107 0 / 90%);
+  animation: campaign-spark 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes campaign-spark {
+  to { transform: scale(1.22) translateY(-8px); }
+}
+
+.amso-campaign__screen--dialog,
+.amso-campaign__screen--result {
+  display: grid;
+  padding: clamp(16px, 4vw, 46px);
+  place-items: center;
+  background: rgb(4 15 29 / 78%);
+  backdrop-filter: blur(10px);
+}
+
+.amso-campaign__card,
+.amso-campaign__result-card {
+  width: min(100%, 650px);
+  padding: clamp(24px, 4vw, 42px);
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: clamp(18px, 3vw, 28px);
+  background: rgb(8 27 50 / 96%);
+  box-shadow: 0 26px 72px rgb(0 5 15 / 45%);
+  text-align: center;
+}
+
+.amso-campaign__card h2,
+.amso-campaign__result-card h2 {
+  font-size: clamp(2rem, 4.6vw, 3.5rem);
+}
+
+.amso-campaign__card > p:not(.amso-campaign__eyebrow) {
+  max-width: 520px;
+  margin: 16px auto 24px;
+  color: #c7d4e1;
+  line-height: 1.55;
+}
+
+.amso-campaign__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.amso-campaign__button {
+  display: inline-flex;
+  min-height: 52px;
+  padding: 0 22px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  font-size: 0.9rem;
+  font-weight: 850;
+  line-height: 1.15;
+  text-align: center;
+  text-decoration: none;
+}
+
+.amso-campaign__button--primary {
+  background: var(--campaign-orange-500);
+  box-shadow: 0 12px 28px rgb(238 93 0 / 28%);
+  color: #fff;
+}
+
+.amso-campaign__button--secondary {
+  border-color: rgb(255 255 255 / 22%);
+  background: rgb(255 255 255 / 10%);
+  color: #fff;
+}
+
+.amso-campaign__button:hover,
+.amso-campaign__share-actions button:hover {
+  transform: translateY(-2px);
+}
+
+.amso-campaign__card--loading progress {
+  width: min(100%, 360px);
+  height: 9px;
+  margin-top: 22px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  accent-color: var(--campaign-orange-500);
+}
+
+.amso-campaign__card--loading progress[data-indeterminate] {
+  animation: campaign-loading 1.1s ease-in-out infinite alternate;
+}
+
+.amso-campaign__loading-package {
+  display: block;
+  width: 70px;
+  height: 62px;
+  margin: 0 auto 20px;
+  background:
+    linear-gradient(90deg, transparent 46%, #9e6938 46% 54%, transparent 54%),
+    #d29a5d;
+  box-shadow: 8px 8px 0 rgb(7 26 49 / 42%);
+  transform: rotate(-4deg);
+}
+
+@keyframes campaign-loading {
+  from { opacity: 0.42; }
+  to { opacity: 1; }
+}
+
+.amso-campaign__result-card {
+  width: min(100%, 820px);
+  background: var(--campaign-cream);
+  color: var(--campaign-ink);
+}
+
+.amso-campaign__result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: clamp(18px, 3vw, 28px) 0;
+}
+
+.amso-campaign__result-grid--challenge {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.amso-campaign__result-grid > span {
+  min-width: 0;
+  padding: clamp(12px, 2vw, 18px);
+  border: 1px solid rgb(7 26 49 / 10%);
+  border-radius: 14px;
+  background: #fff;
+  color: #607083;
+  font-size: 0.64rem;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.amso-campaign__result-grid small {
+  display: block;
+  font: inherit;
+}
+
+.amso-campaign__result-grid strong,
+.amso-campaign__result-grid i {
+  display: block;
+  margin-top: 4px;
+  color: var(--campaign-ink);
+  font-size: clamp(1.15rem, 3vw, 1.85rem);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+.amso-campaign__result-intro {
+  margin: -6px 0 20px;
+  color: #607083;
+  font-size: 0.88rem;
+}
+
+.amso-campaign__result-card .amso-campaign__button--secondary {
+  border-color: rgb(7 26 49 / 16%);
+  background: #fff;
+  color: var(--campaign-ink);
+}
+
+.amso-campaign__text-link {
+  display: inline-flex;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  align-items: center;
+  background: transparent;
+  color: #4a5c6f;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.amso-campaign__share-panel {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid rgb(7 26 49 / 12%);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.amso-campaign__share-panel p {
+  margin: 0 0 12px;
+  color: #4a5c6f;
+  font-size: 0.82rem;
+}
+
+.amso-campaign__share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.amso-campaign__share-actions button {
+  min-height: 44px;
+  padding: 0 15px;
+  border: 1px solid rgb(7 26 49 / 13%);
+  border-radius: 10px;
+  background: #edf1f5;
+  color: var(--campaign-ink);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.amso-campaign__share-status {
+  min-height: 1.3em;
+  margin-top: 10px !important;
+}
+
+.amso-campaign__too-narrow {
+  position: absolute;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  padding: 24px;
+  place-content: center;
+  gap: 8px;
+  background: var(--campaign-navy-950);
+  text-align: center;
+}
+
+.amso-campaign__too-narrow strong {
+  color: var(--campaign-orange-400);
+  font-size: 1.2rem;
+}
+
+.amso-campaign__too-narrow span {
+  color: #dce6f1;
+}
+
+.amso-campaign__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 820px) {
+  .amso-campaign__screen--landing {
+    grid-template-columns: 1fr;
+    place-items: center;
+    text-align: center;
+  }
+
+  .amso-campaign__landing-copy {
+    margin-inline: auto;
+  }
+
+  .amso-campaign__lead,
+  .amso-campaign__landing-actions {
+    margin-inline: auto;
+    justify-content: center;
+  }
+
+  .amso-campaign__landing-art {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    opacity: 0.25;
+  }
+
+  .amso-campaign__result-grid--challenge {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .amso-campaign__header {
+    min-height: 56px;
+  }
+
+  .amso-campaign__brand-edition {
+    max-width: 128px;
+    font-size: 0.62rem;
+  }
+
+  .amso-campaign__tool-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .amso-campaign__icon-button {
+    width: 42px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .amso-campaign__footer > span {
+    display: none;
+  }
+
+  .amso-campaign__screen--landing {
+    padding: 20px 16px;
+  }
+
+  .amso-campaign__landing-copy h1 {
+    font-size: clamp(2.45rem, 13vw, 4.1rem);
+  }
+
+  .amso-campaign__lead {
+    font-size: 0.95rem;
+  }
+
+  .amso-campaign__landing-actions,
+  .amso-campaign__landing-actions .amso-campaign__button {
+    width: 100%;
+  }
+
+  .amso-campaign__hud {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .amso-campaign__hud-context {
+    min-height: 43px;
+    padding: 5px 8px;
+  }
+
+  .amso-campaign__hud-stats {
+    position: absolute;
+    top: 52px;
+    left: 0;
+    min-height: 39px;
+    padding: 5px 9px;
+    gap: 12px;
+  }
+
+  .amso-campaign__pause-button {
+    min-height: 42px;
+    padding: 0 10px;
+  }
+
+  .amso-campaign__story-caption {
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    width: auto;
+    max-height: 39%;
+    padding: 15px;
+    border-radius: 15px;
+  }
+
+  .amso-campaign__story-caption h2 {
+    font-size: 1.4rem;
+  }
+
+  .amso-campaign__story-caption p {
+    font-size: 0.92rem;
+    line-height: 1.42;
+  }
+
+  .amso-campaign__screen--dialog,
+  .amso-campaign__screen--result {
+    padding: 10px;
+    place-items: start center;
+  }
+
+  .amso-campaign__card,
+  .amso-campaign__result-card {
+    margin: auto 0;
+    padding: 20px 15px;
+    border-radius: 18px;
+  }
+
+  .amso-campaign__result-grid,
+  .amso-campaign__result-grid--challenge {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 15px 0;
+  }
+
+  .amso-campaign__result-grid > span:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .amso-campaign__actions {
+    flex-direction: column;
+  }
+
+  .amso-campaign__actions > * {
+    width: 100%;
+  }
+
+  .amso-campaign__trust-sphere {
+    top: 48%;
+    left: 50%;
+    width: min(66vw, 280px);
+  }
+}
+
+@media (orientation: portrait) and (max-width: 600px) {
+  .amso-campaign__stage {
+    border-radius: 18px;
+  }
+
+  .amso-campaign__canvas {
+    height: 68%;
+    top: 10%;
+  }
+
+  .amso-campaign[data-view="landing"] .amso-campaign__canvas,
+  .amso-campaign[data-view="story_result"] .amso-campaign__canvas,
+  .amso-campaign[data-view="challenge_result"] .amso-campaign__canvas {
+    height: 100%;
+    top: 0;
+  }
+
+  .amso-campaign__story-caption {
+    max-height: 30%;
+  }
+}
+
+@media (max-height: 520px) and (min-width: 600px) {
+  .amso-campaign__header {
+    min-height: 48px;
+    padding-block: 4px;
+  }
+
+  .amso-campaign__footer {
+    min-height: 28px;
+    padding-block: 3px;
+  }
+
+  .amso-campaign__screen--landing {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.75fr);
+    padding: 14px 28px;
+  }
+
+  .amso-campaign__landing-copy h1 {
+    font-size: clamp(2.35rem, 12vh, 3.8rem);
+  }
+
+  .amso-campaign__lead {
+    margin-block: 11px 7px;
+    font-size: 0.84rem;
+  }
+
+  .amso-campaign__meta {
+    margin-bottom: 10px;
+    font-size: 0.68rem;
+  }
+
+  .amso-campaign__button {
+    min-height: 42px;
+  }
+
+  .amso-campaign__story-caption {
+    right: 16px;
+    bottom: 10px;
+    left: auto;
+    width: min(48%, 650px);
+    max-height: 62%;
+    padding: 13px 17px;
+    text-align: left;
+  }
+
+  .amso-campaign__story-caption p {
+    margin-inline: 0;
+    font-size: 0.82rem;
+  }
+
+  .amso-campaign__screen--result {
+    padding: 8px 20px;
+  }
+
+  .amso-campaign__result-card {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    width: min(100%, 1040px);
+    padding: 13px 18px;
+    align-items: center;
+    gap: 8px 18px;
+    text-align: left;
+  }
+
+  .amso-campaign__result-card > :is(.amso-campaign__eyebrow, h2, .amso-campaign__result-grid) {
+    grid-column: 1;
+  }
+
+  .amso-campaign__result-card > :is(.amso-campaign__result-intro, .amso-campaign__actions, .amso-campaign__share-panel) {
+    grid-column: 2;
+  }
+
+  .amso-campaign__result-card h2 {
+    font-size: 1.65rem;
+  }
+
+  .amso-campaign__result-grid,
+  .amso-campaign__result-grid--challenge {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin: 6px 0;
+  }
+
+  .amso-campaign__result-grid > span {
+    padding: 7px;
+    font-size: 0.52rem;
+  }
+
+  .amso-campaign__result-grid strong,
+  .amso-campaign__result-grid i {
+    font-size: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .amso-campaign *,
+  .amso-campaign *::before,
+  .amso-campaign *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .amso-campaign__trust-sphere {
+    transform: translate(-50%, -42%) scale(1);
+  }
+}
+
+@media (forced-colors: active) {
+  .amso-campaign__stage,
+  .amso-campaign__card,
+  .amso-campaign__result-card,
+  .amso-campaign__hud-context,
+  .amso-campaign__hud-stats,
+  .amso-campaign__pause-button {
+    border: 1px solid CanvasText;
+  }
+
+  .amso-campaign__landing-art,
+  .amso-campaign__trust-sphere {
+    display: none;
+  }
+}

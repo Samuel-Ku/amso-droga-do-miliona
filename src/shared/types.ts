@@ -1,0 +1,160 @@
+export type RunnerSource = "homepage_logo" | "landing_hero" | "demo_logo" | "demo_hero" | string;
+
+export interface RunnerFact {
+  id: string;
+  text: string;
+  enabled: boolean;
+  asOf?: string;
+  validFrom?: string;
+  validTo?: string | null;
+}
+
+export type PackageType = "notebook" | "telefon" | "pc" | "lcd";
+export type PowerUpKind = "gwarancja_48" | "audyt_jakosci" | "drugie_zycie";
+export type CampaignMode = "story" | "challenge";
+export type StoryBeatKind = "title" | "dialogue" | "copy" | "stat" | "challenge";
+
+export interface StoryBeatConfig {
+  id: string;
+  text: string;
+  maxExposureSeconds: number;
+  kind: StoryBeatKind;
+}
+
+export interface StorySectionConfig {
+  id: "prologue" | "finale";
+  durationSeconds: number;
+  beats: StoryBeatConfig[];
+}
+
+/**
+ * A fact trigger describes the in-game condition that reveals a company fact.
+ * Triggers are evaluated by the fact engine during a run.
+ */
+export type FactTrigger =
+  | { type: "epoch_completed"; epochIndex: number }
+  | { type: "epoch_completed_clean"; epochIndex: number }
+  | { type: "collect_type"; packageType: PackageType; threshold: number }
+  | { type: "collect_weight"; threshold: number };
+
+export interface NarrativeFact {
+  id: string;
+  text: string;
+  enabled: boolean;
+  trigger: FactTrigger;
+  asOf?: string;
+  validFrom?: string;
+  validTo?: string | null;
+}
+
+export interface EpochConfig {
+  index: number;
+  id: string;
+  name: string;
+  year: string;
+  /** Index into the renderer's BACKGROUND_THEMES palette. */
+  themeIndex: number;
+  durationSeconds: number;
+  /** Obstacle kinds available in this epoch (widening pool). */
+  obstaclePool: string[];
+  /** Speed multiplier at the start/end of the epoch ramp. */
+  difficultyStart: number;
+  difficultyEnd: number;
+  challengeName?: string;
+  powerUpDebut?: PowerUpKind;
+  beats?: StoryBeatConfig[];
+  /** Whether the scripted boss climax lands at the end of this epoch. */
+  bossClimax?: boolean;
+}
+
+export interface StoryEpochConfig extends EpochConfig {
+  challengeName: string;
+  beats: StoryBeatConfig[];
+}
+
+export interface StoryConfig {
+  durationSeconds: number;
+  prologue: StorySectionConfig;
+  epochs: StoryEpochConfig[];
+  finale: StorySectionConfig;
+}
+
+export interface ChallengeConfig {
+  mode: "challenge";
+  speedStartMultiplier: number;
+  speedMaxMultiplier: number;
+  logisticWaveMinSeconds: number;
+  logisticWaveMaxSeconds: number;
+  warrantyOneUse: true;
+}
+
+export interface AudioConfig {
+  enabled: boolean;
+}
+
+export interface NarrativeConfig {
+  epochs: EpochConfig[];
+  facts: NarrativeFact[];
+}
+
+export interface DiscountCodeConfig {
+  code: string;
+  label: string;
+}
+
+export interface RunnerConfig {
+  schemaVersion: 3;
+  enabled: boolean;
+  gameVersion: string;
+  claim: string;
+  modulePath?: string;
+  stylePath?: string;
+  triggerSelector?: string;
+  cta: {
+    id: string;
+    label: string;
+    campaignLabel: string;
+    challengeLabel: string;
+    path: string;
+  };
+  facts: RunnerFact[];
+  story: StoryConfig;
+  challenge: ChallengeConfig;
+  audio: AudioConfig;
+  /** Production page/UI copy; code-level strings are only fail-safe defaults. */
+  ui?: Readonly<Record<string, string>>;
+  /** Enables the 5-epoch narrative campaign instead of the legacy single run. */
+  narrativeMode?: boolean;
+  /** Optional promo code surfaced on the final screen; button hides when omitted. */
+  discountCode?: DiscountCodeConfig;
+  /** Narrative campaign definition (epochs + triggered facts). */
+  narrative?: NarrativeConfig;
+}
+
+export interface RunnerOpenOptions {
+  sourceLocation: RunnerSource;
+  returnFocusTo?: HTMLElement | null;
+  /** performance.now() captured when the trigger was activated. */
+  requestedAt?: number;
+  /** Internal loader flag preventing duplicate game_opened events. */
+  openedTracked?: boolean;
+}
+
+export interface RunnerPublicApi {
+  open(options: RunnerOpenOptions): void;
+  close(reason?: string): void;
+  destroy(): void;
+}
+
+export interface DataLayerEvent {
+  event: string;
+  [key: string]: string | number | boolean | undefined | (() => void);
+}
+
+declare global {
+  interface Window {
+    dataLayer?: DataLayerEvent[];
+    AMSOMillionRunner?: RunnerPublicApi;
+    google_tag_manager?: Record<string, unknown>;
+  }
+}

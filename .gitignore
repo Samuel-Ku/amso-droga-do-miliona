@@ -1,0 +1,7 @@
+node_modules/
+dist/
+dist-demo/
+droga-do-miliona-qa.zip
+coverage/
+.DS_Store
+*.log
