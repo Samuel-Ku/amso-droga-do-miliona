@@ -24,14 +24,35 @@ export const SEMANTIC_WORLD_SVG = `
     <rect width="960" height="540" fill="#faf7f0" />
     <rect width="960" height="540" fill="url(#amso-paper-dots)" />
 
-    <g data-world-fallback="first-mile" hidden>
-      <path d="M0 91h324v21H0zm42 58h260v18H42zm-6 63h286v18H36" fill="#191919" />
-      <path d="M61 55h82v36H61zm101 12h99v24h-99zm-79 94h61v48H83zm93 12h96v36h-96" fill="#c8a27b" stroke="#191919" stroke-width="5" />
-      <path d="M112 286h298v83H112z" fill="#c8a27b" stroke="#191919" stroke-width="7" filter="url(#amso-soft-shadow)" />
-      <path d="M256 262h118l-15 59H244z" fill="#191919" stroke="#191919" stroke-width="6" />
-      <path d="M265 272h97l-10 38h-96z" fill="#424242" />
-      <rect x="144" y="310" width="91" height="38" rx="5" fill="#fff" stroke="#191919" stroke-width="4" />
-      <rect x="154" y="337" width="71" height="6" rx="3" fill="url(#amso-route-gradient)" />
+    <g data-world-fallback="first-mile" data-editorial-scene="first-package" hidden>
+      <g data-editorial-layer="small-shop">
+        <path d="M34 74h332v292H34z" fill="#fff" stroke="#171717" stroke-width="8" />
+        <path d="M34 74h332l-21-41H59z" fill="url(#amso-route-gradient)" stroke="#171717" stroke-width="8" />
+        <path d="M70 112h125v105H70zm158 0h101v105H228z" fill="#faf7f0" stroke="#171717" stroke-width="7" />
+        <path d="M95 137h75v55H95zm158 0h51v55h-51z" fill="#ffd8c2" />
+      </g>
+      <g data-editorial-layer="apartment-warehouse">
+        <path d="M390 94h525v274H390z" fill="#fff" stroke="#171717" stroke-width="8" />
+        <path d="M425 128v194m154-194v194m154-194v194m154-194v194" stroke="#171717" stroke-width="8" />
+        <path d="M425 176h462M425 248h462M425 320h462" stroke="#171717" stroke-width="7" />
+        <g fill="#f3b278" stroke="#171717" stroke-width="4">
+          <path d="M442 137h57v32h-57zm67 0h52v32h-52zm86 0h62v32h-62zm72 0h48v32h-48zm83 0h56v32h-56" />
+          <path d="M445 190h74v50h-74zm94 202h59v38h-59zm81-11h72v49h-72zm93 5h55v44h-55" />
+        </g>
+      </g>
+      <g data-editorial-layer="anonymous-team">
+        <circle cx="474" cy="292" r="24" fill="#f04f45" stroke="#171717" stroke-width="7" />
+        <path d="M431 369v-35c0-30 19-48 43-48s43 18 43 48v35" fill="#eb32a4" stroke="#171717" stroke-width="8" />
+        <circle cx="792" cy="288" r="24" fill="#f47100" stroke="#171717" stroke-width="7" />
+        <path d="M749 369v-35c0-30 19-48 43-48s43 18 43 48v35" fill="#f04f45" stroke="#171717" stroke-width="8" />
+      </g>
+      <g data-editorial-layer="hand-packed-package" filter="url(#amso-soft-shadow)">
+        <path d="M531 286h194v112H531z" fill="#c98f57" stroke="#171717" stroke-width="8" />
+        <path d="M628 286v112M531 312h194" stroke="#171717" stroke-width="6" />
+        <path d="M603 287h50v111h-50" fill="#fff" stroke="#171717" stroke-width="5" />
+        <path d="M610 365h36" stroke="url(#amso-route-gradient)" stroke-width="8" stroke-linecap="round" />
+        <path d="M505 319c31-19 54-21 82-9M751 315c-26-17-48-18-74-7" fill="none" stroke="#f3b278" stroke-width="18" stroke-linecap="round" />
+      </g>
     </g>
 
     <g data-world-fallback="cable-route" hidden>

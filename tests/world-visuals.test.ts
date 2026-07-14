@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import productionConfig from "../public/assets/milion-runner/runner-config.json";
 import {
   CAMPAIGN_SCENE_MANIFEST,
   ChallengeWorldDirector,
@@ -27,6 +28,27 @@ describe("world visual continuity", () => {
     expect(css).toContain("object-fit: contain");
     expect(semanticSvg).toContain('preserveAspectRatio="xMidYMid meet"');
     expect(renderer).toContain("drawGameplayRoute(context)");
+  });
+
+  it("builds the first package as layered editorial SVG without embedded copy", () => {
+    const semanticSvg = readFileSync(
+      new URL("../src/visuals/semantic-world-svg.ts", import.meta.url),
+      "utf8"
+    );
+    const start = semanticSvg.indexOf('data-editorial-scene="first-package"');
+    const end = semanticSvg.indexOf('data-world-fallback="cable-route"');
+    const firstPackage = semanticSvg.slice(start, end);
+
+    expect(start).toBeGreaterThan(0);
+    for (const layer of ["small-shop", "apartment-warehouse", "anonymous-team", "hand-packed-package"]) {
+      expect(firstPackage).toContain(`data-editorial-layer="${layer}"`);
+    }
+    expect(firstPackage).not.toContain("<text");
+    const scene = productionConfig.story.scenes[0]!;
+    expect(scene.eyebrow).toBe("Nasza historia");
+    expect(scene.body.join(" ")).toContain("małym sklepie");
+    expect(scene.body.join(" ")).toContain("magazynie wielkości kawalerki");
+    expect(scene.body.join(" ")).toContain("własnymi rękami");
   });
 
   it("keeps the animated million value inside its own responsive counter plate", () => {

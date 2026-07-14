@@ -169,10 +169,32 @@ describe("player-paced story presentation", () => {
 
   it("keeps story art visible beside copy and uses a portrait bottom sheet", () => {
     expect(campaignCss).toContain('data-copy-placement="right"');
-    expect(campaignCss).toContain("grid-template-columns: minmax(19rem, 40%) minmax(0, 1fr)");
-    expect(campaignCss).toContain("@media (orientation: portrait) and (max-width: 760px)");
-    expect(campaignCss).toContain("max-height: 59%");
+    expect(campaignCss).toContain("grid-template-columns: minmax(19rem, 42fr) minmax(0, 58fr)");
+    expect(campaignCss).toContain("@media (max-width: 756px)");
+    expect(campaignCss).toContain("max-height: 100%");
     expect(campaignCss).not.toContain("backdrop-filter: blur(9px)");
+  });
+
+  it("uses the editorial 58/42 split at 757 px and stacks art above copy below it", () => {
+    expect(campaignCss).toContain("grid-template-columns: minmax(0, 58fr) minmax(19rem, 42fr)");
+    expect(campaignCss).toContain("@media (max-width: 756px)");
+    expect(campaignCss).toContain("grid-template-rows: minmax(0, 42%) minmax(0, 58%)");
+    expect(campaignCss).toContain("width: min(100%, 1600px)");
+    expect(campaignCss).toContain("max(15px, env(safe-area-inset-left))");
+  });
+
+  it("keeps a complete light fallback and freezes every editorial layer for reduced motion", () => {
+    const worldLayerSource = readFileSync(
+      new URL("../src/visuals/WorldVisualLayer.ts", import.meta.url),
+      "utf8"
+    );
+    expect(worldLayerSource).toContain('dataset.assetState = "fallback"');
+    expect(campaignCss).toContain('[data-asset-state="fallback"] .amso-world-visual__semantic-base');
+    expect(campaignCss).toContain('[data-state-id="story.first_package"] .amso-world-visual__semantic-base');
+    expect(campaignCss).toContain('[data-state-id="story.first_package"] .amso-world-visual__image-stack');
+    expect(campaignCss).toContain("[data-editorial-layer]");
+    expect(campaignCss).toContain("animation: none");
+    expect(campaignCss).toContain("color-scheme: only light");
   });
 
   it("keeps the countdown route visible after every responsive scrim rule", () => {
