@@ -106,16 +106,25 @@ describe("game random and spawning", () => {
 
 describe("boss encounter", () => {
   it("paces the authored encounter for a 45–60 second finale", () => {
-    const estimatedHazardTravelSeconds = 2.9;
-    const estimatedDuration =
-      BOSS.warningSeconds * BOSS.phaseCount +
-      BOSS.firstAttackDelaySeconds * BOSS.phaseCount +
-      BOSS.betweenAttacksSeconds * (BOSS.attackCount - 1) +
-      estimatedHazardTravelSeconds * BOSS.attackCount +
-      BOSS.rewardSeconds;
+    const boss = new BossDirector();
+    const stepSeconds = 0.1;
+    const hazardTravelSeconds = 2.9;
+    let elapsed = 0;
+    let hazardRemaining = 0;
+    boss.forceEncounter();
 
-    expect(estimatedDuration).toBeGreaterThanOrEqual(45);
-    expect(estimatedDuration).toBeLessThanOrEqual(60);
+    for (let guard = 0; guard < 1_000; guard += 1) {
+      elapsed += stepSeconds;
+      const hazardActive = hazardRemaining > 0;
+      const command = boss.advance(stepSeconds, elapsed, !hazardActive, hazardActive);
+      hazardRemaining = Math.max(0, hazardRemaining - stepSeconds);
+      if (command.type === "attack") hazardRemaining = hazardTravelSeconds;
+      if (command.type === "complete") break;
+    }
+
+    expect(boss.model.attacksSurvived).toBe(BOSS.attackCount);
+    expect(elapsed).toBeGreaterThanOrEqual(45);
+    expect(elapsed).toBeLessThanOrEqual(60);
   });
 
   it("runs eight combinations across three phases before the reward", () => {
