@@ -84,6 +84,13 @@ export function formatPowerUpHud(powerUps: readonly PowerUpKind[]): string {
   return powerUps.map((kind) => POWER_UP_HUD_LABELS[kind]).join(" · ");
 }
 
+/** First-run controls stay visible in the top HUD without covering the route. */
+export function formatStoryControlsHud(segmentId: string): string | null {
+  return segmentId === "epoch_1.training"
+    ? "Skok: tap/Spacja · Ślizg: ↓"
+    : null;
+}
+
 const ORDER_TYPE_LABELS: Readonly<Record<PackageType, string>> = {
   pc: "PC",
   notebook: "notebook",
@@ -116,7 +123,8 @@ function formatInteger(value: number): string {
 /** Turns the objective director's live state into compact, persistent HUD copy. */
 export function formatStoryObjectiveHud(
   objectives: Readonly<StoryObjectivesSnapshot>,
-  activeOrderTypes: readonly PackageType[] = []
+  activeOrderTypes: readonly PackageType[] = [],
+  boss?: Readonly<{ encounterPhase: number; progress: number; attackCount: number }>
 ): string | null {
   const completed = new Set(objectives.completedObjectiveIds);
   const prefix = (objectiveId: StoryObjectiveId): string => completed.has(objectiveId) ? "✓ " : "";
@@ -164,6 +172,10 @@ export function formatStoryObjectiveHud(
       return `${prefix("epoch_5.counter")}Licznik zamówień · ` +
         formatInteger(objectives.epoch5.counter.value);
     case "epoch_5.million_wave": {
+      if (boss) {
+        return `Fala Miliona · faza ${Math.max(1, Math.min(3, boss.encounterPhase))}/3 · ` +
+          `kombinacje ${boss.progress}/${boss.attackCount}`;
+      }
       const wave = objectives.epoch5.wave;
       const phaseNumber = wave.completed ? 5 : Math.min(5, wave.guidedPhasesCompleted + 1);
       return `${prefix("epoch_5.million_wave")}Fala Miliona · ${MILLION_PHASE_LABELS[wave.phase]} · ` +

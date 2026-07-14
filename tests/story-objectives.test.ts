@@ -169,7 +169,7 @@ describe("StoryObjectiveDirector", () => {
     });
   });
 
-  it("exposes the million counter, four 12-second phases and the final wave", () => {
+  it("exposes the million counter and three finale phases", () => {
     const director = new StoryObjectiveDirector();
     director.enterSegment("epoch_5.counter", 15);
     expect(director.snapshot.epoch5.counter.value).toBe(999_970);
@@ -179,22 +179,22 @@ describe("StoryObjectiveDirector", () => {
     expect(director.snapshot.epoch5.counter).toMatchObject({ value: 999_999, completed: true });
 
     director.enterSegment("epoch_5.million_wave", 60);
-    director.recordElapsed(47.9);
+    director.recordElapsed(39.9);
     expect(director.snapshot.epoch5.wave).toMatchObject({
-      phase: "logistics",
-      guidedPhasesCompleted: 3,
+      phase: "quality",
+      guidedPhasesCompleted: 1,
       completed: false
     });
     director.recordElapsed(0.1);
     expect(director.snapshot.epoch5.wave).toMatchObject({
-      phase: "final_wave",
-      guidedPhasesCompleted: 4
+      phase: "logistics",
+      guidedPhasesCompleted: 2
     });
-    director.recordElapsed(12);
+    director.recordElapsed(20);
     expect(director.snapshot.epoch5.wave).toMatchObject({ phase: "completed", completed: true });
   });
 
-  it("derives Hydra, counter and five finale phases from tuned segment durations", () => {
+  it("derives Hydra, counter and three finale phases from tuned segment durations", () => {
     const director = new StoryObjectiveDirector();
 
     director.enterSegment("epoch_4.logistic_hydra", 30);
@@ -218,18 +218,18 @@ describe("StoryObjectiveDirector", () => {
     expect(director.snapshot.epoch5.counter.completed).toBe(true);
 
     director.enterSegment("epoch_5.million_wave", 70);
-    director.recordElapsed(55.9);
+    director.recordElapsed(46.6);
     expect(director.snapshot.epoch5.wave).toMatchObject({
-      phase: "logistics",
-      guidedPhasesCompleted: 3,
+      phase: "quality",
+      guidedPhasesCompleted: 1,
       completed: false
     });
     director.recordElapsed(0.1);
     expect(director.snapshot.epoch5.wave).toMatchObject({
-      phase: "final_wave",
-      guidedPhasesCompleted: 4
+      phase: "logistics",
+      guidedPhasesCompleted: 2
     });
-    director.recordElapsed(14);
+    director.recordElapsed(23.3);
     expect(director.snapshot.epoch5.wave.completed).toBe(true);
   });
 

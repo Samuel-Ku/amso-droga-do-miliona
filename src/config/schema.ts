@@ -44,24 +44,23 @@ const STORY_VIGNETTES: readonly StoryVignette[] = [
   "delivery-map", "million-counter", "million-wave", "million-package", "thank-you"
 ];
 const CANONICAL_SCENE_ORDER = [
-  "intro.ready", "intro.beginning", "intro.promise", "epoch_1.challenge",
-  "epoch_1.resolve", "epoch_2.setup", "epoch_2.resolve", "epoch_3.people",
-  "epoch_3.designer", "epoch_3.business", "epoch_3.b2b", "epoch_4.scale",
-  "epoch_4.numbers", "epoch_4.resolve", "epoch_5.approach", "epoch_5.wave",
-  "final.moments", "final.thanks"
+  "story.first_package", "story.quality_promise", "story.first_process",
+  "client.creative_start", "client.business_growth", "client.b2b_trust",
+  "story.scale", "story.million_approach", "challenge.million_wave",
+  "story.million_finale"
 ] as const;
 const CANONICAL_SEQUENCE = [
-  "scene:intro.ready", "scene:intro.beginning", "scene:intro.promise",
-  "play:epoch_1.training:0", "scene:epoch_1.challenge", "play:epoch_1.cable_chaos:0",
-  "scene:epoch_1.resolve", "scene:epoch_2.setup", "play:epoch_2.quality_series:1",
-  "play:epoch_2.doubt_cloud:1", "scene:epoch_2.resolve", "scene:epoch_3.people",
-  "scene:epoch_3.designer", "play:epoch_3.creative_contract:2",
-  "scene:epoch_3.business", "play:epoch_3.growth_contract:2", "scene:epoch_3.b2b",
-  "play:epoch_3.trust_contract:2", "play:epoch_3.budget_eater:2",
-  "scene:epoch_4.scale", "scene:epoch_4.numbers", "play:epoch_4.orders:3",
-  "play:epoch_4.logistic_hydra:3", "scene:epoch_4.resolve",
-  "scene:epoch_5.approach", "play:epoch_5.counter:4", "scene:epoch_5.wave",
-  "play:epoch_5.million_wave:4", "scene:final.moments", "scene:final.thanks"
+  "scene:story.first_package", "scene:story.quality_promise",
+  "play:epoch_1.training:0", "play:epoch_1.cable_chaos:0",
+  "scene:story.first_process", "play:epoch_2.quality_series:1",
+  "play:epoch_2.doubt_cloud:1", "scene:client.creative_start",
+  "play:epoch_3.creative_contract:2", "scene:client.business_growth",
+  "play:epoch_3.growth_contract:2", "scene:client.b2b_trust",
+  "play:epoch_3.trust_contract:2", "scene:story.scale",
+  "play:epoch_4.orders:3", "play:epoch_4.logistic_hydra:3",
+  "scene:story.million_approach", "play:epoch_5.counter:4",
+  "scene:challenge.million_wave", "play:epoch_5.million_wave:4",
+  "scene:story.million_finale"
 ] as const;
 const UI_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9]{0,63}$/;
 const CRITICAL_UI_KEYS = [
@@ -340,7 +339,7 @@ function parseStory(value: unknown): StoryConfig | null {
       "scenes", "sequence", "epochs"
     ]
   )) return null;
-  if (!finiteInRange(value.activeDurationSeconds, 300, 600) ||
+  if (!finiteInRange(value.activeDurationSeconds, 240, 600) ||
       !finiteInRange(value.readingSpeedMultiplier, 0.1, 0.5) ||
       !finiteInRange(value.speedStartMultiplier, 0.5, 1.5) ||
       !finiteInRange(value.speedMaxMultiplier, value.speedStartMultiplier, 1.5) ||
@@ -352,7 +351,7 @@ function parseStory(value: unknown): StoryConfig | null {
   const scenes = value.scenes.map(parseScene);
   const sequence = value.sequence.map(parseSequenceStep);
   const epochs = value.epochs.map(parseEpoch);
-  if (scenes.length !== 18 || scenes.some((scene) => scene === null) ||
+  if (scenes.length !== 10 || scenes.some((scene) => scene === null) ||
       sequence.length === 0 || sequence.some((step) => step === null) ||
       epochs.length !== 5 || epochs.some((epoch) => epoch === null)) return null;
   const typedScenes = scenes as StorySceneConfig[];
@@ -360,7 +359,7 @@ function parseStory(value: unknown): StoryConfig | null {
   const typedEpochs = epochs as StoryEpochConfig[];
   if (typedEpochs.some((epoch, index) => epoch.index !== index)) return null;
   const sceneIds = new Set(typedScenes.map((scene) => scene.id));
-  if (sceneIds.size !== typedScenes.length || !sceneIds.has("final.thanks")) return null;
+  if (sceneIds.size !== typedScenes.length || !sceneIds.has("story.million_finale")) return null;
   if (typedScenes.some((scene, index) => scene.id !== CANONICAL_SCENE_ORDER[index])) return null;
   const sequenceKeys = typedSequence.map((step) => step.type === "scene"
     ? `scene:${step.sceneId}`
@@ -371,7 +370,7 @@ function parseStory(value: unknown): StoryConfig | null {
   if (sceneSteps.length !== typedScenes.length ||
       new Set(sceneSteps.map((step) => step.sceneId)).size !== sceneSteps.length ||
       sceneSteps.some((step) => !sceneIds.has(step.sceneId)) ||
-      sceneSteps.at(-1)?.sceneId !== "final.thanks") return null;
+      sceneSteps.at(-1)?.sceneId !== "story.million_finale") return null;
   const playSteps = typedSequence.filter((step) => step.type === "play");
   if (playSteps.some((step) => step.epochIndex < 0 || step.epochIndex >= typedEpochs.length) ||
       playSteps.reduce((total, step) => total + step.durationSeconds, 0) !==

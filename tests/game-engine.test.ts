@@ -105,7 +105,7 @@ describe("game random and spawning", () => {
 });
 
 describe("boss encounter", () => {
-  it("warns, launches three sequential attacks and enters the reward phase", () => {
+  it("runs eight combinations across three phases before the reward", () => {
     const boss = new BossDirector();
     let elapsed = BOSS.firstAtSeconds - 0.1;
     expect(boss.advance(0.1, elapsed, true, false).type).toBe("none");
@@ -135,8 +135,18 @@ describe("boss encounter", () => {
       if (resolution.type === "complete") completionCount += 1;
     }
 
-    expect(attackKinds).toEqual(["pallet", "overhead", "trolley"]);
-    expect(boss.model.attacksSurvived).toBe(3);
+    expect(attackKinds).toEqual([
+      "pallet",
+      "overhead",
+      "trolley",
+      "pallet",
+      "overhead",
+      "trolley",
+      "pallet",
+      "overhead"
+    ]);
+    expect(boss.model.encounterPhase).toBe(3);
+    expect(boss.model.attacksSurvived).toBe(8);
     expect(boss.model.phase).toBe("reward");
     expect(completionCount).toBe(1);
 
@@ -147,6 +157,22 @@ describe("boss encounter", () => {
     expect(boss.model.phase).toBe("inactive");
     boss.advance(0.1, completedAt + BOSS.intervalSeconds, true, false);
     expect(boss.model.phase).toBe("warning");
+  });
+
+  it("repeats an unfinished combination after a story collision", () => {
+    const boss = new BossDirector();
+    boss.forceEncounter();
+    boss.advance(0, 0, true, false);
+    boss.advance(BOSS.warningSeconds, BOSS.warningSeconds, true, false);
+
+    const first = boss.advance(BOSS.firstAttackDelaySeconds, 2, true, false);
+    expect(first).toEqual({ type: "attack", kind: "pallet" });
+    expect(boss.model.attacksSurvived).toBe(0);
+
+    boss.resolveCollision();
+    expect(boss.model.attacksSurvived).toBe(0);
+    const retry = boss.advance(BOSS.betweenAttacksSeconds, 3, true, false);
+    expect(retry).toEqual({ type: "attack", kind: "pallet" });
   });
 
   it("waits for a clear route and resets the full encounter state", () => {
@@ -307,10 +333,11 @@ describe("boss rendering", () => {
         packages,
         boss: {
           phase,
+          encounterPhase: phase === "reward" ? 3 : 1,
           cycle: 1,
           attacksLaunched: 1,
-          attacksSurvived: phase === "reward" ? 3 : 1,
-          attackCount: 3,
+          attacksSurvived: phase === "reward" ? 8 : 1,
+          attackCount: 8,
           phaseSecondsRemaining: 1,
           x: 800,
           y: 256,

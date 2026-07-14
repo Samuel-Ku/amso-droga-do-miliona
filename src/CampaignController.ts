@@ -59,9 +59,7 @@ export class CampaignController {
   private lastStorySceneId = "";
   private lastVisualWorldId: CampaignWorldId | null = null;
   private lastLogisticPhase: GameSnapshot["logisticWavePhase"] = "inactive";
-  private pendingTutorial: "jump" | "slide" | null = null;
   private readonly shownPowerUpHints = new Set<string>();
-  private powerUpHintTimer: number | null = null;
   private pendingStart: CampaignStartRequest | null = null;
   private startToken = 0;
   private destroyed = false;
@@ -97,21 +95,10 @@ export class CampaignController {
         else this.showLanding();
       },
       onJump: (method) => {
-        if (this.pendingTutorial === "jump") {
-          this.pendingTutorial = "slide";
-          this.shell.showGameplayHint(this.uiCopy(
-            "tutorialSlide",
-            "Teraz przesuń palcem w dół albo naciśnij ↓, żeby zrobić ślizg."
-          ));
-        }
         this.audio.playCue("jump");
         this.game?.jump(method);
       },
       onSlide: (active, method) => {
-        if (active && this.pendingTutorial === "slide") {
-          this.pendingTutorial = null;
-          this.shell.showGameplayHint(null);
-        }
         if (active) this.audio.playCue("slide");
         this.game?.crouch(active, method);
       },
@@ -143,7 +130,6 @@ export class CampaignController {
     this.game?.destroy();
     this.game = null;
     this.shell.destroy();
-    this.clearPowerUpHintTimer();
     void this.audio.destroy();
   }
 
@@ -171,9 +157,7 @@ export class CampaignController {
     this.lastStorySceneId = "";
     this.lastVisualWorldId = null;
     this.lastLogisticPhase = "inactive";
-    this.pendingTutorial = null;
     this.shownPowerUpHints.clear();
-    this.clearPowerUpHintTimer();
     this.shell.showLoading(undefined);
 
     if (this.config.audio.enabled) void this.audio.start();
@@ -244,12 +228,7 @@ export class CampaignController {
           "epoch_5.symbols": "Osiem symboli zebranych."
         }[objectiveId];
         this.shell.showStoryObjective(`✓ ${label}`);
-        this.shell.showGameplayHint(label);
-        this.clearPowerUpHintTimer();
-        this.powerUpHintTimer = window.setTimeout(() => {
-          this.powerUpHintTimer = null;
-          this.shell.showGameplayHint(null);
-        }, 2_400);
+        this.shell.announce(label);
       },
       onModeChange: (mode) => {
         this.shell.showStoryObjective(null);
@@ -275,7 +254,7 @@ export class CampaignController {
           (kind) => !previous.activePowerUps.includes(kind) && !this.shownPowerUpHints.has(kind)
         );
         if (snapshot.mode === "story" && !snapshot.trustCorridor &&
-            this.pendingTutorial === null && newPowerUp !== undefined) {
+            newPowerUp !== undefined) {
           this.shownPowerUpHints.add(newPowerUp);
           const copy = {
             audyt_jakosci: this.uiCopy(
@@ -291,12 +270,7 @@ export class CampaignController {
               "Gwarancja 48 miesięcy — jedno bezpieczne uderzenie."
             )
           } as const;
-          this.shell.showGameplayHint(copy[newPowerUp]);
-          this.clearPowerUpHintTimer();
-          this.powerUpHintTimer = window.setTimeout(() => {
-            this.powerUpHintTimer = null;
-            if (this.pendingTutorial === null) this.shell.showGameplayHint(null);
-          }, 4_000);
+          this.shell.announce(copy[newPowerUp]);
         }
       }
     }
@@ -312,15 +286,10 @@ export class CampaignController {
           "Fala opanowana — złote paczki są Twoje."
         ));
       }
-      this.shell.showStoryBeat(null, false);
     }
   }
 
   private handleStoryUpdate(update: StoryTimelineSnapshot): void {
-    if (update.trustCorridor) {
-      this.clearPowerUpHintTimer();
-      this.shell.showGameplayHint(null);
-    }
     if (update.trustCorridor !== this.lastTrustCorridor) {
       this.audio.playCue(update.trustCorridor ? "corridor-enter" : "corridor-exit");
       if (!update.trustCorridor) {
@@ -375,24 +344,12 @@ export class CampaignController {
         }[segmentId] ?? null;
         this.shell.showStoryObjective(objective);
       }
-      if (update.playSegment?.id === "epoch_1.training" && this.pendingTutorial === null) {
-        this.pendingTutorial = "jump";
-      }
-    }
-    if (!update.trustCorridor && this.pendingTutorial !== null) {
-      this.shell.showGameplayHint(this.pendingTutorial === "jump"
-        ? this.uiCopy("tutorialJump", "Tapnij lub naciśnij Spację, żeby skoczyć.")
-        : this.uiCopy(
-            "tutorialSlide",
-            "Przesuń palcem w dół albo naciśnij ↓, żeby zrobić ślizg."
-          ));
     }
   }
 
   private handleGameOver(result: GameResult): void {
     this.audio.stop();
     if (result.mode === "story") {
-      this.shell.showStoryBeat(null, false);
       this.shell.showStoryResult({
         packages: result.packagesCollected,
         score: result.score,
@@ -430,14 +387,7 @@ export class CampaignController {
     this.game?.destroy();
     this.game = null;
     this.audio.stop();
-    this.clearPowerUpHintTimer();
     this.showLanding();
-  }
-
-  private clearPowerUpHintTimer(): void {
-    if (this.powerUpHintTimer === null) return;
-    window.clearTimeout(this.powerUpHintTimer);
-    this.powerUpHintTimer = null;
   }
 
   /**

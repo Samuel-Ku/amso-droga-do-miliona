@@ -62,6 +62,8 @@ export interface CampaignWorldDefinition {
 
 export interface CampaignSceneVisualState {
   readonly stateId: string;
+  /** Semantic SVG group reused by a renamed editorial scene. */
+  readonly overlayStateId?: string;
   readonly chapter: StoryChapterId;
   readonly worldId: CampaignWorldId;
   readonly worldProgress: number;
@@ -138,7 +140,7 @@ export const CAMPAIGN_WORLDS: readonly CampaignWorldDefinition[] = Object.freeze
   }
 ]);
 
-export const CAMPAIGN_SCENE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze([
+const LEGACY_SCENE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze([
   {
     stateId: "intro.ready",
     chapter: "prologue",
@@ -465,8 +467,43 @@ export const CAMPAIGN_SCENE_MANIFEST: readonly CampaignSceneVisualState[] = Obje
   }
 ]);
 
+const legacyStateById = new Map(LEGACY_SCENE_MANIFEST.map((state) => [state.stateId, state]));
+
+function editorialScene(
+  sourceStateId: string,
+  stateId: string,
+  chapter: StoryChapterId
+): CampaignSceneVisualState {
+  const source = legacyStateById.get(sourceStateId);
+  if (!source) throw new Error(`Unknown editorial scene source: ${sourceStateId}`);
+  return {
+    ...source,
+    stateId,
+    chapter,
+    overlayStateId: sourceStateId,
+    fallbackId: `fallback-${stateId.replaceAll(".", "-")}`
+  };
+}
+
+/** The ten editorial stops approved for the shorter, clearly attributed story. */
+export const CAMPAIGN_SCENE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze([
+  editorialScene("intro.ready", "story.first_package", "prologue"),
+  editorialScene("intro.promise", "story.quality_promise", "prologue"),
+  editorialScene("epoch_1.resolve", "story.first_process", "epoch_1"),
+  editorialScene("epoch_3.designer", "client.creative_start", "epoch_3"),
+  editorialScene("epoch_3.business", "client.business_growth", "epoch_3"),
+  editorialScene("epoch_3.b2b", "client.b2b_trust", "epoch_3"),
+  editorialScene("epoch_4.scale", "story.scale", "epoch_4"),
+  editorialScene("epoch_5.approach", "story.million_approach", "epoch_5"),
+  editorialScene("epoch_5.wave", "challenge.million_wave", "epoch_5"),
+  editorialScene("final.thanks", "story.million_finale", "finale")
+]);
+
 const worldById = new Map(CAMPAIGN_WORLDS.map((world) => [world.worldId, world]));
-const stateById = new Map(CAMPAIGN_SCENE_MANIFEST.map((state) => [state.stateId, state]));
+const stateById = new Map(
+  [...LEGACY_SCENE_MANIFEST, ...CAMPAIGN_SCENE_MANIFEST]
+    .map((state) => [state.stateId, state] as const)
+);
 
 export function campaignWorld(worldId: CampaignWorldId): CampaignWorldDefinition {
   const world = worldById.get(worldId);
@@ -599,13 +636,13 @@ export function resolvePlaySegmentVisual(
 
 export const CHALLENGE_WORLD_SECONDS = 45;
 export const CHALLENGE_WORLD_STATES = Object.freeze([
-  "intro.promise",
-  "epoch_1.resolve",
+  "story.quality_promise",
+  "story.first_process",
   "epoch_2.resolve",
-  "epoch_3.b2b",
-  "epoch_4.resolve",
-  "epoch_5.wave",
-  "final.thanks"
+  "client.b2b_trust",
+  "story.scale",
+  "challenge.million_wave",
+  "story.million_finale"
 ] as const);
 
 export type ChallengeWorldStart = "direct" | "story-continuation";
@@ -663,7 +700,7 @@ export function validateSceneManifest(sceneIds: readonly string[]): string[] {
   const errors: string[] = [];
   const stateIds = CAMPAIGN_SCENE_MANIFEST.map(({ stateId }) => stateId);
   if (CAMPAIGN_WORLDS.length !== 7) errors.push("world_count");
-  if (CAMPAIGN_SCENE_MANIFEST.length !== 18) errors.push("state_count");
+  if (CAMPAIGN_SCENE_MANIFEST.length !== 10) errors.push("state_count");
   if (new Set(stateIds).size !== stateIds.length) errors.push("duplicate_state_id");
   if (sceneIds.length !== stateIds.length ||
       sceneIds.some((sceneId, index) => sceneId !== stateIds[index])) {

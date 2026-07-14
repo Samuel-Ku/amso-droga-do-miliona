@@ -6,6 +6,7 @@ import { sceneVisualState } from "../visuals/scene-manifest";
 import {
   fullscreenPreferenceFromElement,
   formatPowerUpHud,
+  formatStoryControlsHud,
   formatStoryObjectiveHud,
   getTrappedFocusIndex,
   snapshotStoryScene,
@@ -34,13 +35,6 @@ export interface CampaignStartRequest {
 export type CampaignStoryCountdownValue = 3 | 2 | 1;
 
 export type CampaignPauseReason = "user" | "layout_change" | "visibility";
-
-export interface CampaignStoryBeat {
-  id: string;
-  eyebrow?: string;
-  title?: string;
-  body: string | readonly string[];
-}
 
 export interface CampaignStoryResult {
   packages: number;
@@ -74,7 +68,7 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   landingTitle: "AMSO —",
   landingTitleAccent: "Droga do Miliona",
   landingLead: "Jedna paczka rozpoczęła historię. Przebiegnij z nami drogę do zamówienia nr 1 000 000.",
-  landingMeta: "5 minut gry · historia w Twoim tempie · skok i ślizg",
+  landingMeta: "Około 6 minut · historia w Twoim tempie · skok i ślizg",
   startStory: "Rozpocznij historię",
   choosePath: "Wybierz swoją drogę",
   replayStory: "Przejdź historię ponownie",
@@ -181,7 +175,10 @@ export function campaignWorldCounterValue(
   visualStateId: string,
   storyCounterValue: number,
 ): number {
-  if (mode === "challenge" && visualStateId === "epoch_5.wave") return 999_999;
+  if (mode === "challenge" &&
+      (visualStateId === "epoch_5.wave" || visualStateId === "challenge.million_wave")) {
+    return 999_999;
+  }
   return storyCounterValue;
 }
 
@@ -478,10 +475,6 @@ export class CampaignShell {
   private readonly pauseScreen: HTMLElement;
   private readonly storyResultScreen: HTMLElement;
   private readonly challengeResultScreen: HTMLElement;
-  private readonly storyCaption: HTMLElement;
-  private readonly storyEyebrow: HTMLElement;
-  private readonly storyTitle: HTMLElement;
-  private readonly storyBody: HTMLElement;
   private readonly storyPresentation: HTMLElement;
   private readonly storySceneCard: HTMLElement;
   private readonly storySceneEyebrow: HTMLElement;
@@ -492,11 +485,11 @@ export class CampaignShell {
   private readonly storyCountdownLabel: HTMLElement;
   private readonly storyCountdownValue: HTMLElement;
   private readonly presentationBackground: readonly HTMLElement[];
-  private readonly gameplayHint: HTMLElement;
   private readonly hud: HTMLElement;
   private readonly hudMode: HTMLElement;
   private readonly hudEpoch: HTMLElement;
   private readonly hudObjective: HTMLElement;
+  private readonly hudControls: HTMLElement;
   private readonly hudPowerUps: HTMLElement;
   private readonly hudPackages: HTMLElement;
   private readonly hudScore: HTMLElement;
@@ -578,6 +571,7 @@ export class CampaignShell {
               <strong data-campaign-hud-mode></strong>
               <span data-campaign-hud-epoch></span>
               <span data-campaign-hud-objective hidden></span>
+              <span data-campaign-hud-controls hidden></span>
               <span data-campaign-hud-powerups hidden></span>
             </div>
             <div class="amso-campaign__hud-stats">
@@ -588,20 +582,12 @@ export class CampaignShell {
             <button class="amso-campaign__pause-button" type="button" data-campaign-pause data-campaign-copy="pauseAction">Pauza</button>
           </section>
 
-          <section class="amso-campaign__story-caption" data-campaign-story-caption hidden aria-live="polite">
-            <p class="amso-campaign__eyebrow" data-campaign-story-eyebrow></p>
-            <h2 data-campaign-story-title hidden></h2>
-            <div data-campaign-story-body></div>
-          </section>
-
-          <div class="amso-campaign__gameplay-hint" data-campaign-gameplay-hint hidden role="status"></div>
-
           <section class="amso-campaign__screen amso-campaign__screen--landing" data-campaign-landing>
             <div class="amso-campaign__landing-copy">
               <p class="amso-campaign__eyebrow" data-campaign-copy="landingEyebrow">Jubileuszowa historia AMSO</p>
               <h1><span data-campaign-copy="landingTitleAccent">Droga do Miliona</span></h1>
               <p class="amso-campaign__lead" data-campaign-copy="landingLead">Jedna paczka rozpoczęła historię. Przebiegnij z nami drogę do zamówienia nr 1 000 000.</p>
-              <p class="amso-campaign__meta" data-campaign-copy="landingMeta">5 minut gry · historia w Twoim tempie · skok i ślizg</p>
+              <p class="amso-campaign__meta" data-campaign-copy="landingMeta">Około 6 minut · historia w Twoim tempie · skok i ślizg</p>
               <div class="amso-campaign__landing-actions" data-campaign-landing-actions></div>
             </div>
             <div class="amso-campaign__landing-art" aria-hidden="true">
@@ -776,10 +762,6 @@ export class CampaignShell {
     this.pauseScreen = requiredElement(this.root, "[data-campaign-pause-screen]");
     this.storyResultScreen = requiredElement(this.root, "[data-campaign-story-result]");
     this.challengeResultScreen = requiredElement(this.root, "[data-campaign-challenge-result]");
-    this.storyCaption = requiredElement(this.root, "[data-campaign-story-caption]");
-    this.storyEyebrow = requiredElement(this.root, "[data-campaign-story-eyebrow]");
-    this.storyTitle = requiredElement(this.root, "[data-campaign-story-title]");
-    this.storyBody = requiredElement(this.root, "[data-campaign-story-body]");
     this.storyPresentation = requiredElement(this.root, "[data-campaign-story-presentation]");
     this.storySceneCard = requiredElement(this.root, "[data-campaign-story-scene]");
     this.storySceneEyebrow = requiredElement(this.root, "[data-campaign-story-scene-eyebrow]");
@@ -789,11 +771,11 @@ export class CampaignShell {
     this.storyCountdown = requiredElement(this.root, "[data-campaign-story-countdown]");
     this.storyCountdownLabel = requiredElement(this.root, "[data-campaign-story-countdown-label]");
     this.storyCountdownValue = requiredElement(this.root, "[data-campaign-story-countdown-value]");
-    this.gameplayHint = requiredElement(this.root, "[data-campaign-gameplay-hint]");
     this.hud = requiredElement(this.root, "[data-campaign-hud]");
     this.hudMode = requiredElement(this.root, "[data-campaign-hud-mode]");
     this.hudEpoch = requiredElement(this.root, "[data-campaign-hud-epoch]");
     this.hudObjective = requiredElement(this.root, "[data-campaign-hud-objective]");
+    this.hudControls = requiredElement(this.root, "[data-campaign-hud-controls]");
     this.hudPowerUps = requiredElement(this.root, "[data-campaign-hud-powerups]");
     this.hudPackages = requiredElement(this.root, "[data-campaign-hud-packages]");
     this.hudScore = requiredElement(this.root, "[data-campaign-hud-score]");
@@ -830,7 +812,7 @@ export class CampaignShell {
     this.fullscreenPreference = options.fullscreenPreference;
     this.fullscreenPromptSeen = options.fullscreenPreference !== null;
     this.setMuted(options.muted, false);
-    this.applyWorldVisual("first-mile", "intro.ready", "landing");
+    this.applyWorldVisual("first-mile", "story.first_package", "landing");
     this.setView("landing", this.landingScreen);
     this.renderLandingActions(options);
     this.canvas.tabIndex = -1;
@@ -841,7 +823,7 @@ export class CampaignShell {
   public showLoading(progress?: number, label?: string): void {
     if (this.destroyed) return;
     const loadingLabel = label ?? this.copy.loading;
-    this.applyWorldVisual("first-mile", "intro.ready", "landing");
+    this.applyWorldVisual("first-mile", "story.first_package", "landing");
     this.loadingText.textContent = loadingLabel;
     if (typeof progress === "number" && Number.isFinite(progress)) {
       this.loadingProgress.value = Math.min(1, Math.max(0, progress));
@@ -903,8 +885,6 @@ export class CampaignShell {
     this.storySceneCard.hidden = false;
     this.storyCountdown.hidden = true;
     this.hud.hidden = true;
-    this.storyCaption.hidden = true;
-    this.gameplayHint.hidden = true;
     this.canvas.tabIndex = -1;
     this.canvas.setAttribute("aria-hidden", "true");
     this.setScreenModal(this.storyPresentation);
@@ -939,8 +919,6 @@ export class CampaignShell {
     this.storySceneCard.hidden = true;
     this.storyCountdown.hidden = true;
     this.hud.hidden = true;
-    this.storyCaption.hidden = true;
-    this.gameplayHint.hidden = true;
     this.canvas.tabIndex = -1;
     this.canvas.setAttribute("aria-hidden", "true");
     this.storyContinueButton.disabled = true;
@@ -964,8 +942,6 @@ export class CampaignShell {
     this.storySceneCard.hidden = true;
     this.storyCountdown.hidden = false;
     this.hud.hidden = true;
-    this.storyCaption.hidden = true;
-    this.gameplayHint.hidden = true;
     this.canvas.tabIndex = -1;
     this.canvas.setAttribute("aria-hidden", "true");
     this.storyContinueButton.disabled = true;
@@ -1039,49 +1015,22 @@ export class CampaignShell {
     const activePowerUps = formatPowerUpHud(snapshot.activePowerUps);
     this.hudPowerUps.textContent = activePowerUps.length > 0 ? `Moc: ${activePowerUps}` : "";
     this.hudPowerUps.hidden = activePowerUps.length === 0;
+    const controls = formatStoryControlsHud(snapshot.storyObjectiveSegmentId);
+    this.hudControls.textContent = controls ?? "";
+    this.hudControls.hidden = controls === null;
     if (this.activeMode === "story") {
       const progress = snapshot.epochIndexMax > 0
         ? `${snapshot.epochIndex + 1}/${snapshot.epochIndexMax + 1}`
         : "";
       this.hudEpoch.textContent = [snapshot.epochName, progress].filter(Boolean).join(" · ");
       this.showStoryObjective(
-        formatStoryObjectiveHud(snapshot.storyObjectives, snapshot.activeStoryOrderTypes)
+        formatStoryObjectiveHud(snapshot.storyObjectives, snapshot.activeStoryOrderTypes, {
+          encounterPhase: snapshot.bossEncounterPhase,
+          progress: snapshot.bossProgress,
+          attackCount: snapshot.bossAttackCount
+        })
       );
     }
-  }
-
-  public showStoryBeat(beat: CampaignStoryBeat | null, trustCorridor: boolean): void {
-    if (this.destroyed) return;
-    this.trustCorridor = trustCorridor;
-    this.root.toggleAttribute("data-trust-corridor", trustCorridor);
-    this.hud.toggleAttribute("data-muted", trustCorridor);
-    if (beat === null) {
-      this.storyCaption.hidden = true;
-      delete this.storyCaption.dataset.beatId;
-      this.storyBody.replaceChildren();
-      return;
-    }
-
-    this.storyCaption.dataset.beatId = beat.id;
-    this.storyEyebrow.textContent = beat.eyebrow ?? (trustCorridor ? this.copy.corridorEyebrow : "");
-    this.storyEyebrow.hidden = this.storyEyebrow.textContent.length === 0;
-    this.storyTitle.textContent = beat.title ?? "";
-    this.storyTitle.hidden = this.storyTitle.textContent.length === 0;
-    const paragraphs = typeof beat.body === "string" ? [beat.body] : beat.body;
-    this.storyBody.replaceChildren(...paragraphs.map((text) => {
-      const paragraph = document.createElement("p");
-      paragraph.textContent = text;
-      return paragraph;
-    }));
-    this.storyCaption.hidden = false;
-    this.announce([beat.title, ...paragraphs].filter(Boolean).join(". "));
-  }
-
-  public showGameplayHint(message: string | null): void {
-    if (this.destroyed) return;
-    this.gameplayHint.textContent = message ?? "";
-    this.gameplayHint.hidden = message === null;
-    if (message !== null) this.announce(message);
   }
 
   public showStoryObjective(message: string | null): void {
@@ -1094,7 +1043,7 @@ export class CampaignShell {
   public showStoryResult(result: CampaignStoryResult): void {
     if (this.destroyed) return;
     this.activeMode = "story";
-    this.applyWorldVisual("million-finale", "final.thanks", "result");
+    this.applyWorldVisual("million-finale", "story.million_finale", "result");
     requiredElement(this.storyResultScreen, "[data-campaign-story-packages]").textContent = formatInteger(result.packages);
     requiredElement(this.storyResultScreen, "[data-campaign-story-score]").textContent = formatInteger(result.score);
     requiredElement(this.storyResultScreen, "[data-campaign-story-combo]").textContent = `×${formatInteger(result.bestCombo)}`;
@@ -1109,7 +1058,7 @@ export class CampaignShell {
   public showChallengeResult(result: CampaignChallengeResult): void {
     if (this.destroyed) return;
     this.activeMode = "challenge";
-    this.applyWorldVisual("million-finale", "final.thanks", "result");
+    this.applyWorldVisual("million-finale", "story.million_finale", "result");
     this.challengeResult = result;
     requiredElement(this.challengeResultScreen, "[data-campaign-challenge-packages]").textContent = formatInteger(result.packages);
     requiredElement(this.challengeResultScreen, "[data-campaign-challenge-score]").textContent = formatInteger(result.score);
@@ -1277,9 +1226,6 @@ export class CampaignShell {
     visibleScreen.hidden = false;
     this.root.dataset.view = view;
     this.hud.hidden = true;
-    this.storyCaption.hidden = true;
-    this.gameplayHint.hidden = true;
-    this.gameplayHint.textContent = "";
     this.root.removeAttribute("data-trust-corridor");
     this.trustCorridor = false;
     this.canvas.tabIndex = -1;

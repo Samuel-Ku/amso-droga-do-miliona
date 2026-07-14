@@ -6,11 +6,22 @@ export type BossCommand =
   | { type: "attack"; kind: ObstacleKind }
   | { type: "complete" };
 
-const ATTACK_ORDER: readonly ObstacleKind[] = ["pallet", "overhead", "trolley"];
+const ATTACK_ORDER: readonly ObstacleKind[] = [
+  "pallet",
+  "overhead",
+  "trolley",
+  "pallet",
+  "overhead",
+  "trolley",
+  "pallet",
+  "overhead"
+];
+const PHASE_ENDS = [3, 6, BOSS.attackCount] as const;
 
 function inactiveModel(): BossModel {
   return {
     phase: "inactive",
+    encounterPhase: 1,
     cycle: 0,
     attacksLaunched: 0,
     attacksSurvived: 0,
@@ -24,8 +35,8 @@ function inactiveModel(): BossModel {
 }
 
 /**
- * A deterministic, one-button boss encounter. The player wins by surviving three
- * ordinary jump hazards; the boss itself stays outside the collision lane.
+ * A deterministic three-phase finale. A story collision repeats the unfinished
+ * combination, while the boss itself stays outside the collision lane.
  */
 export class BossDirector {
   public readonly model: BossModel = inactiveModel();
@@ -55,7 +66,16 @@ export class BossDirector {
     this.model.cycle += 1;
     this.model.attacksLaunched = 0;
     this.model.attacksSurvived = 0;
+    this.model.encounterPhase = 1;
     this.model.x = WORLD_WIDTH + 62;
+  }
+
+  /** Rejects the active attempt without crediting it, so the same action returns. */
+  public resolveCollision(): void {
+    if (!this.awaitingResolution) return;
+    this.awaitingResolution = false;
+    this.hazardSeen = false;
+    this.attackCooldown = BOSS.betweenAttacksSeconds;
   }
 
   public advance(
@@ -72,6 +92,7 @@ export class BossDirector {
       this.model.cycle += 1;
       this.model.attacksLaunched = 0;
       this.model.attacksSurvived = 0;
+      this.model.encounterPhase = 1;
       this.model.x = WORLD_WIDTH + 62;
     }
 
@@ -109,6 +130,16 @@ export class BossDirector {
             this.nextEncounterAt = elapsedSeconds + BOSS.intervalSeconds;
             return { type: "complete" };
           }
+          const phaseEnd = PHASE_ENDS[this.model.encounterPhase - 1];
+          if (phaseEnd !== undefined && this.model.attacksSurvived >= phaseEnd) {
+            this.model.encounterPhase = Math.min(
+              BOSS.phaseCount,
+              this.model.encounterPhase + 1
+            );
+            this.model.phase = "warning";
+            this.model.phaseSecondsRemaining = BOSS.warningSeconds;
+            return { type: "none" };
+          }
           this.attackCooldown = BOSS.betweenAttacksSeconds;
         }
         return { type: "none" };
@@ -117,8 +148,7 @@ export class BossDirector {
       this.attackCooldown = Math.max(0, this.attackCooldown - delta);
       if (this.attackCooldown > 0 || !routeClear) return { type: "none" };
 
-      const orderIndex =
-        (this.model.attacksLaunched + this.model.cycle - 1) % ATTACK_ORDER.length;
+      const orderIndex = this.model.attacksSurvived % ATTACK_ORDER.length;
       const kind = ATTACK_ORDER[orderIndex] ?? "pallet";
       this.model.attacksLaunched += 1;
       this.awaitingResolution = true;

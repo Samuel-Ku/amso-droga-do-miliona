@@ -80,7 +80,10 @@ export class WorldVisualLayer {
         fallback.toggleAttribute("hidden", fallback.dataset.worldFallback !== selection.worldId);
       }
       for (const overlay of this.stateOverlays) {
-        overlay.toggleAttribute("hidden", overlay.dataset.stateOverlay !== selection.stateId);
+        overlay.toggleAttribute(
+          "hidden",
+          overlay.dataset.stateOverlay !== (state.overlayStateId ?? selection.stateId)
+        );
       }
       this.host.dataset.reveal = state.revealMotion;
       this.host.dataset.visualEvent = state.visualEvent;

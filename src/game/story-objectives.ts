@@ -103,7 +103,7 @@ export interface StoryObjectivesSnapshot {
 }
 
 export const STORY_OBJECTIVE_TARGETS = {
-  mixedActionsEach: 5,
+  mixedActionsEach: 4,
   cableAlternation: 4,
   qualitySeries: 4,
   qualityCombo: 3,
@@ -114,7 +114,7 @@ export const STORY_OBJECTIVE_TARGETS = {
   hydraSeconds: 20,
   counterSeconds: 15,
   millionPhaseSeconds: 12,
-  millionGuidedPhases: 4,
+  millionGuidedPhases: 3,
   symbolCount: 8
 } as const;
 
@@ -164,7 +164,7 @@ export class StoryObjectiveDirector {
   private hydraDurationSeconds: number = TARGETS.hydraSeconds;
   private counterDurationSeconds: number = TARGETS.counterSeconds;
   private millionWaveDurationSeconds: number =
-    TARGETS.millionPhaseSeconds * (TARGETS.millionGuidedPhases + 1);
+    TARGETS.millionPhaseSeconds * TARGETS.millionGuidedPhases;
   private readonly collectedSymbols = new Set<number>();
   private symbolMisses = 0;
 
@@ -368,8 +368,7 @@ export class StoryObjectiveDirector {
     const hydraPhasesCompleted = hydraComplete
       ? 3
       : Math.floor(this.hydraElapsedSeconds / hydraPhaseLength);
-    const millionPhaseSeconds = this.millionWaveDurationSeconds /
-      (TARGETS.millionGuidedPhases + 1);
+    const millionPhaseSeconds = this.millionWaveDurationSeconds / TARGETS.millionGuidedPhases;
     const guidedPhasesCompleted = Math.min(
       TARGETS.millionGuidedPhases,
       Math.floor(this.millionWaveElapsedSeconds / millionPhaseSeconds)
@@ -456,11 +455,10 @@ export class StoryObjectiveDirector {
           elapsedSeconds: this.millionWaveElapsedSeconds,
           phase: waveComplete
             ? "completed"
-            : this.millionWaveElapsedSeconds >= millionPhaseSeconds * 4
-              ? "final_wave"
-              : (["order", "quality", "choice", "logistics"] as const)[
-                  Math.floor(this.millionWaveElapsedSeconds / millionPhaseSeconds)
-                ]!,
+            : (["order", "quality", "logistics"] as const)[Math.min(
+                2,
+                Math.floor(this.millionWaveElapsedSeconds / millionPhaseSeconds)
+              )]!,
           guidedPhasesCompleted,
           completed: waveComplete
         },

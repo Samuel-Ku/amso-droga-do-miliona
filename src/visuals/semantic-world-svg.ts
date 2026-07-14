@@ -173,11 +173,19 @@ export const SEMANTIC_WORLD_SVG = `
       <path d="M833 347c-24 0-43 19-43 43 0 33 43 67 43 67s43-34 43-67c0-24-19-43-43-43zm0 29a14 14 0 110 28 14 14 0 010-28z" fill="#eb32a4" stroke="#191919" stroke-width="5" />
     </g>
     <g class="amso-world-visual__state" data-state-overlay="epoch_5.approach" hidden>
-      <text data-world-counter x="654" y="219" text-anchor="middle" fill="#191919" font-family="ui-monospace,monospace" font-size="57" font-weight="950">999 970</text>
+      <g data-world-counter-plate transform="translate(504 145)">
+        <rect width="300" height="108" rx="18" fill="#faf7f0" stroke="#191919" stroke-width="7" />
+        <rect x="9" y="9" width="282" height="90" rx="12" fill="none" stroke="url(#amso-route-gradient)" stroke-width="5" />
+        <text data-world-counter x="150" y="72" text-anchor="middle" fill="#191919" font-family="ui-monospace,monospace" font-size="52" font-weight="950">999 970</text>
+      </g>
       <path d="M385 283h62" stroke="url(#amso-route-gradient)" stroke-width="12" />
     </g>
     <g class="amso-world-visual__state" data-state-overlay="epoch_5.wave" hidden>
-      <text data-world-counter x="654" y="219" text-anchor="middle" fill="#191919" font-family="ui-monospace,monospace" font-size="57" font-weight="950">999 999</text>
+      <g data-world-counter-plate transform="translate(504 145)">
+        <rect width="300" height="108" rx="18" fill="#faf7f0" stroke="#191919" stroke-width="7" />
+        <rect x="9" y="9" width="282" height="90" rx="12" fill="none" stroke="url(#amso-route-gradient)" stroke-width="5" />
+        <text data-world-counter x="150" y="72" text-anchor="middle" fill="#191919" font-family="ui-monospace,monospace" font-size="52" font-weight="950">999 999</text>
+      </g>
       <path d="M461 287c86 57 302 48 399-6" fill="none" stroke="url(#amso-route-gradient)" stroke-width="12" />
     </g>
     <g class="amso-world-visual__state" data-state-overlay="final.moments" hidden>

@@ -55,6 +55,7 @@ export interface GameSnapshot {
   logisticWaveProgress: number;
   bossesDefeated: number;
   bossPhase: BossPhase;
+  bossEncounterPhase: number;
   bossProgress: number;
   bossAttackCount: number;
   distanceM: number;

@@ -37,6 +37,11 @@ export interface StoryTimelineSnapshot {
   completed: boolean;
 }
 
+export interface StoryAdvanceOptions {
+  /** Keeps the current play step open at its time limit until gameplay resolves it. */
+  allowPlayCompletion?: boolean;
+}
+
 function chapterPhase(scene: Readonly<StorySceneConfig> | null): StoryPhase {
   if (scene?.chapter === "prologue" || scene?.id.startsWith("intro.")) return "prologue";
   if (scene?.chapter === "finale" || scene?.id.startsWith("final.")) return "finale";
@@ -111,7 +116,10 @@ export class StoryTimeline {
       .filter((index) => !this.collectedStorySymbols.has(index));
   }
 
-  public advance(deltaSeconds: number): StoryTimelineSnapshot {
+  public advance(
+    deltaSeconds: number,
+    { allowPlayCompletion = true }: StoryAdvanceOptions = {}
+  ): StoryTimelineSnapshot {
     let remaining = Math.max(0, deltaSeconds);
     while (remaining > 0) {
       if (this.state === "scene" || this.state === "completed") break;
@@ -147,6 +155,7 @@ export class StoryTimeline {
       this.totalActiveElapsedSeconds += step;
       remaining -= step;
       if (this.segmentElapsedSeconds + Number.EPSILON >= play.durationSeconds) {
+        if (!allowPlayCompletion) break;
         this.enterStep(this.stepIndex + 1);
       }
     }

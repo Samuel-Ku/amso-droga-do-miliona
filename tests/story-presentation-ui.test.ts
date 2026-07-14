@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import {
   fullscreenPreferenceFromElement,
   formatPowerUpHud,
+  formatStoryControlsHud,
   formatStoryObjectiveHud,
   getTrappedFocusIndex,
   snapshotStoryScene,
@@ -73,6 +74,15 @@ describe("player-paced story presentation", () => {
       .toBe("Audyt · 2× punkty · Gwarancja");
   });
 
+  it("keeps controls in the top HUD and removes visible bottom gameplay text", () => {
+    expect(formatStoryControlsHud("epoch_1.training"))
+      .toBe("Skok: tap/Spacja · Ślizg: ↓");
+    expect(formatStoryControlsHud("epoch_2.quality_series")).toBeNull();
+    expect(campaignShellSource).toContain("data-campaign-hud-controls");
+    expect(campaignShellSource).not.toContain("data-campaign-gameplay-hint");
+    expect(campaignShellSource).not.toContain("data-campaign-story-caption");
+  });
+
   it("formats live order, Hydra, counter and finale progress for the HUD", () => {
     const director = new StoryObjectiveDirector();
 
@@ -104,8 +114,11 @@ describe("player-paced story presentation", () => {
     director.recordSymbol(0);
     director.recordSymbol(1);
     director.recordSymbol(2);
-    expect(formatStoryObjectiveHud(director.snapshot, []))
-      .toBe("Fala Miliona · Jakość · faza 2/5 · symbole 3/8");
+    expect(formatStoryObjectiveHud(director.snapshot, [], {
+      encounterPhase: 2,
+      progress: 3,
+      attackCount: 8
+    })).toBe("Fala Miliona · faza 2/3 · kombinacje 3/8");
   });
 
   it("wraps keyboard focus inside the two-control story dialog", () => {

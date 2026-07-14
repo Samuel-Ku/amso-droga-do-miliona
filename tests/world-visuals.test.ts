@@ -29,6 +29,20 @@ describe("world visual continuity", () => {
     expect(renderer).toContain("drawGameplayRoute(context)");
   });
 
+  it("keeps the animated million value inside its own responsive counter plate", () => {
+    const css = readFileSync(new URL("../src/styles/campaign.css", import.meta.url), "utf8");
+    const semanticSvg = readFileSync(
+      new URL("../src/visuals/semantic-world-svg.ts", import.meta.url),
+      "utf8"
+    );
+
+    expect(semanticSvg.match(/data-world-counter-plate/gu)).toHaveLength(2);
+    expect(semanticSvg.match(/data-world-counter(?:\s|>)/gu)).toHaveLength(2);
+    expect(semanticSvg).toContain("999 970");
+    expect(semanticSvg).toContain("999 999");
+    expect(css).toContain("color-scheme: only light");
+  });
+
   it("removes narrative lettering from challenge-world overlays", () => {
     const css = readFileSync(new URL("../src/styles/campaign.css", import.meta.url), "utf8");
     expect(css).toContain(
@@ -49,26 +63,26 @@ describe("world visual continuity", () => {
 
   it("starts a direct challenge in the small warehouse and changes only on a clear route", () => {
     const director = new ChallengeWorldDirector("direct");
-    expect(director.snapshot.stateId).toBe("intro.promise");
+    expect(director.snapshot.stateId).toBe("story.quality_promise");
 
     director.advance(45, false);
-    expect(director.snapshot.stateId).toBe("intro.promise");
+    expect(director.snapshot.stateId).toBe("story.quality_promise");
     expect(director.snapshot.transitionPending).toBe(true);
 
     director.advance(0, true);
-    expect(director.snapshot.stateId).toBe("epoch_1.resolve");
+    expect(director.snapshot.stateId).toBe("story.first_process");
     expect(director.snapshot.worldElapsedSeconds).toBe(0);
   });
 
   it("continues from the finale after story, then returns to the first world after 45 seconds", () => {
     const director = new ChallengeWorldDirector("story-continuation");
-    expect(director.snapshot.stateId).toBe("final.thanks");
+    expect(director.snapshot.stateId).toBe("story.million_finale");
     expect(sceneVisualState(director.snapshot.stateId).worldId).toBe("million-finale");
 
     director.advance(44.99, true);
-    expect(director.snapshot.stateId).toBe("final.thanks");
+    expect(director.snapshot.stateId).toBe("story.million_finale");
     director.advance(0.01, true);
-    expect(director.snapshot.stateId).toBe("intro.promise");
+    expect(director.snapshot.stateId).toBe("story.quality_promise");
   });
 
   it("cycles all seven worlds in a fixed order", () => {
@@ -79,14 +93,14 @@ describe("world visual continuity", () => {
       seen.push(director.snapshot.stateId);
     }
     expect(seen).toEqual([
-      "intro.promise",
-      "epoch_1.resolve",
+      "story.quality_promise",
+      "story.first_process",
       "epoch_2.resolve",
-      "epoch_3.b2b",
-      "epoch_4.resolve",
-      "epoch_5.wave",
-      "final.thanks",
-      "intro.promise"
+      "client.b2b_trust",
+      "story.scale",
+      "challenge.million_wave",
+      "story.million_finale",
+      "story.quality_promise"
     ]);
   });
 });

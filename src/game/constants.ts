@@ -50,11 +50,12 @@ export const GAMEPLAY = {
 export const BOSS = {
   firstAtSeconds: 42,
   intervalSeconds: 85,
-  warningSeconds: 1.2,
-  firstAttackDelaySeconds: 0.3,
-  betweenAttacksSeconds: 0.42,
+  warningSeconds: 1.8,
+  firstAttackDelaySeconds: 0.8,
+  betweenAttacksSeconds: 1.1,
   rewardSeconds: 2.2,
-  attackCount: 3,
+  attackCount: 8,
+  phaseCount: 3,
   scoreBonus: 800
 } as const;
 

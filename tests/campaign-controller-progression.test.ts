@@ -15,7 +15,6 @@ interface ControllerHarness {
   };
   audio: { playCue: (cue: string) => void };
   shell: {
-    showGameplayHint: (copy: string | null) => void;
     showStoryObjective: (copy: string | null) => void;
     showStoryScene: (scene: unknown) => void;
     announce: (copy: string) => void;
@@ -24,8 +23,6 @@ interface ControllerHarness {
   lastTrustCorridor: boolean;
   lastStorySceneId: string;
   lastVisualWorldId: CampaignWorldId | null;
-  pendingTutorial: "jump" | "slide" | null;
-  powerUpHintTimer: number | null;
   warmWorldAssetWindow: (worldId: CampaignWorldId) => void;
   handleStoryUpdate: (update: StoryTimelineSnapshot) => void;
 }
@@ -49,7 +46,6 @@ function controllerHarness(options: {
     },
     audio: { playCue },
     shell: {
-      showGameplayHint: vi.fn(),
       showStoryObjective: vi.fn(),
       showStoryScene: vi.fn(),
       announce: vi.fn()
@@ -57,9 +53,7 @@ function controllerHarness(options: {
     destroyed: false,
     lastTrustCorridor: true,
     lastStorySceneId: "",
-    lastVisualWorldId: null,
-    pendingTutorial: null,
-    powerUpHintTimer: null
+    lastVisualWorldId: null
   });
   return { controller, playCue, warmBundles };
 }
@@ -74,12 +68,12 @@ function sceneUpdate(scene: StorySceneConfig): StoryTimelineSnapshot {
     sectionDurationSeconds: 0,
     totalElapsedSeconds: 0,
     totalActiveElapsedSeconds: 0,
-    totalActiveDurationSeconds: 300,
+    totalActiveDurationSeconds: 250,
     countdownSecondsRemaining: 0,
     countdownValue: null,
     progress: 0,
     sceneIndex: 0,
-    sceneCount: 18,
+    sceneCount: 10,
     scene,
     playSegment: null,
     activeBeats: [],
@@ -94,7 +88,7 @@ function sceneUpdate(scene: StorySceneConfig): StoryTimelineSnapshot {
 function configuredScene(id: string): StorySceneConfig {
   return {
     id,
-    chapter: id.startsWith("intro.") ? "prologue" : "epoch_1",
+    chapter: id === "story.first_package" ? "prologue" : "epoch_1",
     eyebrow: "Test",
     title: "Test",
     body: ["Test"],
@@ -138,7 +132,7 @@ describe("CampaignController semantic story sound", () => {
     const { controller, playCue, warmBundles } = controllerHarness({
       readyBundles: ["prologue"]
     });
-    const update = sceneUpdate(configuredScene("intro.ready"));
+    const update = sceneUpdate(configuredScene("story.first_package"));
 
     controller.handleStoryUpdate(update);
     controller.handleStoryUpdate(update);

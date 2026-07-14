@@ -57,6 +57,7 @@ export interface PackageModel {
 
 export interface BossModel {
   phase: BossPhase;
+  encounterPhase: number;
   cycle: number;
   attacksLaunched: number;
   attacksSurvived: number;

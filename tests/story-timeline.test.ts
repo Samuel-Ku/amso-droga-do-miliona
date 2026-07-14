@@ -91,7 +91,25 @@ describe("player-paced story timeline", () => {
     expect(timeline.snapshot.totalActiveElapsedSeconds).toBeCloseTo(0.01, 5);
   });
 
-  it("presents all 18 production scenes once while counting exactly 300 active seconds", () => {
+  it("holds a timed play boundary until its required encounter is complete", () => {
+    const timeline = new StoryTimeline(playerPacedStory());
+    timeline.continueScene("intro.ready");
+    timeline.continueScene("intro.promise");
+    timeline.advance(STORY_REFRAME_SECONDS);
+    timeline.advance(3);
+
+    timeline.advance(4, { allowPlayCompletion: false });
+    expect(timeline.snapshot.state).toBe("play");
+    expect(timeline.snapshot.sectionElapsedSeconds).toBe(4);
+    expect(timeline.snapshot.totalActiveElapsedSeconds).toBe(4);
+
+    timeline.advance(0.01);
+    expect(timeline.snapshot.state).toBe("scene");
+    expect(timeline.snapshot.scene?.id).toBe("final.thanks");
+    expect(timeline.snapshot.totalActiveElapsedSeconds).toBe(4);
+  });
+
+  it("presents the approved 10-stop story once within 250 active seconds", () => {
     const config = parseRunnerConfig(productionConfig);
     if (!config) throw new Error("production config should parse");
     const timeline = new StoryTimeline(config.story);
@@ -111,9 +129,20 @@ describe("player-paced story timeline", () => {
       }
     }
 
-    expect(seen).toEqual(config.story.scenes.map(({ id }) => id));
-    expect(new Set(seen).size).toBe(18);
-    expect(timeline.snapshot.totalActiveElapsedSeconds).toBe(300);
+    expect(seen).toEqual([
+      "story.first_package",
+      "story.quality_promise",
+      "story.first_process",
+      "client.creative_start",
+      "client.business_growth",
+      "client.b2b_trust",
+      "story.scale",
+      "story.million_approach",
+      "challenge.million_wave",
+      "story.million_finale"
+    ]);
+    expect(new Set(seen).size).toBe(10);
+    expect(timeline.snapshot.totalActiveElapsedSeconds).toBe(250);
     expect(timeline.snapshot.progress).toBe(1);
     expect(timeline.snapshot.completed).toBe(true);
   });
