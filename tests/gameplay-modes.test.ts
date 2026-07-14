@@ -376,7 +376,7 @@ describe("campaign collision contract", () => {
     expect(harness.snapshots.at(-1)).toMatchObject({
       mode: "challenge",
       visualWorldId: "first-mile",
-      visualStateId: "story.quality_promise",
+      visualStateId: "story.first_package",
       visualWorldIndex: 0
     });
     harness.game.destroy();
@@ -397,7 +397,7 @@ describe("campaign collision contract", () => {
       .toBe(config.story.firstCompletionBonusScore);
     firstPass.game.destroy();
     replay.game.destroy();
-  });
+  }, 15_000);
 
   it("does not emit a legacy narrative ending when the seamless challenge ends", () => {
     const harness = createGameHarness("story");

@@ -105,6 +105,19 @@ describe("game random and spawning", () => {
 });
 
 describe("boss encounter", () => {
+  it("paces the authored encounter for a 45–60 second finale", () => {
+    const estimatedHazardTravelSeconds = 2.9;
+    const estimatedDuration =
+      BOSS.warningSeconds * BOSS.phaseCount +
+      BOSS.firstAttackDelaySeconds * BOSS.phaseCount +
+      BOSS.betweenAttacksSeconds * (BOSS.attackCount - 1) +
+      estimatedHazardTravelSeconds * BOSS.attackCount +
+      BOSS.rewardSeconds;
+
+    expect(estimatedDuration).toBeGreaterThanOrEqual(45);
+    expect(estimatedDuration).toBeLessThanOrEqual(60);
+  });
+
   it("runs eight combinations across three phases before the reward", () => {
     const boss = new BossDirector();
     let elapsed = BOSS.firstAtSeconds - 0.1;

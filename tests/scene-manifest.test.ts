@@ -36,6 +36,13 @@ describe("campaign visual scene manifest", () => {
     }
   });
 
+  it("places the quality promise at the testing station", () => {
+    expect(sceneVisualState("story.quality_promise")).toMatchObject({
+      worldId: "quality-service",
+      overlayStateId: "epoch_2.resolve"
+    });
+  });
+
   it("references seven versioned deployable world plates", () => {
     for (const world of CAMPAIGN_WORLDS) {
       expect(world.assetPath).toMatch(

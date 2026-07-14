@@ -52,7 +52,7 @@ export const BOSS = {
   intervalSeconds: 85,
   warningSeconds: 1.8,
   firstAttackDelaySeconds: 0.8,
-  betweenAttacksSeconds: 1.1,
+  betweenAttacksSeconds: 1.8,
   rewardSeconds: 2.2,
   attackCount: 8,
   phaseCount: 3,

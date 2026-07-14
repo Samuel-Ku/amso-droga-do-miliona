@@ -50,6 +50,16 @@ describe("world visual continuity", () => {
     );
   });
 
+  it("keeps the confirmed annual device figures in the scale background", () => {
+    const semanticSvg = readFileSync(
+      new URL("../src/visuals/semantic-world-svg.ts", import.meta.url),
+      "utf8"
+    );
+    for (const fact of ["41 tys. PC", "76 tys. notebooków", "40 tys. monitorów", "28 tys. telefonów"]) {
+      expect(semanticSvg).toContain(fact);
+    }
+  });
+
   it("keeps consecutive service play segments inside one evolving world", () => {
     const testing = resolvePlaySegmentVisual("epoch_2.quality_series", 0.5);
     const doubts = resolvePlaySegmentVisual("epoch_2.doubt_cloud", 0.5);
@@ -63,10 +73,10 @@ describe("world visual continuity", () => {
 
   it("starts a direct challenge in the small warehouse and changes only on a clear route", () => {
     const director = new ChallengeWorldDirector("direct");
-    expect(director.snapshot.stateId).toBe("story.quality_promise");
+    expect(director.snapshot.stateId).toBe("story.first_package");
 
     director.advance(45, false);
-    expect(director.snapshot.stateId).toBe("story.quality_promise");
+    expect(director.snapshot.stateId).toBe("story.first_package");
     expect(director.snapshot.transitionPending).toBe(true);
 
     director.advance(0, true);
@@ -82,7 +92,7 @@ describe("world visual continuity", () => {
     director.advance(44.99, true);
     expect(director.snapshot.stateId).toBe("story.million_finale");
     director.advance(0.01, true);
-    expect(director.snapshot.stateId).toBe("story.quality_promise");
+    expect(director.snapshot.stateId).toBe("story.first_package");
   });
 
   it("cycles all seven worlds in a fixed order", () => {
@@ -93,14 +103,14 @@ describe("world visual continuity", () => {
       seen.push(director.snapshot.stateId);
     }
     expect(seen).toEqual([
-      "story.quality_promise",
+      "story.first_package",
       "story.first_process",
       "epoch_2.resolve",
       "client.b2b_trust",
       "story.scale",
       "challenge.million_wave",
       "story.million_finale",
-      "story.quality_promise"
+      "story.first_package"
     ]);
   });
 });

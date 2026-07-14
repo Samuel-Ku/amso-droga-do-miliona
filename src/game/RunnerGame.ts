@@ -770,7 +770,8 @@ export class RunnerGame implements RunnerGameApi {
     }
 
     if (bossCommand.type === "attack") {
-      const attackIndex = Math.max(0, this.bossDirector.model.attacksLaunched - 1);
+      // Survived combinations, unlike launched attempts, stay stable across a retry.
+      const attackIndex = Math.max(0, this.bossDirector.model.attacksSurvived);
       const finalePowerUp = FINALE_POWER_UPS[attackIndex];
       const finaleSymbol = millionWaveActive && this.storyTimeline
         ? this.finaleSymbolDirector.planGuaranteedSpawns(

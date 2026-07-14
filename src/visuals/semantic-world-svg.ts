@@ -163,6 +163,12 @@ export const SEMANTIC_WORLD_SVG = `
     <g class="amso-world-visual__state" data-state-overlay="epoch_4.scale" hidden>
       <text x="691" y="104" text-anchor="middle" fill="#191919" font-family="system-ui,sans-serif" font-size="34" font-weight="950">3 000 m²</text>
       <path d="M562 118h258" stroke="url(#amso-route-gradient)" stroke-width="9" />
+      <g fill="#191919" font-family="system-ui,sans-serif" font-size="19" font-weight="900" text-anchor="middle">
+        <text x="610" y="159">41 tys. PC</text>
+        <text x="765" y="159">76 tys. notebooków</text>
+        <text x="610" y="191">40 tys. monitorów</text>
+        <text x="765" y="191">28 tys. telefonów</text>
+      </g>
     </g>
     <g class="amso-world-visual__state" data-state-overlay="epoch_4.numbers" hidden>
       <text x="173" y="108" text-anchor="middle" fill="#191919" font-family="system-ui,sans-serif" font-size="27" font-weight="900">240 m › PKiN</text>

@@ -488,7 +488,7 @@ function editorialScene(
 /** The ten editorial stops approved for the shorter, clearly attributed story. */
 export const CAMPAIGN_SCENE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze([
   editorialScene("intro.ready", "story.first_package", "prologue"),
-  editorialScene("intro.promise", "story.quality_promise", "prologue"),
+  editorialScene("epoch_2.resolve", "story.quality_promise", "prologue"),
   editorialScene("epoch_1.resolve", "story.first_process", "epoch_1"),
   editorialScene("epoch_3.designer", "client.creative_start", "epoch_3"),
   editorialScene("epoch_3.business", "client.business_growth", "epoch_3"),
@@ -636,7 +636,7 @@ export function resolvePlaySegmentVisual(
 
 export const CHALLENGE_WORLD_SECONDS = 45;
 export const CHALLENGE_WORLD_STATES = Object.freeze([
-  "story.quality_promise",
+  "story.first_package",
   "story.first_process",
   "epoch_2.resolve",
   "client.b2b_trust",
