@@ -17,6 +17,81 @@ function validConfig(): Record<string, unknown> {
 }
 
 describe("runner config v4 story validation", () => {
+  it("accepts additive v5 story contracts without breaking the v4 runtime shape", () => {
+    const legacy = parseRunnerConfig(validConfig());
+    expect(legacy?.schemaVersion).toBe(4);
+    expect(legacy?.story.modeHandoff).toBeUndefined();
+
+    const expanded = validConfig();
+    const story = expanded.story as Record<string, unknown>;
+    const scenes = story.scenes as Array<Record<string, unknown>>;
+    const sequence = story.sequence as Array<Record<string, unknown>>;
+    scenes[0]!.perspective = "amso";
+    scenes[0]!.steps = [{
+      id: "first-package.origin",
+      body: ["Pierwszą paczkę przygotowaliśmy własnymi rękami."],
+      continueLabel: "Dalej",
+      safe: true
+    }];
+    const legacyChallenge = sequence.find(({ id }) => id === "epoch_1.cable_chaos");
+    if (!legacyChallenge) throw new Error("legacy challenge should exist");
+    legacyChallenge.semantic = { id: "epoch_1.order_backlog", name: "Zator Zamówień" };
+    story.modeHandoff = {
+      id: "story.challenge_handoff",
+      from: "story",
+      to: "challenge",
+      safe: true,
+      confirmationRequired: true,
+      resumeCountdownSeconds: 3
+    };
+    story.millionThreshold = {
+      counterStart: 999_970,
+      counterTarget: 1_000_000,
+      packageTarget: 30,
+      combinationTarget: 8
+    };
+
+    const parsed = parseRunnerConfig(expanded);
+    expect(parsed?.schemaVersion).toBe(4);
+    expect(parsed?.story.scenes[0]).toMatchObject({
+      perspective: "amso",
+      steps: [{ id: "first-package.origin", safe: true }]
+    });
+    expect(parsed?.story.sequence.find(({ type }) => type === "play")).toMatchObject({
+      id: "epoch_1.training"
+    });
+    expect(parsed?.story.sequence.find((step) =>
+      step.type === "play" && step.id === "epoch_1.cable_chaos"
+    )).toMatchObject({
+      semantic: { id: "epoch_1.order_backlog", name: "Zator Zamówień" }
+    });
+    expect(parsed?.story.modeHandoff).toEqual({
+      id: "story.challenge_handoff",
+      from: "story",
+      to: "challenge",
+      safe: true,
+      confirmationRequired: true,
+      resumeCountdownSeconds: 3
+    });
+    expect(parsed?.story.millionThreshold).toEqual({
+      counterStart: 999_970,
+      counterTarget: 1_000_000,
+      packageTarget: 30,
+      combinationTarget: 8
+    });
+  });
+
+  it("rejects a partial v5 challenge semantic identity", () => {
+    const expanded = validConfig();
+    const story = expanded.story as Record<string, unknown>;
+    const sequence = story.sequence as Array<Record<string, unknown>>;
+    const challenge = sequence.find(({ id }) => id === "epoch_1.cable_chaos");
+    if (!challenge) throw new Error("legacy challenge should exist");
+    challenge.semantic = { id: "epoch_1.order_backlog" };
+
+    expect(parseRunnerConfig(expanded)).toBeNull();
+  });
+
   it("parses the production story as 10 player-paced scenes and 250 seconds of play", () => {
     const result = validateRunnerConfig(validConfig());
 

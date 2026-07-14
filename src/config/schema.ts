@@ -18,7 +18,10 @@ import type {
   StoryChapterId,
   StoryConfig,
   StoryEpochConfig,
+  StoryModeHandoffConfig,
+  StoryPerspective,
   StorySceneConfig,
+  StoryScenePageConfig,
   StorySequenceStepConfig,
   StoryVignette
 } from "../shared/types";
@@ -38,6 +41,7 @@ const OBSTACLE_KINDS = ["box-stack", "pallet", "trolley", "overhead"] as const;
 const STORY_CHAPTERS: readonly StoryChapterId[] = [
   "prologue", "epoch_1", "epoch_2", "epoch_3", "epoch_4", "epoch_5", "finale"
 ];
+const STORY_PERSPECTIVES: readonly StoryPerspective[] = ["amso", "client", "challenge"];
 const STORY_VIGNETTES: readonly StoryVignette[] = [
   "first-package", "small-warehouse", "tested-device", "cable-route", "quality-stamp",
   "creative-desk", "growing-business", "long-trust", "warehouse-scale", "product-stream",
@@ -236,10 +240,32 @@ function parseAssets(
   return { bundles };
 }
 
+function parseScenePage(value: unknown): StoryScenePageConfig | null {
+  if (!isRecord(value) || !hasExactKeys(
+    value,
+    ["id", "title", "body", "continueLabel", "safe"],
+    ["id", "body", "continueLabel", "safe"]
+  ) || !isIdentifier(value.id) ||
+      (value.title !== undefined && !isSafeText(value.title, 160)) ||
+      !Array.isArray(value.body) || value.body.length < 1 || value.body.length > 2 ||
+      value.body.some((paragraph) => !isSafeText(paragraph, 420)) ||
+      !isSafeText(value.continueLabel, 80) || value.safe !== true) return null;
+  return {
+    id: value.id,
+    ...(typeof value.title === "string" ? { title: value.title } : {}),
+    body: value.body as string[],
+    continueLabel: value.continueLabel,
+    safe: true
+  };
+}
+
 function parseScene(value: unknown): StorySceneConfig | null {
   if (!isRecord(value) || !hasExactKeys(
     value,
-    ["id", "chapter", "eyebrow", "title", "body", "vignette", "continueLabel"],
+    [
+      "id", "chapter", "eyebrow", "title", "body", "vignette", "continueLabel",
+      "perspective", "steps"
+    ],
     ["id", "chapter", "eyebrow", "title", "body", "vignette", "continueLabel"]
   )) return null;
   if (!isIdentifier(value.id) || typeof value.chapter !== "string" ||
@@ -250,6 +276,13 @@ function parseScene(value: unknown): StorySceneConfig | null {
       typeof value.vignette !== "string" ||
       !(STORY_VIGNETTES as readonly string[]).includes(value.vignette) ||
       !isSafeText(value.continueLabel, 80)) return null;
+  if (value.perspective !== undefined &&
+      (typeof value.perspective !== "string" ||
+        !(STORY_PERSPECTIVES as readonly string[]).includes(value.perspective))) return null;
+  if (value.steps !== undefined &&
+      (!Array.isArray(value.steps) || value.steps.length < 1 || value.steps.length > 8)) return null;
+  const steps = value.steps === undefined ? undefined : value.steps.map(parseScenePage);
+  if (steps?.some((step) => step === null)) return null;
   return {
     id: value.id,
     chapter: value.chapter as StoryChapterId,
@@ -257,7 +290,11 @@ function parseScene(value: unknown): StorySceneConfig | null {
     title: value.title,
     body: value.body as string[],
     vignette: value.vignette as StoryVignette,
-    continueLabel: value.continueLabel
+    continueLabel: value.continueLabel,
+    ...(typeof value.perspective === "string"
+      ? { perspective: value.perspective as StoryPerspective }
+      : {}),
+    ...(steps === undefined ? {} : { steps: steps as StoryScenePageConfig[] })
   };
 }
 
@@ -271,18 +308,57 @@ function parseSequenceStep(value: unknown): StorySequenceStepConfig | null {
   if (value.type === "play") {
     if (!hasExactKeys(
       value,
-      ["type", "id", "epochIndex", "durationSeconds"],
+      ["type", "id", "epochIndex", "durationSeconds", "semantic"],
       ["type", "id", "epochIndex", "durationSeconds"]
     ) || !isIdentifier(value.id) || !Number.isInteger(value.epochIndex) ||
         !finiteInRange(value.durationSeconds, 1, 90)) return null;
+    if (value.semantic !== undefined && (!isRecord(value.semantic) ||
+        !hasExactKeys(value.semantic, ["id", "name"], ["id", "name"]) ||
+        !isIdentifier(value.semantic.id) || !isSafeText(value.semantic.name, 80))) return null;
     return {
       type: "play",
       id: value.id,
       epochIndex: value.epochIndex as number,
-      durationSeconds: value.durationSeconds
+      durationSeconds: value.durationSeconds,
+      ...(isRecord(value.semantic)
+        ? { semantic: { id: value.semantic.id as string, name: value.semantic.name as string } }
+        : {})
     };
   }
   return null;
+}
+
+function parseModeHandoff(value: unknown): StoryModeHandoffConfig | null {
+  if (!isRecord(value) || !hasExactKeys(
+    value,
+    ["id", "from", "to", "safe", "confirmationRequired", "resumeCountdownSeconds"],
+    ["id", "from", "to", "safe", "confirmationRequired", "resumeCountdownSeconds"]
+  ) || !isIdentifier(value.id) || value.from !== "story" || value.to !== "challenge" ||
+      value.safe !== true || value.confirmationRequired !== true ||
+      value.resumeCountdownSeconds !== 3) return null;
+  return {
+    id: value.id,
+    from: "story",
+    to: "challenge",
+    safe: true,
+    confirmationRequired: true,
+    resumeCountdownSeconds: 3
+  };
+}
+
+function parseMillionThreshold(value: unknown): StoryConfig["millionThreshold"] | null {
+  if (!isRecord(value) || !hasExactKeys(
+    value,
+    ["counterStart", "counterTarget", "packageTarget", "combinationTarget"],
+    ["counterStart", "counterTarget", "packageTarget", "combinationTarget"]
+  ) || value.counterStart !== 999_970 || value.counterTarget !== 1_000_000 ||
+      value.packageTarget !== 30 || value.combinationTarget !== 8) return null;
+  return {
+    counterStart: 999_970,
+    counterTarget: 1_000_000,
+    packageTarget: 30,
+    combinationTarget: 8
+  };
 }
 
 function parseEpoch(value: unknown): StoryEpochConfig | null {
@@ -331,7 +407,7 @@ function parseStory(value: unknown): StoryConfig | null {
     [
       "activeDurationSeconds", "readingSpeedMultiplier", "speedStartMultiplier",
       "speedMaxMultiplier", "resumeCountdownSeconds", "firstCompletionBonusScore",
-      "scenes", "sequence", "epochs"
+      "scenes", "sequence", "epochs", "modeHandoff", "millionThreshold"
     ],
     [
       "activeDurationSeconds", "readingSpeedMultiplier", "speedStartMultiplier",
@@ -357,6 +433,13 @@ function parseStory(value: unknown): StoryConfig | null {
   const typedScenes = scenes as StorySceneConfig[];
   const typedSequence = sequence as StorySequenceStepConfig[];
   const typedEpochs = epochs as StoryEpochConfig[];
+  const modeHandoff = value.modeHandoff === undefined
+    ? undefined
+    : parseModeHandoff(value.modeHandoff);
+  const millionThreshold = value.millionThreshold === undefined
+    ? undefined
+    : parseMillionThreshold(value.millionThreshold);
+  if (modeHandoff === null || millionThreshold === null) return null;
   if (typedEpochs.some((epoch, index) => epoch.index !== index)) return null;
   const sceneIds = new Set(typedScenes.map((scene) => scene.id));
   if (sceneIds.size !== typedScenes.length || !sceneIds.has("story.million_finale")) return null;
@@ -390,7 +473,9 @@ function parseStory(value: unknown): StoryConfig | null {
     firstCompletionBonusScore: value.firstCompletionBonusScore,
     scenes: typedScenes,
     sequence: typedSequence,
-    epochs: typedEpochs
+    epochs: typedEpochs,
+    ...(modeHandoff === undefined ? {} : { modeHandoff }),
+    ...(millionThreshold === undefined ? {} : { millionThreshold })
   };
 }
 

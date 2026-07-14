@@ -1,5 +1,15 @@
 import type { StoryObjectiveId, StoryObjectivesSnapshot } from "../game/story-objectives";
-import type { PackageType, PowerUpKind } from "../shared/types";
+import type { PackageType, PowerUpKind, StoryPerspective } from "../shared/types";
+
+const STORY_PERSPECTIVE_LABELS: Readonly<Record<StoryPerspective, string>> = {
+  amso: "Nasza historia",
+  client: "Historia klienta",
+  challenge: "Wyzwanie"
+};
+
+export function formatStoryPerspective(perspective: StoryPerspective): string {
+  return STORY_PERSPECTIVE_LABELS[perspective];
+}
 
 export type FullscreenPreference = "fullscreen" | "portrait";
 

@@ -12,7 +12,8 @@ export const STORY_OBJECTIVE_SEGMENT_IDS = [
   "epoch_4.orders",
   "epoch_4.logistic_hydra",
   "epoch_5.counter",
-  "epoch_5.million_wave"
+  "epoch_5.million_wave",
+  "epoch_5.million_threshold"
 ] as const;
 
 export type StoryObjectiveSegmentId = typeof STORY_OBJECTIVE_SEGMENT_IDS[number];
@@ -30,7 +31,8 @@ export type StoryObjectiveId =
   | "epoch_4.logistic_hydra"
   | "epoch_5.counter"
   | "epoch_5.million_wave"
-  | "epoch_5.symbols";
+  | "epoch_5.symbols"
+  | "epoch_5.million_threshold";
 
 export interface StoryObjectiveUpdate {
   changed: boolean;
@@ -85,6 +87,16 @@ export interface StoryObjectivesSnapshot {
     completed: boolean;
   };
   epoch5: {
+    millionThreshold: {
+      packagesCollected: number;
+      packageTarget: number;
+      combinationsCompleted: number;
+      combinationTarget: number;
+      counterStart: number;
+      counterTarget: number;
+      counterValue: number;
+      completed: boolean;
+    };
     counter: { elapsedSeconds: number; value: number; completed: boolean };
     wave: {
       elapsedSeconds: number;
@@ -115,7 +127,9 @@ export const STORY_OBJECTIVE_TARGETS = {
   counterSeconds: 15,
   millionPhaseSeconds: 12,
   millionGuidedPhases: 3,
-  symbolCount: 8
+  symbolCount: 8,
+  millionPackages: 30,
+  millionCombinations: 8
 } as const;
 
 const TARGETS = STORY_OBJECTIVE_TARGETS;
@@ -167,6 +181,8 @@ export class StoryObjectiveDirector {
     TARGETS.millionPhaseSeconds * TARGETS.millionGuidedPhases;
   private readonly collectedSymbols = new Set<number>();
   private symbolMisses = 0;
+  private thresholdPackages = 0;
+  private thresholdCombinations = 0;
 
   public enterSegment(segmentId: string | null, durationSeconds?: number): boolean {
     if (segmentId === null) {
@@ -350,6 +366,24 @@ export class StoryObjectiveDirector {
     });
   }
 
+  public recordMillionPackage(): StoryObjectiveUpdate {
+    return this.update(() => {
+      if (this.activeSegmentId !== "epoch_5.million_threshold" ||
+          this.thresholdPackages >= TARGETS.millionPackages) return false;
+      this.thresholdPackages += 1;
+      return true;
+    });
+  }
+
+  public recordMillionCombination(): StoryObjectiveUpdate {
+    return this.update(() => {
+      if (this.activeSegmentId !== "epoch_5.million_threshold" ||
+          this.thresholdCombinations >= TARGETS.millionCombinations) return false;
+      this.thresholdCombinations += 1;
+      return true;
+    });
+  }
+
   public get snapshot(): StoryObjectivesSnapshot {
     const trainingComplete = this.trainingJumps >= TARGETS.mixedActionsEach &&
       this.trainingSlides >= TARGETS.mixedActionsEach;
@@ -443,6 +477,17 @@ export class StoryObjectiveDirector {
         completed: ordersComplete && hydraComplete
       },
       epoch5: {
+        millionThreshold: {
+          packagesCollected: this.thresholdPackages,
+          packageTarget: TARGETS.millionPackages,
+          combinationsCompleted: this.thresholdCombinations,
+          combinationTarget: TARGETS.millionCombinations,
+          counterStart: 999_970,
+          counterTarget: 1_000_000,
+          counterValue: 999_970 + this.thresholdPackages,
+          completed: this.thresholdPackages >= TARGETS.millionPackages &&
+            this.thresholdCombinations >= TARGETS.millionCombinations
+        },
         counter: {
           elapsedSeconds: this.counterElapsedSeconds,
           value: [999_970, 999_980, 999_990, 999_999][Math.min(
@@ -491,6 +536,10 @@ export class StoryObjectiveDirector {
       ids.push("epoch_5.million_wave");
     }
     if (this.collectedSymbols.size >= TARGETS.symbolCount) ids.push("epoch_5.symbols");
+    if (this.thresholdPackages >= TARGETS.millionPackages &&
+        this.thresholdCombinations >= TARGETS.millionCombinations) {
+      ids.push("epoch_5.million_threshold");
+    }
     return ids;
   }
 

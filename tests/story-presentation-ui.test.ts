@@ -5,10 +5,12 @@ import {
   formatPowerUpHud,
   formatStoryControlsHud,
   formatStoryObjectiveHud,
+  formatStoryPerspective,
   getTrappedFocusIndex,
   snapshotStoryScene,
   StoryContinuationGate
 } from "../src/ui/story-presentation";
+import { V5_CHALLENGE_SEMANTICS } from "../src/game/v5-contracts";
 import { StoryObjectiveDirector } from "../src/game/story-objectives";
 import {
   campaignVisualStateAtProgress,
@@ -26,6 +28,14 @@ const campaignShellSource = readFileSync(
 );
 
 describe("player-paced story presentation", () => {
+  it("distinguishes AMSO, client and challenge perspectives beside legacy ids", () => {
+    expect(formatStoryPerspective("amso")).toBe("Nasza historia");
+    expect(formatStoryPerspective("client")).toBe("Historia klienta");
+    expect(formatStoryPerspective("challenge")).toBe("Wyzwanie");
+    expect(V5_CHALLENGE_SEMANTICS["epoch_5.million_wave"]).toEqual({
+      id: "epoch_5.million_threshold", name: "Próg Miliona"
+    });
+  });
   it("derives the saved preference from the campaign fullscreen element", () => {
     const campaignRoot = {} as Element;
     const unrelatedFullscreenElement = {} as Element;

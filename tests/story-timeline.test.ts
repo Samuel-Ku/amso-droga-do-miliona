@@ -49,6 +49,19 @@ function playerPacedStory(): StoryConfig {
 }
 
 describe("player-paced story timeline", () => {
+  it("publishes explicit safe narrative and active-play states", () => {
+    const timeline = new StoryTimeline(playerPacedStory());
+    expect(timeline.snapshot.safety).toEqual({
+      kind: "narrative_safe", hazardsEnabled: false, pickupsEnabled: false, controlsEnabled: false
+    });
+    timeline.continueScene("intro.ready");
+    timeline.continueScene("intro.promise");
+    expect(timeline.snapshot.safety?.kind).toBe("narrative_safe");
+    timeline.advance(STORY_REFRAME_SECONDS + 3);
+    expect(timeline.snapshot.safety).toEqual({
+      kind: "active_play", hazardsEnabled: true, pickupsEnabled: true, controlsEnabled: true
+    });
+  });
   it("keeps a complete scene stable until the player continues", () => {
     const timeline = new StoryTimeline(playerPacedStory());
 

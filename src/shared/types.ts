@@ -13,6 +13,7 @@ export type PackageType = "notebook" | "telefon" | "pc" | "lcd";
 export type PowerUpKind = "gwarancja_48" | "audyt_jakosci" | "drugie_zycie";
 export type CampaignMode = "story" | "challenge";
 export type StoryBeatKind = "title" | "dialogue" | "copy" | "stat" | "challenge";
+export type StoryPerspective = "amso" | "client" | "challenge";
 
 export interface StoryBeatConfig {
   id: string;
@@ -106,6 +107,19 @@ export interface StorySceneConfig {
   body: string[];
   vignette: StoryVignette;
   continueLabel: string;
+  /** Additive v5 attribution; legacy scenes continue to use eyebrow copy. */
+  perspective?: StoryPerspective;
+  /** Player-paced pages rendered inside one semantic scene. */
+  steps?: StoryScenePageConfig[];
+}
+
+export interface StoryScenePageConfig {
+  id: string;
+  title?: string;
+  body: string[];
+  continueLabel: string;
+  /** Narrative pages are always hazard- and pickup-free. */
+  safe: true;
 }
 
 export interface StorySceneStepConfig {
@@ -118,9 +132,32 @@ export interface StoryPlayStepConfig {
   id: string;
   epochIndex: number;
   durationSeconds: number;
+  /** v5 identity carried beside the legacy id during expand–contract migration. */
+  semantic?: StoryChallengeSemantic;
+}
+
+export interface StoryChallengeSemantic {
+  id: string;
+  name: string;
 }
 
 export type StorySequenceStepConfig = StorySceneStepConfig | StoryPlayStepConfig;
+
+export interface StoryModeHandoffConfig {
+  id: string;
+  from: "story";
+  to: "challenge";
+  safe: true;
+  confirmationRequired: true;
+  resumeCountdownSeconds: 3;
+}
+
+export interface MillionThresholdConfig {
+  counterStart: 999_970;
+  counterTarget: 1_000_000;
+  packageTarget: 30;
+  combinationTarget: 8;
+}
 
 export interface StoryConfig {
   activeDurationSeconds: number;
@@ -132,6 +169,10 @@ export interface StoryConfig {
   scenes: StorySceneConfig[];
   sequence: StorySequenceStepConfig[];
   epochs: StoryEpochConfig[];
+  /** Explicit v5 handoff retained alongside the legacy finale scene. */
+  modeHandoff?: StoryModeHandoffConfig;
+  /** Additive v5 finale contract; legacy counter/symbol objectives remain operational. */
+  millionThreshold?: MillionThresholdConfig;
 }
 
 export interface ChallengeConfig {

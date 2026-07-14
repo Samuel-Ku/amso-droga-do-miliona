@@ -12,6 +12,13 @@ export const STORY_REFRAME_SECONDS = 0.72;
 export type StoryState = "scene" | "reframe" | "countdown" | "play" | "completed";
 export type StoryPhase = "prologue" | "epoch" | "finale" | "completed";
 
+export interface StorySafetySnapshot {
+  kind: "narrative_safe" | "active_play" | "completed_safe";
+  hazardsEnabled: boolean;
+  pickupsEnabled: boolean;
+  controlsEnabled: boolean;
+}
+
 export interface StoryTimelineSnapshot {
   state: StoryState;
   phase: StoryPhase;
@@ -35,6 +42,8 @@ export interface StoryTimelineSnapshot {
   worldSpeedScale: number;
   symbolsCollected: number;
   completed: boolean;
+  /** Additive v5 safety contract; legacy flags remain available during migration. */
+  safety?: Readonly<StorySafetySnapshot>;
 }
 
 export interface StoryAdvanceOptions {
@@ -174,6 +183,12 @@ export class StoryTimeline {
       : this.story.scenes.findIndex(({ id }) => id === scene.id);
     const trustCorridor = this.state === "scene" || this.state === "reframe" ||
       this.state === "countdown";
+    const activePlay = this.state === "play";
+    const safety: StorySafetySnapshot = completed
+      ? { kind: "completed_safe", hazardsEnabled: false, pickupsEnabled: false, controlsEnabled: false }
+      : activePlay
+        ? { kind: "active_play", hazardsEnabled: true, pickupsEnabled: true, controlsEnabled: true }
+        : { kind: "narrative_safe", hazardsEnabled: false, pickupsEnabled: false, controlsEnabled: false };
     return {
       state: this.state,
       phase,
@@ -200,7 +215,8 @@ export class StoryTimeline {
       controlsEnabled: this.state === "play",
       worldSpeedScale: trustCorridor ? this.story.readingSpeedMultiplier : 1,
       symbolsCollected: this.collectedStorySymbols.size,
-      completed
+      completed,
+      safety
     };
   }
 

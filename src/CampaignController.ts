@@ -225,7 +225,8 @@ export class CampaignController {
           "epoch_4.logistic_hydra": "Logistyczna Hydra opanowana.",
           "epoch_5.counter": "Licznik: 999 999.",
           "epoch_5.million_wave": "Fala Miliona ukończona.",
-          "epoch_5.symbols": "Osiem symboli zebranych."
+          "epoch_5.symbols": "Osiem symboli zebranych.",
+          "epoch_5.million_threshold": "Próg Miliona osiągnięty."
         }[objectiveId];
         this.shell.showStoryObjective(`✓ ${label}`);
         this.shell.announce(label);

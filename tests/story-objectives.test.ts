@@ -19,7 +19,8 @@ describe("StoryObjectiveDirector", () => {
       "epoch_4.orders",
       "epoch_4.logistic_hydra",
       "epoch_5.counter",
-      "epoch_5.million_wave"
+      "epoch_5.million_wave",
+      "epoch_5.million_threshold"
     ]);
 
     const director = new StoryObjectiveDirector();
@@ -27,6 +28,21 @@ describe("StoryObjectiveDirector", () => {
     expect(director.snapshot.activeSegmentId).toBe("epoch_2.quality_series");
     expect(director.enterSegment("not-a-story-segment")).toBe(false);
     expect(director.snapshot.activeSegmentId).toBe("epoch_2.quality_series");
+  });
+
+  it("models the million threshold as 30 packages and 8 combinations without symbols", () => {
+    const director = new StoryObjectiveDirector();
+    director.enterSegment("epoch_5.million_threshold");
+    expect(director.snapshot.epoch5.millionThreshold).toMatchObject({
+      counterValue: 999_970, packageTarget: 30, combinationTarget: 8, completed: false
+    });
+    for (let index = 0; index < 30; index += 1) director.recordMillionPackage();
+    for (let index = 0; index < 8; index += 1) director.recordMillionCombination();
+    expect(director.snapshot.epoch5.millionThreshold).toMatchObject({
+      packagesCollected: 30, combinationsCompleted: 8, counterValue: 1_000_000, completed: true
+    });
+    expect(director.snapshot.completedObjectiveIds).toContain("epoch_5.million_threshold");
+    expect(director.snapshot.epoch5.symbols.collectedIds).toEqual([]);
   });
 
   it("tracks successful mixed patterns and alternating Cable Chaos clears", () => {
