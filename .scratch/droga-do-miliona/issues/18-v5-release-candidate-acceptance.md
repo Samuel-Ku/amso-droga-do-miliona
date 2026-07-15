@@ -20,3 +20,4 @@ Status: ready-for-human
 - 2026-07-15: aktywna scena `story.scale:boeing-comparison` jawnie informuje, że porównanie oczekuje na końcową akceptację marketingu. Scena jakości nie publikuje nazw niepotwierdzonych testów komponentów. Pozostałe decyzje redakcyjne nadal wymagają wypełnienia pól akceptacji w copydecku przed publikacją.
 - 2026-07-15: środowisko automatyzacji zwróciło pustą listę dostępnych przeglądarek, dlatego visual, urządzeniowe i zrozumieniowe kryteria nie zostały oznaczone jako wykonane.
 - 2026-07-15: naprawiono bezpośrednie uruchamianie QA HTML. Trusted single-file validator akceptuje teraz zarówno osadzone AVIF, jak i używany przez świat procesu osadzony SVG; osobny test regresyjny chroni ten kontrakt.
+- 2026-07-15: marketingowy copydeck ma regenerowany z production config eksport CSV (42 ekrany tekstowe i 13 faktów do osobnych decyzji), kodowanie UTF-8 BOM i układ kolumn do akceptacji lub wpisania zamiennika.
