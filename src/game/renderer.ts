@@ -8,6 +8,14 @@ import type {
 } from "./types";
 import type { PackageType, PowerUpKind } from "../shared/types";
 import type { StoryObstacleTransformation } from "./story-effects";
+import {
+  WORLD_ROUTE_ACCENT_WIDTH,
+  WORLD_ROUTE_BASE_COLOR,
+  WORLD_ROUTE_BASE_OFFSET_Y,
+  WORLD_ROUTE_BASE_WIDTH,
+  WORLD_ROUTE_GRADIENT_STOPS,
+  WORLD_ROUTE_Y
+} from "../visuals/world-route";
 
 const COLORS = {
   ink: "#171717",
@@ -1343,25 +1351,23 @@ function drawCourier(
 function drawGameplayRoute(context: CanvasRenderingContext2D): void {
   context.save();
   context.lineCap = "round";
-  context.strokeStyle = COLORS.ink;
-  context.lineWidth = 18;
+  context.strokeStyle = WORLD_ROUTE_BASE_COLOR;
+  context.lineWidth = WORLD_ROUTE_BASE_WIDTH;
   context.beginPath();
-  context.moveTo(-12, GROUND_Y + 5);
-  context.lineTo(WORLD_WIDTH + 12, GROUND_Y + 5);
+  context.moveTo(-12, WORLD_ROUTE_Y + WORLD_ROUTE_BASE_OFFSET_Y);
+  context.lineTo(WORLD_WIDTH + 12, WORLD_ROUTE_Y + WORLD_ROUTE_BASE_OFFSET_Y);
   context.stroke();
 
-  context.lineWidth = 7;
-  for (const [from, to, color] of [
-    [-12, WORLD_WIDTH * 0.34, COLORS.orange],
-    [WORLD_WIDTH * 0.34, WORLD_WIDTH * 0.68, COLORS.red],
-    [WORLD_WIDTH * 0.68, WORLD_WIDTH + 12, COLORS.redDark]
-  ] as const) {
-    context.strokeStyle = color;
-    context.beginPath();
-    context.moveTo(from, GROUND_Y);
-    context.lineTo(to, GROUND_Y);
-    context.stroke();
+  const routeGradient = context.createLinearGradient(0, 0, WORLD_WIDTH, 0);
+  for (const { offset, color } of WORLD_ROUTE_GRADIENT_STOPS) {
+    routeGradient.addColorStop(offset, color);
   }
+  context.strokeStyle = routeGradient;
+  context.lineWidth = WORLD_ROUTE_ACCENT_WIDTH;
+  context.beginPath();
+  context.moveTo(-12, WORLD_ROUTE_Y);
+  context.lineTo(WORLD_WIDTH + 12, WORLD_ROUTE_Y);
+  context.stroke();
   context.restore();
 }
 

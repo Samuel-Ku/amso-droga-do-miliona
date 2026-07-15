@@ -326,7 +326,9 @@ describe("difficulty and responsive canvas", () => {
 
 describe("boss rendering", () => {
   it("renders warning, attack and reward states with a golden parcel", () => {
-    const contextTarget: Record<PropertyKey, unknown> = {};
+    const contextTarget: Record<PropertyKey, unknown> = {
+      createLinearGradient: () => ({ addColorStop(): void {} })
+    };
     const context = new Proxy(contextTarget, {
       get(target, key) {
         if (key in target) return target[key];
@@ -405,7 +407,9 @@ describe("RunnerGame lifecycle", () => {
       addEventListener(): void {},
       removeEventListener(): void {}
     };
-    const contextTarget: Record<PropertyKey, unknown> = {};
+    const contextTarget: Record<PropertyKey, unknown> = {
+      createLinearGradient: () => ({ addColorStop(): void {} })
+    };
     const context = new Proxy(contextTarget, {
       get(target, key) {
         if (key in target) return target[key];

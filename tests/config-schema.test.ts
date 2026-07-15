@@ -303,16 +303,16 @@ describe("runner config v5 story validation", () => {
     expect(parseRunnerConfig(embedded, trustedOptions)).not.toBeNull();
   });
 
-  it("accepts the embedded SVG world used by the trusted single-file build", () => {
+  it("accepts embedded WebP worlds only for the trusted single-file build", () => {
     const embedded = validConfig();
     const bundles = ((embedded.assets as Record<string, unknown>)
       .bundles as Array<Record<string, unknown>>);
-    const svg = bundles
+    const webp = bundles
       .flatMap((bundle) => bundle.resources as Array<Record<string, unknown>>)
       .find((resource) => typeof resource.source === "string" &&
-        resource.source.endsWith(".svg"));
-    if (!svg) throw new Error("production config should contain an SVG resource");
-    svg.source = "data:image/svg+xml;base64,PHN2Zy8+";
+        resource.source.endsWith(".webp"));
+    if (!webp) throw new Error("production config should contain a WebP resource");
+    webp.source = "data:image/webp;base64,AAAA";
 
     expect(parseRunnerConfig(embedded)).toBeNull();
     expect(parseRunnerConfig(embedded, { allowEmbeddedImageSources: true }))
@@ -345,6 +345,10 @@ describe("runner config v5 story validation", () => {
     )).toBeNull();
     expect(parseRunnerConfig(
       withFirstImage("data:image/svg+xml;base64,***="),
+      trustedOptions
+    )).toBeNull();
+    expect(parseRunnerConfig(
+      withFirstImage("data:image/webp;base64,***="),
       trustedOptions
     )).toBeNull();
     expect(parseRunnerConfig(

@@ -97,49 +97,49 @@ export const CAMPAIGN_WORLDS: readonly CampaignWorldDefinition[] = Object.freeze
   {
     worldId: "first-mile",
     bundleId: "prologue",
-    assetPath: "/assets/milion-runner/worlds/world-01-first-mile-v1.avif",
+    assetPath: "/assets/milion-runner/worlds/world-01-first-mile-v2.webp",
     fallbackId: "fallback-first-mile",
     palette: "campaign-light"
   },
   {
     worldId: "order-process",
     bundleId: "epoch_1",
-    assetPath: "/assets/milion-runner/worlds/world-02-order-process-v1.svg",
+    assetPath: "/assets/milion-runner/worlds/world-02-order-process-v2.webp",
     fallbackId: "fallback-order-process",
     palette: "campaign-light"
   },
   {
     worldId: "quality-service",
     bundleId: "epoch_2",
-    assetPath: "/assets/milion-runner/worlds/world-03-quality-service-v1.avif",
+    assetPath: "/assets/milion-runner/worlds/world-03-quality-service-v2.webp",
     fallbackId: "fallback-quality-service",
     palette: "campaign-light"
   },
   {
     worldId: "client-paths",
     bundleId: "epoch_3",
-    assetPath: "/assets/milion-runner/worlds/world-04-client-paths-v1.avif",
+    assetPath: "/assets/milion-runner/worlds/world-04-client-paths-v2.webp",
     fallbackId: "fallback-client-paths",
     palette: "campaign-light"
   },
   {
     worldId: "scale-logistics",
     bundleId: "epoch_4",
-    assetPath: "/assets/milion-runner/worlds/world-05-scale-logistics-v1.avif",
+    assetPath: "/assets/milion-runner/worlds/world-05-scale-logistics-v2.webp",
     fallbackId: "fallback-scale-logistics",
     palette: "campaign-light"
   },
   {
     worldId: "million-approach",
     bundleId: "epoch_5",
-    assetPath: "/assets/milion-runner/worlds/world-06-million-approach-v1.avif",
+    assetPath: "/assets/milion-runner/worlds/world-06-million-approach-v2.webp",
     fallbackId: "fallback-million-approach",
     palette: "campaign-light"
   },
   {
     worldId: "million-finale",
     bundleId: "finale",
-    assetPath: "/assets/milion-runner/worlds/world-07-million-finale-v1.avif",
+    assetPath: "/assets/milion-runner/worlds/world-07-million-finale-v2.webp",
     fallbackId: "fallback-million-finale",
     palette: "campaign-light"
   }

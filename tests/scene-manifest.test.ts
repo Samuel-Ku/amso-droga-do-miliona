@@ -59,7 +59,7 @@ describe("campaign visual scene manifest", () => {
   it("references seven versioned deployable world plates", () => {
     for (const world of CAMPAIGN_WORLDS) {
       expect(world.assetPath).toMatch(
-        /^\/assets\/milion-runner\/worlds\/world-\d{2}-[a-z0-9-]+-v\d+\.(?:avif|svg)$/u
+        /^\/assets\/milion-runner\/worlds\/world-\d{2}-[a-z0-9-]+-v\d+\.webp$/u
       );
       const localPath = new URL(`../public${world.assetPath}`, import.meta.url);
       expect(existsSync(localPath), localPath.pathname).toBe(true);

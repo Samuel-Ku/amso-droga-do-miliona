@@ -80,9 +80,11 @@ const IMAGE_SOURCE_PATTERN = /\.(?:avif|gif|jpe?g|png|svg|webp)$/i;
 const AUDIO_SOURCE_PATTERN = /\.(?:aac|m4a|mp3|ogg|wav)$/i;
 const EMBEDDED_AVIF_PREFIX = "data:image/avif;base64,";
 const EMBEDDED_SVG_PREFIX = "data:image/svg+xml;base64,";
+const EMBEDDED_WEBP_PREFIX = "data:image/webp;base64,";
 const EMBEDDED_IMAGE_PREFIXES = [
   EMBEDDED_AVIF_PREFIX,
-  EMBEDDED_SVG_PREFIX
+  EMBEDDED_SVG_PREFIX,
+  EMBEDDED_WEBP_PREFIX
 ] as const;
 export const EMBEDDED_AVIF_MAX_LENGTH =
   embeddedResourcePolicy.maxEmbeddedAvifDataUriLength;

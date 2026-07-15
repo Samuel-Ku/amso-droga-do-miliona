@@ -48,7 +48,9 @@ function createGameHarness(
       if (type === "visibilitychange") visibilityListener = null;
     }
   };
-  const contextTarget: Record<PropertyKey, unknown> = {};
+  const contextTarget: Record<PropertyKey, unknown> = {
+    createLinearGradient: () => ({ addColorStop(): void {} })
+  };
   const context = new Proxy(contextTarget, {
     get(target, key) {
       if (key in target) return target[key];

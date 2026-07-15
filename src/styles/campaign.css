@@ -1557,8 +1557,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 
 .amso-world-visual__image-stack,
 .amso-world-visual__image,
-.amso-world-visual__semantic,
-.amso-world-visual__texture {
+.amso-world-visual__route {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -1590,111 +1589,58 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 }
 
 .amso-world-visual__image.is-active {
-  opacity: 1;
+  opacity: 0.8;
 }
 
 .amso-campaign__world-visual[data-phase="game"] .amso-world-visual__image {
-  filter: saturate(0.78) contrast(1.04) brightness(0.94);
+  filter: none;
   transform: scale(1);
   transform-origin: 50% 50%;
 }
 
-.amso-campaign__world-visual::after {
-  position: absolute;
-  z-index: 3;
-  inset: 0;
-  pointer-events: none;
-  content: "";
-  opacity: 0;
-  background:
-    linear-gradient(180deg, transparent 0 52%, rgb(250 247 240 / 8%) 64%, rgb(23 23 23 / 20%) 100%),
-    linear-gradient(90deg, rgb(250 247 240 / 15%), transparent 25% 75%, rgb(250 247 240 / 15%));
-  transition: opacity 280ms ease;
-}
-
-.amso-campaign__world-visual[data-phase="game"]::after {
-  opacity: 1;
-}
-
-.amso-world-visual__semantic {
+.amso-world-visual__route {
   z-index: 1;
-  overflow: visible;
   pointer-events: none;
-  transform: scale(var(--world-reading-zoom, 1));
-  transform-origin:
-    var(--world-reading-origin-x, 50%)
-    var(--world-reading-origin-y, 50%);
-  transition:
-    top 720ms cubic-bezier(0.2, 0.7, 0.2, 1),
-    height 720ms cubic-bezier(0.2, 0.7, 0.2, 1),
-    transform 720ms cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-
-.amso-campaign__world-visual[data-phase="game"] .amso-world-visual__semantic {
-  transform: scale(1);
-  transform-origin: 50% 50%;
-}
-
-.amso-world-visual__semantic-base {
   opacity: 1;
-  transition: opacity 560ms ease;
+  transition: opacity 220ms ease;
 }
 
-.amso-campaign__world-visual[data-asset-state="loaded"] .amso-world-visual__semantic-base {
-  opacity: 0.14;
+.amso-campaign__world-visual[data-phase="game"] .amso-world-visual__route {
+  opacity: 0;
 }
 
-.amso-campaign__world-visual[data-phase="game"][data-asset-state="loaded"] .amso-world-visual__semantic-base {
-  opacity: 0.05;
-}
-
-.amso-world-visual__state {
-  --world-state-from: scale(0.94);
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: amso-world-state-reveal 1500ms cubic-bezier(0.18, 0.75, 0.2, 1) both;
-}
-
-.amso-campaign__world-visual[data-reveal="seal"] .amso-world-visual__state { --world-state-from: translateX(-30px) scaleX(0.35); transform-origin: left center; }
-.amso-campaign__world-visual[data-reveal="expand"] .amso-world-visual__state { --world-state-from: scaleX(0.62); transform-origin: left center; }
-.amso-campaign__world-visual[data-reveal="route"] .amso-world-visual__state { --world-state-from: translateX(-54px) scaleX(0.78); transform-origin: left center; }
-.amso-campaign__world-visual[data-reveal="tangle"] .amso-world-visual__state { --world-state-from: rotate(-7deg) scale(0.76); }
-.amso-campaign__world-visual[data-reveal="align"] .amso-world-visual__state { --world-state-from: translateY(22px) skewX(-9deg); }
-.amso-campaign__world-visual[data-reveal="diagnose"] .amso-world-visual__state { --world-state-from: translateY(-26px) scale(0.9); }
-.amso-campaign__world-visual[data-reveal="check"] .amso-world-visual__state { --world-state-from: rotate(-5deg) scale(0.68); }
-.amso-campaign__world-visual[data-reveal="branch"] .amso-world-visual__state { --world-state-from: scaleX(0.2); transform-origin: center center; }
-.amso-campaign__world-visual[data-reveal="open"] .amso-world-visual__state { --world-state-from: translate(-28px, 18px) rotate(-12deg); transform-origin: left bottom; }
-.amso-campaign__world-visual[data-reveal="build"] .amso-world-visual__state { --world-state-from: translateY(28px) scale(0.72); transform-origin: center bottom; }
-.amso-campaign__world-visual[data-reveal="sequence"] .amso-world-visual__state { --world-state-from: translateX(-35px) scale(0.86); }
-.amso-campaign__world-visual[data-reveal="rise"] .amso-world-visual__state { --world-state-from: translateY(46px) scaleY(0.62); transform-origin: center bottom; }
-.amso-campaign__world-visual[data-reveal="balance"] .amso-world-visual__state { --world-state-from: rotate(-8deg) translateY(12px); }
-.amso-campaign__world-visual[data-reveal="travel"] .amso-world-visual__state { --world-state-from: translateX(-70px) scale(0.84); }
-.amso-campaign__world-visual[data-reveal="converge"] .amso-world-visual__state { --world-state-from: scaleX(0.26) translateX(-22px); transform-origin: left center; }
-.amso-campaign__world-visual[data-reveal="count"] .amso-world-visual__state { --world-state-from: translateY(19px) scale(1.14); }
-.amso-campaign__world-visual[data-reveal="return"] .amso-world-visual__state { --world-state-from: translate(-42px, -24px) scale(0.78); }
-.amso-campaign__world-visual[data-reveal="continue"] .amso-world-visual__state { --world-state-from: scaleX(0.16); transform-origin: left center; }
-.amso-campaign__world-visual[data-reveal="backlog"] .amso-world-visual__state { --world-state-from: translateX(54px) scale(0.86); transform-origin: right bottom; }
-.amso-campaign__world-visual[data-reveal="depart"] .amso-world-visual__state { --world-state-from: translateX(-48px) scale(0.9); }
-.amso-campaign__world-visual[data-reveal="match"] .amso-world-visual__state { --world-state-from: translateY(24px) scaleX(0.72); transform-origin: center bottom; }
-.amso-campaign__world-visual[data-reveal="dispatch"] .amso-world-visual__state { --world-state-from: translateX(-64px) scaleX(0.78); transform-origin: left center; }
-.amso-campaign__world-visual[data-reveal="handoff"] .amso-world-visual__state { --world-state-from: translateX(44px) scale(0.92); transform-origin: right center; }
-
-@keyframes amso-world-state-reveal {
-  from { opacity: 0; transform: var(--world-state-from); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-.amso-campaign[data-mode="challenge"] .amso-world-visual__state text {
-  display: none;
-}
-
-.amso-world-visual__texture {
+.amso-world-visual__counter {
+  position: absolute;
   z-index: 2;
-  pointer-events: none;
-  opacity: 0.16;
-  background-image: radial-gradient(circle, rgb(23 23 23 / 28%) 0 0.65px, transparent 0.8px);
-  background-size: 5px 5px;
-  mix-blend-mode: multiply;
+  top: 8%;
+  left: 50%;
+  display: none;
+  min-width: min(42%, 32rem);
+  padding: clamp(0.4rem, 1vw, 0.8rem) clamp(0.8rem, 2vw, 1.5rem);
+  border: clamp(4px, 0.6vw, 8px) solid var(--campaign-black);
+  border-radius: clamp(0.8rem, 1.6vw, 1.5rem);
+  color: var(--campaign-black);
+  background: rgb(250 247 240 / 92%);
+  box-shadow: 0.45rem 0.55rem 0 rgb(23 23 23 / 16%);
+  font-size: clamp(2rem, 6vw, 5rem);
+  font-weight: 950;
+  line-height: 0.95;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.amso-campaign__world-visual:is([data-world-id="million-approach"], [data-world-id="million-finale"]) .amso-world-visual__counter {
+  display: block;
+}
+
+.amso-campaign__world-visual[data-world-id="million-finale"] .amso-world-visual__counter {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--campaign-paper), var(--campaign-paper)) padding-box,
+    var(--campaign-gradient) border-box;
+  box-shadow:
+    0.45rem 0.55rem 0 rgb(23 23 23 / 16%),
+    0 0 2.5rem rgb(235 50 164 / 24%);
 }
 
 .amso-campaign__canvas {
@@ -2041,8 +1987,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     border-radius: 20px;
   }
 
-  .amso-campaign__world-visual[data-phase="story"] .amso-world-visual__image-stack,
-  .amso-campaign__world-visual[data-phase="story"] .amso-world-visual__semantic {
+  .amso-campaign__world-visual[data-phase="story"] .amso-world-visual__image-stack {
     top: 0;
     right: 0;
     bottom: auto;
@@ -2250,49 +2195,15 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   background: rgb(250 247 240 / 8%);
 }
 
-/* The first complete v5 editorial scene owns its layered reveal while keeping
-   the shared world plane available as a light fallback. */
-.amso-world-visual__semantic [data-editorial-layer] {
-  transform-box: fill-box;
-  transform-origin: center bottom;
-  animation: amso-editorial-layer-in 1500ms cubic-bezier(0.2, 0.72, 0.2, 1) both;
-}
-
-.amso-world-visual__semantic [data-editorial-layer="apartment-warehouse"] { animation-delay: 90ms; }
-.amso-world-visual__semantic [data-editorial-layer="anonymous-team"] { animation-delay: 180ms; }
-.amso-world-visual__semantic [data-editorial-layer="hand-packed-package"] { animation-delay: 270ms; }
-
-@keyframes amso-editorial-layer-in {
-  from { opacity: 0; transform: translateY(18px) scale(0.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.amso-campaign__world-visual[data-asset-state="fallback"] .amso-world-visual__semantic-base {
-  opacity: 1;
-}
-
-.amso-campaign__world-visual[data-phase="story"][data-state-id="story.first_package"] .amso-world-visual__semantic-base {
-  opacity: 1;
-}
-
-.amso-campaign__world-visual[data-phase="story"][data-state-id="story.first_package"] .amso-world-visual__image-stack {
-  opacity: 0;
-}
-
-/* Reading scenes use the concrete, code-owned SVG as the primary artwork.
-   Legacy atmosphere plates remain available only during active gameplay. */
-.amso-campaign__world-visual[data-phase="story"] .amso-world-visual__semantic-base {
-  opacity: 1;
-}
-
+/* Generated 16:9 plates remain the shared story and gameplay environment. */
 .amso-campaign__world-visual[data-phase="story"] .amso-world-visual__image-stack {
-  opacity: 0;
+  opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .amso-world-visual__state,
-  .amso-world-visual__semantic [data-editorial-layer] {
-    animation: none;
+  .amso-world-visual__image,
+  .amso-world-visual__route {
+    transition: none;
   }
 }
 
@@ -2302,8 +2213,8 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   }
 
   .amso-world-visual__image-stack,
-  .amso-world-visual__semantic,
-  .amso-world-visual__texture {
+  .amso-world-visual__route,
+  .amso-world-visual__counter {
     display: none;
   }
 

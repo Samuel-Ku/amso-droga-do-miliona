@@ -104,7 +104,7 @@
         "resources": [
           { "id": "first-package", "type": "procedural", "source": "procedural:first-package", "critical": true },
           { "id": "manual-label", "type": "procedural", "source": "procedural:manual-label", "critical": true },
-          { "id": "world-first-mile-v1", "type": "image", "source": "/assets/milion-runner/worlds/world-01-first-mile-v1.avif", "critical": false }
+          { "id": "world-first-mile-v2", "type": "image", "source": "/assets/milion-runner/worlds/world-01-first-mile-v2.webp", "critical": false }
         ]
       },
       {
@@ -112,7 +112,7 @@
         "resources": [
           { "id": "small-warehouse", "type": "procedural", "source": "procedural:small-warehouse", "critical": true },
           { "id": "order-backlog", "type": "procedural", "source": "procedural:order-backlog", "critical": true },
-          { "id": "world-order-process-v1", "type": "image", "source": "/assets/milion-runner/worlds/world-02-order-process-v1.svg", "critical": false }
+          { "id": "world-order-process-v2", "type": "image", "source": "/assets/milion-runner/worlds/world-02-order-process-v2.webp", "critical": false }
         ]
       },
       {
@@ -120,7 +120,7 @@
         "resources": [
           { "id": "quality-service", "type": "procedural", "source": "procedural:quality-service", "critical": true },
           { "id": "quality-trial", "type": "procedural", "source": "procedural:quality-trial", "critical": true },
-          { "id": "world-quality-service-v1", "type": "image", "source": "/assets/milion-runner/worlds/world-03-quality-service-v1.avif", "critical": false }
+          { "id": "world-quality-service-v2", "type": "image", "source": "/assets/milion-runner/worlds/world-03-quality-service-v2.webp", "critical": false }
         ]
       },
       {
@@ -128,7 +128,7 @@
         "resources": [
           { "id": "customer-stories", "type": "procedural", "source": "procedural:customer-stories", "critical": true },
           { "id": "matching-challenge", "type": "procedural", "source": "procedural:matching-challenge", "critical": true },
-          { "id": "world-client-paths-v1", "type": "image", "source": "/assets/milion-runner/worlds/world-04-client-paths-v1.avif", "critical": false }
+          { "id": "world-client-paths-v2", "type": "image", "source": "/assets/milion-runner/worlds/world-04-client-paths-v2.webp", "critical": false }
         ]
       },
       {
@@ -136,7 +136,7 @@
         "resources": [
           { "id": "warehouse-scale", "type": "procedural", "source": "procedural:warehouse-scale", "critical": true },
           { "id": "order-peak", "type": "procedural", "source": "procedural:order-peak", "critical": true },
-          { "id": "world-scale-logistics-v1", "type": "image", "source": "/assets/milion-runner/worlds/world-05-scale-logistics-v1.avif", "critical": false }
+          { "id": "world-scale-logistics-v2", "type": "image", "source": "/assets/milion-runner/worlds/world-05-scale-logistics-v2.webp", "critical": false }
         ]
       },
       {
@@ -144,7 +144,7 @@
         "resources": [
           { "id": "million-wave", "type": "procedural", "source": "procedural:million-wave", "critical": true },
           { "id": "million-threshold", "type": "procedural", "source": "procedural:million-threshold", "critical": true },
-          { "id": "world-million-approach-v1", "type": "image", "source": "/assets/milion-runner/worlds/world-06-million-approach-v1.avif", "critical": false }
+          { "id": "world-million-approach-v2", "type": "image", "source": "/assets/milion-runner/worlds/world-06-million-approach-v2.webp", "critical": false }
         ]
       },
       {
@@ -152,7 +152,7 @@
         "resources": [
           { "id": "million-package", "type": "procedural", "source": "procedural:million-package", "critical": true },
           { "id": "poland-lights", "type": "procedural", "source": "procedural:poland-lights", "critical": true },
-          { "id": "world-million-finale-v1", "type": "image", "source": "/assets/milion-runner/worlds/world-07-million-finale-v1.avif", "critical": false }
+          { "id": "world-million-finale-v2", "type": "image", "source": "/assets/milion-runner/worlds/world-07-million-finale-v2.webp", "critical": false }
         ]
       },
       {

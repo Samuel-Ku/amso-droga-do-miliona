@@ -4,7 +4,7 @@ import {
   type CampaignSceneVisualState,
   type CampaignWorldId
 } from "./scene-manifest";
-import { SEMANTIC_WORLD_SVG } from "./semantic-world-svg";
+import { WORLD_ROUTE_SVG } from "./world-route";
 
 export type WorldVisualPhase = "landing" | "story" | "game" | "result";
 
@@ -21,14 +21,12 @@ function requiredElement<T extends Element>(root: ParentNode, selector: string):
 }
 
 /**
- * Owns world image crossfades and the semantic SVG fallback. The canvas stays a
+ * Owns world image crossfades and the shared route. The canvas stays a
  * separate gameplay plane, so story cards and gameplay literally share this
  * same environment instance.
  */
 export class WorldVisualLayer {
   private readonly images: readonly [HTMLImageElement, HTMLImageElement];
-  private readonly worldFallbacks: readonly SVGGElement[];
-  private readonly stateOverlays: readonly SVGGElement[];
   private activeImageIndex = 0;
   private requestedAssetPath = "";
   private currentWorldId: CampaignWorldId | null = null;
@@ -37,18 +35,18 @@ export class WorldVisualLayer {
   public constructor(private readonly host: HTMLElement) {
     host.innerHTML = `
       <div class="amso-world-visual__image-stack" aria-hidden="true">
-        <img class="amso-world-visual__image" data-world-image="0" alt="" width="1672" height="941" decoding="async" />
-        <img class="amso-world-visual__image" data-world-image="1" alt="" width="1672" height="941" decoding="async" />
+        <img class="amso-world-visual__image" data-world-image="0" alt="" width="1672" height="941" decoding="async" loading="eager" fetchpriority="high" />
+        <img class="amso-world-visual__image" data-world-image="1" alt="" width="1672" height="941" decoding="async" loading="eager" fetchpriority="high" />
       </div>
-      ${SEMANTIC_WORLD_SVG}
-      <div class="amso-world-visual__texture" aria-hidden="true"></div>
+      ${WORLD_ROUTE_SVG}
+      <div class="amso-world-visual__counter" aria-hidden="true">
+        <span data-world-counter>999 970</span>
+      </div>
     `;
     this.images = [
       requiredElement(host, '[data-world-image="0"]'),
       requiredElement(host, '[data-world-image="1"]')
     ];
-    this.worldFallbacks = [...host.querySelectorAll<SVGGElement>("[data-world-fallback]")];
-    this.stateOverlays = [...host.querySelectorAll<SVGGElement>("[data-state-overlay]")];
   }
 
   public show(selection: WorldVisualSelection): CampaignSceneVisualState {
@@ -76,15 +74,6 @@ export class WorldVisualLayer {
 
     if (worldChanged) this.loadWorldAsset(world.assetPath);
     if (worldChanged || stateChanged) {
-      for (const fallback of this.worldFallbacks) {
-        fallback.toggleAttribute("hidden", fallback.dataset.worldFallback !== selection.worldId);
-      }
-      for (const overlay of this.stateOverlays) {
-        overlay.toggleAttribute(
-          "hidden",
-          overlay.dataset.stateOverlay !== (state.overlayStateId ?? selection.stateId)
-        );
-      }
       this.host.dataset.reveal = state.revealMotion;
       this.host.dataset.visualEvent = state.visualEvent;
     }
@@ -96,7 +85,7 @@ export class WorldVisualLayer {
     const text = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 })
       .format(safeValue)
       .replace(/[\u00a0\u202f]/gu, " ");
-    this.host.querySelectorAll<SVGTextElement>("[data-world-counter]")
+    this.host.querySelectorAll<HTMLElement>("[data-world-counter]")
       .forEach((element) => { element.textContent = text; });
   }
 

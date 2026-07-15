@@ -1,0 +1,14 @@
+{
+  "width": 960,
+  "height": 540,
+  "y": 432,
+  "baseOffsetY": 5,
+  "baseWidth": 18,
+  "accentWidth": 7,
+  "baseColor": "#171717",
+  "gradientStops": [
+    { "offset": 0, "color": "#f47100" },
+    { "offset": 0.52, "color": "#f04f45" },
+    { "offset": 1, "color": "#eb32a4" }
+  ]
+}

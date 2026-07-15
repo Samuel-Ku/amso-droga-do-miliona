@@ -18,13 +18,13 @@ const campaignStyles = readFileSync(
 const campaignImagePaths = [
   "/assets/milion-runner/brand/mz-main-lockup-v1.avif",
   "/assets/milion-runner/brand/mz-compact-lockup-v1.avif",
-  "/assets/milion-runner/worlds/world-01-first-mile-v1.avif",
-  "/assets/milion-runner/worlds/world-02-order-process-v1.svg",
-  "/assets/milion-runner/worlds/world-03-quality-service-v1.avif",
-  "/assets/milion-runner/worlds/world-04-client-paths-v1.avif",
-  "/assets/milion-runner/worlds/world-05-scale-logistics-v1.avif",
-  "/assets/milion-runner/worlds/world-06-million-approach-v1.avif",
-  "/assets/milion-runner/worlds/world-07-million-finale-v1.avif"
+  "/assets/milion-runner/worlds/world-01-first-mile-v2.webp",
+  "/assets/milion-runner/worlds/world-02-order-process-v2.webp",
+  "/assets/milion-runner/worlds/world-03-quality-service-v2.webp",
+  "/assets/milion-runner/worlds/world-04-client-paths-v2.webp",
+  "/assets/milion-runner/worlds/world-05-scale-logistics-v2.webp",
+  "/assets/milion-runner/worlds/world-06-million-approach-v2.webp",
+  "/assets/milion-runner/worlds/world-07-million-finale-v2.webp"
 ] as const;
 
 describe("single-file QA artwork", () => {
@@ -101,12 +101,19 @@ describe("single-file QA artwork", () => {
       qaPreview.match(/data:image\/avif;base64,[A-Za-z0-9+/=]+/g) ?? []
     );
 
-    expect(embeddedAvifs.size).toBe(8);
+    expect(embeddedAvifs.size).toBe(2);
     for (const embeddedAvif of embeddedAvifs) {
       expect(embeddedAvif.length).toBeLessThanOrEqual(
         EMBEDDED_AVIF_MAX_LENGTH
       );
     }
-    expect(qaPreview).toContain("data:image/svg+xml;base64,");
+    const embeddedWebps = new Set(
+      qaPreview.match(/data:image\/webp;base64,[A-Za-z0-9+/=]+/g) ?? []
+    );
+    expect(embeddedWebps.size).toBe(7);
+    const embeddedSvgs = new Set(
+      qaPreview.match(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+/g) ?? []
+    );
+    expect(embeddedSvgs.size).toBe(0);
   });
 });

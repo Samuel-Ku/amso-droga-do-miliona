@@ -1,49 +1,72 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import productionConfig from "../public/assets/milion-runner/runner-config.json";
 import {
-  CAMPAIGN_SCENE_MANIFEST,
+  CAMPAIGN_WORLDS,
   ChallengeWorldDirector,
   resolvePlaySegmentVisual,
   sceneVisualState
 } from "../src/visuals/scene-manifest";
+import {
+  WORLD_ROUTE_ACCENT_WIDTH,
+  WORLD_ROUTE_BASE_COLOR,
+  WORLD_ROUTE_GRADIENT_STOPS,
+  WORLD_ROUTE_BASE_WIDTH,
+  WORLD_ROUTE_Y
+} from "../src/visuals/world-route";
+import { GROUND_Y } from "../src/game/constants";
 
 describe("world visual continuity", () => {
-  it("maps every authored scene event to a concrete reveal motion", () => {
+  it("keeps every generated background and the route on one contained 16:9 plane", () => {
     const css = readFileSync(new URL("../src/styles/campaign.css", import.meta.url), "utf8");
-    for (const { revealMotion, visualEvent } of CAMPAIGN_SCENE_MANIFEST) {
-      expect(visualEvent.length).toBeGreaterThan(0);
-      expect(css).toContain(`[data-reveal="${revealMotion}"]`);
-    }
-  });
-
-  it("keeps art, semantic overlays and gameplay on one contained 16:9 plane", () => {
-    const css = readFileSync(new URL("../src/styles/campaign.css", import.meta.url), "utf8");
-    const semanticSvg = readFileSync(
-      new URL("../src/visuals/semantic-world-svg.ts", import.meta.url),
+    const worldLayer = readFileSync(
+      new URL("../src/visuals/WorldVisualLayer.ts", import.meta.url),
       "utf8"
     );
     const renderer = readFileSync(new URL("../src/game/renderer.ts", import.meta.url), "utf8");
 
     expect(css).toContain("object-fit: contain");
-    expect(semanticSvg).toContain('preserveAspectRatio="xMidYMid meet"');
+    expect(worldLayer).toContain("WORLD_ROUTE_SVG");
     expect(renderer).toContain("drawGameplayRoute(context)");
+    expect(WORLD_ROUTE_Y).toBe(GROUND_Y);
+    expect(WORLD_ROUTE_BASE_WIDTH).toBe(18);
+    expect(WORLD_ROUTE_ACCENT_WIDTH).toBe(7);
+    expect(WORLD_ROUTE_BASE_COLOR).toBe("#171717");
+    expect(WORLD_ROUTE_GRADIENT_STOPS).toEqual([
+      { offset: 0, color: "#f47100" },
+      { offset: 0.52, color: "#f04f45" },
+      { offset: 1, color: "#eb32a4" }
+    ]);
+    expect(renderer).toContain("WORLD_ROUTE_GRADIENT_STOPS");
+    expect(renderer).toContain("createLinearGradient(0, 0, WORLD_WIDTH, 0)");
+    expect(CAMPAIGN_WORLDS.every(({ assetPath }) => assetPath.endsWith("-v2.webp")))
+      .toBe(true);
   });
 
-  it("builds the first package as layered editorial SVG without embedded copy", () => {
-    const semanticSvg = readFileSync(
-      new URL("../src/visuals/semantic-world-svg.ts", import.meta.url),
+  it("keeps the shared route on the full gameplay plane at the 390 px breakpoint", () => {
+    const css = readFileSync(new URL("../src/styles/campaign.css", import.meta.url), "utf8");
+    const mobileRules = css.slice(css.indexOf("@media (max-width: 756px)"));
+
+    expect(mobileRules).toMatch(
+      /\[data-phase="story"\]\s+\.amso-world-visual__image-stack\s*\{[^}]*height:\s*42%/su
+    );
+    expect(mobileRules).not.toMatch(
+      /\.amso-world-visual__image-stack,\s*\n\s*\.amso-campaign__world-visual\[data-phase="story"\]\s+\.amso-world-visual__route/su
+    );
+  });
+
+  it("uses generated plates without the removed semantic illustration layer", () => {
+    const worldLayer = readFileSync(
+      new URL("../src/visuals/WorldVisualLayer.ts", import.meta.url),
       "utf8"
     );
-    const start = semanticSvg.indexOf('data-editorial-scene="first-package"');
-    const end = semanticSvg.indexOf('data-world-fallback="order-process"');
-    const firstPackage = semanticSvg.slice(start, end);
 
-    expect(start).toBeGreaterThan(0);
-    for (const layer of ["small-shop", "apartment-warehouse", "anonymous-team", "hand-packed-package"]) {
-      expect(firstPackage).toContain(`data-editorial-layer="${layer}"`);
-    }
-    expect(firstPackage).not.toContain("<text");
+    expect(worldLayer).not.toContain("SEMANTIC_WORLD_SVG");
+    expect(worldLayer).not.toContain("data-world-fallback");
+    expect(worldLayer).toContain("data-world-counter");
+  });
+
+  it("keeps the first-package facts in editable copy instead of burning them into artwork", () => {
     const scene = productionConfig.story.scenes[0]!;
     expect(scene.eyebrow).toBe("Nasza historia");
     const editorialCopy = scene.steps.flatMap(({ body }) => body).join(" ");
@@ -52,75 +75,36 @@ describe("world visual continuity", () => {
     expect(editorialCopy).toContain("własnymi rękami");
   });
 
-  it("keeps the animated million value inside its own responsive counter plate", () => {
+  it("keeps the animated million value in one responsive programmatic counter", () => {
     const css = readFileSync(new URL("../src/styles/campaign.css", import.meta.url), "utf8");
-    const semanticSvg = readFileSync(
-      new URL("../src/visuals/semantic-world-svg.ts", import.meta.url),
+    const worldLayer = readFileSync(
+      new URL("../src/visuals/WorldVisualLayer.ts", import.meta.url),
       "utf8"
     );
 
-    expect(semanticSvg.match(/data-world-counter-plate/gu)).toHaveLength(2);
-    expect(semanticSvg.match(/data-world-counter(?:\s|>)/gu)).toHaveLength(2);
-    expect(semanticSvg).toContain("999 970");
-    expect(semanticSvg).toContain("999 999");
+    expect(worldLayer.match(/<span data-world-counter/gu)).toHaveLength(1);
+    expect(worldLayer).toContain("999 970");
+    expect(css).toContain(".amso-world-visual__counter");
+    expect(css).toContain('[data-world-id="million-finale"]');
     expect(css).toContain("color-scheme: only light");
   });
 
-  it("removes narrative lettering from challenge-world overlays", () => {
+  it("ships seven decodable WebP plates and no legacy semantic illustration", () => {
     const css = readFileSync(new URL("../src/styles/campaign.css", import.meta.url), "utf8");
-    expect(css).toContain(
-      '.amso-campaign[data-mode="challenge"] .amso-world-visual__state text'
-    );
+    for (const { assetPath } of CAMPAIGN_WORLDS) {
+      const assetUrl = new URL(`../public${assetPath}`, import.meta.url);
+      expect(existsSync(assetUrl)).toBe(true);
+      expect(statSync(assetUrl).size).toBeGreaterThan(100_000);
+    }
+    expect(existsSync(new URL("../src/visuals/semantic-world-svg.ts", import.meta.url)))
+      .toBe(false);
+    expect(css).not.toContain(".amso-world-visual__semantic");
   });
 
   it("keeps the confirmed scale figures in editable story copy", () => {
     const scale = productionConfig.story.scenes.find(({ id }) => id === "story.scale");
     const copy = JSON.stringify(scale);
     for (const fact of ["28 000", "240", "PKiN", "rok"]) expect(copy).toContain(fact);
-  });
-
-  it("uses concrete story objects instead of abstract geometry", () => {
-    const semanticSvg = readFileSync(
-      new URL("../src/visuals/semantic-world-svg.ts", import.meta.url),
-      "utf8"
-    );
-    for (const layer of [
-      "receiving-dock", "inspection-bench", "packing-table", "dispatch-door",
-      "quality-technician", "same-laptop", "shipping-box",
-      "same-client", "first-laptop", "expanded-office",
-      "phone-tower", "pkin-silhouette", "warehouse-team",
-      "millionth-package", "amso-team", "challenge-shield"
-    ]) {
-      expect(semanticSvg).toContain(`data-editorial-layer="${layer}"`);
-    }
-    expect(semanticSvg.toLocaleLowerCase("pl")).not.toContain("boeing");
-    const nonCounterCopy = semanticSvg.replaceAll(
-      /<text data-world-counter[\s\S]*?<\/text>/gu,
-      ""
-    );
-    expect(nonCounterCopy).not.toContain("<text");
-  });
-
-  it("reveals the client laptop and expanded office only in their later states", () => {
-    const semanticSvg = readFileSync(
-      new URL("../src/visuals/semantic-world-svg.ts", import.meta.url),
-      "utf8"
-    );
-    const clientBase = semanticSvg.slice(
-      semanticSvg.indexOf('data-world-fallback="client-paths"'),
-      semanticSvg.indexOf('data-world-fallback="scale-logistics"')
-    );
-    expect(clientBase).toContain('data-editorial-layer="empty-desk"');
-    expect(clientBase).not.toContain('data-editorial-layer="first-laptop"');
-    expect(clientBase).not.toContain('data-editorial-layer="expanded-office"');
-    expect(semanticSvg).toContain('data-state-overlay="epoch_3.laptop"');
-    expect(semanticSvg).toContain('data-state-overlay="epoch_3.business"');
-  });
-
-  it("keeps production reveals within the approved 1.5 to 3 second window", () => {
-    const css = readFileSync(new URL("../src/styles/campaign.css", import.meta.url), "utf8");
-    expect(css.match(/animation: amso-world-state-reveal 1500ms/gu)).toHaveLength(1);
-    expect(css.match(/animation: amso-editorial-layer-in 1500ms/gu)).toHaveLength(1);
   });
 
   it("keeps consecutive service play segments inside one evolving world", () => {

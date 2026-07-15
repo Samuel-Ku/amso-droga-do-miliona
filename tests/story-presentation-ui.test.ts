@@ -163,12 +163,13 @@ describe("player-paced story presentation", () => {
     expect(compactHudCss).toContain("text-overflow: clip");
   });
 
-  it("uses the MZ palette and a shared semantic world instead of generic vignette blobs", () => {
+  it("uses the MZ palette and shared generated worlds instead of generic vignette blobs", () => {
     expect(campaignCss).toContain("--campaign-orange: #f47100");
     expect(campaignCss).toContain("--campaign-coral: #f04f45");
     expect(campaignCss).toContain("--campaign-magenta: #eb32a4");
     expect(campaignCss).toContain(".amso-campaign__world-visual");
-    expect(campaignCss).toContain(".amso-world-visual__semantic");
+    expect(campaignCss).toContain(".amso-world-visual__image");
+    expect(campaignCss).toContain(".amso-world-visual__route");
     expect(campaignShellSource).toContain("data-campaign-world-visual");
     expect(campaignShellSource).toContain("amso-campaign__story-final-lockup");
     expect(campaignShellSource).not.toContain("story-vignette");
@@ -190,17 +191,16 @@ describe("player-paced story presentation", () => {
     expect(campaignCss).toContain("max(15px, env(safe-area-inset-left))");
   });
 
-  it("keeps a complete light fallback and freezes every editorial layer for reduced motion", () => {
+  it("keeps a complete light fallback and freezes generated-world transitions for reduced motion", () => {
     const worldLayerSource = readFileSync(
       new URL("../src/visuals/WorldVisualLayer.ts", import.meta.url),
       "utf8"
     );
     expect(worldLayerSource).toContain('dataset.assetState = "fallback"');
-    expect(campaignCss).toContain('[data-asset-state="fallback"] .amso-world-visual__semantic-base');
-    expect(campaignCss).toContain('[data-state-id="story.first_package"] .amso-world-visual__semantic-base');
-    expect(campaignCss).toContain('[data-state-id="story.first_package"] .amso-world-visual__image-stack');
-    expect(campaignCss).toContain("[data-editorial-layer]");
-    expect(campaignCss).toContain("animation: none");
+    expect(campaignCss).toContain("background: var(--campaign-paper)");
+    expect(campaignCss).toContain('[data-phase="story"] .amso-world-visual__image-stack');
+    expect(campaignCss).toContain("opacity: 0.8");
+    expect(campaignCss).toContain("transition: none");
     expect(campaignCss).toContain("color-scheme: only light");
   });
 

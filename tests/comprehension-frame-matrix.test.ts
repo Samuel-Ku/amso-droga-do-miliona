@@ -32,8 +32,13 @@ describe("v6 five-second comprehension frame matrix", () => {
   });
 
   it("ships a real copy-free frame viewer with every matrix identifier", () => {
-    expect(review).toContain("data-world-fallback");
-    expect(review).toContain("data-state-overlay");
+    expect(review).toContain('id="world"');
+    expect(review).toContain('<svg viewBox="0 0 960 540"');
+    expect(review).toContain('stroke="url(#route)"');
+    expect(review).toContain("stage.style.aspectRatio=frame.width+'/'+frame.height");
+    expect(review).toContain("frame.width+' × '+frame.height+' px'");
+    expect(review).not.toContain("data-world-fallback");
+    expect(review).not.toContain("data-state-overlay");
     expect(review).not.toContain("finalny_kadr");
     for (const [frameId] of matrix) expect(review).toContain(`\"frameId\":\"${frameId}\"`);
   });

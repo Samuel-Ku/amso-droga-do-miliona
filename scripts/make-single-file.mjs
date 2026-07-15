@@ -42,7 +42,7 @@ function builtAssetPath(source) {
 
 function inlineCampaignImageAssets(document) {
   const imagePaths = collectFiles(campaignAssetDir).filter(
-    (assetPath) => [".avif", ".svg"].includes(path.extname(assetPath).toLowerCase()),
+    (assetPath) => [".avif", ".svg", ".webp"].includes(path.extname(assetPath).toLowerCase()),
   );
 
   if (imagePaths.length === 0) {
@@ -59,7 +59,11 @@ function inlineCampaignImageAssets(document) {
       .join("/");
     const publicPath = `/${assetRelativePath}`;
     const extension = path.extname(assetPath).toLowerCase();
-    const mimeType = extension === ".svg" ? "image/svg+xml" : "image/avif";
+    const mimeType = extension === ".svg"
+      ? "image/svg+xml"
+      : extension === ".webp"
+        ? "image/webp"
+        : "image/avif";
     const dataUri = `data:${mimeType};base64,${fs.readFileSync(assetPath).toString("base64")}`;
     if (extension === ".avif" && dataUri.length > embeddedAvifMaxLength) {
       throw new Error(
