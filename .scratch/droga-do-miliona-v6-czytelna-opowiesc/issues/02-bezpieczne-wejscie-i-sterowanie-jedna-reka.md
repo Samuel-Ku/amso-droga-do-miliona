@@ -4,14 +4,14 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Po wejściu do karty Space, Enter, klik i tap są odrzucane przez około 1,5 sekundy.
-- [ ] Wejścia wykonane podczas blokady nie są kolejkowane i nie uruchamiają kontynuacji po jej zakończeniu.
-- [ ] CTA jest od początku widoczne, ale semantycznie i funkcjonalnie nieaktywne do czasu osiągnięcia zatwierdzonego punktu animacji.
-- [ ] Po aktywacji CTA każde świadome wejście kontynuuje scenę najwyżej raz.
-- [ ] W trybie ograniczonego ruchu blokada trwa około 500 ms i prowadzi do tego samego stanu końcowego.
-- [ ] Wejście i wyjście z karty zeruje utrzymywany stan skoku oraz ślizgu.
-- [ ] Podczas aktywnej gry `S` i strzałka w dół wywołują ten sam ślizg oraz poprawnie obsługują keyup.
-- [ ] Space i tap pozostają wejściami skoku podczas aktywnej gry.
-- [ ] Automatyczne testy używają kontrolowanego zegara i rzeczywistych zdarzeń klawiatury, myszy oraz dotyku.
+- [x] Po wejściu do karty Space, Enter, klik i tap są odrzucane przez około 1,5 sekundy.
+- [x] Wejścia wykonane podczas blokady nie są kolejkowane i nie uruchamiają kontynuacji po jej zakończeniu.
+- [x] CTA jest od początku widoczne, ale semantycznie i funkcjonalnie nieaktywne do czasu osiągnięcia zatwierdzonego punktu animacji.
+- [x] Po aktywacji CTA każde świadome wejście kontynuuje scenę najwyżej raz.
+- [x] W trybie ograniczonego ruchu blokada trwa około 500 ms i prowadzi do tego samego stanu końcowego.
+- [x] Wejście i wyjście z karty zeruje utrzymywany stan skoku oraz ślizgu.
+- [x] Podczas aktywnej gry `S` i strzałka w dół wywołują ten sam ślizg oraz poprawnie obsługują keyup.
+- [x] Space i tap pozostają wejściami skoku podczas aktywnej gry.
+- [x] Automatyczne testy używają kontrolowanego zegara i rzeczywistych zdarzeń klawiatury, myszy oraz dotyku.

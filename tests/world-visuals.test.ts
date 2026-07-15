@@ -101,6 +101,28 @@ describe("world visual continuity", () => {
     expect(nonCounterCopy).not.toContain("<text");
   });
 
+  it("reveals the client laptop and expanded office only in their later states", () => {
+    const semanticSvg = readFileSync(
+      new URL("../src/visuals/semantic-world-svg.ts", import.meta.url),
+      "utf8"
+    );
+    const clientBase = semanticSvg.slice(
+      semanticSvg.indexOf('data-world-fallback="client-paths"'),
+      semanticSvg.indexOf('data-world-fallback="scale-logistics"')
+    );
+    expect(clientBase).toContain('data-editorial-layer="empty-desk"');
+    expect(clientBase).not.toContain('data-editorial-layer="first-laptop"');
+    expect(clientBase).not.toContain('data-editorial-layer="expanded-office"');
+    expect(semanticSvg).toContain('data-state-overlay="epoch_3.laptop"');
+    expect(semanticSvg).toContain('data-state-overlay="epoch_3.business"');
+  });
+
+  it("keeps production reveals within the approved 1.5 to 3 second window", () => {
+    const css = readFileSync(new URL("../src/styles/campaign.css", import.meta.url), "utf8");
+    expect(css.match(/animation: amso-world-state-reveal 1500ms/gu)).toHaveLength(1);
+    expect(css.match(/animation: amso-editorial-layer-in 1500ms/gu)).toHaveLength(1);
+  });
+
   it("keeps consecutive service play segments inside one evolving world", () => {
     const testing = resolvePlaySegmentVisual("epoch_2.quality_series", 0.5);
     const doubts = resolvePlaySegmentVisual("epoch_2.quality_trial", 0.5);

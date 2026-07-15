@@ -6,6 +6,10 @@ const matrix = readFileSync(
   new URL("../qa/final-frame-matrix-v6.csv", import.meta.url),
   "utf8"
 ).trim().split("\n").slice(1).map((row) => row.split(";"));
+const review = readFileSync(
+  new URL("../qa/test-kadrow-v6.html", import.meta.url),
+  "utf8"
+);
 
 describe("v6 five-second comprehension frame matrix", () => {
   it("prepares one copy-free identifier per active beat and viewport", () => {
@@ -25,5 +29,12 @@ describe("v6 five-second comprehension frame matrix", () => {
       expect(["desktop", "mobile"]).toContain(viewport);
       expect(viewport === "mobile" ? width : height).toBe(viewport === "mobile" ? "390" : "900");
     }
+  });
+
+  it("ships a real copy-free frame viewer with every matrix identifier", () => {
+    expect(review).toContain("data-world-fallback");
+    expect(review).toContain("data-state-overlay");
+    expect(review).not.toContain("finalny_kadr");
+    for (const [frameId] of matrix) expect(review).toContain(`\"frameId\":\"${frameId}\"`);
   });
 });

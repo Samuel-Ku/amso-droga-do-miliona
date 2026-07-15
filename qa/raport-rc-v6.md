@@ -14,6 +14,7 @@
 - desktop: start, pierwsza karta, blokada CTA oraz brak błędów konsoli;
 - 390 × 844: pierwsza karta mieści się w kadrze, CTA odblokowuje się po wymaganym czasie;
 - reduced motion: objęte regułami CSS oraz automatycznymi testami prezentacji.
+- komplet 28 finalnych kadrów bez copy: `qa/test-kadrow-v6.html` (14 kroków × desktop/390 px).
 
 ## Otwarte kryterium ludzkie
 

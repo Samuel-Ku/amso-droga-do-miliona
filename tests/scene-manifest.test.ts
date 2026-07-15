@@ -6,6 +6,7 @@ import {
   CAMPAIGN_WORLDS,
   CHALLENGE_WORLD_STATES,
   sceneVisualState,
+  storyPageVisualStateId,
   validateSceneManifest
 } from "../src/visuals/scene-manifest";
 
@@ -41,6 +42,18 @@ describe("campaign visual scene manifest", () => {
       worldId: "quality-service",
       overlayStateId: "epoch_2.setup"
     });
+  });
+
+  it("resolves every active page to a deployable world state", () => {
+    const activeIds = new Set(productionConfig.story.sequence
+      .filter((step) => step.type === "scene")
+      .map((step) => step.sceneId));
+    for (const scene of productionConfig.story.scenes.filter(({ id }) => activeIds.has(id))) {
+      for (const page of scene.steps) {
+        expect(() => sceneVisualState(storyPageVisualStateId(scene.id, page.id)))
+          .not.toThrow();
+      }
+    }
   });
 
   it("references seven versioned deployable world plates", () => {
