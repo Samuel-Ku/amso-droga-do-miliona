@@ -47,9 +47,9 @@ describe("world visual continuity", () => {
     const scene = productionConfig.story.scenes[0]!;
     expect(scene.eyebrow).toBe("Nasza historia");
     const editorialCopy = scene.steps.flatMap(({ body }) => body).join(" ");
-    expect(editorialCopy).toContain("sklep był mały");
-    expect(editorialCopy).toContain("powierzchnię zbliżoną do kawalerki");
-    expect(editorialCopy).toContain("Własnymi rękami");
+    expect(editorialCopy).toContain("małego sklepu");
+    expect(editorialCopy).toContain("magazynu wielkości kawalerki");
+    expect(editorialCopy).toContain("własnymi rękami");
   });
 
   it("keeps the animated million value inside its own responsive counter plate", () => {

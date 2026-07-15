@@ -104,7 +104,7 @@ export const STORY_OBJECTIVE_TARGETS = {
   growthCombo: 8,
   trustClean: 12,
   requiredOrders: 6,
-  orderPeakSeconds: 72,
+  orderPeakSeconds: 60,
   millionPackages: 30,
   millionCombinations: 8
 } as const;

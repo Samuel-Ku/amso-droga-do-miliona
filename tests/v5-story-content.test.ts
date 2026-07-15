@@ -9,22 +9,28 @@ const scene = (id: string) => {
 };
 const text = (id: string) => JSON.stringify(scene(id));
 
-describe("v5 player-paced story content", () => {
-  it("uses explicit perspectives and safe player-paced pages", () => {
-    for (const candidate of scenes) {
+describe("v6 player-paced story content", () => {
+  it("uses explicit perspectives and safe, concrete active beats", () => {
+    const activeSceneIds = new Set(productionConfig.story.sequence
+      .filter((step) => step.type === "scene")
+      .map((step) => step.sceneId));
+    const activeScenes = scenes.filter(({ id }) => activeSceneIds.has(id));
+    for (const candidate of activeScenes) {
       expect(["amso", "client", "challenge"]).toContain(candidate.perspective);
-      expect(candidate.steps.length).toBeGreaterThanOrEqual(2);
+      expect(candidate.steps.length).toBeGreaterThanOrEqual(1);
       expect(candidate.steps.every((step) => step.safe === true && step.continueLabel.length > 0))
         .toBe(true);
+      expect(candidate.steps.every((step) =>
+        "fact" in step && "action" in step && "finalFrame" in step
+      )).toBe(true);
     }
-    expect(scene("client.creative_start").steps).toHaveLength(4);
     expect(scene("client.business_growth").steps).toHaveLength(4);
-    expect(scene("client.b2b_trust").steps).toHaveLength(5);
+    expect(activeScenes.flatMap(({ steps }) => steps)).toHaveLength(14);
   });
 
   it("preserves the approved 300 zł to 100 000 zł growth facts", () => {
     const story = text("client.business_growth");
-    for (const fact of ["do 400 zł", "za 300 zł", "Minął rok", "100 000 zł"]) {
+    for (const fact of ["do 400 zł", "za 300 zł", "Po roku", "100 000 zł"]) {
       expect(story).toContain(fact);
     }
     expect(story).not.toContain("300 000");
@@ -38,16 +44,13 @@ describe("v5 player-paced story content", () => {
     expect(story).not.toContain("siedmioletnią współprac");
   });
 
-  it("grounds scale comparisons in annual category, period, and unit before comparison", () => {
+  it("uses one annual PKiN comparison and removes the Boeing comparison", () => {
     const steps = scene("story.scale").steps;
-    expect(steps[0]?.title).toContain("28 000 smartfonów");
-    expect(steps[0]?.body.join(" ")).toContain("roczna");
-    expect(steps[1]?.title).toContain("240 metrów");
-    expect(steps[2]?.title).toContain("400 000 kg komputerów");
-    expect(steps[2]?.body.join(" ")).toContain("rocznym okresie");
-    expect(steps[3]?.title).toContain("pięcioma załadowanymi Boeingami 737");
-    expect(steps[3]?.body.join(" ")).toContain("oczekujące na końcową akceptację marketingu");
-    expect(steps[4]?.title).toContain("ludzie");
+    expect(steps).toHaveLength(1);
+    expect(JSON.stringify(steps[0])).toContain("28 000");
+    expect(JSON.stringify(steps[0])).toContain("240 metrów");
+    expect(JSON.stringify(steps[0])).toContain("PKiN");
+    expect(JSON.stringify(steps[0])).not.toContain("Boeing");
   });
 
   it("does not publish unconfirmed component-test promises", () => {

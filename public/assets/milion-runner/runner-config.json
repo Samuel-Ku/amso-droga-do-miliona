@@ -165,7 +165,7 @@
     ]
   },
   "story": {
-    "activeDurationSeconds": 276,
+    "activeDurationSeconds": 210,
     "readingSpeedMultiplier": 0.3,
     "speedStartMultiplier": 0.8,
     "speedMaxMultiplier": 1.15,
@@ -177,26 +177,22 @@
         "body": ["Pierwsze zamówienie przygotowaliśmy własnymi rękami. Tak rozpoczęła się droga AMSO."],
         "vignette": "first-package", "continueLabel": "Dalej", "perspective": "amso",
         "steps": [
-          { "id": "game-purpose", "title": "To gra o prawdziwej drodze AMSO.", "body": ["Bieg przeplata się z krótkimi, sterowanymi przez Ciebie historiami — od pierwszej paczki do miliona zamówień."], "continueLabel": "Jak to działa?", "safe": true },
-          { "id": "safe-reading", "title": "Kiedy czytasz, trasa jest bezpieczna.", "body": ["Na kartach historii nie pojawiają się przeszkody ani paczki. Po odliczaniu wracają skok, ślizg, zbieranie i rosnący licznik."], "continueLabel": "Poznaj początek", "safe": true },
-          { "id": "small-beginning", "title": "Zaczynaliśmy naprawdę niewielcy.", "body": ["Pierwszy sklep był mały, a magazyn miał powierzchnię zbliżoną do kawalerki."], "continueLabel": "Dalej", "safe": true },
-          { "id": "first-hand-packed", "title": "Pierwszą paczkę przygotowaliśmy sami.", "body": ["Własnymi rękami spakowaliśmy pierwsze zamówienie i wysłaliśmy je w dalszą drogę."], "continueLabel": "Dalej", "safe": true }
+          { "id": "game-purpose", "title": "To gra o drodze AMSO.", "body": ["Bieg łączy etapy rozwoju firmy z bezpiecznymi kartami historii. Skacz Spacją, ślizgaj się klawiszem S lub ↓ i zbieraj paczki aż do miliona."], "continueLabel": "Poznaj początek", "safe": true, "fact": "Gra opowiada prawdziwą drogę AMSO od pierwszej paczki do miliona zamówień.", "action": "Pierwsza paczka rusza przez podgląd kolejnych miejsc: magazynu, stanowiska jakości i licznika.", "finalFrame": "Pierwsza paczka stoi na początku trasy prowadzącej do czytelnego znaku 1 000 000." },
+          { "id": "first-hand-packed", "title": "Pierwszą paczkę przygotowaliśmy sami.", "body": ["Z małego sklepu i magazynu wielkości kawalerki własnymi rękami wysłaliśmy pierwsze zamówienie. Ty poprowadzisz tę drogę aż do miliona."], "continueLabel": "Rozpocznij drogę", "safe": true, "fact": "Pierwsze zamówienie AMSO zostało przygotowane własnymi rękami w małym sklepie i magazynie.", "action": "Pracownik składa karton, wkłada urządzenie, zamyka paczkę i nakleja etykietę.", "finalFrame": "Gotowa pierwsza paczka stoi przy wyjściu z małego magazynu, a zespół AMSO jest obok." }
         ]
       },
       {
         "id": "story.order_backlog", "chapter": "epoch_1", "eyebrow": "Nasza historia", "title": "Zamówień przybywało szybciej niż miejsca.",
         "body": ["Mały magazyn wypełniły realne paczki, palety, ręczne etykiety i kolejne zadania."], "vignette": "small-warehouse", "continueLabel": "Rozładuj zator", "perspective": "amso",
         "steps": [
-          { "id": "backlog-grows", "title": "Każda nowa paczka dokładała następne zadanie.", "body": ["Przyjęcie sprzętu, kontrola, pakowanie i wysyłka odbywały się obok siebie — coraz trudniej było utrzymać płynność."], "continueLabel": "Dalej", "safe": true },
-          { "id": "backlog-challenge", "title": "Pomóż nam opanować Zator Zamówień.", "body": ["Zapowiedziane kombinacje skoku i ślizgu przeprowadzą kartony, palety oraz wózki przez wspólną trasę."], "continueLabel": "Rozładuj zator", "safe": true }
+          { "id": "backlog-challenge", "title": "Zamówienia zaczęły tworzyć zator.", "body": ["Paczki, ręczne etykiety i zadania wypełniły mały magazyn. Użyj skoku i ślizgu, aby pomóc nam przywrócić płynny przepływ."], "continueLabel": "Rozładuj zator", "safe": true, "fact": "Rosnąca liczba zamówień stworzyła zator w małym magazynie AMSO.", "action": "Kolejne paczki zapełniają stanowisko, paletę i przejście między strefami.", "finalFrame": "Realne kartony i palety tworzą czytelny zator przed stanowiskiem pakowania." }
         ]
       },
       {
         "id": "story.quality_promise", "chapter": "epoch_2", "eyebrow": "Nasza historia", "title": "Sprzęt z przeszłością. Sprawdzony na przyszłość.",
         "body": ["Każde urządzenie przygotowujemy, zanim trafi do kolejnej osoby."], "vignette": "tested-device", "continueLabel": "Rozpocznij próbę", "perspective": "amso",
         "steps": [
-          { "id": "service-arrival", "title": "Urządzenie trafia na stanowisko.", "body": ["Uruchamiamy je, przygotowujemy i prowadzimy przez czytelny proces serwisowy."], "continueLabel": "Dalej", "safe": true },
-          { "id": "service-departure", "title": "Cztery serie prowadzą do oznaczenia SPRAWDZONY.", "body": ["Po każdej ukończonej serii urządzenie przesuwa się dalej; błąd powtarza tylko bieżącą serię."], "continueLabel": "Rozpocznij próbę", "safe": true }
+          { "id": "quality-process", "title": "Jakość prowadzi sprzęt dalej.", "body": ["Urządzenie przechodzi przez uruchomienie i przygotowanie. Ukończ Próbę Jakości, aby otrzymało oznaczenie SPRAWDZONY i wróciło do obiegu."], "continueLabel": "Rozpocznij próbę", "safe": true, "fact": "AMSO przygotowuje urządzenie przed wysłaniem go do kolejnego użytkownika.", "action": "Pracownik uruchamia laptop, przygotowuje go, oznacza i pakuje po ukończeniu próby.", "finalFrame": "Laptop z etykietą SPRAWDZONY znajduje się w otwartej paczce gotowej do wysyłki." }
         ]
       },
       {
@@ -230,10 +226,10 @@
         "id": "client.business_growth", "chapter": "epoch_3", "eyebrow": "Historia klienta", "title": "Od laptopa za 300 zł do budżetu 100 000 zł.",
         "body": ["Firma klienta urosła, ale rozsądny wybór sprzętu pozostał ważny."], "vignette": "growing-business", "continueLabel": "Dalej", "perspective": "client",
         "steps": [
-          { "id": "new-business", "title": "Klient dopiero rozpoczynał działalność.", "body": ["Potrzebował pierwszego narzędzia do pracy i szukał laptopa w budżecie do 400 zł."], "continueLabel": "Dalej", "safe": true },
-          { "id": "three-hundred", "title": "Wybrał laptop za 300 zł.", "body": ["Niedrogie, sprawdzone urządzenie pozwoliło mu rozpocząć pracę bez obciążania młodej firmy."], "continueLabel": "Dalej", "safe": true },
-          { "id": "one-year", "title": "Minął rok.", "body": ["Firma rozwinęła się, pojawiły się nowe zadania, pracownicy i znacznie większe potrzeby sprzętowe."], "continueLabel": "Dalej", "safe": true },
-          { "id": "hundred-thousand", "title": "Wrócił z budżetem 100 000 zł.", "body": ["Pierwszy laptop nadal przypominał, że sprzęt poleasingowy pozostaje rozsądnym wyborem także w większej skali."], "continueLabel": "Dalej", "safe": true }
+          { "id": "new-business", "title": "Na początku liczył się budżet.", "body": ["Klient dopiero rozpoczynał działalność. Potrzebował pierwszego narzędzia do pracy i przyszedł do AMSO po laptop w budżecie do 400 zł."], "continueLabel": "Dalej", "safe": true, "fact": "Klient rozpoczynający działalność szukał laptopa w budżecie do 400 zł.", "action": "Klient sprawdza portfel i przekazuje pracownikowi kartę z budżetem do 400 zł.", "finalFrame": "Ten sam anonimowy klient siedzi przy pustym biurku obok czytelnej kwoty 400 zł." },
+          { "id": "three-hundred", "title": "Wybrał laptop za 300 zł.", "body": ["Sprawdzony laptop zmieścił się w budżecie i pozwolił rozpocząć pracę bez nadmiernego obciążania młodej firmy."], "continueLabel": "Dalej", "safe": true, "fact": "Klient wybrał w AMSO laptop za 300 zł.", "action": "Pracownik przekazuje klientowi pierwszy laptop, a klient ustawia go na biurku.", "finalFrame": "Klient pracuje przy pierwszym laptopie; obok pozostaje etykieta 300 zł." },
+          { "id": "one-year", "title": "Po roku firma była większa.", "body": ["Pojawiły się nowe zadania, pracownicy i większe potrzeby sprzętowe. Pierwszy laptop nadal stoi na biurku i łączy oba etapy historii."], "continueLabel": "Dalej", "safe": true, "fact": "Po roku firma klienta rozwinęła się i potrzebowała więcej sprzętu.", "action": "Kalendarz przesuwa się o rok, a wokół pierwszego biurka pojawiają się nowe stanowiska.", "finalFrame": "Ten sam klient i laptop są w większym biurze z kilkoma przygotowanymi stanowiskami." },
+          { "id": "hundred-thousand", "title": "Wrócił z budżetem 100 000 zł.", "body": ["Rozwinięta firma nadal wybierała sprzęt poleasingowy. Pierwszy zakup nie był przypadkiem, lecz początkiem sposobu skalowania wyposażenia."], "continueLabel": "Zbuduj rozwój firmy", "safe": true, "fact": "Po roku ten sam klient wrócił do AMSO z budżetem 100 000 zł.", "action": "Klient przekazuje plan większego zakupu, a stanowiska zespołu wypełniają się sprzętem.", "finalFrame": "Rozwinięte biuro, ten sam klient i pierwszy laptop stoją obok czytelnej kwoty 100 000 zł." }
         ]
       },
       {
@@ -252,19 +248,14 @@
         "body": ["Dopasowanie nie oznacza wyboru najtańszego sprzętu. Oznacza zestaw odpowiadający potrzebom, planom i budżetowi konkretnej osoby lub firmy."],
         "vignette": "product-stream", "continueLabel": "Zobacz skalę", "perspective": "amso",
         "steps": [
-          { "id": "three-matched-orders", "title": "Trzy historie. Trzy dopasowane zamówienia.", "body": ["Klientka kreatywna, rozwijająca się firma i ostrożny zespół B2B otrzymali różne zestawy — każdy zbudowany wokół realnej potrzeby."], "continueLabel": "Dalej", "safe": true },
-          { "id": "matching-thesis", "title": "Dobre dopasowanie zaczyna się od pytania: czego naprawdę potrzeba?", "body": ["Potrzeby, plany i budżet prowadzą do właściwego zestawu — nie automatycznie do najtańszego urządzenia."], "continueLabel": "Zobacz skalę", "safe": true }
+          { "id": "many-plans", "title": "To była jedna z wielu historii.", "body": ["Inna klientka tworzyła portfolio, a osobna firma najpierw testowała sprzęt. Każda z tych historii dotyczyła innych ludzi, potrzeb i zamówień."], "continueLabel": "Zobacz skalę", "safe": true, "fact": "W drodze do miliona było wiele odrębnych historii klientów i zastosowań sprzętu.", "action": "Kadr głównego klienta ustępuje trzem krótkim migawkom różnych osób i stanowisk.", "finalFrame": "Trzy oddzielne zamówienia prowadzą do wspólnego magazynu AMSO bez łączenia bohaterów." }
         ]
       },
       {
         "id": "story.scale", "chapter": "epoch_4", "eyebrow": "Nasza historia", "title": "Skala potrzebuje systemu.",
         "body": ["Roczne liczby pokazują skalę pracy naszego zespołu."], "vignette": "warehouse-scale", "continueLabel": "Dalej", "perspective": "amso",
         "steps": [
-          { "id": "phone-source", "title": "Około 28 000 smartfonów w ciągu roku.", "body": ["To roczna liczba sprzedanych telefonów, od której zaczynamy porównanie skali."], "continueLabel": "Dalej", "safe": true },
-          { "id": "phone-tower", "title": "Ułożone w wieżę miałyby około 240 metrów.", "body": ["To wysokość porównywalna z PKiN. Każdy telefon w tej wieży wcześniej był jednak konkretnym zamówieniem."], "continueLabel": "Dalej", "safe": true },
-          { "id": "computer-weight", "title": "Około 400 000 kg komputerów w ciągu roku.", "body": ["Tyle łącznie ważą komputery wysyłane przez nasz magazyn w rocznym okresie."], "continueLabel": "Dalej", "safe": true },
-          { "id": "boeing-comparison", "title": "To masa porównywalna z pięcioma załadowanymi Boeingami 737.", "body": ["Porównanie pozostaje oznaczone jako oczekujące na końcową akceptację marketingu."], "continueLabel": "Dalej", "safe": true },
-          { "id": "people-behind-scale", "title": "Za liczbami stoją ludzie i proces.", "body": ["Magazyn, zespół i uporządkowana logistyka codziennie zamieniają skalę w konkretne wysyłki."], "continueLabel": "Dalej", "safe": true }
+          { "id": "phone-tower", "title": "Roczna sprzedaż sięga wysokości PKiN.", "body": ["Około 28 000 sprzedanych w rok smartfonów utworzyłoby wieżę wysoką na około 240 metrów. Za tym porównaniem stoją konkretne zamówienia i zespół."], "continueLabel": "Podejmij szczyt zamówień", "safe": true, "fact": "Około 28 000 smartfonów sprzedanych w rok utworzyłoby wieżę około 240 m, porównywalną z PKiN.", "action": "Kolejne telefony budują pionową wieżę obok czytelnej sylwetki PKiN.", "finalFrame": "Wieża telefonów i PKiN stoją na jednej podstawie z etykietami 28 000, rok i około 240 m." }
         ]
       },
       {
@@ -280,68 +271,57 @@
         "id": "story.million_approach", "chapter": "epoch_5", "eyebrow": "Nasza historia", "title": "Do miliona zostało 30 zamówień.",
         "body": ["Licznik zaczyna od 999 970 i rośnie wraz z każdą zebraną paczką."], "vignette": "million-counter", "continueLabel": "Rozpocznij finał", "perspective": "amso",
         "steps": [
-          { "id": "counter-source", "title": "999 970 zrealizowanych zamówień.", "body": ["Do progu miliona prowadzi ostatnich 30 prawdziwych paczek i osiem poznanych kombinacji."], "continueLabel": "Dalej", "safe": true },
-          { "id": "human-plans", "title": "Za każdą liczbą stoi konkretny plan.", "body": ["Sprzęt pomaga ludziom pracować, uczyć się, rozwijać firmy i realizować własne pomysły."], "continueLabel": "Rozpocznij finał", "safe": true }
+          { "id": "counter-source", "title": "Do miliona zostało 30 zamówień.", "body": ["Licznik zaczyna od 999 970. Każda zebrana paczka doda dokładnie jedno zamówienie, a osiem kombinacji przypomni umiejętności z całej drogi."], "continueLabel": "Poznaj zasady finału", "safe": true, "fact": "Finał rozpoczyna się od 999 970 zamówień i wymaga zebrania 30 paczek.", "action": "Licznik zatrzymuje się na 999 970, a trzydzieści paczek ustawia się przed trasą.", "finalFrame": "Czytelny licznik 999 970 stoi nad trasą, a pierwsza z trzydziestu paczek czeka po prawej." }
         ]
       },
       {
         "id": "challenge.million_wave", "chapter": "epoch_5", "eyebrow": "Wyzwanie", "title": "Próg Miliona sprawdza całą drogę.",
         "body": ["Zbierz 30 paczek i ukończ osiem bezpiecznych kombinacji."], "vignette": "million-wave", "continueLabel": "Podejmij wyzwanie", "perspective": "challenge",
         "steps": [
-          { "id": "two-goals", "title": "Dwa cele prowadzą do miliona.", "body": ["HUD osobno pokaże zebrane paczki oraz ukończone kombinacje skoku i ślizgu."], "continueLabel": "Dalej", "safe": true },
-          { "id": "safe-finale", "title": "W fabule nie ma game over.", "body": ["Pominięta paczka wróci, a błąd powtórzy tylko bieżącą kombinację."], "continueLabel": "Podejmij wyzwanie", "safe": true }
+          { "id": "two-goals", "title": "Dwa cele prowadzą do miliona.", "body": ["Zbierz 30 paczek i ukończ osiem kombinacji skoku oraz ślizgu. W fabule nie ma game over: pominięte elementy wracają do skutku."], "continueLabel": "Rozpocznij finał", "safe": true, "fact": "Próg Miliona wymaga 30 paczek i ośmiu kombinacji bez game over w fabule.", "action": "HUD rozdziela postęp na licznik paczek i licznik ukończonych kombinacji.", "finalFrame": "Oba cele są widoczne nad bezpiecznym początkiem finałowej trasy." }
         ]
       },
       {
         "id": "story.million_finale", "chapter": "finale", "eyebrow": "Nasza historia", "title": "1 000 000 zamówień.",
         "body": ["Do miliona dotarliśmy razem z ludźmi, którzy potrzebowali sprzętu do swoich planów."], "vignette": "million-package", "continueLabel": "Zobacz, co dalej", "perspective": "amso",
         "steps": [
-          { "id": "million-celebration", "title": "Milion zamówień. Milion ludzkich planów.", "body": ["Pierwszą paczkę przygotowaliśmy sami, a milionową świętujemy razem z całym zespołem."], "continueLabel": "Dalej", "safe": true },
-          { "id": "road-continues", "title": "Ta droga trwa dalej.", "body": ["Milion nie kończy biegu. Przed Tobą kolejny etap tej samej drogi."], "continueLabel": "Zobacz, co dalej", "safe": true }
+          { "id": "million-celebration", "title": "Milion zamówień. Milion ludzkich planów.", "body": ["Pierwszą paczkę przygotowaliśmy sami. Milionową świętujemy z zespołem i klientami, bo każda część tej drogi prowadziła do czyjegoś planu."], "continueLabel": "Zobacz, co dalej", "safe": true, "fact": "AMSO osiągnęło milion zrealizowanych zamówień.", "action": "Licznik przechodzi na 1 000 000, a zespół AMSO otacza milionową paczkę.", "finalFrame": "Świąteczny znak 1 000 000, milionowa paczka i zespół AMSO tworzą jeden centralny kadr." }
         ]
       },
       {
         "id": "story.challenge_handoff", "chapter": "finale", "eyebrow": "TRYB WYZWANIA", "title": "Wynik zostaje. Zasady się zmieniają.",
         "body": ["Płynnie przechodzisz z historii do Trybu Wyzwania."], "vignette": "thank-you", "continueLabel": "Podejmuję wyzwanie", "perspective": "challenge",
         "steps": [
-          { "id": "score-stays", "title": "Cały dotychczasowy wynik zostaje z Tobą.", "body": ["Zachowujesz punkty, zebrane paczki i aktywne bonusy. Od tego miejsca osobno policzymy też wynik samego wyzwania."], "continueLabel": "Dalej", "safe": true },
-          { "id": "rules-change", "title": "Teraz tempo będzie rosło.", "body": ["Pierwsze niezabezpieczone zderzenie kończy bieg. Aktywna Ochrona może uratować Cię jeden raz."], "continueLabel": "Podejmuję wyzwanie", "safe": true }
+          { "id": "rules-change", "title": "Wynik zostaje. Zasady się zmieniają.", "body": ["Zachowujesz punkty, paczki i aktywne bonusy. Teraz tempo rośnie, a pierwsze niezabezpieczone zderzenie kończy bieg. Ochrona może uratować próbę raz."], "continueLabel": "Podejmuję wyzwanie", "safe": true, "fact": "Po fabule wynik pozostaje, a challenge kończy pierwsze niezabezpieczone zderzenie.", "action": "Panel zachowanego wyniku przesuwa się obok znaku TRYB WYZWANIA i tarczy Ochrony.", "finalFrame": "Zachowany wynik, nowe zasady i aktywna Ochrona są opisane przed odliczaniem 3–2–1." }
         ]
       }
     ],
     "sequence": [
       { "type": "scene", "sceneId": "story.first_package" },
-      { "type": "play", "id": "epoch_1.training", "epochIndex": 0, "durationSeconds": 25 },
+      { "type": "play", "id": "epoch_1.training", "epochIndex": 0, "durationSeconds": 20 },
       { "type": "scene", "sceneId": "story.order_backlog" },
-      { "type": "play", "id": "epoch_1.order_backlog", "epochIndex": 0, "durationSeconds": 15 },
-      { "type": "scene", "sceneId": "story.first_process" },
+      { "type": "play", "id": "epoch_1.order_backlog", "epochIndex": 0, "durationSeconds": 20 },
       { "type": "scene", "sceneId": "story.quality_promise" },
       { "type": "play", "id": "epoch_2.quality_series", "epochIndex": 1, "durationSeconds": 25 },
       { "type": "play", "id": "epoch_2.quality_trial", "epochIndex": 1, "durationSeconds": 15 },
-      { "type": "scene", "sceneId": "story.quality_result" },
-      { "type": "scene", "sceneId": "client.creative_start" },
-      { "type": "play", "id": "epoch_3.matching_creative", "epochIndex": 2, "durationSeconds": 17 },
       { "type": "scene", "sceneId": "client.business_growth" },
-      { "type": "play", "id": "epoch_3.matching_growth", "epochIndex": 2, "durationSeconds": 17 },
-      { "type": "scene", "sceneId": "client.b2b_trust" },
-      { "type": "play", "id": "epoch_3.matching_trust", "epochIndex": 2, "durationSeconds": 18 },
+      { "type": "play", "id": "epoch_3.matching_growth", "epochIndex": 2, "durationSeconds": 25 },
       { "type": "scene", "sceneId": "story.matching_result" },
       { "type": "scene", "sceneId": "story.scale" },
-      { "type": "play", "id": "epoch_4.order_peak", "epochIndex": 3, "durationSeconds": 24 },
-      { "type": "play", "id": "epoch_4.order_peak_final", "epochIndex": 3, "durationSeconds": 48 },
-      { "type": "scene", "sceneId": "story.order_peak_result" },
+      { "type": "play", "id": "epoch_4.order_peak", "epochIndex": 3, "durationSeconds": 25 },
+      { "type": "play", "id": "epoch_4.order_peak_final", "epochIndex": 3, "durationSeconds": 35 },
       { "type": "scene", "sceneId": "story.million_approach" },
       { "type": "scene", "sceneId": "challenge.million_wave" },
-      { "type": "play", "id": "epoch_5.million_threshold", "epochIndex": 4, "durationSeconds": 72 },
+      { "type": "play", "id": "epoch_5.million_threshold", "epochIndex": 4, "durationSeconds": 45 },
       { "type": "scene", "sceneId": "story.million_finale" },
       { "type": "scene", "sceneId": "story.challenge_handoff" }
     ],
     "epochs": [
       { "index": 0, "id": "poczatek", "name": "Początek", "year": "Pierwsza paczka", "themeIndex": 0, "durationSeconds": 40, "obstaclePool": ["box-stack", "pallet", "overhead"], "difficultyStart": 0.8, "difficultyEnd": 0.87, "challengeName": "Zator Zamówień" },
       { "index": 1, "id": "drugie_zycie", "name": "Drugie życie sprzętu", "year": "Jakość i zaufanie", "themeIndex": 1, "durationSeconds": 40, "obstaclePool": ["box-stack", "pallet", "overhead"], "difficultyStart": 0.87, "difficultyEnd": 0.94, "challengeName": "Próba Jakości", "powerUpDebut": "audyt_jakosci" },
-      { "index": 2, "id": "historie_klientow", "name": "Ludzie rosną razem ze sprzętem", "year": "Trzy prawdziwe historie", "themeIndex": 2, "durationSeconds": 52, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 0.94, "difficultyEnd": 1.02, "challengeName": "Wyzwanie Dopasowania", "powerUpDebut": "drugie_zycie" },
-      { "index": 3, "id": "skala", "name": "Skala potrzebuje systemu", "year": "Roczna skala", "themeIndex": 3, "durationSeconds": 72, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.02, "difficultyEnd": 1.1, "challengeName": "Szczyt Zamówień", "powerUpDebut": "gwarancja_48" },
-      { "index": 4, "id": "droga_do_miliona", "name": "Droga do Miliona", "year": "999 970 → 1 000 000", "themeIndex": 4, "durationSeconds": 72, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.1, "difficultyEnd": 1.15, "challengeName": "Próg Miliona" }
+      { "index": 2, "id": "historie_klientow", "name": "Firma rośnie razem ze sprzętem", "year": "Jedna prawdziwa historia", "themeIndex": 2, "durationSeconds": 25, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 0.94, "difficultyEnd": 1.02, "challengeName": "Rozwój Firmy", "powerUpDebut": "drugie_zycie" },
+      { "index": 3, "id": "skala", "name": "Skala potrzebuje systemu", "year": "Roczna skala", "themeIndex": 3, "durationSeconds": 60, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.02, "difficultyEnd": 1.1, "challengeName": "Szczyt Zamówień", "powerUpDebut": "gwarancja_48" },
+      { "index": 4, "id": "droga_do_miliona", "name": "Droga do Miliona", "year": "999 970 → 1 000 000", "themeIndex": 4, "durationSeconds": 45, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.1, "difficultyEnd": 1.15, "challengeName": "Próg Miliona" }
     ],
     "modeHandoff": {
       "id": "story.challenge_handoff",

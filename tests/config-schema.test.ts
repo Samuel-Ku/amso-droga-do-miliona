@@ -30,7 +30,10 @@ describe("runner config v5 story validation", () => {
       id: "first-package.origin",
       body: ["Pierwszą paczkę przygotowaliśmy własnymi rękami."],
       continueLabel: "Dalej",
-      safe: true
+      safe: true,
+      fact: "Pierwszą paczkę przygotowaliśmy własnymi rękami.",
+      action: "Pracownik zamyka pierwszą paczkę.",
+      finalFrame: "Pierwsza paczka czeka przy wyjściu z magazynu."
     }];
     story.modeHandoff = {
       id: "story.challenge_handoff",
@@ -96,7 +99,7 @@ describe("runner config v5 story validation", () => {
     expect(parseRunnerConfig(expanded)).toBeNull();
   });
 
-  it("parses the production story as 15 player-paced scenes and 276 seconds of play", () => {
+  it("parses the v6 story as 14 player-paced beats and 210 seconds of play", () => {
     const result = validateRunnerConfig(validConfig());
 
     expect(result.success).toBe(true);
@@ -105,7 +108,7 @@ describe("runner config v5 story validation", () => {
     expect(result.data.schemaVersion).toBe(4);
     expect(result.data.modulePath).toBe(DEFAULT_RUNNER_MODULE_PATH);
     expect(result.data.stylePath).toBe(DEFAULT_RUNNER_STYLE_PATH);
-    expect(result.data.story.activeDurationSeconds).toBe(276);
+    expect(result.data.story.activeDurationSeconds).toBe(210);
     expect(result.data.story.readingSpeedMultiplier).toBe(0.3);
     expect(result.data.story.speedStartMultiplier).toBe(0.8);
     expect(result.data.story.speedMaxMultiplier).toBe(1.15);
@@ -115,14 +118,29 @@ describe("runner config v5 story validation", () => {
     expect(result.data.story.scenes.at(-1)?.id).toBe("story.challenge_handoff");
     expect(result.data.story.scenes.at(-1)?.continueLabel)
       .toBe("Podejmuję wyzwanie");
-    expect(result.data.story.scenes.reduce((sum, scene) => sum + (scene.steps?.length ?? 1), 0))
-      .toBe(42);
+    const activeSceneIds = new Set(result.data.story.sequence
+      .filter((step) => step.type === "scene")
+      .map((step) => step.sceneId));
+    const activeScenes = result.data.story.scenes.filter(({ id }) => activeSceneIds.has(id));
+    expect(activeScenes.reduce((sum, scene) => sum + (scene.steps?.length ?? 1), 0)).toBe(14);
     expect(result.data.story.epochs.map(({ index }) => index)).toEqual([0, 1, 2, 3, 4]);
     expect(result.data.story.epochs.map(({ durationSeconds }) => durationSeconds))
-      .toEqual([40, 40, 52, 72, 72]);
+      .toEqual([40, 40, 25, 60, 45]);
     expect(result.data.story.sequence
       .filter((step) => step.type === "play")
-      .reduce((total, step) => total + step.durationSeconds, 0)).toBe(276);
+      .reduce((total, step) => total + step.durationSeconds, 0)).toBe(210);
+
+    for (const scene of activeScenes) {
+      for (const page of scene.steps ?? []) {
+        expect(page.title?.trim().split(/\s+/u).length ?? 0).toBeLessThanOrEqual(8);
+        expect(page.body.join(" ").length).toBeLessThanOrEqual(220);
+        expect(page.fact).toBeTruthy();
+        expect(page.action).toBeTruthy();
+        expect(page.finalFrame).toBeTruthy();
+      }
+    }
+    expect(JSON.stringify(activeScenes)).not.toContain("Boeing");
+    expect(JSON.stringify(activeScenes)).toContain("PKiN");
     expect(result.data.cta.challengeLabel).toBe("Gramy dalej — tryb wyzwania");
     expect(result.data.ui?.landingLead).toContain("1 000 000");
     expect(result.data.ui?.sharePublication).toContain("Drodze do Miliona");
@@ -147,7 +165,7 @@ describe("runner config v5 story validation", () => {
       );
   });
 
-  it("fails below the four-minute floor but allows a consistent post-playtest extension", () => {
+  it("fails below the three-minute active-play floor but allows post-playtest tuning", () => {
     const duplicate = validConfig();
     const story = duplicate.story as Record<string, unknown>;
     const scenes = story.scenes as Array<Record<string, unknown>>;
@@ -156,24 +174,24 @@ describe("runner config v5 story validation", () => {
 
     const tooShort = validConfig();
     const tooShortStory = tooShort.story as Record<string, unknown>;
-    tooShortStory.activeDurationSeconds = 239;
+    tooShortStory.activeDurationSeconds = 179;
     const tooShortSequence = tooShortStory.sequence as Array<Record<string, unknown>>;
     const tooShortFinale = tooShortSequence.find(({ id }) => id === "epoch_5.million_threshold");
     if (!tooShortFinale) throw new Error("final play segment should exist");
-    tooShortFinale.durationSeconds = 39;
+    tooShortFinale.durationSeconds = 14;
     const tooShortEpochs = tooShortStory.epochs as Array<Record<string, unknown>>;
-    tooShortEpochs[4]!.durationSeconds = 47;
+    tooShortEpochs[4]!.durationSeconds = 14;
     expect(parseRunnerConfig(tooShort)).toBeNull();
 
     const tuned = validConfig();
     const tunedStory = tuned.story as Record<string, unknown>;
-    tunedStory.activeDurationSeconds = 286;
+    tunedStory.activeDurationSeconds = 220;
     const tunedSequence = tunedStory.sequence as Array<Record<string, unknown>>;
     const finalPlay = tunedSequence.find(({ id }) => id === "epoch_5.million_threshold");
     if (!finalPlay) throw new Error("final play segment should exist");
-    finalPlay.durationSeconds = 82;
+    finalPlay.durationSeconds = 55;
     const tunedEpochs = tunedStory.epochs as Array<Record<string, unknown>>;
-    tunedEpochs[4]!.durationSeconds = 82;
+    tunedEpochs[4]!.durationSeconds = 55;
     expect(parseRunnerConfig(tuned)).not.toBeNull();
   });
 

@@ -120,6 +120,12 @@ export interface StoryScenePageConfig {
   continueLabel: string;
   /** Narrative pages are always hazard- and pickup-free. */
   safe: true;
+  /** One verified statement this beat is allowed to communicate. */
+  fact?: string;
+  /** The single visible action performed during the beat. */
+  action?: string;
+  /** Stable composition left after the one-shot reveal. */
+  finalFrame?: string;
 }
 
 export interface StorySceneStepConfig {

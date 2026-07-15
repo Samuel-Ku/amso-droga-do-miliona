@@ -309,7 +309,7 @@ describe("campaign collision contract", () => {
     const internals = harness.game as unknown as {
       storyTimeline: { snapshot: StoryTimelineSnapshot };
     };
-    expect(internals.storyTimeline.snapshot.sectionElapsedSeconds).toBe(25);
+    expect(internals.storyTimeline.snapshot.sectionElapsedSeconds).toBe(20);
     expect(harness.snapshots.at(-1)?.storyObjectives.epoch1.training.completed).toBe(false);
     expect(harness.game.state).toBe("running");
     harness.game.destroy();
@@ -328,7 +328,7 @@ describe("campaign collision contract", () => {
 
     harness.advance(45, harness.avoidObstacles);
 
-    expect(harness.storyUpdates.at(-1)?.scene?.id).toBe("story.first_process");
+    expect(harness.storyUpdates.at(-1)?.scene?.id).toBe("story.quality_promise");
     expect(harness.snapshots.at(-1)?.storyObjectives.epoch1.orderBacklog.bestAlternation)
       .toBeGreaterThanOrEqual(1);
     expect(harness.snapshots.at(-1)?.storyClimaxesCompleted).toContain(0);
@@ -377,7 +377,7 @@ describe("campaign collision contract", () => {
       visualWorldId: "million-finale",
       visualStateId: "story.million_finale"
     });
-    expect(challengeSnapshot?.durationSeconds).toBeGreaterThanOrEqual(250);
+    expect(challengeSnapshot?.durationSeconds).toBeGreaterThanOrEqual(190);
     expect(challengeSnapshot?.score).toBeGreaterThanOrEqual(config.story.firstCompletionBonusScore);
     expect(challengeSnapshot?.challengeScore).toBe(0);
     expect(challengeSnapshot?.challengePackagesCollected).toBe(0);
@@ -458,7 +458,7 @@ describe("campaign collision contract", () => {
     harness.game.destroy();
   });
 
-  it("derives three peak phases from the configured 24 + 48 seconds", () => {
+  it("derives three peak phases from the configured 25 + 35 seconds", () => {
     const config = parseRunnerConfig(productionConfig);
     if (!config) throw new Error("production config should parse");
     const harness = createGameHarness("story", config.story);
@@ -468,7 +468,7 @@ describe("campaign collision contract", () => {
     expect(harness.snapshots.at(-1)?.storyObjectivesCompleted)
       .toContain("epoch_4.order_peak_final");
     expect(harness.snapshots.at(-1)?.storyObjectives.epoch4.flow)
-      .toMatchObject({ elapsedSeconds: 72, completed: true, phasesCompleted: 3 });
+      .toMatchObject({ elapsedSeconds: 60, completed: true, phasesCompleted: 3 });
     harness.game.destroy();
   });
 

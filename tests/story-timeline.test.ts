@@ -158,7 +158,7 @@ describe("player-paced story timeline", () => {
     expect(timeline.snapshot.totalActiveElapsedSeconds).toBe(4);
   });
 
-  it("presents the approved 15-stop story once within 276 active seconds", () => {
+  it("presents the approved 14-beat v6 story once within 210 active seconds", () => {
     const config = parseRunnerConfig(productionConfig);
     if (!config) throw new Error("production config should parse");
     const timeline = new StoryTimeline(config.story);
@@ -183,23 +183,18 @@ describe("player-paced story timeline", () => {
     expect([...new Set(seen)]).toEqual([
       "story.first_package",
       "story.order_backlog",
-      "story.first_process",
       "story.quality_promise",
-      "story.quality_result",
-      "client.creative_start",
       "client.business_growth",
-      "client.b2b_trust",
       "story.matching_result",
       "story.scale",
-      "story.order_peak_result",
       "story.million_approach",
       "challenge.million_wave",
       "story.million_finale",
       "story.challenge_handoff"
     ]);
-    expect(seen).toHaveLength(42);
-    expect(new Set(presentations).size).toBe(42);
-    expect(timeline.snapshot.totalActiveElapsedSeconds).toBe(276);
+    expect(seen).toHaveLength(14);
+    expect(new Set(presentations).size).toBe(14);
+    expect(timeline.snapshot.totalActiveElapsedSeconds).toBe(210);
     expect(timeline.snapshot.progress).toBe(1);
     expect(timeline.snapshot.completed).toBe(true);
   });

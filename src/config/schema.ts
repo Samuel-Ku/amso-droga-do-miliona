@@ -56,12 +56,10 @@ const CANONICAL_SCENE_ORDER = [
 const CANONICAL_SEQUENCE = [
   "scene:story.first_package", "play:epoch_1.training:0",
   "scene:story.order_backlog", "play:epoch_1.order_backlog:0",
-  "scene:story.first_process", "scene:story.quality_promise", "play:epoch_2.quality_series:1",
-  "play:epoch_2.quality_trial:1", "scene:story.quality_result", "scene:client.creative_start",
-  "play:epoch_3.matching_creative:2", "scene:client.business_growth",
-  "play:epoch_3.matching_growth:2", "scene:client.b2b_trust",
-  "play:epoch_3.matching_trust:2", "scene:story.matching_result", "scene:story.scale",
-  "play:epoch_4.order_peak:3", "play:epoch_4.order_peak_final:3", "scene:story.order_peak_result",
+  "scene:story.quality_promise", "play:epoch_2.quality_series:1",
+  "play:epoch_2.quality_trial:1", "scene:client.business_growth",
+  "play:epoch_3.matching_growth:2", "scene:story.matching_result", "scene:story.scale",
+  "play:epoch_4.order_peak:3", "play:epoch_4.order_peak_final:3",
   "scene:story.million_approach", "scene:challenge.million_wave",
   "play:epoch_5.million_threshold:4",
   "scene:story.million_finale", "scene:story.challenge_handoff"
@@ -252,19 +250,25 @@ function parseAssets(
 function parseScenePage(value: unknown): StoryScenePageConfig | null {
   if (!isRecord(value) || !hasExactKeys(
     value,
-    ["id", "title", "body", "continueLabel", "safe"],
+    ["id", "title", "body", "continueLabel", "safe", "fact", "action", "finalFrame"],
     ["id", "body", "continueLabel", "safe"]
   ) || !isIdentifier(value.id) ||
       (value.title !== undefined && !isSafeText(value.title, 160)) ||
       !Array.isArray(value.body) || value.body.length < 1 || value.body.length > 2 ||
       value.body.some((paragraph) => !isSafeText(paragraph, 420)) ||
-      !isSafeText(value.continueLabel, 80) || value.safe !== true) return null;
+      !isSafeText(value.continueLabel, 80) || value.safe !== true ||
+      (value.fact !== undefined && !isSafeText(value.fact, 220)) ||
+      (value.action !== undefined && !isSafeText(value.action, 220)) ||
+      (value.finalFrame !== undefined && !isSafeText(value.finalFrame, 220))) return null;
   return {
     id: value.id,
     ...(typeof value.title === "string" ? { title: value.title } : {}),
     body: value.body as string[],
     continueLabel: value.continueLabel,
-    safe: true
+    safe: true,
+    ...(typeof value.fact === "string" ? { fact: value.fact } : {}),
+    ...(typeof value.action === "string" ? { action: value.action } : {}),
+    ...(typeof value.finalFrame === "string" ? { finalFrame: value.finalFrame } : {})
   };
 }
 
@@ -418,7 +422,7 @@ function parseStory(value: unknown): StoryConfig | null {
       "scenes", "sequence", "epochs"
     ]
   )) return null;
-  if (!finiteInRange(value.activeDurationSeconds, 240, 600) ||
+  if (!finiteInRange(value.activeDurationSeconds, 180, 600) ||
       !finiteInRange(value.readingSpeedMultiplier, 0.1, 0.5) ||
       !finiteInRange(value.speedStartMultiplier, 0.5, 1.5) ||
       !finiteInRange(value.speedMaxMultiplier, value.speedStartMultiplier, 1.5) ||
@@ -449,10 +453,15 @@ function parseStory(value: unknown): StoryConfig | null {
   if (sequenceKeys.length !== CANONICAL_SEQUENCE.length ||
       sequenceKeys.some((key, index) => key !== CANONICAL_SEQUENCE[index])) return null;
   const sceneSteps = typedSequence.filter((step) => step.type === "scene");
-  if (sceneSteps.length !== typedScenes.length ||
-      new Set(sceneSteps.map((step) => step.sceneId)).size !== sceneSteps.length ||
+  if (new Set(sceneSteps.map((step) => step.sceneId)).size !== sceneSteps.length ||
       sceneSteps.some((step) => !sceneIds.has(step.sceneId)) ||
       sceneSteps.at(-1)?.sceneId !== "story.challenge_handoff") return null;
+  const activeSceneIds = new Set(sceneSteps.map((step) => step.sceneId));
+  if (typedScenes.filter(({ id }) => activeSceneIds.has(id)).some((scene) =>
+    (scene.steps ?? []).some((page) =>
+      page.fact === undefined || page.action === undefined || page.finalFrame === undefined ||
+      (page.title?.trim().split(/\s+/u).length ?? 0) > 8 || page.body.join(" ").length > 220
+    ))) return null;
   const playSteps = typedSequence.filter((step) => step.type === "play");
   if (playSteps.some((step) => step.epochIndex < 0 || step.epochIndex >= typedEpochs.length) ||
       playSteps.reduce((total, step) => total + step.durationSeconds, 0) !==

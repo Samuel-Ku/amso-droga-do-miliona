@@ -40,42 +40,49 @@ function parseSemicolonCsv(value: string): string[][] {
 }
 
 describe("marketing copydeck CSV", () => {
-  it("exports every editable story page and every approval fact", () => {
+  it("exports only the 14 active v6 beats with limits, facts and decisions", () => {
     const rows = parseSemicolonCsv(csv);
     const header = rows[0] ?? [];
     const records = rows.slice(1);
     const textRows = records.filter(([type]) => type === "TEKST");
-    const factRows = records.filter(([type]) => type === "FAKT");
 
     expect(csv.startsWith("\uFEFF")).toBe(true);
     expect(header).toContain("decyzja_marketingu");
+    expect(header).toContain("limit_tytulu_slowa");
+    expect(header).toContain("limit_tekstu_znaki");
+    expect(header).toContain("fakt_kroku");
+    expect(header).toContain("czynność");
+    expect(header).toContain("finalny_kadr");
     expect(header).toContain("nowy_tekst_1");
-    expect(header).toHaveLength(19);
-    expect(textRows).toHaveLength(42);
-    expect(factRows).toHaveLength(13);
+    expect(textRows).toHaveLength(14);
+    expect(records).toHaveLength(14);
     expect(new Set(textRows.map((row) => row[2]))).toEqual(
-      new Set(productionConfig.story.scenes.map(({ id }) => id))
+      new Set(productionConfig.story.sequence
+        .filter((step) => step.type === "scene")
+        .map((step) => step.sceneId))
     );
-    expect(textRows.find((row) => row[6] === "boeing-comparison")?.[17])
-      .toBe("OCZEKUJE NA AKCEPTACJĘ");
+    expect(csv).not.toContain("Boeing");
 
-    for (const scene of productionConfig.story.scenes) {
+    const activeSceneIds = new Set(productionConfig.story.sequence
+      .filter((step) => step.type === "scene")
+      .map((step) => step.sceneId));
+    for (const scene of productionConfig.story.scenes.filter(({ id }) => activeSceneIds.has(id))) {
       for (const page of scene.steps) {
         const row = textRows.find((candidate) =>
-          candidate[2] === scene.id && candidate[6] === page.id
+          candidate[2] === scene.id && candidate[8] === page.id
         );
         expect(row, `${scene.id}/${page.id}`).toBeDefined();
-        expect(row?.[7]).toBe(page.title ?? "");
-        expect(row?.[8]).toBe(page.body[0] ?? "");
-        expect(row?.[9]).toBe(page.body[1] ?? "");
-        expect(row?.[10]).toBe(page.continueLabel);
-        expect(row?.[11]).toBe("AKCEPT / ZMIANA / ODRZUĆ");
+        expect(row?.[5]).toBe("fact" in page ? page.fact : undefined);
+        expect(row?.[6]).toBe("action" in page ? page.action : undefined);
+        expect(row?.[7]).toBe("finalFrame" in page ? page.finalFrame : undefined);
+        expect(row?.[9]).toBe("8");
+        expect(row?.[10]).toBe("220");
+        expect(row?.[11]).toBe(page.title ?? "");
+        expect(row?.[12]).toBe(page.body[0] ?? "");
+        expect(row?.[13]).toBe(page.body[1] ?? "");
+        expect(row?.[14]).toBe(page.continueLabel);
+        expect(row?.[15]).toBe("AKCEPT / ZMIANA / ODRZUĆ");
       }
     }
-
-    const boeingFact = factRows.find((row) => (row[7] ?? "").includes("Boeing"));
-    expect(boeingFact?.[11]).toBe("AKCEPT / ZMIANA / ODRZUĆ");
-    expect(boeingFact?.[17]).toBe("OCZEKUJE NA AKCEPTACJĘ");
-    expect(boeingFact?.[18]).toContain("jawnie oznaczone");
   });
 });

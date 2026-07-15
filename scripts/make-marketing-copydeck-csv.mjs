@@ -23,8 +23,12 @@ const headers = [
   "scena_id",
   "perspektywa",
   "cel_sceny",
-  "fakty_obowiazkowe",
-  "ekran_id_lub_fakt",
+  "fakt_kroku",
+  "czynność",
+  "finalny_kadr",
+  "ekran_id",
+  "limit_tytulu_slowa",
+  "limit_tekstu_znaki",
   "tytul_aktualny",
   "tekst_1_aktualny",
   "tekst_2_aktualny",
@@ -64,7 +68,15 @@ function csvCell(value) {
 }
 
 const rows = [];
-for (const [sceneIndex, scene] of config.story.scenes.entries()) {
+const activeSceneIds = config.story.sequence
+  .filter(({ type }) => type === "scene")
+  .map(({ sceneId }) => sceneId);
+const activeScenes = activeSceneIds.map((sceneId) => {
+  const scene = config.story.scenes.find(({ id }) => id === sceneId);
+  if (!scene) throw new Error(`Brak aktywnej sceny ${sceneId}`);
+  return scene;
+});
+for (const [sceneIndex, scene] of activeScenes.entries()) {
   const metadata = sceneMetadata(scene.id);
   for (const [pageIndex, page] of scene.steps.entries()) {
     rows.push([
@@ -73,8 +85,12 @@ for (const [sceneIndex, scene] of config.story.scenes.entries()) {
       scene.id,
       perspectiveLabels[scene.perspective] ?? scene.perspective,
       metadata.goal,
-      metadata.facts,
+      page.fact,
+      page.action,
+      page.finalFrame,
       page.id,
+      "8",
+      "220",
       page.title ?? "",
       page.body[0] ?? "",
       page.body[1] ?? "",
@@ -85,56 +101,22 @@ for (const [sceneIndex, scene] of config.story.scenes.entries()) {
       "",
       "",
       metadata.requiresAnonymization ? "TAK / NIE" : "nie dotyczy",
-      page.id === "boeing-comparison" ? "OCZEKUJE NA AKCEPTACJĘ" : "ROBOCZY",
+      "ROBOCZY",
       ""
     ]);
   }
 }
 
-const factsSection = /## Fakty wymagające finalnego potwierdzenia([\s\S]*?)\n## Kontrola przed publikacją/u
-  .exec(copydeck)?.[1];
-if (!factsSection) throw new Error("Brak tabeli faktów w copydecku");
-
-const factLines = factsSection.split("\n").filter((line) =>
-  /^\|[^|-]/u.test(line.trim()) && !line.includes("Fakt lub sformułowanie")
-);
-for (const [factIndex, line] of factLines.entries()) {
-  const cells = line.split("|").slice(1, -1).map((cell) =>
-    cell.trim().replaceAll("`", "")
-  );
-  rows.push([
-    "FAKT", // typ_rekordu
-    `F${factIndex + 1}`, // nr
-    "", // scena_id
-    "", // perspektywa
-    "", // cel_sceny
-    "", // fakty_obowiazkowe
-    `fakt-${factIndex + 1}`, // ekran_id_lub_fakt
-    cells[0] ?? "", // tytul_aktualny
-    "", // tekst_1_aktualny
-    "", // tekst_2_aktualny
-    "", // cta_aktualne
-    cells[1] ?? "AKCEPT / ZMIANA / ODRZUĆ", // decyzja_marketingu
-    "", // nowy_tytul
-    "", // nowy_tekst_1
-    "", // nowy_tekst_2
-    "", // nowe_cta
-    "nie dotyczy", // anonimizacja
-    cells[2]?.length ? "OCZEKUJE NA AKCEPTACJĘ" : "ROBOCZY", // status_biezacy
-    cells[2] ?? "" // uwagi_marketingu
-  ]);
-}
-
-const expectedTextRows = config.story.scenes.reduce(
+const expectedTextRows = activeScenes.reduce(
   (total, scene) => total + scene.steps.length,
   0
 );
-if (expectedTextRows !== 42 || rows.length !== 55) {
+if (expectedTextRows !== 14 || rows.length !== 14) {
   throw new Error(`Nieoczekiwany zakres CSV: ${expectedTextRows} tekstów, ${rows.length} wszystkich wierszy`);
 }
 
 const csv = `\uFEFF${[headers, ...rows]
   .map((row) => row.map(csvCell).join(";"))
-  .join("\r\n")}\r\n`;
+  .join("\n")}\n`;
 fs.writeFileSync(outputPath, csv, "utf8");
 console.log(`marketing CSV: ${path.basename(outputPath)}; ${rows.length} wierszy`);
