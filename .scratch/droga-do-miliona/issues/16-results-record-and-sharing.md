@@ -4,7 +4,7 @@
 
 Blocked by: 15
 
-Status: ready-for-agent
+Status: ready-for-human
 
 - [x] Ekran rozróżnia `Wynik łączny`, `Wynik wyzwania` i lokalny `Twój rekord wyzwania`.
 - [x] Pierwszy porównywalny challenge pokazuje `Pierwszy wynik wyzwania`; rekord pojawia się od kolejnej próby.
@@ -14,3 +14,7 @@ Status: ready-for-agent
 - [x] Główna akcja ponawia challenge, drugorzędna udostępnia wynik, a tekstowy link uruchamia historię ponownie.
 - [x] Share flow obsługuje Facebook i Instagram oraz nie używa odrzuconego hasła `Gramy dalej po milionie`.
 - [ ] Ekran pozostaje czytelny i obsługiwalny klawiaturą od 390 do 1920 px.
+
+## Comments
+
+- 2026-07-15: struktura, fokus początkowy, breakpointy 390/756/757/1600/1920 oraz testy kontraktowe są gotowe. Kryterium pozostaje otwarte do ręcznego visual i keyboard QA w rzeczywistej przeglądarce.

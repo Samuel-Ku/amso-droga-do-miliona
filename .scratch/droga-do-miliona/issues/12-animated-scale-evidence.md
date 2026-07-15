@@ -4,7 +4,7 @@
 
 Blocked by: 02
 
-Status: ready-for-agent
+Status: ready-for-human
 
 - [x] Pierwszy krok podaje około 28 000 sprzedanych smartfonów w ciągu roku.
 - [x] Telefony tworzą wieżę około 240 metrów przy rozpoznawalnej sylwetce PKiN.
@@ -14,3 +14,7 @@ Status: ready-for-agent
 - [x] Roczne liczby kategorii wspierają scenę bez zasłaniania gry wielkimi etykietami.
 - [x] Finał pokazuje magazyn i zespół stojący za liczbami.
 - [x] Każdy krok czeka na gracza i ma czytelny statyczny wariant reduced motion.
+
+## Comments
+
+- 2026-07-15: scena i testy implementacyjne są gotowe. Porównanie z Boeingami pozostaje jawnie oznaczone w grze i copydecku jako oczekujące na decyzję marketingu; wyłącznie ten ludzki krok blokuje zamknięcie kryterium.

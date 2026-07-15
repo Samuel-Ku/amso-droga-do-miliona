@@ -46,6 +46,15 @@ describe("v5 player-paced story content", () => {
     expect(steps[2]?.title).toContain("400 000 kg komputerów");
     expect(steps[2]?.body.join(" ")).toContain("rocznym okresie");
     expect(steps[3]?.title).toContain("pięcioma załadowanymi Boeingami 737");
+    expect(steps[3]?.body.join(" ")).toContain("oczekujące na końcową akceptację marketingu");
     expect(steps[4]?.title).toContain("ludzie");
+  });
+
+  it("does not publish unconfirmed component-test promises", () => {
+    const qualityStory = `${text("story.quality_promise")} ${text("story.quality_result")}`
+      .toLocaleLowerCase("pl");
+    for (const unconfirmedTest of ["test ekranu", "test portów", "test baterii"]) {
+      expect(qualityStory).not.toContain(unconfirmedTest);
+    }
   });
 });

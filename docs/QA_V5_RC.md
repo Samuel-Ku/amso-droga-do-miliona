@@ -11,9 +11,11 @@ npm run build
 npm run build:single
 ```
 
-Stan z 2026-07-15: typecheck, 170 testów, build produkcyjny i single-file build zakończone powodzeniem.
+Stan z 2026-07-15: typecheck, 175 testów, build produkcyjny i single-file build zakończone powodzeniem.
 
 ## Macierz viewportów
+
+Automatyczny runtime przeglądarki był niedostępny 2026-07-15. Poniższych statusów nie wolno zmieniać na zaliczone wyłącznie na podstawie testów statycznych lub CSS.
 
 | Szerokość | Oczekiwany wariant | Status |
 |---:|---|---|
@@ -67,3 +69,4 @@ Warunek odbioru: co najmniej 4 z 5 osób:
 - porównanie 400 000 kg do pięciu Boeingów 737 pozostaje niezatwierdzone;
 - voice-over i rozszerzona analityka są poza release candidate;
 - dark mode został usunięty; wydanie jawnie używa wyłącznie light mode.
+- visual QA, testy urządzeniowe i test zrozumienia pozostają do wykonania przez człowieka; brak runtime przeglądarki nie jest zaliczeniem tych bramek.
