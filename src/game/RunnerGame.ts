@@ -1606,7 +1606,7 @@ export class RunnerGame implements RunnerGameApi {
     this.frameId = globalThis.setTimeout(() => {
       const timestamp = globalThis.performance?.now?.() ?? Date.now();
       this.handleFrame(timestamp);
-    }, 16);
+    }, 16) as unknown as number;
   }
 
   private cancelFrame(): void {

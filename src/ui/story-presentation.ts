@@ -69,16 +69,24 @@ export function snapshotStoryScene(input: CampaignStorySceneInput): CampaignStor
 export class StoryContinuationGate {
   private sceneId: string | null = null;
   private consumed = false;
+  private unlockAt = 0;
 
-  public arm(sceneId: string): boolean {
+  public constructor(private readonly now: () => number = () => Date.now()) {}
+
+  public arm(sceneId: string, lockDurationMs = 0): boolean {
     if (sceneId === this.sceneId) return false;
     this.sceneId = sceneId;
     this.consumed = false;
+    this.unlockAt = this.now() + Math.max(0, lockDurationMs);
     return true;
   }
 
+  public isLocked(sceneId: string): boolean {
+    return sceneId !== this.sceneId || this.now() < this.unlockAt;
+  }
+
   public consume(sceneId: string): boolean {
-    if (this.consumed || sceneId !== this.sceneId) return false;
+    if (this.consumed || this.isLocked(sceneId)) return false;
     this.consumed = true;
     return true;
   }
@@ -86,6 +94,7 @@ export class StoryContinuationGate {
   public clear(): void {
     this.sceneId = null;
     this.consumed = false;
+    this.unlockAt = 0;
   }
 }
 
@@ -103,7 +112,7 @@ export function formatPowerUpHud(powerUps: readonly PowerUpKind[]): string {
 /** First-run controls stay visible in the top HUD without covering the route. */
 export function formatStoryControlsHud(segmentId: string): string | null {
   return segmentId === "epoch_1.training"
-    ? "Skok: tap/Spacja · Ślizg: ↓"
+    ? "Skok: tap/Spacja · Ślizg: ↓/S"
     : null;
 }
 

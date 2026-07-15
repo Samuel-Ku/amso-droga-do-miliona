@@ -524,6 +524,7 @@ export class CampaignShell {
   private challengeResult: CampaignChallengeResult | null = null;
   private lastCountdownValue: CampaignStoryCountdownValue | null = null;
   private readonly storyContinuationGate = new StoryContinuationGate();
+  private storyUnlockTimer: number | null = null;
   private readonly orientationQuery: MediaQueryList | null;
 
   public constructor(
@@ -863,6 +864,7 @@ export class CampaignShell {
 
   public showGame(mode: CampaignMode): void {
     if (this.destroyed) return;
+    if (this.root.dataset.view === "story_scene") this.callbacks.onSlide(false, "keyboard");
     this.hideStoryPresentation();
     this.activeMode = mode;
     this.paused = false;
@@ -888,7 +890,12 @@ export class CampaignShell {
   public showStoryScene(input: CampaignStorySceneInput): void {
     if (this.destroyed) return;
     const scene = snapshotStoryScene(input);
-    const isNewScene = this.storyContinuationGate.arm(scene.presentationId);
+    const wasGame = this.root.dataset.view === "game";
+    const lockDurationMs = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+      ? 500
+      : 1_500;
+    const isNewScene = this.storyContinuationGate.arm(scene.presentationId, lockDurationMs);
+    if (wasGame) this.callbacks.onSlide(false, "keyboard");
 
     this.activeMode = "story";
     this.root.dataset.mode = "story";
@@ -921,8 +928,15 @@ export class CampaignShell {
     this.storyContinueButton.textContent = scene.continueLabel;
     this.storyContinueButton.dataset.sceneId = scene.sceneId;
     this.storyContinueButton.dataset.presentationId = scene.presentationId;
-    this.storyContinueButton.disabled = false;
-    this.storyContinueButton.focus({ preventScroll: true });
+    this.storyContinueButton.disabled = true;
+    this.storySceneBody.focus({ preventScroll: true });
+    if (this.storyUnlockTimer !== null) window.clearTimeout(this.storyUnlockTimer);
+    this.storyUnlockTimer = window.setTimeout(() => {
+      this.storyUnlockTimer = null;
+      if (this.destroyed || this.storyContinueButton.dataset.presentationId !== scene.presentationId ||
+          this.storyContinuationGate.isLocked(scene.presentationId)) return;
+      this.storyContinueButton.disabled = false;
+    }, lockDurationMs);
     this.announce([scene.eyebrow, scene.title, ...scene.body].filter(Boolean).join(". "));
   }
 
@@ -1123,6 +1137,7 @@ export class CampaignShell {
   public destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    if (this.storyUnlockTimer !== null) window.clearTimeout(this.storyUnlockTimer);
     document.removeEventListener("keydown", this.handleKeydown, true);
     document.removeEventListener("keyup", this.handleKeyup, true);
     document.removeEventListener("visibilitychange", this.handleVisibilityChange);
@@ -1266,6 +1281,10 @@ export class CampaignShell {
   }
 
   private hideStoryPresentation(): void {
+    if (this.storyUnlockTimer !== null) {
+      window.clearTimeout(this.storyUnlockTimer);
+      this.storyUnlockTimer = null;
+    }
     this.storyPresentation.hidden = true;
     this.storySceneCard.hidden = false;
     this.storyCountdown.hidden = true;
@@ -1346,12 +1365,7 @@ export class CampaignShell {
     const target = event.target instanceof Element ? event.target.closest<HTMLElement>("button, a") : null;
     if (target === null) return;
     if (target.matches("[data-campaign-story-continue]")) {
-      const sceneId = target.dataset.sceneId;
-      const presentationId = target.dataset.presentationId;
-      if (sceneId === undefined || presentationId === undefined ||
-          !this.storyContinuationGate.consume(presentationId)) return;
-      this.storyContinueButton.disabled = true;
-      this.callbacks.onStoryContinue(sceneId);
+      this.tryContinueStory();
     } else if (target.matches("[data-campaign-mute]")) {
       this.setMuted(!this.muted);
     } else if (target.matches("[data-campaign-fullscreen]")) {
@@ -1485,6 +1499,12 @@ export class CampaignShell {
       }
       return;
     }
+    if (!this.storyPresentation.hidden && !this.storySceneCard.hidden &&
+        (event.code === "Space" || event.key === " " || event.code === "Enter" || event.key === "Enter")) {
+      event.preventDefault();
+      if (!event.repeat) this.tryContinueStory();
+      return;
+    }
     if (!this.canControl() || event.repeat) return;
     const interactive = event.target instanceof Element && event.target.closest("button, a, input") !== null;
     if (interactive) return;
@@ -1535,6 +1555,15 @@ export class CampaignShell {
   private readonly handleResize = (): void => {
     this.updateNarrowState();
   };
+
+  private tryContinueStory(): void {
+    const sceneId = this.storyContinueButton.dataset.sceneId;
+    const presentationId = this.storyContinueButton.dataset.presentationId;
+    if (sceneId === undefined || presentationId === undefined ||
+        !this.storyContinuationGate.consume(presentationId)) return;
+    this.storyContinueButton.disabled = true;
+    this.callbacks.onStoryContinue(sceneId);
+  }
 }
 
 export default CampaignShell;

@@ -95,7 +95,7 @@ describe("player-paced story presentation", () => {
 
   it("keeps controls in the top HUD and removes visible bottom gameplay text", () => {
     expect(formatStoryControlsHud("epoch_1.training"))
-      .toBe("Skok: tap/Spacja · Ślizg: ↓");
+      .toBe("Skok: tap/Spacja · Ślizg: ↓/S");
     expect(formatStoryControlsHud("epoch_2.quality_series")).toBeNull();
     expect(campaignShellSource).toContain("data-campaign-hud-controls");
     expect(campaignShellSource).not.toContain("data-campaign-gameplay-hint");
