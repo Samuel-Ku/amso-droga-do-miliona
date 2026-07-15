@@ -36,12 +36,10 @@ describe("v6 player-paced story content", () => {
     expect(story).not.toContain("300 000");
   });
 
-  it("describes the B2B test as budget, remaining purchase, and seven years", () => {
-    const story = text("client.b2b_trust");
-    expect(story).toContain("10% budżetu");
-    expect(story).toContain("pozostałą część przygotowanego budżetu");
-    expect(story).toContain("siedem lat");
-    expect(story).not.toContain("siedmioletnią współprac");
+  it("keeps removed client stories out of production while acknowledging many stories", () => {
+    expect(scenes.some(({ id }) => id === "client.b2b_trust")).toBe(false);
+    expect(scenes.some(({ id }) => id === "client.creative_start")).toBe(false);
+    expect(text("story.matching_result")).toContain("wiele odrębnych historii klientów");
   });
 
   it("uses one annual PKiN comparison and removes the Boeing comparison", () => {
@@ -54,8 +52,7 @@ describe("v6 player-paced story content", () => {
   });
 
   it("does not publish unconfirmed component-test promises", () => {
-    const qualityStory = `${text("story.quality_promise")} ${text("story.quality_result")}`
-      .toLocaleLowerCase("pl");
+    const qualityStory = text("story.quality_promise").toLocaleLowerCase("pl");
     for (const unconfirmedTest of ["test ekranu", "test portów", "test baterii"]) {
       expect(qualityStory).not.toContain(unconfirmedTest);
     }

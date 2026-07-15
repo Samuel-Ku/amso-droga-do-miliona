@@ -1704,7 +1704,8 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 }
 
 .amso-campaign[data-view="story_scene"] .amso-campaign__canvas {
-  opacity: 0.24;
+  opacity: 0;
+  visibility: hidden;
 }
 
 .amso-campaign[data-view="story_scene"][data-visual-state^="intro."] .amso-campaign__canvas {
@@ -2275,6 +2276,16 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 }
 
 .amso-campaign__world-visual[data-phase="story"][data-state-id="story.first_package"] .amso-world-visual__image-stack {
+  opacity: 0;
+}
+
+/* Reading scenes use the concrete, code-owned SVG as the primary artwork.
+   Legacy atmosphere plates remain available only during active gameplay. */
+.amso-campaign__world-visual[data-phase="story"] .amso-world-visual__semantic-base {
+  opacity: 1;
+}
+
+.amso-campaign__world-visual[data-phase="story"] .amso-world-visual__image-stack {
   opacity: 0;
 }
 

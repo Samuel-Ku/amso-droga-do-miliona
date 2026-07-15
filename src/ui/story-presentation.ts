@@ -30,6 +30,8 @@ export interface CampaignStorySceneInput {
   body: string | readonly string[];
   vignette: string;
   continueLabel: string;
+  action?: string;
+  finalFrame?: string;
 }
 
 export interface CampaignStoryScene {
@@ -41,6 +43,8 @@ export interface CampaignStoryScene {
   readonly body: readonly string[];
   readonly vignette: string;
   readonly continueLabel: string;
+  readonly action?: string;
+  readonly finalFrame?: string;
 }
 
 /**
@@ -61,7 +65,9 @@ export function snapshotStoryScene(input: CampaignStorySceneInput): CampaignStor
     title: input.title,
     body,
     vignette: input.vignette,
-    continueLabel: input.continueLabel
+    continueLabel: input.continueLabel,
+    ...(input.action === undefined ? {} : { action: input.action }),
+    ...(input.finalFrame === undefined ? {} : { finalFrame: input.finalFrame })
   });
 }
 
@@ -154,7 +160,7 @@ export function formatStoryObjectiveHud(
       return `${prefix("epoch_3.matching_creative")}Wyzwanie Dopasowania · klientka kreatywna · ` +
         `${objectives.epoch3.creative.collected}/${objectives.epoch3.creative.target}`;
     case "epoch_3.matching_growth":
-      return `${prefix("epoch_3.matching_growth")}Wyzwanie Dopasowania · rozwój firmy · SERIA ×` +
+      return `${prefix("epoch_3.matching_growth")}Rozwój Firmy · wyposażenie zespołu · SERIA ×` +
         `${objectives.epoch3.growth.bestCombo}/${objectives.epoch3.growth.target}`;
     case "epoch_3.matching_trust":
       return `${prefix("epoch_3.matching_trust")}Wyzwanie Dopasowania · zespół B2B · czysta seria ` +

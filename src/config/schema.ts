@@ -48,9 +48,9 @@ const STORY_VIGNETTES: readonly StoryVignette[] = [
   "delivery-map", "million-counter", "million-wave", "million-package", "thank-you"
 ];
 const CANONICAL_SCENE_ORDER = [
-  "story.first_package", "story.order_backlog", "story.quality_promise", "story.quality_result",
-  "story.first_process", "client.creative_start", "client.business_growth", "client.b2b_trust",
-  "story.matching_result", "story.scale", "story.order_peak_result", "story.million_approach", "challenge.million_wave",
+  "story.first_package", "story.order_backlog", "story.quality_promise",
+  "client.business_growth", "story.matching_result", "story.scale",
+  "story.million_approach", "challenge.million_wave",
   "story.million_finale", "story.challenge_handoff"
 ] as const;
 const CANONICAL_SEQUENCE = [
@@ -434,7 +434,7 @@ function parseStory(value: unknown): StoryConfig | null {
   const scenes = value.scenes.map(parseScene);
   const sequence = value.sequence.map(parseSequenceStep);
   const epochs = value.epochs.map(parseEpoch);
-  if (scenes.length !== 15 || scenes.some((scene) => scene === null) ||
+  if (scenes.length !== CANONICAL_SCENE_ORDER.length || scenes.some((scene) => scene === null) ||
       sequence.length === 0 || sequence.some((step) => step === null) ||
       epochs.length !== 5 || epochs.some((epoch) => epoch === null)) return null;
   const typedScenes = scenes as StorySceneConfig[];

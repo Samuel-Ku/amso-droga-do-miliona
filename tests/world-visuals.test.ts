@@ -73,14 +73,32 @@ describe("world visual continuity", () => {
     );
   });
 
-  it("keeps the confirmed annual device figures in the scale background", () => {
+  it("keeps the confirmed scale figures in editable story copy", () => {
+    const scale = productionConfig.story.scenes.find(({ id }) => id === "story.scale");
+    const copy = JSON.stringify(scale);
+    for (const fact of ["28 000", "240", "PKiN", "rok"]) expect(copy).toContain(fact);
+  });
+
+  it("uses concrete story objects instead of abstract geometry", () => {
     const semanticSvg = readFileSync(
       new URL("../src/visuals/semantic-world-svg.ts", import.meta.url),
       "utf8"
     );
-    for (const fact of ["41 tys. PC", "76 tys. notebooków", "40 tys. monitorów", "28 tys. telefonów"]) {
-      expect(semanticSvg).toContain(fact);
+    for (const layer of [
+      "receiving-dock", "inspection-bench", "packing-table", "dispatch-door",
+      "quality-technician", "same-laptop", "shipping-box",
+      "same-client", "first-laptop", "expanded-office",
+      "phone-tower", "pkin-silhouette", "warehouse-team",
+      "millionth-package", "amso-team", "challenge-shield"
+    ]) {
+      expect(semanticSvg).toContain(`data-editorial-layer="${layer}"`);
     }
+    expect(semanticSvg.toLocaleLowerCase("pl")).not.toContain("boeing");
+    const nonCounterCopy = semanticSvg.replaceAll(
+      /<text data-world-counter[\s\S]*?<\/text>/gu,
+      ""
+    );
+    expect(nonCounterCopy).not.toContain("<text");
   });
 
   it("keeps consecutive service play segments inside one evolving world", () => {
@@ -103,7 +121,7 @@ describe("world visual continuity", () => {
     expect(director.snapshot.transitionPending).toBe(true);
 
     director.advance(0, true);
-    expect(director.snapshot.stateId).toBe("story.first_process");
+    expect(director.snapshot.stateId).toBe("epoch_1.resolve");
     expect(director.snapshot.worldElapsedSeconds).toBe(0);
   });
 
@@ -127,9 +145,9 @@ describe("world visual continuity", () => {
     }
     expect(seen).toEqual([
       "story.first_package",
-      "story.first_process",
+      "epoch_1.resolve",
       "epoch_2.resolve",
-      "client.b2b_trust",
+      "client.business_growth",
       "story.scale",
       "challenge.million_wave",
       "story.million_finale",

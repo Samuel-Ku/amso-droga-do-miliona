@@ -311,7 +311,13 @@ export class CampaignController {
         title: update.scene.title,
         body: update.scene.body,
         vignette: update.scene.vignette,
-        continueLabel: update.scene.continueLabel
+        continueLabel: update.scene.continueLabel,
+        ...(update.sceneAction === null || update.sceneAction === undefined
+          ? {}
+          : { action: update.sceneAction }),
+        ...(update.sceneFinalFrame === null || update.sceneFinalFrame === undefined
+          ? {}
+          : { finalFrame: update.sceneFinalFrame })
       });
       return;
     }

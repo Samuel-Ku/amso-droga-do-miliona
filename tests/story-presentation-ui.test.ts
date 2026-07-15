@@ -214,10 +214,10 @@ describe("player-paced story presentation", () => {
       .toContain("background: rgb(250 247 240 / 8%)");
   });
 
-  it("removes the runner from the three intro cards and keeps it quiet later", () => {
+  it("removes the runner from every reading card", () => {
     expect(campaignCss).toContain('[data-view="story_scene"] .amso-campaign__canvas');
-    expect(campaignCss).toContain('[data-visual-state^="intro."] .amso-campaign__canvas');
-    expect(campaignCss).toContain("opacity: 0.24");
+    expect(campaignCss).toContain("visibility: hidden");
+    expect(campaignCss).toContain('[data-phase="story"] .amso-world-visual__image-stack');
   });
 
   it("enforces the approved 390 px minimum viewport", () => {

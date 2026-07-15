@@ -38,6 +38,8 @@ function showScene(shell: CampaignShell, presentationId = "story.client:budget")
     body: "Klient rozpoczynał działalność.",
     vignette: "client",
     continueLabel: "Dalej",
+    action: "Klient przekazuje budżet pracownikowi AMSO.",
+    finalFrame: "Ten sam klient siedzi przy biurku obok pierwszego laptopa.",
   });
   const button = document.querySelector<HTMLButtonElement>("[data-campaign-story-continue]");
   if (button === null) throw new Error("Missing story continue button");
@@ -106,6 +108,18 @@ describe("story input safety gate", () => {
     expect(button.disabled).toBe(true);
     vi.advanceTimersByTime(1);
     expect(button.disabled).toBe(false);
+    shell.destroy();
+  });
+
+  it("exposes the main action and final frame to assistive technology", () => {
+    const { shell } = createShell();
+    showScene(shell);
+    const description = document.querySelector("[data-campaign-story-visual-description]");
+
+    expect(description?.textContent).toContain("Klient przekazuje budżet");
+    expect(description?.textContent).toContain("Ten sam klient siedzi przy biurku");
+    expect(document.querySelector("[data-campaign-story-scene]")?.getAttribute("aria-describedby"))
+      .toContain("amso-campaign-story-visual-description");
     shell.destroy();
   });
 

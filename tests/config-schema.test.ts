@@ -113,7 +113,7 @@ describe("runner config v5 story validation", () => {
     expect(result.data.story.speedStartMultiplier).toBe(0.8);
     expect(result.data.story.speedMaxMultiplier).toBe(1.15);
     expect(result.data.story.resumeCountdownSeconds).toBe(3);
-    expect(result.data.story.scenes).toHaveLength(15);
+    expect(result.data.story.scenes).toHaveLength(10);
     expect(result.data.story.scenes[0]?.id).toBe("story.first_package");
     expect(result.data.story.scenes.at(-1)?.id).toBe("story.challenge_handoff");
     expect(result.data.story.scenes.at(-1)?.continueLabel)

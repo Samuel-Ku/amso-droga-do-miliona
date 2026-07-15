@@ -273,42 +273,6 @@ const WORLD_STATE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze(
     runnerPresence: "quiet"
   },
   {
-    stateId: "epoch_3.people",
-    chapter: "epoch_3",
-    worldId: "client-paths",
-    worldProgress: 0.08,
-    copyPlacement: "left",
-    focalPoint: { x: 0.67, y: 0.52 },
-    readingCamera: camera(0.58, 0.5, 1),
-    gameCamera: camera(0.5, 0.6, 1.05),
-    crops: crops("63% 52%", "56% 52%", "54% 50%"),
-    motifs: ["three-client-paths", "anonymous-figures", "old-laptop"],
-    visualEvent: "one-trusted-route-branches-into-three-plans",
-    reveal: "three-paths-unfold-from-one-laptop",
-    revealMotion: "branch",
-    soundCue: "laptop-start",
-    fallbackId: "fallback-epoch3-people",
-    runnerPresence: "quiet"
-  },
-  {
-    stateId: "epoch_3.designer",
-    chapter: "epoch_3",
-    worldId: "client-paths",
-    worldProgress: 0.32,
-    copyPlacement: "right",
-    focalPoint: { x: 0.2, y: 0.59 },
-    readingCamera: camera(0.3, 0.54, 1.04),
-    gameCamera: camera(0.5, 0.6, 1.05),
-    crops: crops("23% 56%", "40% 54%", "42% 50%"),
-    motifs: ["creative-desk", "old-laptop", "anonymous-hands"],
-    visualEvent: "creative-tools-arrive-around-the-first-laptop",
-    reveal: "a-blank-project-page-opens-on-the-desk",
-    revealMotion: "open",
-    soundCue: "laptop-start",
-    fallbackId: "fallback-epoch3-designer",
-    runnerPresence: "quiet"
-  },
-  {
     stateId: "epoch_3.business",
     chapter: "epoch_3",
     worldId: "client-paths",
@@ -336,9 +300,9 @@ const WORLD_STATE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze(
     readingCamera: camera(0.7, 0.52, 1.03),
     gameCamera: camera(0.5, 0.6, 1.05),
     crops: crops("77% 54%", "62% 53%", "58% 50%"),
-    motifs: ["long-trust", "repeated-orders", "reunited-route"],
-    visualEvent: "seven-step-order-loop-closes-into-trust",
-    reveal: "repeated-order-tags-light-one-after-another",
+    motifs: ["separate-clients", "equipment-sets", "dispatch-bench"],
+    visualEvent: "three-separate-orders-reach-one-dispatch-bench",
+    reveal: "three-equipment-sets-arrive-one-after-another",
     revealMotion: "sequence",
     soundCue: "scanner",
     fallbackId: "fallback-epoch3-b2b",
@@ -354,9 +318,9 @@ const WORLD_STATE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze(
     readingCamera: camera(0.61, 0.48, 1.02),
     gameCamera: camera(0.5, 0.6, 1.05),
     crops: crops("68% 48%", "58% 50%", "56% 50%"),
-    motifs: ["warehouse-growth", "team", "conveyors"],
-    visualEvent: "warehouse-racks-rise-into-a-three-thousand-square-metre-system",
-    reveal: "racks-conveyors-and-team-appear-in-depth",
+    motifs: ["phone-tower", "pkin-silhouette", "warehouse-team"],
+    visualEvent: "phones-build-a-tower-beside-the-pkin-silhouette",
+    reveal: "phones-and-the-warehouse-team-appear-in-depth",
     revealMotion: "rise",
     soundCue: "conveyor",
     fallbackId: "fallback-epoch4-scale",
@@ -372,9 +336,9 @@ const WORLD_STATE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze(
     readingCamera: camera(0.39, 0.5, 1.02),
     gameCamera: camera(0.5, 0.6, 1.05),
     crops: crops("34% 52%", "46% 52%", "46% 50%"),
-    motifs: ["phone-height", "aircraft-mass", "product-stream"],
-    visualEvent: "phones-and-computers-form-physical-scale-comparisons",
-    reveal: "comparison-objects-balance-and-stack",
+    motifs: ["packing-zones", "package-stream", "warehouse-team"],
+    visualEvent: "packages-fill-separate-packing-and-dispatch-zones",
+    reveal: "packages-align-and-stack-inside-each-working-zone",
     revealMotion: "balance",
     soundCue: "scanner",
     fallbackId: "fallback-epoch4-numbers",
@@ -492,30 +456,23 @@ function editorialScene(
   };
 }
 
-/** The fifteen editorial stops approved for the clearly attributed story. */
+/** The ten production story scenes approved for the clearly attributed story. */
 export const CAMPAIGN_SCENE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze([
   editorialScene("intro.ready", "story.first_package", "prologue"),
   editorialScene("epoch_1.challenge", "story.order_backlog", "epoch_1"),
   editorialScene("epoch_2.setup", "story.quality_promise", "epoch_2"),
-  editorialScene("epoch_2.resolve", "story.quality_result", "epoch_2", {
-    visualEvent: "checked-device-enters-its-shipping-box",
-    reveal: "the-closed-package-moves-toward-dispatch",
-    revealMotion: "depart"
-  }),
-  editorialScene("epoch_1.resolve", "story.first_process", "epoch_1"),
-  editorialScene("epoch_3.designer", "client.creative_start", "epoch_3"),
   editorialScene("epoch_3.business", "client.business_growth", "epoch_3"),
-  editorialScene("epoch_3.b2b", "client.b2b_trust", "epoch_3"),
   editorialScene("epoch_3.b2b", "story.matching_result", "epoch_3", {
+    motifs: ["separate-clients", "equipment-sets", "dispatch-bench"],
     visualEvent: "three-client-orders-align-on-one-dispatch-bench",
     reveal: "each-order-keeps-its-own-equipment-set",
     revealMotion: "match"
   }),
-  editorialScene("epoch_4.scale", "story.scale", "epoch_4"),
-  editorialScene("epoch_4.resolve", "story.order_peak_result", "epoch_4", {
-    visualEvent: "completed-orders-fill-each-dispatch-zone",
-    reveal: "the-team-opens-a-clear-route-through-all-stations",
-    revealMotion: "handoff"
+  editorialScene("epoch_4.scale", "story.scale", "epoch_4", {
+    motifs: ["phone-tower", "pkin-silhouette", "warehouse-team"],
+    visualEvent: "phones-build-a-tower-beside-the-pkin-silhouette",
+    reveal: "phones-rise-on-the-same-baseline-as-pkin",
+    revealMotion: "balance"
   }),
   editorialScene("epoch_5.approach", "story.million_approach", "epoch_5"),
   editorialScene("epoch_5.wave", "challenge.million_wave", "epoch_5"),
@@ -551,42 +508,18 @@ export function trySceneVisualState(stateId: string): CampaignSceneVisualState |
 
 const STORY_PAGE_VISUAL_STATES: Readonly<Record<string, string>> = Object.freeze({
   "story.first_package:game-purpose": "intro.ready",
-  "story.first_package:safe-reading": "intro.ready",
-  "story.first_package:small-beginning": "intro.beginning",
   "story.first_package:first-hand-packed": "intro.promise",
-  "story.order_backlog:backlog-grows": "epoch_1.challenge",
   "story.order_backlog:backlog-challenge": "epoch_1.challenge",
-  "story.first_process:order-backlog": "epoch_1.challenge",
-  "story.first_process:repeatable-process": "epoch_1.resolve",
-  "story.quality_promise:service-arrival": "epoch_2.setup",
-  "story.quality_promise:service-departure": "epoch_2.resolve",
-  "story.quality_result:checked-mark": "epoch_2.resolve",
-  "story.quality_result:prepared-departure": "story.quality_result",
-  "client.creative_start:limited-budget": "epoch_3.people",
-  "client.creative_start:first-project": "epoch_3.designer",
-  "client.creative_start:portfolio": "epoch_3.business",
-  "client.creative_start:grown-workspace": "client.creative_start",
+  "story.quality_promise:quality-process": "epoch_2.setup",
   "client.business_growth:new-business": "epoch_3.people",
   "client.business_growth:three-hundred": "epoch_3.designer",
   "client.business_growth:one-year": "epoch_3.business",
   "client.business_growth:hundred-thousand": "client.business_growth",
-  "client.b2b_trust:purchase-plan": "epoch_3.people",
-  "client.b2b_trust:ten-percent": "epoch_3.b2b",
-  "client.b2b_trust:work-test": "client.b2b_trust",
-  "client.b2b_trust:remaining-purchase": "epoch_3.business",
-  "client.b2b_trust:seven-years": "client.b2b_trust",
-  "story.scale:phone-source": "epoch_4.scale",
+  "story.matching_result:many-plans": "story.matching_result",
   "story.scale:phone-tower": "epoch_4.numbers",
-  "story.scale:computer-weight": "epoch_4.scale",
-  "story.scale:boeing-comparison": "epoch_4.numbers",
-  "story.scale:people-behind-scale": "epoch_4.resolve",
   "story.million_approach:counter-source": "epoch_5.approach",
-  "story.million_approach:human-plans": "story.million_approach",
   "challenge.million_wave:two-goals": "epoch_5.wave",
-  "challenge.million_wave:safe-finale": "challenge.million_wave",
   "story.million_finale:million-celebration": "final.moments",
-  "story.million_finale:road-continues": "final.thanks",
-  "story.challenge_handoff:score-stays": "final.moments",
   "story.challenge_handoff:rules-change": "final.thanks"
 });
 
@@ -628,23 +561,11 @@ const PLAY_VISUAL_RANGES: Readonly<Record<string, PlayVisualRange>> = {
     progressStart: 0.72,
     progressEnd: 1
   },
-  "epoch_3.matching_creative": {
-    fromStateId: "epoch_3.designer",
-    toStateId: "epoch_3.business",
-    progressStart: 0.32,
-    progressEnd: 0.5
-  },
   "epoch_3.matching_growth": {
     fromStateId: "epoch_3.business",
     toStateId: "epoch_3.b2b",
     progressStart: 0.5,
     progressEnd: 0.72
-  },
-  "epoch_3.matching_trust": {
-    fromStateId: "epoch_3.b2b",
-    toStateId: "epoch_3.b2b",
-    progressStart: 0.72,
-    progressEnd: 0.9
   },
   "epoch_4.order_peak": {
     fromStateId: "epoch_4.numbers",
@@ -700,9 +621,9 @@ export function resolvePlaySegmentVisual(
 export const CHALLENGE_WORLD_SECONDS = 45;
 export const CHALLENGE_WORLD_STATES = Object.freeze([
   "story.first_package",
-  "story.first_process",
+  "epoch_1.resolve",
   "epoch_2.resolve",
-  "client.b2b_trust",
+  "client.business_growth",
   "story.scale",
   "challenge.million_wave",
   "story.million_finale"
@@ -759,29 +680,48 @@ export class ChallengeWorldDirector {
   }
 }
 
-export function validateSceneManifest(sceneIds: readonly string[]): string[] {
+const APPROVED_OBJECT_ROLES = new Set(
+  CAMPAIGN_SCENE_MANIFEST.flatMap(({ motifs }) => motifs)
+);
+
+export function validateSceneManifest(
+  sceneIds: readonly string[],
+  states: readonly CampaignSceneVisualState[] = CAMPAIGN_SCENE_MANIFEST,
+  worlds: readonly CampaignWorldDefinition[] = CAMPAIGN_WORLDS
+): string[] {
   const errors: string[] = [];
-  const stateIds = CAMPAIGN_SCENE_MANIFEST.map(({ stateId }) => stateId);
-  if (CAMPAIGN_WORLDS.length !== 7) errors.push("world_count");
-  if (CAMPAIGN_SCENE_MANIFEST.length !== 15) errors.push("state_count");
+  const stateIds = states.map(({ stateId }) => stateId);
+  const suppliedWorldIds = new Set(worlds.map(({ worldId }) => worldId));
+  if (worlds.length !== 7) errors.push("world_count");
+  if (states.length !== 10) errors.push("state_count");
   if (new Set(stateIds).size !== stateIds.length) errors.push("duplicate_state_id");
   if (sceneIds.length !== stateIds.length ||
       sceneIds.some((sceneId, index) => sceneId !== stateIds[index])) {
     errors.push("scene_state_mismatch");
   }
-  if (new Set(CAMPAIGN_SCENE_MANIFEST.map(({ visualEvent }) => visualEvent)).size !==
-      CAMPAIGN_SCENE_MANIFEST.length) {
+  if (new Set(states.map(({ visualEvent }) => visualEvent)).size !== states.length) {
     errors.push("duplicate_visual_event");
   }
-  if (new Set(CAMPAIGN_SCENE_MANIFEST.map(({ revealMotion }) => revealMotion)).size !==
-      CAMPAIGN_SCENE_MANIFEST.length) {
+  if (new Set(states.map(({ revealMotion }) => revealMotion)).size !== states.length) {
     errors.push("duplicate_reveal_motion");
   }
-  for (const state of CAMPAIGN_SCENE_MANIFEST) {
-    if (!worldById.has(state.worldId)) errors.push(`unknown_world:${state.stateId}`);
+  for (const state of states) {
+    if (!suppliedWorldIds.has(state.worldId)) errors.push(`unknown_world:${state.stateId}`);
     if (state.motifs.length === 0) errors.push(`missing_motif:${state.stateId}`);
+    for (const motif of state.motifs) {
+      if (!APPROVED_OBJECT_ROLES.has(motif)) errors.push(`unknown_critical_layer:${motif}`);
+    }
+    if (!state.readingCamera || !Number.isFinite(state.readingCamera.zoom) ||
+        !state.crops?.portrait) {
+      errors.push(`missing_mobile_camera:${state.stateId}`);
+    }
     if (!state.fallbackId.startsWith("fallback-")) {
       errors.push(`missing_fallback:${state.stateId}`);
+    }
+  }
+  for (const world of worlds) {
+    if (!states.some(({ worldId }) => worldId === world.worldId)) {
+      errors.push(`orphan_world:${world.worldId}`);
     }
   }
   return errors;

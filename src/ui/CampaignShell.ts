@@ -484,6 +484,7 @@ export class CampaignShell {
   private readonly storySceneEyebrow: HTMLElement;
   private readonly storySceneTitle: HTMLElement;
   private readonly storySceneBody: HTMLElement;
+  private readonly storyVisualDescription: HTMLElement;
   private readonly storyContinueButton: HTMLButtonElement;
   private readonly storyCountdown: HTMLElement;
   private readonly storyCountdownLabel: HTMLElement;
@@ -728,11 +729,13 @@ export class CampaignShell {
               role="dialog"
               aria-modal="true"
               aria-labelledby="amso-campaign-story-scene-title"
+              aria-describedby="amso-campaign-story-scene-body amso-campaign-story-visual-description"
             >
               <img class="amso-campaign__story-final-lockup" src="${MAIN_LOCKUP_PATH}" alt="" width="1600" height="1460" />
               <p class="amso-campaign__story-scene-eyebrow" data-campaign-story-scene-eyebrow hidden></p>
               <h2 id="amso-campaign-story-scene-title" data-campaign-story-scene-title></h2>
-              <div class="amso-campaign__story-scene-body" data-campaign-story-scene-body tabindex="0"></div>
+              <div id="amso-campaign-story-scene-body" class="amso-campaign__story-scene-body" data-campaign-story-scene-body tabindex="0"></div>
+              <p id="amso-campaign-story-visual-description" class="amso-campaign__sr-only" data-campaign-story-visual-description></p>
               <button
                 class="amso-campaign__button amso-campaign__button--primary amso-campaign__story-continue"
                 type="button"
@@ -783,6 +786,7 @@ export class CampaignShell {
     this.storySceneEyebrow = requiredElement(this.root, "[data-campaign-story-scene-eyebrow]");
     this.storySceneTitle = requiredElement(this.root, "[data-campaign-story-scene-title]");
     this.storySceneBody = requiredElement(this.root, "[data-campaign-story-scene-body]");
+    this.storyVisualDescription = requiredElement(this.root, "[data-campaign-story-visual-description]");
     this.storyContinueButton = requiredElement(this.root, "[data-campaign-story-continue]");
     this.storyCountdown = requiredElement(this.root, "[data-campaign-story-countdown]");
     this.storyCountdownLabel = requiredElement(this.root, "[data-campaign-story-countdown-label]");
@@ -925,6 +929,9 @@ export class CampaignShell {
       return paragraph;
     }));
     this.storySceneBody.scrollTop = 0;
+    this.storyVisualDescription.textContent = [scene.action, scene.finalFrame]
+      .filter(Boolean)
+      .join(" ");
     this.storyContinueButton.textContent = scene.continueLabel;
     this.storyContinueButton.dataset.sceneId = scene.sceneId;
     this.storyContinueButton.dataset.presentationId = scene.presentationId;
@@ -937,7 +944,9 @@ export class CampaignShell {
           this.storyContinuationGate.isLocked(scene.presentationId)) return;
       this.storyContinueButton.disabled = false;
     }, lockDurationMs);
-    this.announce([scene.eyebrow, scene.title, ...scene.body].filter(Boolean).join(". "));
+    this.announce([
+      scene.eyebrow, scene.title, ...scene.body, scene.action, scene.finalFrame
+    ].filter(Boolean).join(". "));
   }
 
   /** Gives the world camera its full 720 ms hand-off before the 3–2–1 starts. */

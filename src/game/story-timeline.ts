@@ -37,6 +37,8 @@ export interface StoryTimelineSnapshot {
   scenePageId?: string | null;
   scenePageIndex?: number;
   scenePageCount?: number;
+  sceneAction?: string | null;
+  sceneFinalFrame?: string | null;
   playSegment: Readonly<StoryPlayStepConfig> | null;
   activeBeats: readonly StoryBeatConfig[];
   trustCorridor: boolean;
@@ -213,6 +215,8 @@ export class StoryTimeline {
       scenePageId: scenePage?.id ?? null,
       scenePageIndex: scenePage === null ? 0 : this.scenePageIndex,
       scenePageCount: baseScene?.steps?.length ?? 1,
+      sceneAction: scenePage?.action ?? null,
+      sceneFinalFrame: scenePage?.finalFrame ?? null,
       playSegment,
       activeBeats: [],
       trustCorridor,

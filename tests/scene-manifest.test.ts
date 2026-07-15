@@ -10,22 +10,22 @@ import {
 } from "../src/visuals/scene-manifest";
 
 describe("campaign visual scene manifest", () => {
-  it("is the one-to-one visual source for all fifteen narrative cards", () => {
+  it("is the one-to-one visual source for all ten production scenes", () => {
     const sceneIds = productionConfig.story.scenes.map(({ id }) => id);
     const stateIds = CAMPAIGN_SCENE_MANIFEST.map(({ stateId }) => stateId);
 
     expect(CAMPAIGN_WORLDS).toHaveLength(7);
-    expect(CAMPAIGN_SCENE_MANIFEST).toHaveLength(15);
-    expect(new Set(stateIds).size).toBe(15);
+    expect(CAMPAIGN_SCENE_MANIFEST).toHaveLength(10);
+    expect(new Set(stateIds).size).toBe(10);
     expect(stateIds).toEqual(sceneIds);
     expect(validateSceneManifest(sceneIds)).toEqual([]);
   });
 
   it("gives every card unique art direction and a semantic fallback", () => {
     expect(new Set(CAMPAIGN_SCENE_MANIFEST.map(({ visualEvent }) => visualEvent)).size)
-      .toBe(15);
+      .toBe(10);
     expect(new Set(CAMPAIGN_SCENE_MANIFEST.map(({ revealMotion }) => revealMotion)).size)
-      .toBe(15);
+      .toBe(10);
     for (const state of CAMPAIGN_SCENE_MANIFEST) {
       expect(state.motifs.length).toBeGreaterThan(0);
       expect(state.fallbackId).toMatch(/^fallback-/u);
@@ -75,5 +75,30 @@ describe("campaign visual scene manifest", () => {
     expect(new Set(CHALLENGE_WORLD_STATES).size).toBe(7);
     expect(CHALLENGE_WORLD_STATES.map((stateId) => sceneVisualState(stateId).worldId))
       .toEqual(CAMPAIGN_WORLDS.map(({ worldId }) => worldId));
+  });
+
+  it("rejects missing states, orphan worlds, missing mobile cameras and unknown critical layers", () => {
+    const sceneIds = productionConfig.story.scenes.map(({ id }) => id);
+    expect(validateSceneManifest(sceneIds.slice(1))).toContain("scene_state_mismatch");
+
+    const withoutFinale = CAMPAIGN_SCENE_MANIFEST.filter(
+      ({ worldId }) => worldId !== "million-finale"
+    );
+    expect(validateSceneManifest(
+      withoutFinale.map(({ stateId }) => stateId),
+      withoutFinale
+    )).toContain("orphan_world:million-finale");
+
+    const missingMobile = CAMPAIGN_SCENE_MANIFEST.map((state, index) => index === 0
+      ? { ...state, readingCamera: undefined }
+      : state) as unknown as typeof CAMPAIGN_SCENE_MANIFEST;
+    expect(validateSceneManifest(sceneIds, missingMobile))
+      .toContain("missing_mobile_camera:story.first_package");
+
+    const unknownLayer = CAMPAIGN_SCENE_MANIFEST.map((state, index) => index === 0
+      ? { ...state, motifs: ["mystery-square"] }
+      : state);
+    expect(validateSceneManifest(sceneIds, unknownLayer))
+      .toContain("unknown_critical_layer:mystery-square");
   });
 });
