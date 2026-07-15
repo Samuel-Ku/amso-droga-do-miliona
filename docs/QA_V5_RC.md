@@ -11,7 +11,7 @@ npm run build
 npm run build:single
 ```
 
-Stan z 2026-07-15: typecheck, 175 testów, build produkcyjny i single-file build zakończone powodzeniem.
+Stan z 2026-07-15: typecheck, 176 testów, build produkcyjny i single-file build zakończone powodzeniem.
 
 ## Macierz viewportów
 

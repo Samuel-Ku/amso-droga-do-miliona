@@ -81,6 +81,11 @@ const PROCEDURAL_SOURCE_PATTERN = /^procedural:[a-z0-9][a-z0-9_.-]{0,63}$/;
 const IMAGE_SOURCE_PATTERN = /\.(?:avif|gif|jpe?g|png|svg|webp)$/i;
 const AUDIO_SOURCE_PATTERN = /\.(?:aac|m4a|mp3|ogg|wav)$/i;
 const EMBEDDED_AVIF_PREFIX = "data:image/avif;base64,";
+const EMBEDDED_SVG_PREFIX = "data:image/svg+xml;base64,";
+const EMBEDDED_IMAGE_PREFIXES = [
+  EMBEDDED_AVIF_PREFIX,
+  EMBEDDED_SVG_PREFIX
+] as const;
 export const EMBEDDED_AVIF_MAX_LENGTH =
   embeddedResourcePolicy.maxEmbeddedAvifDataUriLength;
 const BASE64_PAYLOAD_PATTERN = /^[A-Za-z0-9+/]+={0,2}$/;
@@ -168,12 +173,16 @@ export function isAllowedCampaignResourceSource(
   if (
     type === "image" &&
     allowEmbeddedImageSources &&
-    source.startsWith(EMBEDDED_AVIF_PREFIX) &&
     source.length <= EMBEDDED_AVIF_MAX_LENGTH
   ) {
-    const payload = source.slice(EMBEDDED_AVIF_PREFIX.length);
-    return payload.length >= 4 && payload.length % 4 === 0 &&
-      BASE64_PAYLOAD_PATTERN.test(payload);
+    const prefix = EMBEDDED_IMAGE_PREFIXES.find((candidate) =>
+      source.startsWith(candidate)
+    );
+    if (prefix !== undefined) {
+      const payload = source.slice(prefix.length);
+      return payload.length >= 4 && payload.length % 4 === 0 &&
+        BASE64_PAYLOAD_PATTERN.test(payload);
+    }
   }
   const extensionMatches = type === "image"
     ? IMAGE_SOURCE_PATTERN.test(source)

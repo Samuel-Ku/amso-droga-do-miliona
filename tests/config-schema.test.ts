@@ -285,6 +285,22 @@ describe("runner config v5 story validation", () => {
     expect(parseRunnerConfig(embedded, trustedOptions)).not.toBeNull();
   });
 
+  it("accepts the embedded SVG world used by the trusted single-file build", () => {
+    const embedded = validConfig();
+    const bundles = ((embedded.assets as Record<string, unknown>)
+      .bundles as Array<Record<string, unknown>>);
+    const svg = bundles
+      .flatMap((bundle) => bundle.resources as Array<Record<string, unknown>>)
+      .find((resource) => typeof resource.source === "string" &&
+        resource.source.endsWith(".svg"));
+    if (!svg) throw new Error("production config should contain an SVG resource");
+    svg.source = "data:image/svg+xml;base64,PHN2Zy8+";
+
+    expect(parseRunnerConfig(embedded)).toBeNull();
+    expect(parseRunnerConfig(embedded, { allowEmbeddedImageSources: true }))
+      .not.toBeNull();
+  });
+
   it("rejects unsafe embedded resources even for the trusted single-file build", () => {
     const trustedOptions: RunnerConfigValidationOptions & {
       allowEmbeddedImageSources: true;
@@ -307,6 +323,10 @@ describe("runner config v5 story validation", () => {
 
     expect(parseRunnerConfig(
       withFirstImage("data:image/avif;base64,***="),
+      trustedOptions
+    )).toBeNull();
+    expect(parseRunnerConfig(
+      withFirstImage("data:image/svg+xml;base64,***="),
       trustedOptions
     )).toBeNull();
     expect(parseRunnerConfig(
