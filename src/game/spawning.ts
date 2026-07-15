@@ -81,6 +81,14 @@ export interface AuthoredRewardWaveOptions {
 
 export const MIN_AUTHORED_REACTION_SECONDS = 1.6;
 
+/** Keeps authored reward patterns reachable as challenge speed increases. */
+export function authoredRewardSpawnX(speed: number, preferredSpawnX: number): number {
+  const safeSpeed = Math.max(1, speed);
+  const minimumSpawnX = RUNNER_X + RUNNER_WIDTH +
+    safeSpeed * MIN_AUTHORED_REACTION_SECONDS;
+  return Math.max(preferredSpawnX, Math.ceil(minimumSpawnX));
+}
+
 export interface SafeCollectiblePlacement {
   preferredX: number;
   y: number;

@@ -66,13 +66,13 @@ export function getChallengeDifficulty(
   settings: ChallengeDifficultySettings
 ): Difficulty {
   const seconds = Math.max(0, elapsedSeconds);
-  const start = Math.max(0.8, Math.min(1.6, settings.speedStartMultiplier));
-  const maximum = Math.max(start, Math.min(1.8, settings.speedMaxMultiplier));
-  const multiplier = lerp(start, maximum, seconds / 120);
+  const start = Math.max(0.8, Math.min(1.8, settings.speedStartMultiplier));
+  const maximum = Math.max(start, Math.min(2.5, settings.speedMaxMultiplier));
+  const multiplier = lerp(start, maximum, seconds / 75);
   return {
     level: Math.min(9, 1 + Math.floor(seconds / 15)),
     speed: BASE_SPEED * multiplier,
     speedMultiplier: multiplier,
-    minimumGapSeconds: lerp(2.05, 1.45, (multiplier - start) / Math.max(0.01, maximum - start))
+    minimumGapSeconds: lerp(2.05, 1.35, (multiplier - start) / Math.max(0.01, maximum - start))
   };
 }

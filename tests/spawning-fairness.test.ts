@@ -13,6 +13,7 @@ import { SeededRandom } from "../src/game/random";
 import {
   createBossAttackWave,
   createAuthoredRewardWave,
+  authoredRewardSpawnX,
   findSafeCollectibleX,
   FairSpawner,
   MIN_AUTHORED_REACTION_SECONDS,
@@ -24,8 +25,8 @@ import {
 import type { ObstacleModel, PackageKind } from "../src/game/types";
 
 const CHALLENGE_DIFFICULTY = {
-  speedStartMultiplier: 1.15,
-  speedMaxMultiplier: 1.55
+  speedStartMultiplier: 1.3,
+  speedMaxMultiplier: 2.2
 } as const;
 const SPAWN_X = 1_032;
 const PACKAGE_SIZE = 30;
@@ -78,7 +79,7 @@ describe("challenge spawning fairness", () => {
 
   it("keeps every generated parcel hitbox separate from its paired obstacle", () => {
     for (const narrative of [false, true]) {
-      for (const speed of [280 * 0.8, 280 * 1.15, 280 * 1.55]) {
+      for (const speed of [280 * 0.85, 280 * 1.35, 280 * 2.2]) {
         const difficulty = getChallengeDifficulty(0, CHALLENGE_DIFFICULTY);
         const spawner = new FairSpawner(
           new SeededRandom(Math.round(speed) + (narrative ? 1 : 0)),
@@ -146,6 +147,22 @@ describe("challenge spawning fairness", () => {
       speed: 280 * 1.15,
       rewards: [{ kind: "golden" }]
     })).toBeNull();
+  });
+
+  it("moves the challenge reward far enough right at the 2.2x speed cap", () => {
+    const speed = 280 * 2.2;
+    const spawnX = authoredRewardSpawnX(speed, SPAWN_X);
+    const wave = createAuthoredRewardWave({
+      action: "jump",
+      spawnX,
+      speed,
+      rewards: [{ kind: "golden" }]
+    });
+
+    expect(spawnX).toBeGreaterThan(SPAWN_X);
+    expect(wave).not.toBeNull();
+    expect((spawnX - (RUNNER_X + RUNNER_WIDTH)) / speed)
+      .toBeGreaterThanOrEqual(MIN_AUTHORED_REACTION_SECONDS);
   });
 
   it("marks one typed order unit without counting the surrounding reward trail as orders", () => {

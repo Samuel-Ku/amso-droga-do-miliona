@@ -110,8 +110,8 @@ describe("runner config v5 story validation", () => {
     expect(result.data.stylePath).toBe(DEFAULT_RUNNER_STYLE_PATH);
     expect(result.data.story.activeDurationSeconds).toBe(210);
     expect(result.data.story.readingSpeedMultiplier).toBe(0.3);
-    expect(result.data.story.speedStartMultiplier).toBe(0.8);
-    expect(result.data.story.speedMaxMultiplier).toBe(1.15);
+    expect(result.data.story.speedStartMultiplier).toBe(0.85);
+    expect(result.data.story.speedMaxMultiplier).toBe(1.35);
     expect(result.data.story.resumeCountdownSeconds).toBe(3);
     expect(result.data.story.scenes).toHaveLength(10);
     expect(result.data.story.scenes[0]?.id).toBe("story.first_package");

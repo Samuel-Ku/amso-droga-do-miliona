@@ -28,8 +28,8 @@ export const DEFAULT_DISABLED_RUNNER_CONFIG: Readonly<RunnerConfig> = Object.fre
   story: Object.freeze({
     activeDurationSeconds: 300,
     readingSpeedMultiplier: 0.3,
-    speedStartMultiplier: 0.8,
-    speedMaxMultiplier: 1.15,
+    speedStartMultiplier: 0.85,
+    speedMaxMultiplier: 1.35,
     resumeCountdownSeconds: 3,
     firstCompletionBonusScore: 0,
     scenes: [],
@@ -52,8 +52,8 @@ export const DEFAULT_DISABLED_RUNNER_CONFIG: Readonly<RunnerConfig> = Object.fre
   }),
   challenge: Object.freeze({
     mode: "challenge",
-    speedStartMultiplier: 1.1,
-    speedMaxMultiplier: 1.55,
+    speedStartMultiplier: 1.3,
+    speedMaxMultiplier: 2.2,
     logisticWaveMinSeconds: 45,
     logisticWaveMaxSeconds: 60,
     warrantyOneUse: true

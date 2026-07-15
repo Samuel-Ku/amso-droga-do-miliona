@@ -19,6 +19,7 @@ import { calculateScore, distanceInMeters, resolvePackageCollection } from "./sc
 import {
   activateTutorialPackages,
   activateWave,
+  authoredRewardSpawnX,
   createAuthoredRewardWave,
   createBossAttackWave,
   createObstaclePool,
@@ -788,7 +789,10 @@ export class RunnerGame implements RunnerGameApi {
         action: this.logisticWaveDirector.snapshot.patternsCompleted % 2 === 0
           ? "jump"
           : "slide",
-        spawnX: WORLD_WIDTH + GAMEPLAY.spawnPadding,
+        spawnX: authoredRewardSpawnX(
+          this.speed,
+          WORLD_WIDTH + GAMEPLAY.spawnPadding
+        ),
         speed: this.speed,
         patternIndex: this.logisticWaveDirector.snapshot.patternsCompleted,
         source: "story-reward",
@@ -805,7 +809,10 @@ export class RunnerGame implements RunnerGameApi {
       const authoredBossWave = millionThresholdActive
         ? createAuthoredRewardWave({
             action: bossCommand.kind === "overhead" ? "slide" : "jump",
-            spawnX: WORLD_WIDTH + GAMEPLAY.spawnPadding,
+            spawnX: authoredRewardSpawnX(
+              this.speed,
+              WORLD_WIDTH + GAMEPLAY.spawnPadding
+            ),
             speed: this.speed,
             patternIndex: attackIndex,
             source: "boss",
@@ -981,7 +988,10 @@ export class RunnerGame implements RunnerGameApi {
     const isBonus = this.storyObjectiveDirector.snapshot.epoch4.orders.completed;
     const wave = createAuthoredRewardWave({
       action: this.storyOrderPatternIndex % 2 === 0 ? "jump" : "slide",
-      spawnX: WORLD_WIDTH + GAMEPLAY.spawnPadding,
+      spawnX: authoredRewardSpawnX(
+        this.speed,
+        WORLD_WIDTH + GAMEPLAY.spawnPadding
+      ),
       speed: this.speed,
       patternIndex: this.storyOrderPatternIndex,
       source: "story-reward",
@@ -999,7 +1009,7 @@ export class RunnerGame implements RunnerGameApi {
     if (!routeClear) return;
     const wave = createAuthoredRewardWave({
       action: this.storyObjectivePatternIndex % 2 === 0 ? "jump" : "slide",
-      spawnX: STORY_CLIMAX_SPAWN_X,
+      spawnX: authoredRewardSpawnX(this.speed, STORY_CLIMAX_SPAWN_X),
       speed: this.speed,
       patternIndex: this.storyObjectivePatternIndex,
       source: "story-reward",

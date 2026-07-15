@@ -499,8 +499,8 @@ function parseChallenge(value: unknown): ChallengeConfig | null {
       "logisticWaveMaxSeconds", "warrantyOneUse"
     ]
   )) return null;
-  if (value.mode !== "challenge" || !finiteInRange(value.speedStartMultiplier, 0.8, 1.6) ||
-      !finiteInRange(value.speedMaxMultiplier, value.speedStartMultiplier, 1.8) ||
+  if (value.mode !== "challenge" || !finiteInRange(value.speedStartMultiplier, 0.8, 1.8) ||
+      !finiteInRange(value.speedMaxMultiplier, value.speedStartMultiplier, 2.5) ||
       !finiteInRange(value.logisticWaveMinSeconds, 30, 90) ||
       !finiteInRange(value.logisticWaveMaxSeconds, value.logisticWaveMinSeconds, 120) ||
       value.warrantyOneUse !== true) return null;

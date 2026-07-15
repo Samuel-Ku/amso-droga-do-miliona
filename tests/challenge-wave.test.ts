@@ -4,9 +4,11 @@ import { LogisticWaveDirector } from "../src/game/logistic-wave";
 
 describe("Próba Miliona pacing", () => {
   it("starts at its configured speed and never exceeds the tested cap", () => {
-    const settings = { speedStartMultiplier: 1.15, speedMaxMultiplier: 1.55 };
-    expect(getChallengeDifficulty(0, settings).speedMultiplier).toBe(1.15);
-    expect(getChallengeDifficulty(10_000, settings).speedMultiplier).toBe(1.55);
+    const settings = { speedStartMultiplier: 1.3, speedMaxMultiplier: 2.2 };
+    expect(getChallengeDifficulty(0, settings).speedMultiplier).toBe(1.3);
+    expect(getChallengeDifficulty(30, settings).speedMultiplier).toBeCloseTo(1.66);
+    expect(getChallengeDifficulty(75, settings).speedMultiplier).toBe(2.2);
+    expect(getChallengeDifficulty(10_000, settings).speedMultiplier).toBe(2.2);
   });
 
   it("announces a three-pattern logistics wave in the configured 45–60 second window", () => {

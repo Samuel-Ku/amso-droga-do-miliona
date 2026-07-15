@@ -296,12 +296,12 @@ describe("collision and scoring", () => {
 });
 
 describe("difficulty and responsive canvas", () => {
-  it("ramps the five-minute story from 0.8x to 1.15x using active play only", () => {
-    const settings = { speedStartMultiplier: 0.8, speedMaxMultiplier: 1.15 };
-    expect(getStoryDifficulty(0, 300, settings).speedMultiplier).toBe(0.8);
-    expect(getStoryDifficulty(150, 300, settings).speedMultiplier).toBeCloseTo(0.975);
-    expect(getStoryDifficulty(300, 300, settings).speedMultiplier).toBe(1.15);
-    expect(getStoryDifficulty(600, 300, settings).speedMultiplier).toBe(1.15);
+  it("ramps the story from 0.85x to 1.35x using active play only", () => {
+    const settings = { speedStartMultiplier: 0.85, speedMaxMultiplier: 1.35 };
+    expect(getStoryDifficulty(0, 210, settings).speedMultiplier).toBe(0.85);
+    expect(getStoryDifficulty(105, 210, settings).speedMultiplier).toBeCloseTo(1.1);
+    expect(getStoryDifficulty(210, 210, settings).speedMultiplier).toBe(1.35);
+    expect(getStoryDifficulty(600, 210, settings).speedMultiplier).toBe(1.35);
   });
 
   it("follows the intended speed plateaus without exceeding 1.55x", () => {
