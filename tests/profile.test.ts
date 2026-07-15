@@ -38,6 +38,7 @@ describe("PlayerProfileStore", () => {
       storyCompleted: false,
       bestChallengeScore: 0,
       bestChallengePackages: 0,
+      challengeRuns: 0,
       soundMuted: false,
       fullscreenPreference: null
     });
@@ -53,6 +54,7 @@ describe("PlayerProfileStore", () => {
       storyCompleted: false,
       bestChallengeScore: 900,
       bestChallengePackages: 7,
+      challengeRuns: 0,
       soundMuted: false,
       fullscreenPromptSeen: false,
       discoveredFactIds: ["legacy-fact"],
@@ -71,6 +73,7 @@ describe("PlayerProfileStore", () => {
       storyCompleted: false,
       bestChallengeScore: 900,
       bestChallengePackages: 7,
+      challengeRuns: 0,
       soundMuted: true,
       fullscreenPreference: null
     });
@@ -98,6 +101,7 @@ describe("PlayerProfileStore", () => {
     const restored = new PlayerProfileStore(storage);
     expect(restored.snapshot.bestChallengeScore).toBe(12_450);
     expect(restored.snapshot.bestChallengePackages).toBe(102);
+    expect(restored.snapshot.challengeRuns).toBe(2);
     expect(restored.snapshot.soundMuted).toBe(true);
     expect(restored.snapshot.fullscreenPreference).toBe("fullscreen");
   });

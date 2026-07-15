@@ -5,6 +5,7 @@ export interface PlayerProfile {
   storyCompleted: boolean;
   bestChallengeScore: number;
   bestChallengePackages: number;
+  challengeRuns: number;
   soundMuted: boolean;
   fullscreenPreference: "fullscreen" | "portrait" | null;
 }
@@ -17,6 +18,7 @@ function emptyProfile(): PlayerProfile {
     storyCompleted: false,
     bestChallengeScore: 0,
     bestChallengePackages: 0,
+    challengeRuns: 0,
     soundMuted: false,
     fullscreenPreference: null
   };
@@ -67,6 +69,7 @@ export class PlayerProfileStore {
         bestChallengePackages: Math.round(
           safeNonNegativeNumber(parsed.bestChallengePackages ?? parsed.bestPackages)
         ),
+        challengeRuns: Math.round(safeNonNegativeNumber(parsed.challengeRuns)),
         soundMuted: parsed.soundMuted === true,
         fullscreenPreference
       };
@@ -106,6 +109,7 @@ export class PlayerProfileStore {
       this.profile.bestChallengePackages,
       Math.round(safeNonNegativeNumber(packages))
     );
+    this.profile.challengeRuns += 1;
     this.write();
   }
 

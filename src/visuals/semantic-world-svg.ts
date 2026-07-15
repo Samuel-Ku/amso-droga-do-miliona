@@ -55,16 +55,13 @@ export const SEMANTIC_WORLD_SVG = `
       </g>
     </g>
 
-    <g data-world-fallback="cable-route" hidden>
-      <path d="M0 105h240v20H0zm720 0h240v20H720M48 56h139v49H48m731-56h131v56H779" fill="#c8a27b" stroke="#191919" stroke-width="6" />
-      <g fill="none" stroke="#191919" stroke-width="12" stroke-linecap="round">
-        <path d="M274 131c50 42-23 79 46 114s-27 95 52 118" />
-        <path d="M336 80c-16 92 87 60 39 145s77 72 35 139" />
-        <path d="M408 67c-52 95 82 105 22 173s73 56 35 129" />
-        <path d="M478 64v88c0 60 71 41 71 108v111" />
+    <g data-world-fallback="order-process" hidden>
+      <path d="M38 72h884v294H38z" fill="#fff" stroke="#191919" stroke-width="8" />
+      <path d="M64 118h188v205H64zm221 0h188v205H285zm221 0h188v205H506zm221 0h169v205H727z" fill="#faf7f0" stroke="#191919" stroke-width="6" />
+      <g fill="#c8a27b" stroke="#191919" stroke-width="4">
+        <path d="M81 274h58v43H81zm67-31h72v74h-72zm157 45h66v29h-66zm75-63h71v92h-71zm147 24h59v68h-59zm68-41h74v109h-74zm153 55h55v54h-55zm64-38h62v92h-62" />
       </g>
-      <path d="M602 72v281m33-281v281m33-281v281" fill="none" stroke="#191919" stroke-width="8" />
-      <path d="M602 87h66M602 152h66M602 217h66M602 282h66M602 347h66" stroke="#faf7f0" stroke-width="4" />
+      <path d="M72 345h816" stroke="url(#amso-route-gradient)" stroke-width="10" />
     </g>
 
     <g data-world-fallback="quality-service" hidden>
@@ -77,19 +74,19 @@ export const SEMANTIC_WORLD_SVG = `
         <path d="M486 119h34v34h-34zm0 52h34v34h-34zm0 52h34v34h-34" />
         <path d="M546 136h157M546 188h157M546 240h157" />
       </g>
-      <path d="M345 257c54-38 67-75 93-126" fill="none" stroke="url(#amso-route-gradient)" stroke-width="8" />
+      <path d="M331 282h102V132h41" fill="none" stroke="url(#amso-route-gradient)" stroke-width="8" />
     </g>
 
     <g data-world-fallback="client-paths" hidden>
-      <path d="M57 303h235v21H57zm333 16h237v21H390zm663-16h240v21H663" fill="#191919" />
+      <path d="M57 303h235v21H57zm333 16h237v21H390zm273-16h240v21H663" fill="#191919" />
       <g fill="#191919">
         <path d="M91 212h126v83H91zm337 11h151v88H428zm270-2h168v74H698" />
       </g>
       <g fill="#faf7f0" stroke="#191919" stroke-width="5">
         <path d="M115 163h88l-9 57h-89zM458 161h91l-8 58h-92zM728 165h104l-9 57H718z" />
       </g>
-      <path d="M0 405c136 0 91-62 215-62 126 0 113 60 251 60 134 0 117-58 244-58s113 60 250 60" fill="none" stroke="url(#amso-route-gradient)" stroke-width="12" />
-      <path d="M467 402V282m0 63L151 343m316 2l313-2" fill="none" stroke="url(#amso-route-gradient)" stroke-width="7" />
+      <path d="M0 405h960" fill="none" stroke="url(#amso-route-gradient)" stroke-width="12" />
+      <path d="M151 405v-62m316 62v-60m313 60v-62" fill="none" stroke="url(#amso-route-gradient)" stroke-width="7" />
     </g>
 
     <g data-world-fallback="scale-logistics" hidden>
@@ -98,8 +95,8 @@ export const SEMANTIC_WORLD_SVG = `
         <path d="M392 86h56v42h-56zm72 0h63v42h-63zm80 0h58v42h-58zm74 0h69v42h-69zm83 0h61v42h-61zm75 0h77v42h-77" />
         <path d="M402 177h68v42h-68zm86 0h53v42h-53zm71 0h72v42h-72zm87 0h61v42h-61zm77 0h54v42h-54zm70 0h53v42h-53" />
       </g>
-      <path d="M249 304h590c44 0 58 66 102 66" fill="none" stroke="#191919" stroke-width="51" />
-      <path d="M249 304h590c44 0 58 66 102 66" fill="none" stroke="url(#amso-route-gradient)" stroke-width="12" />
+      <path d="M249 304h691" fill="none" stroke="#191919" stroke-width="51" />
+      <path d="M249 304h691" fill="none" stroke="url(#amso-route-gradient)" stroke-width="12" />
       <g fill="#c8a27b" stroke="#191919" stroke-width="5">
         <path d="M335 274h61v51h-61zm150 0h70v51h-70zm170 0h63v51h-63" />
       </g>
@@ -112,9 +109,9 @@ export const SEMANTIC_WORLD_SVG = `
         <path d="M473 135h52v120h-52zm62 0h52v120h-52zm62 0h52v120h-52zm62 0h52v120h-52zm62 0h52v120h-52zm62 0h52v120h-52" />
       </g>
       <g fill="none" stroke="url(#amso-route-gradient)" stroke-width="9">
-        <path d="M0 133h172c74 0 87 50 173 50h94" />
-        <path d="M0 217h153c93 0 96 23 192 23h94" />
-        <path d="M0 301h161c87 0 101-4 184-4h94" />
+        <path d="M0 133h439" />
+        <path d="M0 217h439" />
+        <path d="M0 301h439" />
       </g>
       <g fill="#c8a27b" stroke="#191919" stroke-width="4">
         <path d="M76 106h55v43H76zm78 89h55v43h-55zm91 79h55v43h-55zm89-15h55v43h-55" />
@@ -149,16 +146,25 @@ export const SEMANTIC_WORLD_SVG = `
       <circle cx="286" cy="284" r="18" fill="#faf7f0" stroke="#191919" stroke-width="6" />
     </g>
     <g class="amso-world-visual__state" data-state-overlay="epoch_1.challenge" hidden>
-      <path d="M426 166c-90 47 108 64-14 128 147 41-35 89 100 111" fill="none" stroke="#191919" stroke-width="14" />
-      <path d="M405 169c128 44-57 81 102 132-99 51 31 68-68 105" fill="none" stroke="#444" stroke-width="10" />
+      <g fill="#c8a27b" stroke="#191919" stroke-width="5">
+        <path d="M358 274h74v58h-74zm84-47h83v105h-83zm94 24h69v81h-69" />
+      </g>
+      <g fill="#fff" stroke="#191919" stroke-width="3"><path d="M372 289h45v24h-45zm458-90h48v28h-48" /></g>
+      <path d="M630 315h123v14H630" fill="#f47100" stroke="#191919" stroke-width="4" />
     </g>
     <g class="amso-world-visual__state" data-state-overlay="epoch_1.resolve" hidden>
-      <path d="M343 188h337M343 222h337M343 256h337" fill="none" stroke="#191919" stroke-width="11" />
-      <path d="M354 188h102M498 222h169M354 256h209" stroke="url(#amso-route-gradient)" stroke-width="5" />
+      <g fill="#fff" stroke="#191919" stroke-width="5">
+        <path d="M300 150h135v145H300zm145 0h135v145H445zm145 0h135v145H590zm145 0h135v145H735" />
+      </g>
+      <g fill="#191919" font-family="system-ui,sans-serif" font-size="12" font-weight="900" text-anchor="middle">
+        <text x="367" y="176">PRZYJĘCIE</text><text x="512" y="176">KONTROLA</text><text x="657" y="176">PAKOWANIE</text><text x="802" y="176">WYSYŁKA</text>
+      </g>
+      <path d="M321 267h527" stroke="url(#amso-route-gradient)" stroke-width="8" />
     </g>
     <g class="amso-world-visual__state" data-state-overlay="epoch_2.setup" hidden>
-      <g fill="#fff" stroke="#191919" stroke-width="5"><path d="M491 116h34v34h-34zm0 55h34v34h-34zm0 55h34v34h-34" /></g>
-      <path d="M596 116l17 31h-34zM596 174l17 31h-34z" fill="#f47100" stroke="#191919" stroke-width="4" />
+      <g fill="#fff" stroke="#191919" stroke-width="5"><path d="M486 116h34v34h-34zm0 55h34v34h-34zm0 55h34v34h-34" /></g>
+      <g fill="#c8a27b" stroke="#191919" stroke-width="5"><path d="M568 225h78v55h-78zm94 0h78v55h-78" /></g>
+      <path d="M575 249h64m94 0h-64" stroke="url(#amso-route-gradient)" stroke-width="6" />
     </g>
     <g class="amso-world-visual__state" data-state-overlay="epoch_2.resolve" hidden>
       <g fill="none" stroke="url(#amso-route-gradient)" stroke-width="7"><path d="M489 129l10 11 25-29M489 184l10 11 25-29M489 239l10 11 25-29" /></g>
@@ -170,34 +176,43 @@ export const SEMANTIC_WORLD_SVG = `
       <path d="M469 344L155 344m314 0l311-2m-311 2V260" stroke="url(#amso-route-gradient)" stroke-width="8" />
     </g>
     <g class="amso-world-visual__state" data-state-overlay="epoch_3.designer" hidden>
-      <path d="M74 260l117-80 20 28-117 80z" fill="#f47100" stroke="#191919" stroke-width="5" />
-      <path d="M93 276l-27 18 12-31z" fill="#191919" />
+      <path d="M78 292h202v18H78" fill="#191919" />
+      <path d="M126 185h112l-10 74H116z" fill="#fff" stroke="#191919" stroke-width="6" />
+      <path d="M142 202h80l-6 40h-80z" fill="url(#amso-route-gradient)" opacity=".72" />
+      <g fill="#fff" stroke="#191919" stroke-width="4"><path d="M61 111h56v45H61zm67 0h56v45h-56zm67 0h56v45h-56" /></g>
     </g>
     <g class="amso-world-visual__state" data-state-overlay="epoch_3.business" hidden>
-      <text x="515" y="126" text-anchor="middle" fill="#191919" font-family="system-ui,sans-serif" font-size="27" font-weight="900">300 zł → 300 000 zł</text>
-      <path d="M430 156h171" stroke="url(#amso-route-gradient)" stroke-width="8" />
+      <path d="M414 298h208v18H414" fill="#191919" />
+      <path d="M461 197h112l-10 74H451z" fill="#fff" stroke="#191919" stroke-width="6" />
+      <path d="M477 214h80l-6 40h-80z" fill="#f47100" opacity=".76" />
+      <g fill="#c8a27b" stroke="#191919" stroke-width="4"><path d="M416 114h62v44h-62zm72 0h62v44h-62zm72 0h62v44h-62" /></g>
     </g>
     <g class="amso-world-visual__state" data-state-overlay="epoch_3.b2b" hidden>
-      <text x="765" y="132" text-anchor="middle" fill="#191919" font-family="system-ui,sans-serif" font-size="27" font-weight="900">10% → 7 LAT</text>
-      <g fill="#fff" stroke="#191919" stroke-width="4"><circle cx="686" cy="170" r="10"/><circle cx="713" cy="170" r="10"/><circle cx="740" cy="170" r="10"/><circle cx="767" cy="170" r="10"/><circle cx="794" cy="170" r="10"/><circle cx="821" cy="170" r="10"/><circle cx="848" cy="170" r="10"/></g>
+      <g fill="#fff" stroke="#191919" stroke-width="5"><path d="M674 105h190v104H674zM674 227h190v104H674z" /></g>
+      <g fill="#191919"><path d="M700 139h62v45h-62zm76 0h62v45h-62zm0 122h62v45h-62zm-76 0h62v45h-62" /></g>
+      <path d="M693 93h152m-152 122h152" stroke="url(#amso-route-gradient)" stroke-width="8" />
     </g>
     <g class="amso-world-visual__state" data-state-overlay="epoch_4.scale" hidden>
-      <text x="691" y="104" text-anchor="middle" fill="#191919" font-family="system-ui,sans-serif" font-size="34" font-weight="950">3 000 m²</text>
-      <path d="M562 118h258" stroke="url(#amso-route-gradient)" stroke-width="9" />
-      <g fill="#191919" font-family="system-ui,sans-serif" font-size="19" font-weight="900" text-anchor="middle">
-        <text x="610" y="159">41 tys. PC</text>
-        <text x="765" y="159">76 tys. notebooków</text>
-        <text x="610" y="191">40 tys. monitorów</text>
-        <text x="765" y="191">28 tys. telefonów</text>
+      <g fill="#fff" stroke="#191919" stroke-width="5"><path d="M559 83h288v125H559zM559 224h288v125H559z" /></g>
+      <g fill="#c8a27b" stroke="#191919" stroke-width="3"><path d="M579 108h48v38h-48zm58 0h48v38h-48zm58 0h48v38h-48zm58 0h48v38h-48M579 252h48v38h-48zm58 0h48v38h-48zm58 0h48v38h-48zm58 0h48v38h-48" /></g>
+      <path d="M579 171h245m-245 144h245" stroke="url(#amso-route-gradient)" stroke-width="8" />
+      <g fill="#191919" font-family="system-ui,sans-serif" font-size="14" font-weight="800">
+        <text x="86" y="98">ROCZNIE DO NOWYCH UŻYTKOWNIKÓW</text>
+        <text x="86" y="134">41 tys. PC</text><text x="86" y="165">76 tys. notebooków</text>
+        <text x="86" y="196">40 tys. monitorów</text><text x="86" y="227">28 tys. telefonów</text>
       </g>
     </g>
     <g class="amso-world-visual__state" data-state-overlay="epoch_4.numbers" hidden>
-      <text x="173" y="108" text-anchor="middle" fill="#191919" font-family="system-ui,sans-serif" font-size="27" font-weight="900">240 m › PKiN</text>
-      <text x="196" y="354" text-anchor="middle" fill="#191919" font-family="system-ui,sans-serif" font-size="25" font-weight="900">400 000 kg ≈ 5 × 737</text>
+      <path d="M74 329h65V142h18v-38h18v38h18v187z" fill="#191919" />
+      <g fill="#f47100" stroke="#191919" stroke-width="2"><path d="M236 314h18V288h-18zm0-30h18v-26h-18zm0-30h18v-26h-18zm0-30h18v-26h-18zm0-30h18v-26h-18zm0-30h18v-26h-18" /></g>
+      <path d="M72 352h210" stroke="url(#amso-route-gradient)" stroke-width="8" />
+      <g fill="#fff" stroke="#191919" stroke-width="5"><path d="M300 263h94l35-31h85l-21 31h69l31 19-31 19H300z" /></g>
+      <g fill="#c8a27b" stroke="#191919" stroke-width="3"><path d="M620 255h44v35h-44zm53 0h44v35h-44zm53 0h44v35h-44zm53 0h44v35h-44zm53 0h44v35h-44" /></g>
     </g>
     <g class="amso-world-visual__state" data-state-overlay="epoch_4.resolve" hidden>
-      <path d="M670 302c67 0 73 78 153 78" fill="none" stroke="url(#amso-route-gradient)" stroke-width="10" />
-      <path d="M833 347c-24 0-43 19-43 43 0 33 43 67 43 67s43-34 43-67c0-24-19-43-43-43zm0 29a14 14 0 110 28 14 14 0 010-28z" fill="#eb32a4" stroke="#191919" stroke-width="5" />
+      <g fill="#fff" stroke="#191919" stroke-width="5"><path d="M610 216h91v105h-91zm105 0h91v105h-91zm105 0h91v105h-91" /></g>
+      <path d="M623 292h275" stroke="url(#amso-route-gradient)" stroke-width="9" />
+      <g fill="#c8a27b" stroke="#191919" stroke-width="3"><path d="M633 251h39v35h-39zM738 251h39v35h-39zM843 251h39v35h-39z" /></g>
     </g>
     <g class="amso-world-visual__state" data-state-overlay="epoch_5.approach" hidden>
       <g data-world-counter-plate transform="translate(504 145)">

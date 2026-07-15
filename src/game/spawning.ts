@@ -5,7 +5,8 @@ import {
   OVERHEAD_BEAM_HEIGHT,
   PHYSICS,
   RUNNER_WIDTH,
-  RUNNER_X
+  RUNNER_X,
+  WORLD_WIDTH
 } from "./constants";
 import { PACKAGE_TYPE_VALUES, POWER_UP_VALUES } from "./narrative";
 import type { Difficulty } from "./difficulty";
@@ -32,17 +33,27 @@ export interface PackageSpawn {
   scoreValue: number;
   packageType: PackageType;
   weightKg: number;
-  storySymbolIndex?: number;
   storyRewardPattern?: boolean;
   storyOrder?: boolean;
 }
 
-export type PackagePattern = "arc" | "low-line" | "high-arc" | "staircase";
+export type PackagePattern =
+  | "single-low" | "pair-low" | "pair-high" | "triple-arc" | "triple-step"
+  | "quad-arc" | "quad-rise" | "five-arc" | "five-wave" | "five-step"
+  | "six-arc" | "six-wave" | "seven-arc" | "seven-wave";
+
+export interface ObstaclePatternDefinition {
+  readonly id: string;
+  readonly kind: ObstacleKind;
+  readonly action: AuthoredRewardAction;
+  readonly packagePattern: PackagePattern;
+}
 
 export interface SpawnWave {
   kind: ObstacleKind;
   source: ObstacleSource;
   pattern: PackagePattern;
+  obstaclePattern: string;
   x: number;
   y: number;
   width: number;
@@ -55,7 +66,6 @@ export type AuthoredRewardAction = "jump" | "slide";
 
 export interface AuthoredRewardSpec {
   kind: PackageKind;
-  storySymbolIndex?: number;
   packageType?: PackageType;
   storyOrder?: boolean;
 }
@@ -174,23 +184,6 @@ export function createPackagePool(size: number = GAMEPLAY.packagePoolSize): Pack
   }));
 }
 
-function chooseKind(
-  random: SeededRandom,
-  lastKind: ObstacleKind | null,
-  repeatCount: number,
-  allowedKinds: readonly ObstacleKind[]
-): ObstacleKind {
-  const pool = allowedKinds.length > 0 ? allowedKinds : OBSTACLE_KINDS;
-  let index = random.integer(0, pool.length - 1);
-  let kind = pool[index] ?? "box-stack";
-
-  if (kind === lastKind && repeatCount >= 2) {
-    index = (index + 1 + random.integer(0, 1)) % pool.length;
-    kind = pool[index] ?? "pallet";
-  }
-  return kind;
-}
-
 /**
  * Package trajectory per pattern. Heights are tuned to the runner's real jump
  * parabola: the middle pack sits at the jump apex and the edges at takeoff/landing,
@@ -198,14 +191,72 @@ function chooseKind(
  * Horizontal spacing is derived from the current speed (see `buildPackagePattern`)
  * so the arc always spans one jump regardless of game speed.
  */
-const PACKAGE_PATTERN_HEIGHTS: Readonly<Record<PackagePattern, readonly number[]>> = {
-  arc: [55, 145, 168, 145, 55],
-  "low-line": [45, 120, 160, 120, 45],
-  "high-arc": [70, 150, 172, 150, 70],
-  staircase: [50, 95, 130, 165, 80]
+export const PACKAGE_PATTERN_HEIGHTS: Readonly<Record<PackagePattern, readonly number[]>> = {
+  "single-low": [82],
+  "pair-low": [78, 78],
+  "pair-high": [142, 142],
+  "triple-arc": [70, 166, 70],
+  "triple-step": [62, 112, 162],
+  "quad-arc": [62, 142, 142, 62],
+  "quad-rise": [55, 92, 130, 166],
+  "five-arc": [55, 145, 168, 145, 55],
+  "five-wave": [72, 132, 92, 158, 72],
+  "five-step": [50, 95, 130, 165, 80],
+  "six-arc": [52, 105, 158, 158, 105, 52],
+  "six-wave": [58, 132, 86, 156, 108, 58],
+  "seven-arc": [48, 88, 132, 168, 132, 88, 48],
+  "seven-wave": [55, 115, 155, 92, 165, 112, 55]
 };
 
-const PATTERN_IDS = Object.keys(PACKAGE_PATTERN_HEIGHTS) as PackagePattern[];
+export const PACKAGE_PATTERN_IDS = Object.freeze(
+  Object.keys(PACKAGE_PATTERN_HEIGHTS) as PackagePattern[]
+);
+
+export const OBSTACLE_PATTERN_CATALOG: readonly ObstaclePatternDefinition[] = Object.freeze([
+  { id: "boxes-single", kind: "box-stack", action: "jump", packagePattern: "single-low" },
+  { id: "boxes-pair", kind: "box-stack", action: "jump", packagePattern: "pair-high" },
+  { id: "boxes-triple", kind: "box-stack", action: "jump", packagePattern: "triple-arc" },
+  { id: "boxes-quad", kind: "box-stack", action: "jump", packagePattern: "quad-arc" },
+  { id: "boxes-seven", kind: "box-stack", action: "jump", packagePattern: "seven-arc" },
+  { id: "pallet-pair", kind: "pallet", action: "jump", packagePattern: "pair-low" },
+  { id: "pallet-step", kind: "pallet", action: "jump", packagePattern: "triple-step" },
+  { id: "pallet-rise", kind: "pallet", action: "jump", packagePattern: "quad-rise" },
+  { id: "pallet-wave", kind: "pallet", action: "jump", packagePattern: "six-wave" },
+  { id: "trolley-arc", kind: "trolley", action: "jump", packagePattern: "five-arc" },
+  { id: "trolley-step", kind: "trolley", action: "jump", packagePattern: "five-step" },
+  { id: "trolley-six", kind: "trolley", action: "jump", packagePattern: "six-arc" },
+  { id: "trolley-seven", kind: "trolley", action: "jump", packagePattern: "seven-wave" },
+  { id: "beam-single", kind: "overhead", action: "slide", packagePattern: "single-low" },
+  { id: "beam-pair", kind: "overhead", action: "slide", packagePattern: "pair-low" },
+  { id: "beam-triple", kind: "overhead", action: "slide", packagePattern: "triple-arc" },
+  { id: "beam-five", kind: "overhead", action: "slide", packagePattern: "five-wave" },
+  { id: "beam-seven", kind: "overhead", action: "slide", packagePattern: "seven-wave" }
+]);
+
+class ShuffleBag<T> {
+  private remaining: T[] = [];
+  private last: T | null = null;
+
+  public constructor(private readonly values: readonly T[], private readonly random: SeededRandom) {}
+
+  public next(): T {
+    if (this.remaining.length === 0) {
+      this.remaining = [...this.values];
+      for (let index = this.remaining.length - 1; index > 0; index -= 1) {
+        const swap = this.random.integer(0, index);
+        [this.remaining[index], this.remaining[swap]] = [this.remaining[swap]!, this.remaining[index]!];
+      }
+      if (this.remaining.length > 1 && this.remaining.at(-1) === this.last) {
+        [this.remaining[0], this.remaining[this.remaining.length - 1]] =
+          [this.remaining.at(-1)!, this.remaining[0]!];
+      }
+    }
+    const value = this.remaining.pop();
+    if (value === undefined) throw new Error("Shuffle bag requires at least one value");
+    this.last = value;
+    return value;
+  }
+}
 
 /** Full airtime of one jump (takeoff to landing), used to size the pack arc. */
 const JUMP_FLIGHT_SECONDS = (-PHYSICS.jumpVelocity * 2) / PHYSICS.gravity;
@@ -221,10 +272,11 @@ function buildPackagePattern(
   narrativePowerUps: readonly PowerUpKind[]
 ): PackageSpawn[] {
   const packCount = heights.length;
+  const hasProtectedMiddle = packCount >= 3;
   const span = speed * JUMP_FLIGHT_SECONDS * PACKAGE_ARC_SPAN_FRACTION;
   const packageType = PACKAGE_TYPE_VALUES[random.integer(0, PACKAGE_TYPE_VALUES.length - 1)] ?? "notebook";
   if (narrative) {
-    const powerUpIndex = narrativePowerUps.length > 0 && random.next() < 0.18
+    const powerUpIndex = hasProtectedMiddle && narrativePowerUps.length > 0 && random.next() < 0.18
       ? random.integer(1, packCount - 2)
       : -1;
     return heights.map((height, index) => {
@@ -246,8 +298,10 @@ function buildPackagePattern(
     });
   }
   const specialRoll = random.next();
-  const powerUpIndex = specialRoll < 0.18 ? random.integer(1, packCount - 2) : -1;
-  const goldenIndex = powerUpIndex < 0 && specialRoll < 0.34
+  const powerUpIndex = hasProtectedMiddle && specialRoll < 0.18
+    ? random.integer(1, packCount - 2)
+    : -1;
+  const goldenIndex = hasProtectedMiddle && powerUpIndex < 0 && specialRoll < 0.34
     ? random.integer(1, packCount - 2)
     : -1;
   const powerUpKind = powerUpIndex >= 0
@@ -279,9 +333,8 @@ function buildPackagePattern(
  */
 export class FairSpawner {
   private distanceUntilNext: number;
-  private lastKind: ObstacleKind | null = null;
-  private repeatCount = 0;
-  private lastPattern: PackagePattern | null = null;
+  private readonly obstaclePatterns: readonly ObstaclePatternDefinition[];
+  private readonly patternBag: ShuffleBag<ObstaclePatternDefinition>;
 
   constructor(
     private readonly random: SeededRandom,
@@ -291,6 +344,13 @@ export class FairSpawner {
     private readonly narrativePowerUps: readonly PowerUpKind[] = POWER_UP_VALUES
   ) {
     this.distanceUntilNext = Math.max(1, initialSpeed) * 3.7;
+    const allowedPatterns = OBSTACLE_PATTERN_CATALOG.filter(({ kind }) =>
+      this.allowedKinds.includes(kind)
+    );
+    this.obstaclePatterns = allowedPatterns.length > 0
+      ? allowedPatterns
+      : OBSTACLE_PATTERN_CATALOG;
+    this.patternBag = new ShuffleBag(this.obstaclePatterns, this.random);
   }
 
   advance(
@@ -302,40 +362,40 @@ export class FairSpawner {
     this.distanceUntilNext -= Math.max(0, travelledPixels);
     if (this.distanceUntilNext > 0) return null;
 
-    const kind = chooseKind(this.random, this.lastKind, this.repeatCount, this.allowedKinds);
-    this.repeatCount = kind === this.lastKind ? this.repeatCount + 1 : 1;
-    this.lastKind = kind;
-
+    const obstaclePattern = this.patternBag.next();
+    const kind = obstaclePattern.kind;
     const spec = OBSTACLE_SPECS[kind];
     const isOverhead = kind === "overhead";
-    let pattern: PackagePattern = PATTERN_IDS[this.random.integer(0, PATTERN_IDS.length - 1)] ?? "arc";
-    if (pattern === this.lastPattern) {
-      const index = (PATTERN_IDS.indexOf(pattern) + 1 + this.random.integer(0, 1)) % PATTERN_IDS.length;
-      pattern = PATTERN_IDS[index] ?? "staircase";
-    }
-    this.lastPattern = pattern;
+    const pattern = obstaclePattern.packagePattern;
     const gapPixels = calculateSpawnGap(speed, difficulty, this.random.next());
     this.distanceUntilNext += gapPixels;
 
-    const packageHeights = isOverhead ? OVERHEAD_PACKAGE_HEIGHTS : PACKAGE_PATTERN_HEIGHTS[pattern];
+    const baseHeights = PACKAGE_PATTERN_HEIGHTS[pattern];
+    const packageHeights = isOverhead
+      ? baseHeights.map((_, index) => OVERHEAD_PACKAGE_HEIGHTS[index % OVERHEAD_PACKAGE_HEIGHTS.length]!)
+      : baseHeights;
     const obstacleY = isOverhead ? OVERHEAD.topY : GROUND_Y - spec.height;
 
+    const packages = buildPackagePattern(
+      packageHeights,
+      spawnX,
+      this.random,
+      speed,
+      this.narrative,
+      this.narrativePowerUps
+    );
+    const leftmost = Math.min(spawnX, ...packages.map(({ x }) => x));
+    const shift = Math.max(0, spawnX - leftmost);
     return {
       kind,
       source: "normal",
       pattern,
-      x: spawnX,
+      obstaclePattern: obstaclePattern.id,
+      x: spawnX + shift,
       y: obstacleY,
       width: spec.width,
       height: spec.height,
-      packages: buildPackagePattern(
-        packageHeights,
-        spawnX,
-        this.random,
-        speed,
-        this.narrative,
-        this.narrativePowerUps
-      ),
+      packages: packages.map((parcel) => ({ ...parcel, x: parcel.x + shift })),
       gapPixels
     };
   }
@@ -353,11 +413,7 @@ export function createAuthoredRewardWave(
   const reactionSeconds = (options.spawnX - (RUNNER_X + RUNNER_WIDTH)) / speed;
   if (reactionSeconds < MIN_AUTHORED_REACTION_SECONDS ||
       options.rewards.length < 1 || options.rewards.length > 2) return null;
-  if (options.rewards.some(({ kind, storySymbolIndex, packageType, storyOrder }) =>
-    (kind === "story-symbol"
-      ? !Number.isInteger(storySymbolIndex) || (storySymbolIndex ?? -1) < 0 ||
-        (storySymbolIndex ?? -1) >= 8
-      : storySymbolIndex !== undefined) ||
+  if (options.rewards.some(({ kind, packageType, storyOrder }) =>
     (storyOrder === true &&
       (packageType === undefined || (kind !== "standard" && kind !== "golden")))
   )) return null;
@@ -370,7 +426,7 @@ export function createAuthoredRewardWave(
   const spec = OBSTACLE_SPECS[kind];
   const heights = kind === "overhead"
     ? OVERHEAD_PACKAGE_HEIGHTS
-    : PACKAGE_PATTERN_HEIGHTS["high-arc"];
+    : PACKAGE_PATTERN_HEIGHTS["five-arc"];
   const span = speed * JUMP_FLIGHT_SECONDS * PACKAGE_ARC_SPAN_FRACTION;
   const rewardSlots = options.action === "slide"
     ? options.rewards.length === 1 ? [3] : [3, 4]
@@ -394,29 +450,30 @@ export function createAuthoredRewardWave(
       packageType: reward?.packageType ??
         packageTypes[(patternIndex + index) % packageTypes.length] ?? "notebook",
       weightKg: 0,
-      ...(reward?.storySymbolIndex === undefined
-        ? {}
-        : { storySymbolIndex: reward.storySymbolIndex }),
       storyRewardPattern: true,
       ...(reward?.storyOrder === true ? { storyOrder: true } : {})
     };
   });
 
+  const leftmostX = Math.min(options.spawnX, ...packages.map(({ x }) => x));
+  const offscreenShift = Math.max(0, WORLD_WIDTH + GAMEPLAY.spawnPadding - leftmostX);
   return {
     kind,
     source: options.source ?? "story-reward",
-    pattern: options.action === "slide" ? "low-line" : "high-arc",
-    x: options.spawnX,
+    pattern: options.action === "slide" ? "five-wave" : "five-arc",
+    obstaclePattern: `authored-${options.action}-${patternIndex % 6}`,
+    x: options.spawnX + offscreenShift,
     y: kind === "overhead" ? OVERHEAD.topY : GROUND_Y - spec.height,
     width: spec.width,
     height: spec.height,
-    packages,
+    packages: packages.map((parcel) => ({ ...parcel, x: parcel.x + offscreenShift })),
     gapPixels: speed * MIN_AUTHORED_REACTION_SECONDS
   };
 }
 
 export function activateTutorialPackages(packages: PackageModel[]): void {
-  const positions = [520, 600, 680, 760];
+  const firstX = WORLD_WIDTH + GAMEPLAY.spawnPadding;
+  const positions = [firstX, firstX + 80, firstX + 160, firstX + 240];
   for (let index = 0; index < positions.length; index += 1) {
     const parcel = packages[index];
     const x = positions[index];
@@ -429,7 +486,6 @@ export function activateTutorialPackages(packages: PackageModel[]): void {
     parcel.phase = index * 0.9;
     parcel.packageType = "notebook";
     parcel.weightKg = 0;
-    delete parcel.storySymbolIndex;
     parcel.storyRewardPattern = false;
     delete parcel.storyOrder;
   }
@@ -465,8 +521,6 @@ export function activateWave(
     parcel.phase = spawn.phase;
     parcel.packageType = spawn.packageType;
     parcel.weightKg = spawn.weightKg;
-    if (spawn.storySymbolIndex === undefined) delete parcel.storySymbolIndex;
-    else parcel.storySymbolIndex = spawn.storySymbolIndex;
     parcel.storyRewardPattern = spawn.storyRewardPattern === true;
     if (spawn.storyOrder === true) parcel.storyOrder = true;
     else delete parcel.storyOrder;
@@ -479,7 +533,8 @@ export function createBossAttackWave(kind: ObstacleKind, spawnX: number): SpawnW
   return {
     kind,
     source: "boss",
-    pattern: "low-line",
+    pattern: "single-low",
+    obstaclePattern: `boss-${kind}`,
     x: spawnX,
     y: kind === "overhead" ? OVERHEAD.topY : GROUND_Y - spec.height,
     width: spec.width,

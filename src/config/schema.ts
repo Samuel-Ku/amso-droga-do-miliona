@@ -43,28 +43,28 @@ const STORY_CHAPTERS: readonly StoryChapterId[] = [
 ];
 const STORY_PERSPECTIVES: readonly StoryPerspective[] = ["amso", "client", "challenge"];
 const STORY_VIGNETTES: readonly StoryVignette[] = [
-  "first-package", "small-warehouse", "tested-device", "cable-route", "quality-stamp",
+  "first-package", "small-warehouse", "tested-device", "order-process", "quality-stamp",
   "creative-desk", "growing-business", "long-trust", "warehouse-scale", "product-stream",
   "delivery-map", "million-counter", "million-wave", "million-package", "thank-you"
 ];
 const CANONICAL_SCENE_ORDER = [
-  "story.first_package", "story.quality_promise", "story.first_process",
-  "client.creative_start", "client.business_growth", "client.b2b_trust",
-  "story.scale", "story.million_approach", "challenge.million_wave",
-  "story.million_finale"
+  "story.first_package", "story.order_backlog", "story.quality_promise", "story.quality_result",
+  "story.first_process", "client.creative_start", "client.business_growth", "client.b2b_trust",
+  "story.matching_result", "story.scale", "story.order_peak_result", "story.million_approach", "challenge.million_wave",
+  "story.million_finale", "story.challenge_handoff"
 ] as const;
 const CANONICAL_SEQUENCE = [
-  "scene:story.first_package", "scene:story.quality_promise",
-  "play:epoch_1.training:0", "play:epoch_1.cable_chaos:0",
-  "scene:story.first_process", "play:epoch_2.quality_series:1",
-  "play:epoch_2.doubt_cloud:1", "scene:client.creative_start",
-  "play:epoch_3.creative_contract:2", "scene:client.business_growth",
-  "play:epoch_3.growth_contract:2", "scene:client.b2b_trust",
-  "play:epoch_3.trust_contract:2", "scene:story.scale",
-  "play:epoch_4.orders:3", "play:epoch_4.logistic_hydra:3",
-  "scene:story.million_approach", "play:epoch_5.counter:4",
-  "scene:challenge.million_wave", "play:epoch_5.million_wave:4",
-  "scene:story.million_finale"
+  "scene:story.first_package", "play:epoch_1.training:0",
+  "scene:story.order_backlog", "play:epoch_1.order_backlog:0",
+  "scene:story.first_process", "scene:story.quality_promise", "play:epoch_2.quality_series:1",
+  "play:epoch_2.quality_trial:1", "scene:story.quality_result", "scene:client.creative_start",
+  "play:epoch_3.matching_creative:2", "scene:client.business_growth",
+  "play:epoch_3.matching_growth:2", "scene:client.b2b_trust",
+  "play:epoch_3.matching_trust:2", "scene:story.matching_result", "scene:story.scale",
+  "play:epoch_4.order_peak:3", "play:epoch_4.order_peak_final:3", "scene:story.order_peak_result",
+  "scene:story.million_approach", "scene:challenge.million_wave",
+  "play:epoch_5.million_threshold:4",
+  "scene:story.million_finale", "scene:story.challenge_handoff"
 ] as const;
 const UI_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9]{0,63}$/;
 const CRITICAL_UI_KEYS = [
@@ -308,21 +308,15 @@ function parseSequenceStep(value: unknown): StorySequenceStepConfig | null {
   if (value.type === "play") {
     if (!hasExactKeys(
       value,
-      ["type", "id", "epochIndex", "durationSeconds", "semantic"],
+      ["type", "id", "epochIndex", "durationSeconds"],
       ["type", "id", "epochIndex", "durationSeconds"]
     ) || !isIdentifier(value.id) || !Number.isInteger(value.epochIndex) ||
         !finiteInRange(value.durationSeconds, 1, 90)) return null;
-    if (value.semantic !== undefined && (!isRecord(value.semantic) ||
-        !hasExactKeys(value.semantic, ["id", "name"], ["id", "name"]) ||
-        !isIdentifier(value.semantic.id) || !isSafeText(value.semantic.name, 80))) return null;
     return {
       type: "play",
       id: value.id,
       epochIndex: value.epochIndex as number,
-      durationSeconds: value.durationSeconds,
-      ...(isRecord(value.semantic)
-        ? { semantic: { id: value.semantic.id as string, name: value.semantic.name as string } }
-        : {})
+      durationSeconds: value.durationSeconds
     };
   }
   return null;
@@ -427,22 +421,18 @@ function parseStory(value: unknown): StoryConfig | null {
   const scenes = value.scenes.map(parseScene);
   const sequence = value.sequence.map(parseSequenceStep);
   const epochs = value.epochs.map(parseEpoch);
-  if (scenes.length !== 10 || scenes.some((scene) => scene === null) ||
+  if (scenes.length !== 15 || scenes.some((scene) => scene === null) ||
       sequence.length === 0 || sequence.some((step) => step === null) ||
       epochs.length !== 5 || epochs.some((epoch) => epoch === null)) return null;
   const typedScenes = scenes as StorySceneConfig[];
   const typedSequence = sequence as StorySequenceStepConfig[];
   const typedEpochs = epochs as StoryEpochConfig[];
-  const modeHandoff = value.modeHandoff === undefined
-    ? undefined
-    : parseModeHandoff(value.modeHandoff);
-  const millionThreshold = value.millionThreshold === undefined
-    ? undefined
-    : parseMillionThreshold(value.millionThreshold);
+  const modeHandoff = parseModeHandoff(value.modeHandoff);
+  const millionThreshold = parseMillionThreshold(value.millionThreshold);
   if (modeHandoff === null || millionThreshold === null) return null;
   if (typedEpochs.some((epoch, index) => epoch.index !== index)) return null;
   const sceneIds = new Set(typedScenes.map((scene) => scene.id));
-  if (sceneIds.size !== typedScenes.length || !sceneIds.has("story.million_finale")) return null;
+  if (sceneIds.size !== typedScenes.length || !sceneIds.has("story.challenge_handoff")) return null;
   if (typedScenes.some((scene, index) => scene.id !== CANONICAL_SCENE_ORDER[index])) return null;
   const sequenceKeys = typedSequence.map((step) => step.type === "scene"
     ? `scene:${step.sceneId}`
@@ -453,7 +443,7 @@ function parseStory(value: unknown): StoryConfig | null {
   if (sceneSteps.length !== typedScenes.length ||
       new Set(sceneSteps.map((step) => step.sceneId)).size !== sceneSteps.length ||
       sceneSteps.some((step) => !sceneIds.has(step.sceneId)) ||
-      sceneSteps.at(-1)?.sceneId !== "story.million_finale") return null;
+      sceneSteps.at(-1)?.sceneId !== "story.challenge_handoff") return null;
   const playSteps = typedSequence.filter((step) => step.type === "play");
   if (playSteps.some((step) => step.epochIndex < 0 || step.epochIndex >= typedEpochs.length) ||
       playSteps.reduce((total, step) => total + step.durationSeconds, 0) !==
@@ -474,8 +464,8 @@ function parseStory(value: unknown): StoryConfig | null {
     scenes: typedScenes,
     sequence: typedSequence,
     epochs: typedEpochs,
-    ...(modeHandoff === undefined ? {} : { modeHandoff }),
-    ...(millionThreshold === undefined ? {} : { millionThreshold })
+    modeHandoff,
+    millionThreshold
   };
 }
 

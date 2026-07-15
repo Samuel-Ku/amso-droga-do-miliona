@@ -6,10 +6,10 @@ Blocked by: 02
 
 Status: ready-for-agent
 
-- [ ] Historia jasno mówi, że klient rozpoczynał działalność i szukał laptopa do 400 zł.
-- [ ] Pierwszy zakup jest poprawnie opisany jako laptop za 300 zł.
-- [ ] Przejście czasu jednoznacznie pokazuje jeden rok.
-- [ ] Klient wraca z budżetem 100 000 zł; żadna część gry ani copydecku nie używa starej wartości 300 000 zł.
-- [ ] Pierwszy laptop pozostaje widoczny w rozwiniętej firmie i łączy oba etapy.
-- [ ] Każdy krok ma etykietę `Historia klienta`, krótkie copy i działanie `Dalej`.
-- [ ] Test treści wykrywa powrót starych wartości lub niejasną perspektywę.
+- [x] Historia jasno mówi, że klient rozpoczynał działalność i szukał laptopa do 400 zł.
+- [x] Pierwszy zakup jest poprawnie opisany jako laptop za 300 zł.
+- [x] Przejście czasu jednoznacznie pokazuje jeden rok.
+- [x] Klient wraca z budżetem 100 000 zł; żadna część gry ani copydecku nie używa starej wartości 300 000 zł.
+- [x] Pierwszy laptop pozostaje widoczny w rozwiniętej firmie i łączy oba etapy.
+- [x] Każdy krok ma etykietę `Historia klienta`, krótkie copy i działanie `Dalej`.
+- [x] Test treści wykrywa powrót starych wartości lub niejasną perspektywę.

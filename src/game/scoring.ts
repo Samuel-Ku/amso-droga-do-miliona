@@ -32,7 +32,8 @@ export function resolvePackageCollection(
   }
 
   const basePoints = Math.max(0, Math.floor(scoreValue));
-  const pointsAwarded = basePoints * currentCombo * (doublePoints ? 2 : 1);
+  const comboMultiplier = kind === "golden" ? 1 : currentCombo;
+  const pointsAwarded = basePoints * comboMultiplier * (doublePoints ? 2 : 1);
   return {
     countsAsPackage: true,
     pointsAwarded,

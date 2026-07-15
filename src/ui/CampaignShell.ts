@@ -44,8 +44,10 @@ export interface CampaignStoryResult {
 
 export interface CampaignChallengeResult {
   packages: number;
-  score: number;
+  totalScore: number;
+  challengeScore: number;
   bestScore: number;
+  firstChallengeResult: boolean;
   distanceM: number;
   warrantySaves: number;
 }
@@ -63,7 +65,7 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   hudScore: "Wynik",
   pauseAction: "Pauza",
   storyMode: "Droga do Miliona",
-  challengeMode: "Próba Miliona",
+  challengeMode: "Szybki start — Tryb Wyzwania",
   landingEyebrow: "Jubileuszowa historia AMSO",
   landingTitle: "AMSO —",
   landingTitleAccent: "Droga do Miliona",
@@ -71,7 +73,7 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   landingMeta: "Około 6 minut · historia w Twoim tempie · skok i ślizg",
   startStory: "Rozpocznij historię",
   choosePath: "Wybierz swoją drogę",
-  replayStory: "Przejdź historię ponownie",
+  replayStory: "Pełna historia i instrukcja",
   orientationEyebrow: "Szerszy kadr",
   orientationTitle: "Chcesz zobaczyć więcej historii?",
   orientationBody: "Obróć telefon i włącz pełny ekran. Możesz też grać pionowo.",
@@ -161,8 +163,10 @@ export interface CampaignShareCardOptions {
 
 export interface CampaignShareRequest extends CampaignShareCardOptions {
   platform: CampaignSharePlatform;
-  result: Pick<CampaignChallengeResult, "score" | "packages">;
+  result: { score: number; packages: number };
 }
+
+type CampaignShareResult = CampaignShareRequest["result"];
 
 const integerFormatter = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
 
@@ -288,7 +292,7 @@ function drawShareCardLockup(
 
 function drawShareCard(
   context: CanvasRenderingContext2D,
-  result: Pick<CampaignChallengeResult, "score" | "packages">,
+  result: CampaignShareResult,
   options: CampaignShareCardOptions,
   lockup: HTMLImageElement | null,
 ): void {
@@ -381,7 +385,7 @@ function canvasToBlob(canvas: HTMLCanvasElement): Blob {
 }
 
 export async function createCampaignShareCard(
-  result: Pick<CampaignChallengeResult, "score" | "packages">,
+  result: CampaignShareResult,
   options: CampaignShareCardOptions,
 ): Promise<Blob> {
   const canvas = document.createElement("canvas");
@@ -491,6 +495,7 @@ export class CampaignShell {
   private readonly hudObjective: HTMLElement;
   private readonly hudControls: HTMLElement;
   private readonly hudPowerUps: HTMLElement;
+  private readonly hudNotice: HTMLElement;
   private readonly hudPackages: HTMLElement;
   private readonly hudScore: HTMLElement;
   private readonly hudCombo: HTMLElement;
@@ -573,11 +578,12 @@ export class CampaignShell {
               <span data-campaign-hud-objective hidden></span>
               <span data-campaign-hud-controls hidden></span>
               <span data-campaign-hud-powerups hidden></span>
+              <span class="amso-campaign__hud-notice" data-campaign-hud-notice hidden role="status"></span>
             </div>
             <div class="amso-campaign__hud-stats">
               <span><small data-campaign-copy="hudPackages">Paczki</small> <strong data-campaign-hud-packages>0</strong></span>
               <span><small data-campaign-copy="hudScore">Wynik</small> <strong data-campaign-hud-score>0</strong></span>
-              <span><small>Seria</small> <strong data-campaign-hud-combo>×1</strong></span>
+              <span><small>SERIA</small> <strong data-campaign-hud-combo>×1</strong></span>
             </div>
             <button class="amso-campaign__pause-button" type="button" data-campaign-pause data-campaign-copy="pauseAction">Pauza</button>
           </section>
@@ -588,6 +594,14 @@ export class CampaignShell {
               <h1><span data-campaign-copy="landingTitleAccent">Droga do Miliona</span></h1>
               <p class="amso-campaign__lead" data-campaign-copy="landingLead">Jedna paczka rozpoczęła historię. Przebiegnij z nami drogę do zamówienia nr 1 000 000.</p>
               <p class="amso-campaign__meta" data-campaign-copy="landingMeta">Około 6 minut · historia w Twoim tempie · skok i ślizg</p>
+              <details class="amso-campaign__how-to">
+                <summary>Jak działa gra?</summary>
+                <div>
+                  <p><strong>Historia i bieg przeplatają się.</strong> Gdy pojawia się karta historii, trasa jest bezpieczna i niczego nie musisz omijać ani zbierać.</p>
+                  <p><strong>Skacz</strong> dotykiem lub Spacją. <strong>Ślizg</strong> wykonaj gestem w dół albo klawiszem ↓.</p>
+                  <p><strong>Paczki zwiększają wynik i licznik.</strong> Specjalna paczka zawsze pokazuje swoją nazwę i działanie, a kolejne czyste akcje budują <strong>SERIĘ ×N</strong>.</p>
+                </div>
+              </details>
               <div class="amso-campaign__landing-actions" data-campaign-landing-actions></div>
             </div>
             <div class="amso-campaign__landing-art" aria-hidden="true">
@@ -680,10 +694,11 @@ export class CampaignShell {
               <h2 data-campaign-copy="challengeResultTitle">Koniec próby</h2>
               <div class="amso-campaign__result-grid amso-campaign__result-grid--challenge">
                 <span><small data-campaign-copy="resultPackages">Dostarczone paczki</small> <strong data-campaign-challenge-packages>0</strong></span>
-                <span><small data-campaign-copy="resultScore">Wynik</small> <strong data-campaign-challenge-score>0</strong></span>
-                <span><small data-campaign-copy="resultBest">Rekord</small> <strong data-campaign-challenge-best>0</strong></span>
+                <span><small>Wynik łączny</small> <strong data-campaign-challenge-total>0</strong></span>
+                <span><small>Wynik wyzwania</small> <strong data-campaign-challenge-score>0</strong></span>
+                <span><small data-campaign-challenge-best-label>Twój rekord wyzwania</small> <strong data-campaign-challenge-best>0</strong></span>
                 <span><small data-campaign-copy="resultDistance">Przebyta droga</small> <strong><i data-campaign-challenge-distance>0</i> m</strong></span>
-                <span><small data-campaign-copy="resultWarranty">Gwarancja uratowała bieg</small> <strong data-campaign-challenge-saves>0</strong></span>
+                <span data-campaign-challenge-saves-stat><small data-campaign-copy="resultWarranty">Ochrona uratowała bieg</small> <strong data-campaign-challenge-saves>0</strong></span>
               </div>
               <div class="amso-campaign__actions">
                 <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-restart-challenge data-campaign-copy="retryChallenge">Spróbuj jeszcze raz</button>
@@ -777,6 +792,7 @@ export class CampaignShell {
     this.hudObjective = requiredElement(this.root, "[data-campaign-hud-objective]");
     this.hudControls = requiredElement(this.root, "[data-campaign-hud-controls]");
     this.hudPowerUps = requiredElement(this.root, "[data-campaign-hud-powerups]");
+    this.hudNotice = requiredElement(this.root, "[data-campaign-hud-notice]");
     this.hudPackages = requiredElement(this.root, "[data-campaign-hud-packages]");
     this.hudScore = requiredElement(this.root, "[data-campaign-hud-score]");
     this.hudCombo = requiredElement(this.root, "[data-campaign-hud-combo]");
@@ -872,12 +888,12 @@ export class CampaignShell {
   public showStoryScene(input: CampaignStorySceneInput): void {
     if (this.destroyed) return;
     const scene = snapshotStoryScene(input);
-    const isNewScene = this.storyContinuationGate.arm(scene.sceneId);
+    const isNewScene = this.storyContinuationGate.arm(scene.presentationId);
 
     this.activeMode = "story";
     this.root.dataset.mode = "story";
     this.root.dataset.view = "story_scene";
-    const visualState = sceneVisualState(scene.sceneId);
+    const visualState = sceneVisualState(scene.visualStateId);
     this.applyWorldVisual(visualState.worldId, visualState.stateId, "story");
     this.storyPresentation.dataset.state = "scene";
     this.storyPresentation.dataset.copyPlacement = visualState.copyPlacement;
@@ -904,6 +920,7 @@ export class CampaignShell {
     this.storySceneBody.scrollTop = 0;
     this.storyContinueButton.textContent = scene.continueLabel;
     this.storyContinueButton.dataset.sceneId = scene.sceneId;
+    this.storyContinueButton.dataset.presentationId = scene.presentationId;
     this.storyContinueButton.disabled = false;
     this.storyContinueButton.focus({ preventScroll: true });
     this.announce([scene.eyebrow, scene.title, ...scene.body].filter(Boolean).join(". "));
@@ -923,6 +940,7 @@ export class CampaignShell {
     this.canvas.setAttribute("aria-hidden", "true");
     this.storyContinueButton.disabled = true;
     delete this.storyContinueButton.dataset.sceneId;
+    delete this.storyContinueButton.dataset.presentationId;
     this.storyContinuationGate.clear();
     this.setScreenModal(this.storyPresentation);
     this.storyPresentation.tabIndex = -1;
@@ -946,6 +964,7 @@ export class CampaignShell {
     this.canvas.setAttribute("aria-hidden", "true");
     this.storyContinueButton.disabled = true;
     delete this.storyContinueButton.dataset.sceneId;
+    delete this.storyContinueButton.dataset.presentationId;
     this.storyContinuationGate.clear();
     this.setScreenModal(this.storyPresentation);
 
@@ -1007,13 +1026,13 @@ export class CampaignShell {
     this.worldVisualLayer.setCounterValue(campaignWorldCounterValue(
       snapshot.mode,
       displayedVisualStateId,
-      snapshot.storyObjectives.epoch5.counter.value,
+      snapshot.storyObjectives.epoch5.millionThreshold.counterValue,
     ));
     this.hudPackages.textContent = formatInteger(snapshot.packagesCollected);
     this.hudScore.textContent = formatInteger(snapshot.score);
     this.hudCombo.textContent = `×${formatInteger(snapshot.combo)}`;
     const activePowerUps = formatPowerUpHud(snapshot.activePowerUps);
-    this.hudPowerUps.textContent = activePowerUps.length > 0 ? `Moc: ${activePowerUps}` : "";
+    this.hudPowerUps.textContent = activePowerUps;
     this.hudPowerUps.hidden = activePowerUps.length === 0;
     const controls = formatStoryControlsHud(snapshot.storyObjectiveSegmentId);
     this.hudControls.textContent = controls ?? "";
@@ -1024,13 +1043,21 @@ export class CampaignShell {
         : "";
       this.hudEpoch.textContent = [snapshot.epochName, progress].filter(Boolean).join(" · ");
       this.showStoryObjective(
-        formatStoryObjectiveHud(snapshot.storyObjectives, snapshot.activeStoryOrderTypes, {
-          encounterPhase: snapshot.bossEncounterPhase,
-          progress: snapshot.bossProgress,
-          attackCount: snapshot.bossAttackCount
-        })
+        formatStoryObjectiveHud(snapshot.storyObjectives, snapshot.activeStoryOrderTypes)
       );
     }
+  }
+
+  public showPickupNotice(message: string): void {
+    if (this.destroyed) return;
+    this.hudNotice.textContent = message;
+    this.hudNotice.hidden = false;
+    this.announce(message);
+    window.setTimeout(() => {
+      if (this.destroyed || this.hudNotice.textContent !== message) return;
+      this.hudNotice.hidden = true;
+      this.hudNotice.textContent = "";
+    }, 3_800);
   }
 
   public showStoryObjective(message: string | null): void {
@@ -1061,16 +1088,21 @@ export class CampaignShell {
     this.applyWorldVisual("million-finale", "story.million_finale", "result");
     this.challengeResult = result;
     requiredElement(this.challengeResultScreen, "[data-campaign-challenge-packages]").textContent = formatInteger(result.packages);
-    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-score]").textContent = formatInteger(result.score);
+    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-total]").textContent = formatInteger(result.totalScore);
+    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-score]").textContent = formatInteger(result.challengeScore);
     requiredElement(this.challengeResultScreen, "[data-campaign-challenge-best]").textContent = formatInteger(result.bestScore);
+    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-best-label]").textContent =
+      result.firstChallengeResult ? "Pierwszy wynik wyzwania" : "Twój rekord wyzwania";
     requiredElement(this.challengeResultScreen, "[data-campaign-challenge-distance]").textContent = formatInteger(result.distanceM);
     requiredElement(this.challengeResultScreen, "[data-campaign-challenge-saves]").textContent = formatInteger(result.warrantySaves);
+    requiredElement<HTMLElement>(this.challengeResultScreen, "[data-campaign-challenge-saves-stat]").hidden = result.warrantySaves === 0;
     this.sharePanel.hidden = true;
     this.shareStatus.textContent = "";
     this.setView("challenge_result", this.challengeResultScreen);
     requiredElement<HTMLButtonElement>(this.challengeResultScreen, "[data-campaign-restart-challenge]").focus({ preventScroll: true });
     this.announce(
-      `${this.copy.challengeResultTitle}. ${this.copy.resultScore}: ${formatInteger(result.score)}. ` +
+      `${this.copy.challengeResultTitle}. Wynik łączny: ${formatInteger(result.totalScore)}. ` +
+      `Wynik wyzwania: ${formatInteger(result.challengeScore)}. ` +
       `${this.copy.resultPackages}: ${formatInteger(result.packages)}.`
     );
   }
@@ -1239,6 +1271,7 @@ export class CampaignShell {
     this.storyCountdown.hidden = true;
     this.storyContinueButton.disabled = true;
     delete this.storyContinueButton.dataset.sceneId;
+    delete this.storyContinueButton.dataset.presentationId;
     delete this.storySceneCard.dataset.sceneId;
     delete this.storyPresentation.dataset.state;
     delete this.storyPresentation.dataset.copyPlacement;
@@ -1314,7 +1347,9 @@ export class CampaignShell {
     if (target === null) return;
     if (target.matches("[data-campaign-story-continue]")) {
       const sceneId = target.dataset.sceneId;
-      if (sceneId === undefined || !this.storyContinuationGate.consume(sceneId)) return;
+      const presentationId = target.dataset.presentationId;
+      if (sceneId === undefined || presentationId === undefined ||
+          !this.storyContinuationGate.consume(presentationId)) return;
       this.storyContinueButton.disabled = true;
       this.callbacks.onStoryContinue(sceneId);
     } else if (target.matches("[data-campaign-mute]")) {
@@ -1358,7 +1393,10 @@ export class CampaignShell {
     try {
       const method = await shareCampaignResult({
         platform,
-        result: this.challengeResult,
+        result: {
+          score: this.challengeResult.totalScore,
+          packages: this.challengeResult.packages
+        },
         canonicalUrl: this.canonicalUrl,
         scoreLabel: this.copy.shareScoreLabel.toLocaleUpperCase("pl-PL"),
         packagesLabel: this.copy.resultPackages.toLocaleUpperCase("pl-PL"),

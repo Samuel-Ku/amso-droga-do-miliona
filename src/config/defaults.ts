@@ -34,7 +34,21 @@ export const DEFAULT_DISABLED_RUNNER_CONFIG: Readonly<RunnerConfig> = Object.fre
     firstCompletionBonusScore: 0,
     scenes: [],
     sequence: [],
-    epochs: []
+    epochs: [],
+    modeHandoff: Object.freeze({
+      id: "story.challenge_handoff",
+      from: "story",
+      to: "challenge",
+      safe: true,
+      confirmationRequired: true,
+      resumeCountdownSeconds: 3
+    }),
+    millionThreshold: Object.freeze({
+      counterStart: 999_970,
+      counterTarget: 1_000_000,
+      packageTarget: 30,
+      combinationTarget: 8
+    })
   }),
   challenge: Object.freeze({
     mode: "challenge",

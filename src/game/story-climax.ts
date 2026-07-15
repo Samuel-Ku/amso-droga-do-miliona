@@ -1,16 +1,16 @@
 import type { ObstacleKind } from "./types";
 
 export type StoryClimaxIdentity =
-  | "cable-chaos"
-  | "doubt-cloud"
-  | "budget-eater"
-  | "logistics-hydra";
+  | "order-backlog"
+  | "quality-trial"
+  | "matching-challenge"
+  | "order-peak";
 
 export type StoryPositiveMotif =
-  | "ordered-cables"
+  | "process-zones"
   | "quality-mark"
-  | "piggy-bank"
-  | "sorting-network";
+  | "matched-order"
+  | "dispatch-flow";
 
 export type StoryClimaxPhase =
   | "inactive"
@@ -44,23 +44,23 @@ interface StoryClimaxDefinition {
 
 const DEFINITIONS: readonly StoryClimaxDefinition[] = [
   {
-    identity: "cable-chaos",
-    positiveMotif: "ordered-cables",
+    identity: "order-backlog",
+    positiveMotif: "process-zones",
     attacks: ["pallet", "overhead", "box-stack", "overhead"]
   },
   {
-    identity: "doubt-cloud",
+    identity: "quality-trial",
     positiveMotif: "quality-mark",
     attacks: ["overhead"]
   },
   {
-    identity: "budget-eater",
-    positiveMotif: "piggy-bank",
+    identity: "matching-challenge",
+    positiveMotif: "matched-order",
     attacks: ["trolley"]
   },
   {
-    identity: "logistics-hydra",
-    positiveMotif: "sorting-network",
+    identity: "order-peak",
+    positiveMotif: "dispatch-flow",
     attacks: ["box-stack", "overhead", "trolley"]
   }
 ];
@@ -93,6 +93,7 @@ export class StoryClimaxDirector {
   private durationSeconds = 0;
   private warningRemaining = 0;
   private awaitingResolution = false;
+  private retryPending = false;
   private hazardSeen = false;
   private completionEmitted = false;
 
@@ -106,8 +107,21 @@ export class StoryClimaxDirector {
     this.durationSeconds = 0;
     this.warningRemaining = 0;
     this.awaitingResolution = false;
+    this.retryPending = false;
     this.hazardSeen = false;
     this.completionEmitted = false;
+  }
+
+  /** Requeues only the unfinished telegraphed action after a story collision. */
+  public retryCurrentAttack(): void {
+    if (!this.awaitingResolution || this.model.phase !== "challenge") return;
+    this.awaitingResolution = false;
+    this.retryPending = true;
+    this.hazardSeen = false;
+    this.model.attacksLaunched = Math.max(
+      this.model.attacksResolved,
+      this.model.attacksLaunched - 1
+    );
   }
 
   public enterEpoch(
@@ -143,7 +157,8 @@ export class StoryClimaxDirector {
       this.durationSeconds - TRANSFORMATION_SECONDS
     );
 
-    if (elapsed + Number.EPSILON >= this.durationSeconds) {
+    if (elapsed + Number.EPSILON >= this.durationSeconds &&
+        !this.awaitingResolution && !this.retryPending) {
       this.model.completed = true;
       this.model.phase = "completed";
       if (!this.completionEmitted) {
@@ -155,7 +170,8 @@ export class StoryClimaxDirector {
 
     // Once a telegraphed attack is on the route, let the player finish it. Cutting
     // it off here makes the final Cable Chaos alternation impossible to earn.
-    if (elapsed >= forcedTransformationAt && !this.awaitingResolution) {
+    if (elapsed >= forcedTransformationAt &&
+        !this.awaitingResolution && !this.retryPending) {
       return this.completeIntoTransformation();
     }
 
@@ -190,6 +206,7 @@ export class StoryClimaxDirector {
     if (!kind) return this.completeIntoTransformation();
     this.model.attacksLaunched += 1;
     this.awaitingResolution = true;
+    this.retryPending = false;
     this.hazardSeen = false;
     return { type: "attack", kind };
   }

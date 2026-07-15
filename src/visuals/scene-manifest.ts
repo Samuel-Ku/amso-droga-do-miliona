@@ -2,7 +2,7 @@ import type { AssetBundleId, StoryChapterId } from "../shared/types";
 
 export const CAMPAIGN_WORLD_IDS = [
   "first-mile",
-  "cable-route",
+  "order-process",
   "quality-service",
   "client-paths",
   "scale-logistics",
@@ -31,7 +31,12 @@ export type StoryRevealMotion =
   | "converge"
   | "count"
   | "return"
-  | "continue";
+  | "continue"
+  | "depart"
+  | "match"
+  | "dispatch"
+  | "handoff"
+  | "backlog";
 export type StorySceneSoundCue =
   | "tape"
   | "laptop-start"
@@ -97,10 +102,10 @@ export const CAMPAIGN_WORLDS: readonly CampaignWorldDefinition[] = Object.freeze
     palette: "campaign-light"
   },
   {
-    worldId: "cable-route",
+    worldId: "order-process",
     bundleId: "epoch_1",
-    assetPath: "/assets/milion-runner/worlds/world-02-cable-route-v1.avif",
-    fallbackId: "fallback-cable-route",
+    assetPath: "/assets/milion-runner/worlds/world-02-order-process-v1.svg",
+    fallbackId: "fallback-order-process",
     palette: "campaign-light"
   },
   {
@@ -140,7 +145,7 @@ export const CAMPAIGN_WORLDS: readonly CampaignWorldDefinition[] = Object.freeze
   }
 ]);
 
-const LEGACY_SCENE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze([
+const WORLD_STATE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze([
   {
     stateId: "intro.ready",
     chapter: "prologue",
@@ -198,17 +203,17 @@ const LEGACY_SCENE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze
   {
     stateId: "epoch_1.challenge",
     chapter: "epoch_1",
-    worldId: "cable-route",
+    worldId: "order-process",
     worldProgress: 0.28,
     copyPlacement: "left",
     focalPoint: { x: 0.67, y: 0.56 },
     readingCamera: camera(0.6, 0.52, 1.02),
     gameCamera: camera(0.5, 0.6, 1.06),
     crops: crops("66% 53%", "57% 54%", "55% 50%"),
-    motifs: ["cable-chaos", "route-line", "small-warehouse"],
-    visualEvent: "real-cables-tangle-across-the-first-route",
-    reveal: "cable-bundle-tightens-into-a-visible-knot",
-    revealMotion: "tangle",
+    motifs: ["package-backlog", "manual-labels", "small-warehouse"],
+    visualEvent: "packages-and-manual-labels-fill-the-small-warehouse",
+    reveal: "the-order-backlog-grows-across-one-ground-line",
+    revealMotion: "backlog",
     soundCue: "test-signal",
     fallbackId: "fallback-epoch1-challenge",
     runnerPresence: "quiet"
@@ -216,16 +221,16 @@ const LEGACY_SCENE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze
   {
     stateId: "epoch_1.resolve",
     chapter: "epoch_1",
-    worldId: "cable-route",
+    worldId: "order-process",
     worldProgress: 1,
     copyPlacement: "left",
     focalPoint: { x: 0.7, y: 0.44 },
     readingCamera: camera(0.62, 0.5, 1.02),
     gameCamera: camera(0.5, 0.6, 1.06),
     crops: crops("70% 48%", "59% 52%", "57% 50%"),
-    motifs: ["ordered-cables", "channels", "clean-route"],
-    visualEvent: "cables-lock-into-ordered-channels",
-    reveal: "the-route-straightens-and-gains-structure",
+    motifs: ["process-zones", "labelled-stations", "clear-flow"],
+    visualEvent: "orders-enter-four-labelled-process-zones",
+    reveal: "packages-align-from-intake-to-dispatch",
     revealMotion: "align",
     soundCue: "scanner",
     fallbackId: "fallback-epoch1-resolve",
@@ -387,7 +392,7 @@ const LEGACY_SCENE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze
     crops: crops("76% 58%", "62% 55%", "59% 52%"),
     motifs: ["delivery-map", "scanned-package", "ordered-branches"],
     visualEvent: "three-sorting-branches-deliver-one-correctly-scanned-parcel",
-    reveal: "the-scanned-label-reaches-the-destination-pin",
+    reveal: "the-scanned-label-reaches-the-dispatch-station",
     revealMotion: "travel",
     soundCue: "scanner",
     fallbackId: "fallback-epoch4-resolve",
@@ -421,7 +426,7 @@ const LEGACY_SCENE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze
     readingCamera: camera(0.64, 0.5, 1.02),
     gameCamera: camera(0.5, 0.6, 1.04),
     crops: crops("72% 52%", "60% 52%", "58% 50%"),
-    motifs: ["million-wave", "counter-999999", "returning-symbols"],
+    motifs: ["million-threshold", "counter-999970", "returning-packages"],
     visualEvent: "counter-closes-at-nine-nine-nine-nine-nine-nine",
     reveal: "six-code-rendered-digits-prepare-for-the-final-wave",
     revealMotion: "count",
@@ -467,41 +472,64 @@ const LEGACY_SCENE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze
   }
 ]);
 
-const legacyStateById = new Map(LEGACY_SCENE_MANIFEST.map((state) => [state.stateId, state]));
+const worldStateById = new Map(WORLD_STATE_MANIFEST.map((state) => [state.stateId, state]));
 
 function editorialScene(
   sourceStateId: string,
   stateId: string,
-  chapter: StoryChapterId
+  chapter: StoryChapterId,
+  overrides: Partial<CampaignSceneVisualState> = {}
 ): CampaignSceneVisualState {
-  const source = legacyStateById.get(sourceStateId);
+  const source = worldStateById.get(sourceStateId);
   if (!source) throw new Error(`Unknown editorial scene source: ${sourceStateId}`);
   return {
     ...source,
     stateId,
     chapter,
     overlayStateId: sourceStateId,
-    fallbackId: `fallback-${stateId.replaceAll(".", "-")}`
+    fallbackId: `fallback-${stateId.replaceAll(".", "-")}`,
+    ...overrides
   };
 }
 
-/** The ten editorial stops approved for the shorter, clearly attributed story. */
+/** The fifteen editorial stops approved for the clearly attributed story. */
 export const CAMPAIGN_SCENE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze([
   editorialScene("intro.ready", "story.first_package", "prologue"),
-  editorialScene("epoch_2.resolve", "story.quality_promise", "prologue"),
+  editorialScene("epoch_1.challenge", "story.order_backlog", "epoch_1"),
+  editorialScene("epoch_2.setup", "story.quality_promise", "epoch_2"),
+  editorialScene("epoch_2.resolve", "story.quality_result", "epoch_2", {
+    visualEvent: "checked-device-enters-its-shipping-box",
+    reveal: "the-closed-package-moves-toward-dispatch",
+    revealMotion: "depart"
+  }),
   editorialScene("epoch_1.resolve", "story.first_process", "epoch_1"),
   editorialScene("epoch_3.designer", "client.creative_start", "epoch_3"),
   editorialScene("epoch_3.business", "client.business_growth", "epoch_3"),
   editorialScene("epoch_3.b2b", "client.b2b_trust", "epoch_3"),
+  editorialScene("epoch_3.b2b", "story.matching_result", "epoch_3", {
+    visualEvent: "three-client-orders-align-on-one-dispatch-bench",
+    reveal: "each-order-keeps-its-own-equipment-set",
+    revealMotion: "match"
+  }),
   editorialScene("epoch_4.scale", "story.scale", "epoch_4"),
+  editorialScene("epoch_4.resolve", "story.order_peak_result", "epoch_4", {
+    visualEvent: "completed-orders-fill-each-dispatch-zone",
+    reveal: "the-team-opens-a-clear-route-through-all-stations",
+    revealMotion: "handoff"
+  }),
   editorialScene("epoch_5.approach", "story.million_approach", "epoch_5"),
   editorialScene("epoch_5.wave", "challenge.million_wave", "epoch_5"),
-  editorialScene("final.thanks", "story.million_finale", "finale")
+  editorialScene("final.thanks", "story.million_finale", "finale"),
+  editorialScene("final.thanks", "story.challenge_handoff", "finale", {
+    visualEvent: "challenge-gate-opens-after-millionth-package",
+    reveal: "score-and-protection-lock-into-the-challenge-lane",
+    revealMotion: "dispatch"
+  })
 ]);
 
 const worldById = new Map(CAMPAIGN_WORLDS.map((world) => [world.worldId, world]));
 const stateById = new Map(
-  [...LEGACY_SCENE_MANIFEST, ...CAMPAIGN_SCENE_MANIFEST]
+  [...WORLD_STATE_MANIFEST, ...CAMPAIGN_SCENE_MANIFEST]
     .map((state) => [state.stateId, state] as const)
 );
 
@@ -521,6 +549,53 @@ export function trySceneVisualState(stateId: string): CampaignSceneVisualState |
   return stateById.get(stateId) ?? null;
 }
 
+const STORY_PAGE_VISUAL_STATES: Readonly<Record<string, string>> = Object.freeze({
+  "story.first_package:game-purpose": "intro.ready",
+  "story.first_package:safe-reading": "intro.ready",
+  "story.first_package:small-beginning": "intro.beginning",
+  "story.first_package:first-hand-packed": "intro.promise",
+  "story.order_backlog:backlog-grows": "epoch_1.challenge",
+  "story.order_backlog:backlog-challenge": "epoch_1.challenge",
+  "story.first_process:order-backlog": "epoch_1.challenge",
+  "story.first_process:repeatable-process": "epoch_1.resolve",
+  "story.quality_promise:service-arrival": "epoch_2.setup",
+  "story.quality_promise:service-departure": "epoch_2.resolve",
+  "story.quality_result:checked-mark": "epoch_2.resolve",
+  "story.quality_result:prepared-departure": "story.quality_result",
+  "client.creative_start:limited-budget": "epoch_3.people",
+  "client.creative_start:first-project": "epoch_3.designer",
+  "client.creative_start:portfolio": "epoch_3.business",
+  "client.creative_start:grown-workspace": "client.creative_start",
+  "client.business_growth:new-business": "epoch_3.people",
+  "client.business_growth:three-hundred": "epoch_3.designer",
+  "client.business_growth:one-year": "epoch_3.business",
+  "client.business_growth:hundred-thousand": "client.business_growth",
+  "client.b2b_trust:purchase-plan": "epoch_3.people",
+  "client.b2b_trust:ten-percent": "epoch_3.b2b",
+  "client.b2b_trust:work-test": "client.b2b_trust",
+  "client.b2b_trust:remaining-purchase": "epoch_3.business",
+  "client.b2b_trust:seven-years": "client.b2b_trust",
+  "story.scale:phone-source": "epoch_4.scale",
+  "story.scale:phone-tower": "epoch_4.numbers",
+  "story.scale:computer-weight": "epoch_4.scale",
+  "story.scale:boeing-comparison": "epoch_4.numbers",
+  "story.scale:people-behind-scale": "epoch_4.resolve",
+  "story.million_approach:counter-source": "epoch_5.approach",
+  "story.million_approach:human-plans": "story.million_approach",
+  "challenge.million_wave:two-goals": "epoch_5.wave",
+  "challenge.million_wave:safe-finale": "challenge.million_wave",
+  "story.million_finale:million-celebration": "final.moments",
+  "story.million_finale:road-continues": "final.thanks",
+  "story.challenge_handoff:score-stays": "final.moments",
+  "story.challenge_handoff:rules-change": "final.thanks"
+});
+
+/** Chooses the next concrete world beat while keeping every page player-paced. */
+export function storyPageVisualStateId(sceneId: string, pageId: string | null): string {
+  if (pageId === null) return sceneId;
+  return STORY_PAGE_VISUAL_STATES[`${sceneId}:${pageId}`] ?? sceneId;
+}
+
 interface PlayVisualRange {
   readonly fromStateId: string;
   readonly toStateId: string;
@@ -535,7 +610,7 @@ const PLAY_VISUAL_RANGES: Readonly<Record<string, PlayVisualRange>> = {
     progressStart: 0,
     progressEnd: 1
   },
-  "epoch_1.cable_chaos": {
+  "epoch_1.order_backlog": {
     fromStateId: "epoch_1.challenge",
     toStateId: "epoch_1.resolve",
     progressStart: 0,
@@ -547,55 +622,43 @@ const PLAY_VISUAL_RANGES: Readonly<Record<string, PlayVisualRange>> = {
     progressStart: 0,
     progressEnd: 0.72
   },
-  "epoch_2.doubt_cloud": {
+  "epoch_2.quality_trial": {
     fromStateId: "epoch_2.setup",
     toStateId: "epoch_2.resolve",
     progressStart: 0.72,
     progressEnd: 1
   },
-  "epoch_3.creative_contract": {
+  "epoch_3.matching_creative": {
     fromStateId: "epoch_3.designer",
     toStateId: "epoch_3.business",
     progressStart: 0.32,
     progressEnd: 0.5
   },
-  "epoch_3.growth_contract": {
+  "epoch_3.matching_growth": {
     fromStateId: "epoch_3.business",
     toStateId: "epoch_3.b2b",
     progressStart: 0.5,
     progressEnd: 0.72
   },
-  "epoch_3.trust_contract": {
+  "epoch_3.matching_trust": {
     fromStateId: "epoch_3.b2b",
     toStateId: "epoch_3.b2b",
     progressStart: 0.72,
     progressEnd: 0.9
   },
-  "epoch_3.budget_eater": {
-    fromStateId: "epoch_3.b2b",
-    toStateId: "epoch_3.b2b",
-    progressStart: 0.9,
-    progressEnd: 1
-  },
-  "epoch_4.orders": {
+  "epoch_4.order_peak": {
     fromStateId: "epoch_4.numbers",
     toStateId: "epoch_4.resolve",
     progressStart: 0.62,
     progressEnd: 0.82
   },
-  "epoch_4.logistic_hydra": {
+  "epoch_4.order_peak_final": {
     fromStateId: "epoch_4.numbers",
     toStateId: "epoch_4.resolve",
     progressStart: 0.82,
     progressEnd: 1
   },
-  "epoch_5.counter": {
-    fromStateId: "epoch_5.approach",
-    toStateId: "epoch_5.wave",
-    progressStart: 0.28,
-    progressEnd: 0.62
-  },
-  "epoch_5.million_wave": {
+  "epoch_5.million_threshold": {
     fromStateId: "epoch_5.wave",
     toStateId: "epoch_5.wave",
     progressStart: 0.62,
@@ -700,7 +763,7 @@ export function validateSceneManifest(sceneIds: readonly string[]): string[] {
   const errors: string[] = [];
   const stateIds = CAMPAIGN_SCENE_MANIFEST.map(({ stateId }) => stateId);
   if (CAMPAIGN_WORLDS.length !== 7) errors.push("world_count");
-  if (CAMPAIGN_SCENE_MANIFEST.length !== 10) errors.push("state_count");
+  if (CAMPAIGN_SCENE_MANIFEST.length !== 15) errors.push("state_count");
   if (new Set(stateIds).size !== stateIds.length) errors.push("duplicate_state_id");
   if (sceneIds.length !== stateIds.length ||
       sceneIds.some((sceneId, index) => sceneId !== stateIds[index])) {

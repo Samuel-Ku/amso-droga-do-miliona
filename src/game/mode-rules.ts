@@ -17,7 +17,7 @@ export interface CollisionResolution {
  * physics and spawning details.
  */
 export function resolveCollision(mode: GameMode, hasWarranty: boolean): CollisionResolution {
-  if (hasWarranty) {
+  if (mode === "challenge" && hasWarranty) {
     return {
       finishRun: false,
       consumeWarranty: true,

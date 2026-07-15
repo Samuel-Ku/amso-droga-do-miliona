@@ -16,15 +16,6 @@ import {
 } from "../src/game/scoring";
 
 describe("package collection and scoring rules", () => {
-  it("does not count finale symbols as ordinary packages", () => {
-    expect(resolvePackageCollection("story-symbol", 500, 4, true)).toEqual({
-      countsAsPackage: false,
-      pointsAwarded: 0,
-      bonusScoreAwarded: 0,
-      nextCombo: 4
-    });
-  });
-
   it("does not count power-ups as delivered packages", () => {
     for (const kind of ["gwarancja_48", "audyt_jakosci", "drugie_zycie"] as const) {
       expect(resolvePackageCollection(kind, 0, 3, false)).toEqual({
@@ -36,7 +27,7 @@ describe("package collection and scoring rules", () => {
     }
   });
 
-  it("awards ordinary and golden package points through combo and Drugie Życie", () => {
+  it("keeps BONUS at 350 points while ordinary parcels use SERIA and 2× PUNKTY", () => {
     expect(resolvePackageCollection("standard", 100, 1, false)).toMatchObject({
       countsAsPackage: true,
       pointsAwarded: 100,
@@ -44,8 +35,8 @@ describe("package collection and scoring rules", () => {
       nextCombo: 2
     });
     expect(resolvePackageCollection("standard", 100, 1, true).pointsAwarded).toBe(200);
-    expect(resolvePackageCollection("golden", 350, 2, false).pointsAwarded).toBe(700);
-    expect(resolvePackageCollection("golden", 350, 2, true).pointsAwarded).toBe(1_400);
+    expect(resolvePackageCollection("golden", 350, 2, false).pointsAwarded).toBe(350);
+    expect(resolvePackageCollection("golden", 350, 2, true).pointsAwarded).toBe(700);
   });
 
   it("grows combo to a cap and resets only on an unprotected collision", () => {
@@ -53,7 +44,8 @@ describe("package collection and scoring rules", () => {
       .toBe(MAX_COMBO_MULTIPLIER);
     expect(resolveCollision("story", false).resetCombo).toBe(true);
     expect(resolveCollision("challenge", false).resetCombo).toBe(true);
-    expect(resolveCollision("story", true).resetCombo).toBe(false);
+    expect(resolveCollision("story", true).resetCombo).toBe(true);
+    expect(resolveCollision("story", true).consumeWarranty).toBe(false);
     expect(resolveCollision("challenge", true).resetCombo).toBe(false);
   });
 });

@@ -16,16 +16,15 @@ function validConfig(): Record<string, unknown> {
   return structuredClone(productionConfig) as Record<string, unknown>;
 }
 
-describe("runner config v4 story validation", () => {
-  it("accepts additive v5 story contracts without breaking the v4 runtime shape", () => {
-    const legacy = parseRunnerConfig(validConfig());
-    expect(legacy?.schemaVersion).toBe(4);
-    expect(legacy?.story.modeHandoff).toBeUndefined();
+describe("runner config v5 story validation", () => {
+  it("accepts the player-paced story contracts", () => {
+    const production = parseRunnerConfig(validConfig());
+    expect(production?.schemaVersion).toBe(4);
+    expect(production?.story.modeHandoff?.id).toBe("story.challenge_handoff");
 
     const expanded = validConfig();
     const story = expanded.story as Record<string, unknown>;
     const scenes = story.scenes as Array<Record<string, unknown>>;
-    const sequence = story.sequence as Array<Record<string, unknown>>;
     scenes[0]!.perspective = "amso";
     scenes[0]!.steps = [{
       id: "first-package.origin",
@@ -33,9 +32,6 @@ describe("runner config v4 story validation", () => {
       continueLabel: "Dalej",
       safe: true
     }];
-    const legacyChallenge = sequence.find(({ id }) => id === "epoch_1.cable_chaos");
-    if (!legacyChallenge) throw new Error("legacy challenge should exist");
-    legacyChallenge.semantic = { id: "epoch_1.order_backlog", name: "Zator Zamówień" };
     story.modeHandoff = {
       id: "story.challenge_handoff",
       from: "story",
@@ -60,11 +56,9 @@ describe("runner config v4 story validation", () => {
     expect(parsed?.story.sequence.find(({ type }) => type === "play")).toMatchObject({
       id: "epoch_1.training"
     });
-    expect(parsed?.story.sequence.find((step) =>
-      step.type === "play" && step.id === "epoch_1.cable_chaos"
-    )).toMatchObject({
-      semantic: { id: "epoch_1.order_backlog", name: "Zator Zamówień" }
-    });
+    expect(parsed?.story.sequence.some((step) =>
+      step.type === "play" && step.id === "epoch_1.order_backlog"
+    )).toBe(true);
     expect(parsed?.story.modeHandoff).toEqual({
       id: "story.challenge_handoff",
       from: "story",
@@ -81,18 +75,28 @@ describe("runner config v4 story validation", () => {
     });
   });
 
-  it("rejects a partial v5 challenge semantic identity", () => {
+  it("requires the final handoff and physical million threshold contracts", () => {
+    const withoutHandoff = validConfig();
+    delete (withoutHandoff.story as Record<string, unknown>).modeHandoff;
+    expect(parseRunnerConfig(withoutHandoff)).toBeNull();
+
+    const withoutThreshold = validConfig();
+    delete (withoutThreshold.story as Record<string, unknown>).millionThreshold;
+    expect(parseRunnerConfig(withoutThreshold)).toBeNull();
+  });
+
+  it("rejects the removed compatibility semantic field", () => {
     const expanded = validConfig();
     const story = expanded.story as Record<string, unknown>;
     const sequence = story.sequence as Array<Record<string, unknown>>;
-    const challenge = sequence.find(({ id }) => id === "epoch_1.cable_chaos");
-    if (!challenge) throw new Error("legacy challenge should exist");
+    const challenge = sequence.find(({ id }) => id === "epoch_1.order_backlog");
+    if (!challenge) throw new Error("challenge should exist");
     challenge.semantic = { id: "epoch_1.order_backlog" };
 
     expect(parseRunnerConfig(expanded)).toBeNull();
   });
 
-  it("parses the production story as 10 player-paced scenes and 250 seconds of play", () => {
+  it("parses the production story as 15 player-paced scenes and 276 seconds of play", () => {
     const result = validateRunnerConfig(validConfig());
 
     expect(result.success).toBe(true);
@@ -101,22 +105,24 @@ describe("runner config v4 story validation", () => {
     expect(result.data.schemaVersion).toBe(4);
     expect(result.data.modulePath).toBe(DEFAULT_RUNNER_MODULE_PATH);
     expect(result.data.stylePath).toBe(DEFAULT_RUNNER_STYLE_PATH);
-    expect(result.data.story.activeDurationSeconds).toBe(250);
+    expect(result.data.story.activeDurationSeconds).toBe(276);
     expect(result.data.story.readingSpeedMultiplier).toBe(0.3);
     expect(result.data.story.speedStartMultiplier).toBe(0.8);
     expect(result.data.story.speedMaxMultiplier).toBe(1.15);
     expect(result.data.story.resumeCountdownSeconds).toBe(3);
-    expect(result.data.story.scenes).toHaveLength(10);
+    expect(result.data.story.scenes).toHaveLength(15);
     expect(result.data.story.scenes[0]?.id).toBe("story.first_package");
-    expect(result.data.story.scenes.at(-1)?.id).toBe("story.million_finale");
+    expect(result.data.story.scenes.at(-1)?.id).toBe("story.challenge_handoff");
     expect(result.data.story.scenes.at(-1)?.continueLabel)
-      .toBe("Jedziemy dalej — Próba Miliona");
+      .toBe("Podejmuję wyzwanie");
+    expect(result.data.story.scenes.reduce((sum, scene) => sum + (scene.steps?.length ?? 1), 0))
+      .toBe(42);
     expect(result.data.story.epochs.map(({ index }) => index)).toEqual([0, 1, 2, 3, 4]);
     expect(result.data.story.epochs.map(({ durationSeconds }) => durationSeconds))
-      .toEqual([40, 40, 52, 60, 58]);
+      .toEqual([40, 40, 52, 72, 72]);
     expect(result.data.story.sequence
       .filter((step) => step.type === "play")
-      .reduce((total, step) => total + step.durationSeconds, 0)).toBe(250);
+      .reduce((total, step) => total + step.durationSeconds, 0)).toBe(276);
     expect(result.data.cta.challengeLabel).toBe("Gramy dalej — tryb wyzwania");
     expect(result.data.ui?.landingLead).toContain("1 000 000");
     expect(result.data.ui?.sharePublication).toContain("Drodze do Miliona");
@@ -152,7 +158,7 @@ describe("runner config v4 story validation", () => {
     const tooShortStory = tooShort.story as Record<string, unknown>;
     tooShortStory.activeDurationSeconds = 239;
     const tooShortSequence = tooShortStory.sequence as Array<Record<string, unknown>>;
-    const tooShortFinale = tooShortSequence.find(({ id }) => id === "epoch_5.million_wave");
+    const tooShortFinale = tooShortSequence.find(({ id }) => id === "epoch_5.million_threshold");
     if (!tooShortFinale) throw new Error("final play segment should exist");
     tooShortFinale.durationSeconds = 39;
     const tooShortEpochs = tooShortStory.epochs as Array<Record<string, unknown>>;
@@ -161,13 +167,13 @@ describe("runner config v4 story validation", () => {
 
     const tuned = validConfig();
     const tunedStory = tuned.story as Record<string, unknown>;
-    tunedStory.activeDurationSeconds = 260;
+    tunedStory.activeDurationSeconds = 286;
     const tunedSequence = tunedStory.sequence as Array<Record<string, unknown>>;
-    const finalPlay = tunedSequence.find(({ id }) => id === "epoch_5.million_wave");
+    const finalPlay = tunedSequence.find(({ id }) => id === "epoch_5.million_threshold");
     if (!finalPlay) throw new Error("final play segment should exist");
-    finalPlay.durationSeconds = 60;
+    finalPlay.durationSeconds = 82;
     const tunedEpochs = tunedStory.epochs as Array<Record<string, unknown>>;
-    tunedEpochs[4]!.durationSeconds = 68;
+    tunedEpochs[4]!.durationSeconds = 82;
     expect(parseRunnerConfig(tuned)).not.toBeNull();
   });
 
@@ -198,9 +204,9 @@ describe("runner config v4 story validation", () => {
     const wrongEpoch = validConfig();
     const wrongEpochSequence = (wrongEpoch.story as Record<string, unknown>)
       .sequence as Array<Record<string, unknown>>;
-    const hydra = wrongEpochSequence.find(({ id }) => id === "epoch_4.logistic_hydra");
-    if (!hydra) throw new Error("hydra step should exist");
-    hydra.epochIndex = 2;
+    const peakFinal = wrongEpochSequence.find(({ id }) => id === "epoch_4.order_peak_final");
+    if (!peakFinal) throw new Error("peak-final step should exist");
+    peakFinal.epochIndex = 2;
     expect(parseRunnerConfig(wrongEpoch)).toBeNull();
   });
 

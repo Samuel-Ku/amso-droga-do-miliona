@@ -1,306 +1,245 @@
-# Droga do Miliona — copy-deck do redakcji marketingowej
+# Droga do Miliona — copydeck do akceptacji marketingowej
 
-**Wersja:** 1.0
-**Status:** materiał roboczy do redakcji i akceptacji marketingu AMSO
-**Zakres:** teksty dziesięciu przystanków fabularnych w grze
-**Język publikacji:** polski
+**Wersja:** 2.0 (release candidate)
+**Status:** roboczy — wymaga decyzji marketingu
+**Źródło wdrożenia:** `public/assets/milion-runner/runner-config.json`
+**Zakres:** 15 scen, 42 ręcznie przełączane ekrany, komunikaty finału i Trybu Wyzwania
 
-**Źródła robocze:**
+## Jak pracować z dokumentem
 
-- [`amso_droga_do_miliona_scenariusz.md`](./amso_droga_do_miliona_scenariusz.md) — biblia narracyjna i źródło sensu historii;
-- [`scenariusz_implementacyjny_droga_do_miliona_v3.md`](./scenariusz_implementacyjny_droga_do_miliona_v3.md) — dotychczasowe fakty, sceny i ograniczenia implementacyjne;
-- [`public/assets/milion-runner/runner-config.json`](./public/assets/milion-runner/runner-config.json) — copy obecnie widoczne w prototypie.
+Przy każdej scenie marketing wpisuje jedną decyzję: **AKCEPT / ZMIANA / ODRZUĆ**. Przy zmianie należy podać gotowe brzmienie, zachowując sens, perspektywę i fakty obowiązkowe. Tekst nie przełącza się automatycznie. Podczas aktywnej gry nie ma dolnego panelu narracji.
 
-Uzgodnienia zapisane w tym copy-decku zastępują wcześniejsze założenia dotyczące liczby przystanków, długości copy i czasu przejścia. Nie zmieniają znaczenia potwierdzonych faktów.
+Perspektywy:
 
-## 1. Cel dokumentu
+- **Nasza historia** — fakty i doświadczenia AMSO; dozwolone „my”.
+- **Historia klienta** — anonimowa osoba lub firma; wyłącznie trzecia osoba.
+- **Wyzwanie** — zasady i działanie gracza, bez przypisywania ich AMSO lub klientowi.
 
-Ten plik porządkuje teksty, które mają zostać dopracowane przez marketing przed wdrożeniem do gry. Nie jest gotowym materiałem do publikacji.
+## Mapa całości
 
-Marketing powinien:
+| # | ID | Perspektywa | Liczba ekranów | Funkcja |
+|---:|---|---|---:|---|
+| 1 | `story.first_package` | Nasza historia | 4 | instrukcja gry i początek AMSO |
+| 2 | `story.order_backlog` | Nasza historia | 2 | rosnący zator zamówień |
+| 3 | `story.first_process` | Nasza historia | 2 | przejście od improwizacji do procesu |
+| 4 | `story.quality_promise` | Nasza historia | 2 | przygotowanie urządzenia |
+| 5 | `story.quality_result` | Nasza historia | 2 | rezultat kontroli jakości |
+| 6 | `client.creative_start` | Historia klienta | 4 | kreatywny start klientki |
+| 7 | `client.business_growth` | Historia klienta | 4 | 300 zł → 100 000 zł po roku |
+| 8 | `client.b2b_trust` | Historia klienta | 5 | 10% budżetu → decyzja po teście → 7 lat |
+| 9 | `story.matching_result` | Nasza historia | 2 | dopasowanie sprzętu do różnych potrzeb |
+| 10 | `story.scale` | Nasza historia | 5 | roczne dane skali i ich ludzki sens |
+| 11 | `story.order_peak_result` | Nasza historia | 2 | proces i zespół opanowują szczyt |
+| 12 | `story.million_approach` | Nasza historia | 2 | źródło licznika 999 970 |
+| 13 | `challenge.million_wave` | Wyzwanie | 2 | cele bezpiecznego finału fabuły |
+| 14 | `story.million_finale` | Nasza historia | 2 | milion i dalsza droga |
+| 15 | `story.challenge_handoff` | Wyzwanie | 2 | jawna zmiana zasad |
 
-1. sprawdzić poprawność i aktualność wszystkich faktów;
-2. dopracować brzmienie bez zmiany sensu scen;
-3. zachować jednoznaczne rozróżnienie historii AMSO i historii klientów;
-4. potwierdzić, że anonimowe historie klientów nie zawierają danych pozwalających ich rozpoznać;
-5. wpisać decyzję `AKCEPT`, `ZMIANA` albo `ODRZUĆ` przy każdej scenie.
+## Sceny i copy do decyzji
 
-## 2. Zatwierdzone zasady copy
+### 1. `story.first_package` — Nasza historia
 
-- Główna opowieść ma dziesięć przystanków.
-- Całe pierwsze przejście powinno trwać około 5:30–6:00.
-- Wszystkie teksty pozostają na ekranie do świadomego przejścia dalej; nie zmieniają się automatycznie.
-- Każda scena przekazuje jedną myśl.
-- Znacznik perspektywy, tytuł i treść mają łącznie 22–30 słów. Finał może mieć do 35 słów.
-- Treść ma najwyżej dwa krótkie zdania i nie może wymagać wcześniejszej wiedzy o AMSO.
-- Fakty liczbowe są przede wszystkim częścią obrazu. Tekst wyjaśnia ich znaczenie, zamiast powtarzać wszystkie liczby.
-- Podczas aktywnej gry nie wyświetlamy tekstu na dole ekranu.
-- CTA nie wchodzi do limitu słów sceny.
+**Cel:** wyjaśnić grę i ustanowić pierwszą paczkę jako początek historii AMSO.
+**Fakty:** mały sklep, magazyn wielkości kawalerki, pierwsze zamówienie przygotowane własnymi rękami.
 
-## 3. Reguła perspektywy
+1. **To gra o prawdziwej drodze AMSO.** Bieg przeplata się z krótkimi, sterowanymi przez gracza historiami — od pierwszej paczki do miliona zamówień.
+2. **Kiedy czytasz, trasa jest bezpieczna.** W scenach historii nie ma przeszkód ani paczek. Po odliczaniu wracają skok, ślizg, zbieranie i licznik.
+3. **Zaczynaliśmy naprawdę niewielcy.** Pierwszy sklep był mały, a magazyn miał powierzchnię zbliżoną do kawalerki.
+4. **Pierwszą paczkę przygotowaliśmy sami.** Własnymi rękami spakowaliśmy pierwsze zamówienie i wysłaliśmy je w dalszą drogę.
 
-### `Nasza historia`
+**Decyzja:** `AKCEPT / ZMIANA / ODRZUĆ`
+**Proponowana zmiana:**
 
-Dotyczy wyłącznie AMSO. Dopuszczalna jest pierwsza osoba liczby mnogiej: `zaczynaliśmy`, `sprawdzamy`, `przygotowaliśmy`, `dotarliśmy`.
+### 2. `story.order_backlog` — Nasza historia
 
-### `Historia klienta`
+**Cel:** pokazać konkretny zator, zanim gracz pomaga go rozładować.
+**Fakty:** wzrost liczby zamówień, ręcznych etykiet i zadań.
 
-Dotyczy konkretnego, anonimowego klienta. Używamy trzeciej osoby: `klientka`, `klient`, `firma`, `oni`. Nie przechodzimy na niezidentyfikowane `my` i nie sugerujemy, że doświadczenie klienta jest wypowiedzią AMSO.
+1. **Zamówień przybywało szybciej niż miejsca.** Paczki, ręczne etykiety i kolejne zadania zaczęły tworzyć zator w małym magazynie.
+2. **Wzrost postawił przed nami nowe wyzwanie.** Gracz porządkuje przepływ zamówień skokiem, ślizgiem i zbieraniem paczek.
 
-Nie używamy nazw firm, logotypów, portretów, danych lokalizacyjnych ani innych szczegółów pozwalających rozpoznać klienta bez osobnej zgody.
+**Decyzja:** `AKCEPT / ZMIANA / ODRZUĆ`
+**Proponowana zmiana:**
 
-### `Wyzwanie`
+### 3. `story.first_process` — Nasza historia
 
-Dotyczy działania gracza, nie historii AMSO ani klienta. Copy powinno być krótkie, konkretne i zadaniowe.
+**Cel:** domknąć zator widocznym skutkiem fabularnym.
+**Fakty:** strefy przyjęcia, kontroli, pakowania i wysyłki; powtarzalny proces.
 
-## 4. Kolejność scen
+1. **Rosnąca kolejka wymagała czegoś więcej niż improwizacji.** Same ręce i dobre chęci nie wystarczały przy coraz większej liczbie paczek.
+2. **Powtarzalny proces pozwolił zrobić następny krok.** Przyjęcie, kontrola, pakowanie i wysyłka układają te same elementy w czytelny przepływ.
 
-| Nr | ID robocze | Perspektywa | Funkcja sceny |
-|---:|---|---|---|
-| 1 | `story.first_package` | Nasza historia | Skromny początek AMSO |
-| 2 | `story.quality_promise` | Nasza historia | Sens sprawdzania sprzętu |
-| 3 | `story.first_process` | Nasza historia | Przejście od chaosu do procesu |
-| 4 | `client.creative_start` | Historia klienta | Kreatywny start z ograniczonym budżetem |
-| 5 | `client.business_growth` | Historia klienta | Rozwój od 300 zł do 300 000 zł |
-| 6 | `client.b2b_trust` | Historia klienta | Od testowych 10% do siedmiu lat współpracy |
-| 7 | `story.scale` | Nasza historia | Skala, zespół i logistyka |
-| 8 | `story.million_approach` | Nasza historia | Znaczenie licznika zbliżającego się do miliona |
-| 9 | `challenge.million_wave` | Wyzwanie | Wprowadzenie do trzyfazowego finału |
-| 10 | `story.million_finale` | Nasza historia | Milionowe zamówienie i dalsza droga |
+**Decyzja:** `AKCEPT / ZMIANA / ODRZUĆ`
+**Proponowana zmiana:**
 
----
+### 4. `story.quality_promise` — Nasza historia
 
-## 5. Teksty do redakcji
+**Cel:** pokazać rzeczywiste przygotowanie urządzenia bez niepotwierdzonych szczegółów testów.
+**Fakty:** przyjęcie, uruchomienie, przygotowanie, oznaczenie i pakowanie urządzenia.
 
-### Scena 1 — Pierwsza paczka
+1. **Urządzenie trafia na stanowisko przygotowania.** Zanim ruszy dalej, zostaje uruchomione i przygotowane do kolejnego użycia.
+2. **Dopiero przygotowane urządzenie otrzymuje oznaczenie.** Znak „SPRAWDZONY” komunikuje rezultat procesu, nie listę niepotwierdzonych testów komponentów.
 
-**ID:** `story.first_package`
-**Perspektywa:** AMSO
-**Cel:** pokazać mały, ludzki początek firmy i ustanowić pierwszą paczkę jako motyw całej historii.
-**Fakty obowiązkowe:** mały sklep; magazyn wielkości kawalerki; pierwsze zamówienie przygotowane własnymi rękami.
-**Tło:** mały magazyn, półki, ręcznie opisana etykieta i pierwsza paczka.
+**Decyzja:** `AKCEPT / ZMIANA / ODRZUĆ`
+**Proponowana zmiana:**
 
-**Znacznik:** Nasza historia
-**Tytuł:** Zaczęło się od jednej paczki.
-**Treść:** Pierwsze zamówienie przygotowaliśmy własnymi rękami w małym sklepie i magazynie wielkości kawalerki. Tak rozpoczęła się droga AMSO.
-**CTA:** Dalej
-**Liczba słów:** 24
+### 5. `story.quality_result` — Nasza historia
 
-**Decyzja marketingu:** `DO UZUPEŁNIENIA`
-**Uwagi / proponowana zmiana:**
+**Cel:** pokazać rezultat Próby Jakości.
+**Fakty:** urządzenie jest przygotowane, oznaczone i rusza do kolejnego użytkownika.
 
----
+1. **SPRAWDZONY oznacza gotowy do dalszej drogi.** Cztery ukończone serie doprowadziły urządzenia przez ten sam czytelny proces.
+2. **Przygotowane urządzenie rusza do kolejnego użytkownika.** Kontrola kończy się zamkniętą paczką, nie abstrakcyjnym symbolem.
 
-### Scena 2 — Sprawdzony sprzęt
+**Decyzja:** `AKCEPT / ZMIANA / ODRZUĆ`
+**Proponowana zmiana:**
 
-**ID:** `story.quality_promise`
-**Perspektywa:** AMSO
-**Cel:** wyjaśnić, że sprzęt poleasingowy nie trafia do klienta przypadkiem.
-**Fakty obowiązkowe:** urządzenie jest testowane i przygotowywane przed dalszym użyciem; AMSO bierze odpowiedzialność za jego jakość.
-**Tło:** stanowisko testowe, urządzenie przechodzące kontrolę oraz czytelny znak jakości.
+### 6. `client.creative_start` — Historia klienta
 
-**Znacznik:** Nasza historia
-**Tytuł:** Sprzęt z przeszłością. Sprawdzony na przyszłość.
-**Treść:** Każde urządzenie testujemy i przygotowujemy, zanim trafi do kolejnej osoby — sprawne, bezpieczne i gotowe do dalszej pracy.
-**CTA:** Dalej
-**Liczba słów:** 26
+**Cel:** opowiedzieć ciągłą historię anonimowej klientki i tego samego laptopa.
+**Fakty:** ograniczony budżet, pierwszy projekt, portfolio, rozwinięte miejsce pracy.
 
-**Decyzja marketingu:** `DO UZUPEŁNIENIA`
-**Uwagi / proponowana zmiana:**
+1. **Klientka zaczynała z ograniczonym budżetem.** Szukała sprawdzonego narzędzia, które pozwoli jej rozpocząć pracę.
+2. **Na wybranym laptopie powstał pierwszy projekt.** Sprzęt stał się narzędziem do wykonania konkretnej pracy.
+3. **Kolejne projekty złożyły się na portfolio.** Ten sam laptop towarzyszył klientce na następnym etapie.
+4. **Z czasem rozwinęło się całe miejsce pracy.** Początkowy wybór pomógł jej przejść od pierwszego projektu do własnego stanowiska.
 
----
+**Decyzja:** `AKCEPT / ZMIANA / ODRZUĆ`
+**Anonimizacja potwierdzona:** `TAK / NIE`
+**Proponowana zmiana:**
 
-### Scena 3 — Od chaosu do procesu
+### 7. `client.business_growth` — Historia klienta
 
-**ID:** `story.first_process`
-**Perspektywa:** AMSO
-**Cel:** połączyć skromny początek z pierwszym etapem rozwoju firmy.
-**Fakty obowiązkowe:** rosnąca liczba paczek i zadań wymagała uporządkowania pracy; proces umożliwił dalszy rozwój.
-**Tło:** splątane kable i paczki układają się w uporządkowaną trasę.
+**Cel:** pokazać rozwój firmy przez konkretny powrót klienta, bez skrótu pozbawionego kontekstu.
+**Fakty:** start działalności; budżet do 400 zł; laptop za 300 zł; powrót po roku; budżet 100 000 zł; dalszy wybór sprzętu poleasingowego.
 
-**Znacznik:** Nasza historia
-**Tytuł:** Mały magazyn potrzebował dobrego planu.
-**Treść:** Rosła liczba paczek, kabli i zadań. Porządek oraz powtarzalne procesy pozwoliły nam zrobić następny krok.
-**CTA:** Poznaj historie klientów
-**Liczba słów:** 22
+1. **Klient dopiero rozpoczynał działalność.** Przyszedł po laptop do pracy z budżetem nie większym niż 400 zł.
+2. **Znalazł laptop za 300 zł.** To było narzędzie na początek, dopasowane do ówczesnych możliwości firmy.
+3. **Po roku wrócił do AMSO.** Firma urosła, a pierwszy laptop nadal przypominał, od czego zaczynał.
+4. **Tym razem budżet wynosił 100 000 zł.** Mimo rozwoju nadal uznawał sprzęt poleasingowy za dobry wybór dla firmy.
 
-**Decyzja marketingu:** `DO UZUPEŁNIENIA`
-**Uwagi / proponowana zmiana:**
+**Decyzja:** `AKCEPT / ZMIANA / ODRZUĆ`
+**Anonimizacja potwierdzona:** `TAK / NIE`
+**Proponowana zmiana:**
 
----
+### 8. `client.b2b_trust` — Historia klienta
 
-### Scena 4 — Kreatywny start
+**Cel:** pokazać ostrożną decyzję firmy B2B i jej konsekwencje, nie deklarować niepotwierdzonej ciągłości współpracy.
+**Fakty:** większy plan zakupowy; pierwsze zamówienie równe 10% przygotowanego budżetu; test w pracy; realizacja reszty zakupu; po 7 latach klient nadal wybiera sprzęt poleasingowy.
 
-**ID:** `client.creative_start`
-**Perspektywa:** anonimowa historia klientki
-**Cel:** pokazać sprzęt jako narzędzie umożliwiające rozpoczęcie pracy kreatywnej.
-**Fakty obowiązkowe:** ograniczony budżet; laptop poleasingowy; przejście od pierwszych projektów do rozwiniętego miejsca pracy.
-**Tło:** mały pokój zmienia się w domowe studio; pojawiają się projekty i portfolio.
+1. **Firma planowała większy zakup, ale chciała ograniczyć ryzyko.** Przed decyzją potrzebowała sprawdzić sprzęt w codziennej pracy.
+2. **Pierwsze zamówienie wykorzystało 10% przygotowanego budżetu.** Dopiero wtedy AMSO poznało skalę całego planu zakupowego.
+3. **Pracownicy sprawdzili urządzenia w rzeczywistych zadaniach.** To doświadczenie dało firmie podstawę do dalszej decyzji.
+4. **Po udanej próbie firma zrealizowała pozostałą część planu.** Testowe zamówienie otworzyło drogę do właściwego zakupu.
+5. **Od tamtej decyzji minęło siedem lat.** Klient nadal wybiera sprzęt poleasingowy, gdy odpowiada potrzebom jego firmy.
 
-**Znacznik:** Historia klienta
-**Tytuł:** Sprawdzony laptop pomógł zrobić pierwszy krok.
-**Treść:** Jedna z klientek zaczynała z ograniczonym budżetem. Wybrany sprzęt pozwolił jej tworzyć portfolio i rozwinąć własne miejsce pracy.
-**CTA:** Dalej
-**Liczba słów:** 26
+**Decyzja:** `AKCEPT / ZMIANA / ODRZUĆ`
+**Anonimizacja potwierdzona:** `TAK / NIE`
+**Proponowana zmiana:**
 
-**Decyzja marketingu:** `DO UZUPEŁNIENIA`
-**Uwagi / proponowana zmiana:**
+### 9. `story.matching_result` — Nasza historia
 
----
+**Cel:** połączyć trzy historie tezą o dopasowaniu, nie o najniższej cenie.
 
-### Scena 5 — Od 300 zł do 300 000 zł
+1. **Trzy historie oznaczały trzy różne zestawy.** Inne potrzeby, plany i budżety wymagały innych konfiguracji sprzętu.
+2. **Dobre dopasowanie zaczyna się od zrozumienia zastosowania.** Sprzęt ma odpowiadać realnej pracy klienta i etapowi jego rozwoju.
 
-**ID:** `client.business_growth`
-**Perspektywa:** anonimowa historia klienta
-**Cel:** pokazać rozwój firmy klienta bez ośmieszania małego budżetu i bez sugerowania nagłego sukcesu finansowego.
-**Fakty obowiązkowe:** pierwszy laptop przy budżecie maksymalnie 300 zł; po latach budżet zamówienia 300 000 zł; stary laptop pozostaje symbolem początku.
-**Tło:** mały lokal rozwija się w większą firmę, a pierwszy laptop pozostaje widoczny.
+**Decyzja:** `AKCEPT / ZMIANA / ODRZUĆ`
+**Proponowana zmiana:**
 
-**Znacznik:** Historia klienta
-**Tytuł:** Od laptopa za 300 zł do zamówienia za 300 000 zł.
-**Treść:** Firma klienta rosła przez lata. Zmieniły się potrzeby i budżet, ale zaufanie do sprawdzonego sprzętu zostało.
-**CTA:** Dalej
-**Liczba słów:** 29
+### 10. `story.scale` — Nasza historia
 
-**Decyzja marketingu:** `DO UZUPEŁNIENIA`
-**Uwagi / proponowana zmiana:**
+**Cel:** wyjaśnić okres, kategorię i jednostkę przed wizualnym porównaniem, a następnie wrócić do ludzi.
+**Fakty:** około 28 000 smartfonów rocznie; około 240 m po ułożeniu w wieżę; około 400 000 kg komputerów rocznie; robocze porównanie do pięciu załadowanych Boeingów 737.
 
----
+1. **W ciągu roku sprzedajemy około 28 000 smartfonów.** To roczna liczba urządzeń jednej kategorii, nie liczba wszystkich zamówień.
+2. **Ułożone w wieżę miałyby około 240 metrów.** To wysokość porównywalna z PKiN; każdy telefon był jednak konkretnym zamówieniem.
+3. **W ciągu roku wysyłamy około 400 000 kg komputerów.** Mówimy o łącznej masie tej kategorii w rocznym okresie.
+4. **To masa porównywalna z pięcioma załadowanymi Boeingami 737.** Porównanie pozostaje robocze do osobnej akceptacji marketingu.
+5. **Za skalą stoją ludzie i logistyka.** Magazyn, strefy pracy i zespół zamieniają liczby w przygotowane zamówienia.
 
-### Scena 6 — Od próby do zaufania
+**Decyzja:** `AKCEPT / ZMIANA / ODRZUĆ`
+**Porównanie Boeing 737:** `AKCEPT / ZMIANA / ODRZUĆ`
+**Proponowana zmiana:**
 
-**ID:** `client.b2b_trust`
-**Perspektywa:** anonimowa historia klienta B2B
-**Cel:** pokazać, że ostrożny test może przerodzić się w długą współpracę.
-**Fakty obowiązkowe:** około 10% planowanego zakupu przeznaczone na test; siedem lat współpracy; sprzęt poleasingowy nadal jest pierwszym wyborem firmy.
-**Tło:** 10 ze 100 stanowisk, siedmioletni kalendarz i stopniowo rosnąca liczba urządzeń.
+### 11. `story.order_peak_result` — Nasza historia
 
-**Znacznik:** Historia klienta
-**Tytuł:** Zaczęło się od testowych 10%.
-**Treść:** Po siedmiu latach sprzęt poleasingowy nadal jest pierwszym wyborem tej firmy. Próba zmieniła się w trwałą współpracę.
-**CTA:** Wracamy do naszej historii
-**Liczba słów:** 24
+**Cel:** pokazać, że proces i zespół opanowały trzyfazowy szczyt zamówień.
 
-**Decyzja marketingu:** `DO UZUPEŁNIENIA`
-**Uwagi / proponowana zmiana:**
+1. **Proces zamienił szczyt w płynny przepływ.** Kategorie przechodzą przez kompletację, pakowanie i wysyłkę.
+2. **Za każdą strefą stoi zespół.** Skoordynowana praca pozwala utrzymać jakość i tempo, gdy wiele zamówień rusza równolegle.
 
----
+**Decyzja:** `AKCEPT / ZMIANA / ODRZUĆ`
+**Proponowana zmiana:**
 
-### Scena 7 — Skala potrzebuje systemu
+### 12. `story.million_approach` — Nasza historia
 
-**ID:** `story.scale`
-**Perspektywa:** AMSO
-**Cel:** pokazać, że skala jest rezultatem pracy zespołu i procesów, a nie samą listą dużych liczb.
-**Fakty obowiązkowe w copy:** 3 000 m² magazynu; niemal 400 zamówień dziennie.
-**Fakty wyłącznie w tle:** około 240 metrów telefonów; około 400 000 kg komputerów PC rocznie; około 41 tys. PC, 76 tys. notebooków, 40 tys. monitorów i 28 tys. telefonów.
-**Tło:** magazyn rozbudowuje się, liczby powstają z urządzeń, a skanery i trasy porządkują ruch.
+**Cel:** wyjaśnić źródło licznika i sens ostatnich 30 paczek.
+**Fakty:** licznik startuje od 999 970 zrealizowanych zamówień; każda zebrana paczka dodaje dokładnie jedno; próg to 1 000 000 zamówień.
 
-**Znacznik:** Nasza historia
-**Tytuł:** Skala potrzebuje systemu.
-**Treść:** Dziś magazyn AMSO ma 3 000 m², a zespół realizuje niemal 400 zamówień dziennie dzięki uporządkowanym procesom i logistyce.
-**CTA:** Dalej
-**Liczba słów:** 24
+1. **999 970 zrealizowanych zamówień.** Do progu miliona prowadzi ostatnich 30 paczek i osiem poznanych kombinacji.
+2. **Za każdą liczbą stoi konkretny plan.** Sprzęt pomaga ludziom pracować, uczyć się, rozwijać firmy i realizować pomysły.
 
-**Decyzja marketingu:** `DO UZUPEŁNIENIA`
-**Uwagi / proponowana zmiana:**
-
----
-
-### Scena 8 — O krok od miliona
-
-**ID:** `story.million_approach`
-**Perspektywa:** AMSO
-**Cel:** zmienić licznik z suchej statystyki w sumę konkretnych ludzkich potrzeb.
-**Fakty obowiązkowe:** licznik przechodzi od `999 970` do `999 999`; mówimy o milionie zamówień, nie o milionie klientów.
-**Tło:** wszystkie wcześniejsze trasy łączą się przy osobnym, adaptacyjnym liczniku.
-
-**Znacznik:** Nasza historia
-**Tytuł:** Do miliona brakowało już tylko kilku zamówień.
-**Treść:** Za każdą kolejną liczbą stała konkretna potrzeba: sprzęt do pracy, nauki, firmy albo realizacji własnego planu.
-**CTA:** Rozpocznij finał
-**Liczba słów:** 25
-
-**Decyzja marketingu:** `DO UZUPEŁNIENIA`
-**Uwagi / proponowana zmiana:**
-
----
-
-### Scena 9 — Fala Miliona
-
-**ID:** `challenge.million_wave`
-**Perspektywa:** instrukcja dla gracza
-**Cel:** jasno zapowiedzieć finałowy test umiejętności bez dodawania kolejnego fragmentu historii.
-**Fakty obowiązkowe:** trzy fazy; łącznie osiem kombinacji; skok i ślizg; kolizja powtarza niezakończoną kombinację, ale nie kończy historii.
-**Tło:** Fala Miliona powstaje z motywów i przeszkód poznanych wcześniej.
-
-**Znacznik:** Wyzwanie
-**Tytuł:** Fala Miliona sprawdza całą drogę.
-**Treść:** Trzy fazy łączą skok, ślizg i decyzje poznane wcześniej. Ukończ każdą kombinację, żeby dotrzeć do zamówienia numer milion.
-**CTA:** Podejmij wyzwanie
-**Liczba słów:** 24
-
-**Decyzja marketingu:** `DO UZUPEŁNIENIA`
-**Uwagi / proponowana zmiana:**
-
----
-
-### Scena 10 — Milion i dalsza droga
-
-**ID:** `story.million_finale`
-**Perspektywa:** AMSO
-**Cel:** podziękować bez robienia z miliona korporacyjnego trofeum i płynnie otworzyć tryb wyzwania.
-**Fakty obowiązkowe:** zamówienie numer 1 000 000; pierwsza paczka; wspólny udział pracowników i klientów; milion nie kończy drogi.
-**Tło:** milionowa paczka otrzymuje pierwszą etykietę, a kolorowa trasa biegnie dalej poza kadr.
-
-**Znacznik:** Nasza historia
-**Tytuł:** Milion zamówień. Milion ludzkich planów.
-**Treść:** Pierwszą paczkę przygotowaliśmy sami. Do miliona dotarliśmy razem z ludźmi, którzy potrzebowali sprzętu do pracy, nauki i rozwoju. Ta droga trwa dalej.
-**CTA:** Jedziemy dalej — Próba Miliona
-**Liczba słów:** 29
-
-**Decyzja marketingu:** `DO UZUPEŁNIENIA`
-**Uwagi / proponowana zmiana:**
-
----
-
-## 6. Lista faktów wymagających finalnego potwierdzenia
-
-Marketing powinien potwierdzić nie tylko same wartości, ale również możliwość użycia ich w tym kontekście:
-
-- mały sklep i magazyn wielkości kawalerki;
-- pierwsze zamówienie przygotowane własnymi rękami;
-- zakres testowania i przygotowania urządzeń przed sprzedażą;
-- anonimowa historia kreatywnego startu;
-- budżet 300 zł oraz późniejsze zamówienie z budżetem 300 000 zł;
-- testowe 10% i siedem lat współpracy z klientem B2B;
-- 3 000 m² magazynu;
-- niemal 400 zamówień dziennie;
-- około 240 metrów telefonów;
-- około 400 000 kg komputerów PC rocznie i porównanie do pięciu załadowanych Boeingów 737;
-- około 41 tys. PC, 76 tys. notebooków, 40 tys. monitorów i 28 tys. telefonów;
-- poprawne użycie określenia `zamówienie nr 1 000 000`.
-
-## 7. Kontrola przed oddaniem tekstów do wdrożenia
-
-- [ ] Każda scena ma decyzję marketingu.
-- [ ] Każda liczba została potwierdzona jako aktualna i poprawnie opisana.
-- [ ] Każda historia klienta jest anonimowa i wyraźnie oznaczona.
-- [ ] W scenach klientów nie występuje niezidentyfikowane `my`.
-- [ ] W scenach AMSO nie przypisujemy sobie wypowiedzi ani doświadczeń klientów.
-- [ ] Każda scena mieści się w zatwierdzonym limicie słów.
-- [ ] Każda scena przekazuje tylko jedną główną myśl.
-- [ ] Tekst nie powtarza listy liczb widocznych w tle.
-- [ ] Finał mówi o milionie zamówień, nie milionie klientów.
-- [ ] CTA scen zostały zaakceptowane.
-
-## 8. Poza zakresem redakcji marketingowej
-
-Poniższe decyzje są już ustalone i nie wymagają przepisywania copy:
-
-- podczas biegu dolna część ekranu pozostaje bez widocznego tekstu;
-- tutorial i statusy power-upów trafiają do górnego HUD-u;
-- finałowe wyzwanie ma trzy fazy, osiem kombinacji i trwa około 45–60 sekund;
-- kolizja w finale nie kończy trybu fabularnego;
-- light mode i dark mode używają tych samych fabularnych teł;
-- licznik `999 970 → 999 999` pozostaje animowany i jest osobnym, responsywnym komponentem;
-- szczegółowe dane liczbowe są elementem tła, nie narracji czytanej przez gracza.
+**Decyzja:** `AKCEPT / ZMIANA / ODRZUĆ`
+**Proponowana zmiana:**
+
+### 13. `challenge.million_wave` — Wyzwanie
+
+**Cel:** jasno opisać dwa warunki bezpiecznego finału fabuły.
+
+1. **Dwa cele prowadzą do miliona.** HUD osobno pokazuje 30 zebranych paczek i osiem ukończonych kombinacji skoku oraz ślizgu.
+2. **W fabule nie ma game over.** Pominięta paczka wraca, a błąd powtarza tylko bieżącą kombinację.
+
+**Decyzja:** `AKCEPT / ZMIANA / ODRZUĆ`
+**Proponowana zmiana:**
+
+### 14. `story.million_finale` — Nasza historia
+
+**Cel:** świętować milion bez sugerowania końca drogi.
+
+1. **Milion zamówień. Milion ludzkich planów.** Pierwszą paczkę przygotowaliśmy sami, a milionową świętujemy razem z całym zespołem.
+2. **Ta droga trwa dalej.** Milion nie kończy biegu. Przed graczem kolejny etap tej samej drogi.
+
+**Decyzja:** `AKCEPT / ZMIANA / ODRZUĆ`
+**Proponowana zmiana:**
+
+### 15. `story.challenge_handoff` — Wyzwanie
+
+**Cel:** jawnie wyjaśnić zmianę zasad przed odliczaniem 3–2–1.
+
+1. **Cały dotychczasowy wynik zostaje z Tobą.** Zachowane są punkty, paczki i aktywne bonusy; od tego miejsca osobno liczony jest wynik wyzwania.
+2. **Teraz tempo będzie rosło.** Pierwsze niezabezpieczone zderzenie kończy bieg. Aktywna Ochrona może uratować próbę jeden raz.
+
+**CTA:** Podejmuję wyzwanie
+**Decyzja:** `AKCEPT / ZMIANA / ODRZUĆ`
+**Proponowana zmiana:**
+
+## Fakty wymagające finalnego potwierdzenia
+
+| Fakt lub sformułowanie | Status marketingu | Uwagi |
+|---|---|---|
+| mały sklep i magazyn wielkości kawalerki | `AKCEPT / ZMIANA / ODRZUĆ` | |
+| pierwsza paczka przygotowana własnymi rękami | `AKCEPT / ZMIANA / ODRZUĆ` | |
+| opis przygotowania urządzeń bez listy testów komponentów | `AKCEPT / ZMIANA / ODRZUĆ` | |
+| anonimowa historia kreatywnego startu | `AKCEPT / ZMIANA / ODRZUĆ` | |
+| start działalności, budżet do 400 zł i laptop za 300 zł | `AKCEPT / ZMIANA / ODRZUĆ` | |
+| powrót po roku z budżetem 100 000 zł | `AKCEPT / ZMIANA / ODRZUĆ` | |
+| pierwsze zamówienie równe 10% przygotowanego budżetu | `AKCEPT / ZMIANA / ODRZUĆ` | |
+| po siedmiu latach klient nadal wybiera sprzęt poleasingowy | `AKCEPT / ZMIANA / ODRZUĆ` | |
+| około 28 000 smartfonów rocznie | `AKCEPT / ZMIANA / ODRZUĆ` | |
+| wieża telefonów około 240 m / porównanie z PKiN | `AKCEPT / ZMIANA / ODRZUĆ` | |
+| około 400 000 kg komputerów rocznie | `AKCEPT / ZMIANA / ODRZUĆ` | |
+| pięć załadowanych Boeingów 737 | `AKCEPT / ZMIANA / ODRZUĆ` | obecnie jawnie oznaczone jako oczekujące |
+| próg 1 000 000 dotyczy zamówień, nie klientów | `AKCEPT / ZMIANA / ODRZUĆ` | |
+
+## Kontrola przed publikacją
+
+- [ ] Każda scena i każdy fakt mają decyzję marketingu.
+- [ ] Historie klientów pozostają anonimowe i używają trzeciej osoby.
+- [ ] Sceny AMSO nie przypisują firmie doświadczeń klientów.
+- [ ] Nigdzie nie występuje stara wartość 300 000 zł.
+- [ ] „10%” zawsze oznacza część przygotowanego budżetu.
+- [ ] „7 lat” nie jest przedstawiane jako nieprzerwana współpraca bez potwierdzenia.
+- [ ] Zakres przygotowania urządzeń nie zawiera niepotwierdzonych testów.
+- [ ] Wszystkie CTA są zaakceptowane.
+- [ ] Voice-over, dark mode i rozszerzona analityka pozostają poza tym wydaniem.

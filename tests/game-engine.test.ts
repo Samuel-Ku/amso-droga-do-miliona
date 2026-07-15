@@ -83,7 +83,7 @@ describe("game random and spawning", () => {
     }
 
     expect(waves).toBe(80);
-    expect(patterns.size).toBe(4);
+    expect(patterns.size).toBe(14);
     expect(goldenPackages).toBeGreaterThan(0);
   });
 

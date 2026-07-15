@@ -2,17 +2,14 @@ import type { PackageType } from "../shared/types";
 
 export const STORY_OBJECTIVE_SEGMENT_IDS = [
   "epoch_1.training",
-  "epoch_1.cable_chaos",
+  "epoch_1.order_backlog",
   "epoch_2.quality_series",
-  "epoch_2.doubt_cloud",
-  "epoch_3.creative_contract",
-  "epoch_3.growth_contract",
-  "epoch_3.trust_contract",
-  "epoch_3.budget_eater",
-  "epoch_4.orders",
-  "epoch_4.logistic_hydra",
-  "epoch_5.counter",
-  "epoch_5.million_wave",
+  "epoch_2.quality_trial",
+  "epoch_3.matching_creative",
+  "epoch_3.matching_growth",
+  "epoch_3.matching_trust",
+  "epoch_4.order_peak",
+  "epoch_4.order_peak_final",
   "epoch_5.million_threshold"
 ] as const;
 
@@ -22,16 +19,13 @@ export const STORY_CREATIVE_EQUIPMENT_IDS = ["notebook", "lcd", "pc"] as const;
 export type StoryCreativeEquipmentId = typeof STORY_CREATIVE_EQUIPMENT_IDS[number];
 export type StoryObjectiveId =
   | "epoch_1.training"
-  | "epoch_1.cable_chaos"
+  | "epoch_1.order_backlog"
   | "epoch_2.quality_series"
-  | "epoch_3.creative_contract"
-  | "epoch_3.growth_contract"
-  | "epoch_3.trust_contract"
-  | "epoch_4.orders"
-  | "epoch_4.logistic_hydra"
-  | "epoch_5.counter"
-  | "epoch_5.million_wave"
-  | "epoch_5.symbols"
+  | "epoch_3.matching_creative"
+  | "epoch_3.matching_growth"
+  | "epoch_3.matching_trust"
+  | "epoch_4.order_peak"
+  | "epoch_4.order_peak_final"
   | "epoch_5.million_threshold";
 
 export interface StoryObjectiveUpdate {
@@ -44,7 +38,7 @@ export interface StoryObjectivesSnapshot {
   completedObjectiveIds: readonly StoryObjectiveId[];
   epoch1: {
     training: { jumps: number; slides: number; targetEach: number; completed: boolean };
-    cableChaos: {
+    orderBacklog: {
       currentAlternation: number;
       bestAlternation: number;
       target: number;
@@ -78,7 +72,7 @@ export interface StoryObjectivesSnapshot {
       lastCompletedType: PackageType | null;
       completed: boolean;
     };
-    hydra: {
+    flow: {
       elapsedSeconds: number;
       phase: "intake" | "routing" | "dispatch" | "completed";
       phasesCompleted: number;
@@ -97,37 +91,20 @@ export interface StoryObjectivesSnapshot {
       counterValue: number;
       completed: boolean;
     };
-    counter: { elapsedSeconds: number; value: number; completed: boolean };
-    wave: {
-      elapsedSeconds: number;
-      phase: "order" | "quality" | "choice" | "logistics" | "final_wave" | "completed";
-      guidedPhasesCompleted: number;
-      completed: boolean;
-    };
-    symbols: {
-      collectedIds: readonly number[];
-      pendingIds: readonly number[];
-      misses: number;
-      completed: boolean;
-    };
     completed: boolean;
   };
 }
 
 export const STORY_OBJECTIVE_TARGETS = {
   mixedActionsEach: 4,
-  cableAlternation: 4,
+  backlogAlternation: 4,
   qualitySeries: 4,
   qualityCombo: 3,
   creativePickups: STORY_CREATIVE_EQUIPMENT_IDS.length,
   growthCombo: 8,
   trustClean: 12,
   requiredOrders: 6,
-  hydraSeconds: 20,
-  counterSeconds: 15,
-  millionPhaseSeconds: 12,
-  millionGuidedPhases: 3,
-  symbolCount: 8,
+  orderPeakSeconds: 72,
   millionPackages: 30,
   millionCombinations: 8
 } as const;
@@ -150,18 +127,14 @@ function cappedElapsed(current: number, delta: number, target: number): number {
   return next + 1e-6 >= target ? target : Math.min(target, next);
 }
 
-function sortedNumbers(values: ReadonlySet<number>): number[] {
-  return [...values].sort((left, right) => left - right);
-}
-
 /** Pure, timeline-independent progress tracker for the five story epochs. */
 export class StoryObjectiveDirector {
   private activeSegmentId: StoryObjectiveSegmentId | null = null;
   private trainingJumps = 0;
   private trainingSlides = 0;
-  private cableCurrent = 0;
-  private cableBest = 0;
-  private cableLastAction: StoryAction | null = null;
+  private backlogCurrent = 0;
+  private backlogBest = 0;
+  private backlogLastAction: StoryAction | null = null;
   private qualityCompletedSeries = 0;
   private qualityCurrentSeries = 0;
   private readonly creativePickups = new Set<StoryCreativeEquipmentId>();
@@ -172,19 +145,12 @@ export class StoryObjectiveDirector {
   private requiredOrders = 0;
   private bonusOrders = 0;
   private lastCompletedOrderType: PackageType | null = null;
-  private hydraElapsedSeconds = 0;
-  private counterElapsedSeconds = 0;
-  private millionWaveElapsedSeconds = 0;
-  private hydraDurationSeconds: number = TARGETS.hydraSeconds;
-  private counterDurationSeconds: number = TARGETS.counterSeconds;
-  private millionWaveDurationSeconds: number =
-    TARGETS.millionPhaseSeconds * TARGETS.millionGuidedPhases;
-  private readonly collectedSymbols = new Set<number>();
-  private symbolMisses = 0;
+  private orderPeakElapsedSeconds = 0;
+  private orderPeakDurationSeconds: number = TARGETS.orderPeakSeconds;
   private thresholdPackages = 0;
   private thresholdCombinations = 0;
 
-  public enterSegment(segmentId: string | null, durationSeconds?: number): boolean {
+  public enterSegment(segmentId: string | null, _durationSeconds?: number): boolean {
     if (segmentId === null) {
       const changed = this.activeSegmentId !== null;
       this.activeSegmentId = null;
@@ -194,8 +160,7 @@ export class StoryObjectiveDirector {
     const next = segmentId as StoryObjectiveSegmentId;
     const changed = next !== this.activeSegmentId;
     this.activeSegmentId = next;
-    const durationChanged = this.captureDuration(next, durationSeconds);
-    return changed || durationChanged;
+    return changed;
   }
 
   /** Records an action only after its obstacle pattern has been cleared successfully. */
@@ -206,12 +171,12 @@ export class StoryObjectiveDirector {
           if (action === "jump") this.trainingJumps += 1;
           else this.trainingSlides += 1;
           return true;
-        case "epoch_1.cable_chaos":
-          this.cableCurrent = this.cableLastAction === null || this.cableLastAction !== action
-            ? this.cableCurrent + 1
+        case "epoch_1.order_backlog":
+          this.backlogCurrent = this.backlogLastAction === null || this.backlogLastAction !== action
+            ? this.backlogCurrent + 1
             : 1;
-          this.cableLastAction = action;
-          this.cableBest = Math.max(this.cableBest, this.cableCurrent);
+          this.backlogLastAction = action;
+          this.backlogBest = Math.max(this.backlogBest, this.backlogCurrent);
           return true;
         case "epoch_2.quality_series":
           if (this.qualityCompletedSeries >= TARGETS.qualitySeries) return false;
@@ -227,15 +192,10 @@ export class StoryObjectiveDirector {
     });
   }
 
-  /** @deprecated Prefer recordSuccessfulPattern after a confirmed clear. */
-  public recordAction(action: StoryAction): StoryObjectiveUpdate {
-    return this.recordSuccessfulPattern(action);
-  }
-
   /** Synchronises the growth objective with the scoring engine's real combo value. */
   public recordCurrentCombo(combo: number): StoryObjectiveUpdate {
     return this.update(() => {
-      if (this.activeSegmentId !== "epoch_3.growth_contract" || !Number.isFinite(combo)) {
+      if (this.activeSegmentId !== "epoch_3.matching_growth" || !Number.isFinite(combo)) {
         return false;
       }
       const current = Math.max(0, Math.floor(combo));
@@ -250,10 +210,10 @@ export class StoryObjectiveDirector {
   public recordError(): StoryObjectiveUpdate {
     return this.update(() => {
       switch (this.activeSegmentId) {
-        case "epoch_1.cable_chaos": {
-          const changed = this.cableCurrent !== 0 || this.cableLastAction !== null;
-          this.cableCurrent = 0;
-          this.cableLastAction = null;
+        case "epoch_1.order_backlog": {
+          const changed = this.backlogCurrent !== 0 || this.backlogLastAction !== null;
+          this.backlogCurrent = 0;
+          this.backlogLastAction = null;
           return changed;
         }
         case "epoch_2.quality_series": {
@@ -261,12 +221,12 @@ export class StoryObjectiveDirector {
           this.qualityCurrentSeries = 0;
           return changed;
         }
-        case "epoch_3.growth_contract": {
+        case "epoch_3.matching_growth": {
           const changed = this.growthCurrent !== 0;
           this.growthCurrent = 0;
           return changed;
         }
-        case "epoch_3.trust_contract": {
+        case "epoch_3.matching_trust": {
           const changed = this.trustCurrent !== 0;
           this.trustCurrent = 0;
           return changed;
@@ -284,7 +244,7 @@ export class StoryObjectiveDirector {
   /** A clean trust action is one deliberately collected parcel; a collision resets the streak. */
   public recordTrustCollection(): StoryObjectiveUpdate {
     return this.update(() => {
-      if (this.activeSegmentId !== "epoch_3.trust_contract") return false;
+      if (this.activeSegmentId !== "epoch_3.matching_trust") return false;
       this.trustCurrent += 1;
       this.trustBest = Math.max(this.trustBest, this.trustCurrent);
       return true;
@@ -294,7 +254,7 @@ export class StoryObjectiveDirector {
   /** Accepts only one of the three marked items required by the creative contract. */
   public recordCreativePickup(equipmentId: string): StoryObjectiveUpdate {
     return this.update(() => {
-      if (this.activeSegmentId !== "epoch_3.creative_contract" ||
+      if (this.activeSegmentId !== "epoch_3.matching_creative" ||
           !isCreativeEquipmentId(equipmentId) ||
           this.creativePickups.has(equipmentId)) return false;
       this.creativePickups.add(equipmentId);
@@ -302,14 +262,9 @@ export class StoryObjectiveDirector {
     });
   }
 
-  /** @deprecated Prefer recordCreativePickup with a marked equipment id. */
-  public recordPickup(pickupId: string): StoryObjectiveUpdate {
-    return this.recordCreativePickup(pickupId);
-  }
-
   public recordOrder(orderType: PackageType): StoryObjectiveUpdate {
     return this.update(() => {
-      if (this.activeSegmentId !== "epoch_4.orders" ||
+      if (this.activeSegmentId !== "epoch_4.order_peak" ||
           !(["pc", "notebook", "lcd", "telefon"] as const).includes(orderType)) return false;
       if (this.requiredOrders < TARGETS.requiredOrders) this.requiredOrders += 1;
       else this.bonusOrders += 1;
@@ -322,47 +277,16 @@ export class StoryObjectiveDirector {
     return this.update(() => {
       if (!validDelta(deltaSeconds)) return false;
       switch (this.activeSegmentId) {
-        case "epoch_4.logistic_hydra":
-          if (this.hydraElapsedSeconds >= this.hydraDurationSeconds) return false;
-          this.hydraElapsedSeconds = cappedElapsed(
-            this.hydraElapsedSeconds, deltaSeconds, this.hydraDurationSeconds
-          );
-          return true;
-        case "epoch_5.counter":
-          if (this.counterElapsedSeconds >= this.counterDurationSeconds) return false;
-          this.counterElapsedSeconds = cappedElapsed(
-            this.counterElapsedSeconds, deltaSeconds, this.counterDurationSeconds
-          );
-          return true;
-        case "epoch_5.million_wave":
-          if (this.millionWaveElapsedSeconds >= this.millionWaveDurationSeconds) return false;
-          this.millionWaveElapsedSeconds = cappedElapsed(
-            this.millionWaveElapsedSeconds,
-            deltaSeconds,
-            this.millionWaveDurationSeconds
+        case "epoch_4.order_peak":
+        case "epoch_4.order_peak_final":
+          if (this.orderPeakElapsedSeconds >= this.orderPeakDurationSeconds) return false;
+          this.orderPeakElapsedSeconds = cappedElapsed(
+            this.orderPeakElapsedSeconds, deltaSeconds, this.orderPeakDurationSeconds
           );
           return true;
         default:
           return false;
       }
-    });
-  }
-
-  public recordSymbol(index: number): StoryObjectiveUpdate {
-    return this.update(() => {
-      if (this.activeSegmentId !== "epoch_5.million_wave" || !this.validSymbol(index) ||
-          this.collectedSymbols.has(index)) return false;
-      this.collectedSymbols.add(index);
-      return true;
-    });
-  }
-
-  public recordSymbolMiss(index: number): StoryObjectiveUpdate {
-    return this.update(() => {
-      if (this.activeSegmentId !== "epoch_5.million_wave" || !this.validSymbol(index) ||
-          this.collectedSymbols.has(index)) return false;
-      this.symbolMisses += 1;
-      return true;
     });
   }
 
@@ -387,26 +311,17 @@ export class StoryObjectiveDirector {
   public get snapshot(): StoryObjectivesSnapshot {
     const trainingComplete = this.trainingJumps >= TARGETS.mixedActionsEach &&
       this.trainingSlides >= TARGETS.mixedActionsEach;
-    const cableComplete = this.cableBest >= TARGETS.cableAlternation;
+    const backlogComplete = this.backlogBest >= TARGETS.backlogAlternation;
     const creativeComplete = this.creativePickups.size >= TARGETS.creativePickups;
     const growthComplete = this.growthBest >= TARGETS.growthCombo;
     const trustComplete = this.trustBest >= TARGETS.trustClean;
     const ordersComplete = this.requiredOrders >= TARGETS.requiredOrders;
-    const hydraComplete = this.hydraElapsedSeconds >= this.hydraDurationSeconds;
-    const counterComplete = this.counterElapsedSeconds >= this.counterDurationSeconds;
-    const waveSeconds = this.millionWaveDurationSeconds;
-    const waveComplete = this.millionWaveElapsedSeconds >= waveSeconds;
-    const symbolsComplete = this.collectedSymbols.size >= TARGETS.symbolCount;
+    const orderPeakComplete = this.orderPeakElapsedSeconds >= this.orderPeakDurationSeconds;
     const completedObjectiveIds = this.completedObjectiveIds();
-    const hydraPhaseLength = this.hydraDurationSeconds / 3;
-    const hydraPhasesCompleted = hydraComplete
+    const orderPeakPhaseLength = this.orderPeakDurationSeconds / 3;
+    const orderPeakPhasesCompleted = orderPeakComplete
       ? 3
-      : Math.floor(this.hydraElapsedSeconds / hydraPhaseLength);
-    const millionPhaseSeconds = this.millionWaveDurationSeconds / TARGETS.millionGuidedPhases;
-    const guidedPhasesCompleted = Math.min(
-      TARGETS.millionGuidedPhases,
-      Math.floor(this.millionWaveElapsedSeconds / millionPhaseSeconds)
-    );
+      : Math.floor(this.orderPeakElapsedSeconds / orderPeakPhaseLength);
 
     return {
       activeSegmentId: this.activeSegmentId,
@@ -418,13 +333,13 @@ export class StoryObjectiveDirector {
           targetEach: TARGETS.mixedActionsEach,
           completed: trainingComplete
         },
-        cableChaos: {
-          currentAlternation: this.cableCurrent,
-          bestAlternation: this.cableBest,
-          target: TARGETS.cableAlternation,
-          completed: cableComplete
+        orderBacklog: {
+          currentAlternation: this.backlogCurrent,
+          bestAlternation: this.backlogBest,
+          target: TARGETS.backlogAlternation,
+          completed: backlogComplete
         },
-        completed: trainingComplete && cableComplete
+        completed: trainingComplete && backlogComplete
       },
       epoch2: {
         completedSeries: this.qualityCompletedSeries,
@@ -462,19 +377,19 @@ export class StoryObjectiveDirector {
           lastCompletedType: this.lastCompletedOrderType,
           completed: ordersComplete
         },
-        hydra: {
-          elapsedSeconds: this.hydraElapsedSeconds,
-          phase: hydraComplete
+        flow: {
+          elapsedSeconds: this.orderPeakElapsedSeconds,
+          phase: orderPeakComplete
             ? "completed"
-            : this.hydraElapsedSeconds < hydraPhaseLength
+            : this.orderPeakElapsedSeconds < orderPeakPhaseLength
               ? "intake"
-              : this.hydraElapsedSeconds < hydraPhaseLength * 2
+              : this.orderPeakElapsedSeconds < orderPeakPhaseLength * 2
                 ? "routing"
                 : "dispatch",
-          phasesCompleted: hydraPhasesCompleted,
-          completed: hydraComplete
+          phasesCompleted: orderPeakPhasesCompleted,
+          completed: orderPeakComplete
         },
-        completed: ordersComplete && hydraComplete
+        completed: ordersComplete && orderPeakComplete
       },
       epoch5: {
         millionThreshold: {
@@ -488,33 +403,8 @@ export class StoryObjectiveDirector {
           completed: this.thresholdPackages >= TARGETS.millionPackages &&
             this.thresholdCombinations >= TARGETS.millionCombinations
         },
-        counter: {
-          elapsedSeconds: this.counterElapsedSeconds,
-          value: [999_970, 999_980, 999_990, 999_999][Math.min(
-            3,
-            Math.floor(this.counterElapsedSeconds / (this.counterDurationSeconds / 4))
-          )]!,
-          completed: counterComplete
-        },
-        wave: {
-          elapsedSeconds: this.millionWaveElapsedSeconds,
-          phase: waveComplete
-            ? "completed"
-            : (["order", "quality", "logistics"] as const)[Math.min(
-                2,
-                Math.floor(this.millionWaveElapsedSeconds / millionPhaseSeconds)
-              )]!,
-          guidedPhasesCompleted,
-          completed: waveComplete
-        },
-        symbols: {
-          collectedIds: sortedNumbers(this.collectedSymbols),
-          pendingIds: Array.from({ length: TARGETS.symbolCount }, (_, index) => index)
-            .filter((index) => !this.collectedSymbols.has(index)),
-          misses: this.symbolMisses,
-          completed: symbolsComplete
-        },
-        completed: counterComplete && waveComplete && symbolsComplete
+        completed: this.thresholdPackages >= TARGETS.millionPackages &&
+          this.thresholdCombinations >= TARGETS.millionCombinations
       }
     };
   }
@@ -524,18 +414,13 @@ export class StoryObjectiveDirector {
     if (this.trainingJumps >= TARGETS.mixedActionsEach && this.trainingSlides >= TARGETS.mixedActionsEach) {
       ids.push("epoch_1.training");
     }
-    if (this.cableBest >= TARGETS.cableAlternation) ids.push("epoch_1.cable_chaos");
+    if (this.backlogBest >= TARGETS.backlogAlternation) ids.push("epoch_1.order_backlog");
     if (this.qualityCompletedSeries >= TARGETS.qualitySeries) ids.push("epoch_2.quality_series");
-    if (this.creativePickups.size >= TARGETS.creativePickups) ids.push("epoch_3.creative_contract");
-    if (this.growthBest >= TARGETS.growthCombo) ids.push("epoch_3.growth_contract");
-    if (this.trustBest >= TARGETS.trustClean) ids.push("epoch_3.trust_contract");
-    if (this.requiredOrders >= TARGETS.requiredOrders) ids.push("epoch_4.orders");
-    if (this.hydraElapsedSeconds >= this.hydraDurationSeconds) ids.push("epoch_4.logistic_hydra");
-    if (this.counterElapsedSeconds >= this.counterDurationSeconds) ids.push("epoch_5.counter");
-    if (this.millionWaveElapsedSeconds >= this.millionWaveDurationSeconds) {
-      ids.push("epoch_5.million_wave");
-    }
-    if (this.collectedSymbols.size >= TARGETS.symbolCount) ids.push("epoch_5.symbols");
+    if (this.creativePickups.size >= TARGETS.creativePickups) ids.push("epoch_3.matching_creative");
+    if (this.growthBest >= TARGETS.growthCombo) ids.push("epoch_3.matching_growth");
+    if (this.trustBest >= TARGETS.trustClean) ids.push("epoch_3.matching_trust");
+    if (this.requiredOrders >= TARGETS.requiredOrders) ids.push("epoch_4.order_peak");
+    if (this.orderPeakElapsedSeconds >= this.orderPeakDurationSeconds) ids.push("epoch_4.order_peak_final");
     if (this.thresholdPackages >= TARGETS.millionPackages &&
         this.thresholdCombinations >= TARGETS.millionCombinations) {
       ids.push("epoch_5.million_threshold");
@@ -551,34 +436,4 @@ export class StoryObjectiveDirector {
     return { changed, newlyCompletedObjectiveIds };
   }
 
-  private validSymbol(index: number): boolean {
-    return Number.isInteger(index) && index >= 0 && index < TARGETS.symbolCount;
-  }
-
-  private captureDuration(
-    segmentId: StoryObjectiveSegmentId,
-    durationSeconds: number | undefined
-  ): boolean {
-    if (!validDelta(durationSeconds ?? 0)) return false;
-    const duration = durationSeconds as number;
-    switch (segmentId) {
-      case "epoch_4.logistic_hydra": {
-        const changed = duration !== this.hydraDurationSeconds;
-        this.hydraDurationSeconds = duration;
-        return changed;
-      }
-      case "epoch_5.counter": {
-        const changed = duration !== this.counterDurationSeconds;
-        this.counterDurationSeconds = duration;
-        return changed;
-      }
-      case "epoch_5.million_wave": {
-        const changed = duration !== this.millionWaveDurationSeconds;
-        this.millionWaveDurationSeconds = duration;
-        return changed;
-      }
-      default:
-        return false;
-    }
-  }
 }

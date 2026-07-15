@@ -10,22 +10,22 @@ import {
 } from "../src/visuals/scene-manifest";
 
 describe("campaign visual scene manifest", () => {
-  it("is the one-to-one visual source for all ten narrative cards", () => {
+  it("is the one-to-one visual source for all fifteen narrative cards", () => {
     const sceneIds = productionConfig.story.scenes.map(({ id }) => id);
     const stateIds = CAMPAIGN_SCENE_MANIFEST.map(({ stateId }) => stateId);
 
     expect(CAMPAIGN_WORLDS).toHaveLength(7);
-    expect(CAMPAIGN_SCENE_MANIFEST).toHaveLength(10);
-    expect(new Set(stateIds).size).toBe(10);
+    expect(CAMPAIGN_SCENE_MANIFEST).toHaveLength(15);
+    expect(new Set(stateIds).size).toBe(15);
     expect(stateIds).toEqual(sceneIds);
     expect(validateSceneManifest(sceneIds)).toEqual([]);
   });
 
   it("gives every card unique art direction and a semantic fallback", () => {
     expect(new Set(CAMPAIGN_SCENE_MANIFEST.map(({ visualEvent }) => visualEvent)).size)
-      .toBe(10);
+      .toBe(15);
     expect(new Set(CAMPAIGN_SCENE_MANIFEST.map(({ revealMotion }) => revealMotion)).size)
-      .toBe(10);
+      .toBe(15);
     for (const state of CAMPAIGN_SCENE_MANIFEST) {
       expect(state.motifs.length).toBeGreaterThan(0);
       expect(state.fallbackId).toMatch(/^fallback-/u);
@@ -39,14 +39,14 @@ describe("campaign visual scene manifest", () => {
   it("places the quality promise at the testing station", () => {
     expect(sceneVisualState("story.quality_promise")).toMatchObject({
       worldId: "quality-service",
-      overlayStateId: "epoch_2.resolve"
+      overlayStateId: "epoch_2.setup"
     });
   });
 
   it("references seven versioned deployable world plates", () => {
     for (const world of CAMPAIGN_WORLDS) {
       expect(world.assetPath).toMatch(
-        /^\/assets\/milion-runner\/worlds\/world-\d{2}-[a-z0-9-]+-v\d+\.avif$/u
+        /^\/assets\/milion-runner\/worlds\/world-\d{2}-[a-z0-9-]+-v\d+\.(?:avif|svg)$/u
       );
       const localPath = new URL(`../public${world.assetPath}`, import.meta.url);
       expect(existsSync(localPath), localPath.pathname).toBe(true);

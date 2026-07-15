@@ -1,4 +1,5 @@
 import type { BossPhase } from "./types";
+import type { PackageKind } from "./types";
 import type {
   CampaignMode,
   ChallengeConfig,
@@ -31,6 +32,8 @@ export interface GameSnapshot {
   visualTransitionPending: boolean;
   score: number;
   packagesCollected: number;
+  challengeScore: number;
+  challengePackagesCollected: number;
   collisions: number;
   recoverySeconds: number;
   combo: number;
@@ -40,13 +43,10 @@ export interface GameSnapshot {
   storyProgress: number;
   activeStoryBeatIds: string[];
   trustCorridor: boolean;
-  storySymbols: number;
   storyObjectiveSegmentId: string;
   storyObjectivesCompleted: StoryObjectiveId[];
   storyObjectives: StoryObjectivesSnapshot;
   activeStoryOrderTypes: PackageType[];
-  activeStorySymbolIds: number[];
-  storySymbolRespawns: number;
   storyClimaxName: string;
   storyClimaxPhase: StoryClimaxPhase;
   storyClimaxesCompleted: number[];
@@ -91,6 +91,7 @@ export interface RunnerGameCallbacks {
   onStoryUpdate?: (snapshot: StoryTimelineSnapshot) => void;
   onStoryComplete?: () => void;
   onStoryObjectiveCompleted?: (objectiveId: StoryObjectiveId) => void;
+  onSpecialPickup?: (kind: Exclude<PackageKind, "standard">) => void;
   onModeChange?: (mode: GameMode, previousMode: GameMode) => void;
 }
 

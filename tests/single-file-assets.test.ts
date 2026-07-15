@@ -15,11 +15,11 @@ const campaignStyles = readFileSync(
   "utf8"
 );
 
-const campaignAvifPaths = [
+const campaignImagePaths = [
   "/assets/milion-runner/brand/mz-main-lockup-v1.avif",
   "/assets/milion-runner/brand/mz-compact-lockup-v1.avif",
   "/assets/milion-runner/worlds/world-01-first-mile-v1.avif",
-  "/assets/milion-runner/worlds/world-02-cable-route-v1.avif",
+  "/assets/milion-runner/worlds/world-02-order-process-v1.svg",
   "/assets/milion-runner/worlds/world-03-quality-service-v1.avif",
   "/assets/milion-runner/worlds/world-04-client-paths-v1.avif",
   "/assets/milion-runner/worlds/world-05-scale-logistics-v1.avif",
@@ -92,8 +92,8 @@ describe("single-file QA artwork", () => {
     }
   });
 
-  it("embeds every campaign AVIF instead of retaining public URLs", () => {
-    for (const assetPath of campaignAvifPaths) {
+  it("embeds every campaign image instead of retaining public URLs", () => {
+    for (const assetPath of campaignImagePaths) {
       expect(qaPreview).not.toContain(assetPath);
     }
 
@@ -101,11 +101,12 @@ describe("single-file QA artwork", () => {
       qaPreview.match(/data:image\/avif;base64,[A-Za-z0-9+/=]+/g) ?? []
     );
 
-    expect(embeddedAvifs.size).toBe(campaignAvifPaths.length);
+    expect(embeddedAvifs.size).toBe(8);
     for (const embeddedAvif of embeddedAvifs) {
       expect(embeddedAvif.length).toBeLessThanOrEqual(
         EMBEDDED_AVIF_MAX_LENGTH
       );
     }
+    expect(qaPreview).toContain("data:image/svg+xml;base64,");
   });
 });

@@ -121,7 +121,7 @@ function createGameHarness(
       game.crouch(obstacle.x <= 330, "keyboard");
     } else {
       game.crouch(false, "keyboard");
-      if (obstacle !== jumpedObstacle && obstacle.x <= 330 && internals.runner.grounded) {
+      if (obstacle !== jumpedObstacle && obstacle.x <= 220 && internals.runner.grounded) {
         jumpedObstacle = obstacle;
         game.jump("keyboard");
       }
@@ -145,6 +145,13 @@ function createGameHarness(
       visibilityListener?.();
     },
     avoidObstacles,
+    continueCurrentSceneFully(): void {
+      const sceneId = storyUpdates.at(-1)?.scene?.id;
+      if (!sceneId) throw new Error("story should be waiting on a scene");
+      for (let guard = 0; guard < 20 && storyUpdates.at(-1)?.scene?.id === sceneId; guard += 1) {
+        if (!game.continueStoryScene(sceneId)) break;
+      }
+    },
     timestamp: 0,
     advance(seconds: number, beforeFrame?: (elapsedSeconds: number) => void): void {
       const frameCount = Math.ceil(seconds * 60);
@@ -166,7 +173,7 @@ function createGameHarness(
           game.continueStoryScene(storySnapshot.scene.id);
           continue;
         }
-        if (storySnapshot?.playSegment?.id === "epoch_5.million_wave" &&
+        if (storySnapshot?.playSegment?.id === "epoch_5.million_threshold" &&
             (snapshots.at(-1)?.bossesDefeated ?? 0) === 0) {
           const internals = game as unknown as { completeBossEncounter(): void };
           internals.completeBossEncounter();
@@ -195,11 +202,11 @@ describe("campaign collision contract", () => {
     expect(resolveCollision("challenge", false).finishRun).toBe(true);
   });
 
-  it("consumes a warranty once instead of ending either mode", () => {
+  it("preserves warranty in story and consumes it only in challenge", () => {
     expect(resolveCollision("story", true)).toEqual({
       finishRun: false,
-      consumeWarranty: true,
-      resetCombo: false,
+      consumeWarranty: false,
+      resetCombo: true,
       recoverySeconds: 2
     });
     expect(resolveCollision("challenge", true)).toEqual({
@@ -221,8 +228,7 @@ describe("campaign collision contract", () => {
     };
     const harness = createGameHarness("story", collisionStory);
     harness.game.start("keyboard");
-    harness.game.continueStoryScene("story.first_package");
-    harness.game.continueStoryScene("story.quality_promise");
+    harness.continueCurrentSceneFully();
     harness.advance(4);
     harness.advance(25);
 
@@ -243,16 +249,15 @@ describe("campaign collision contract", () => {
     harness.game.destroy();
   });
 
-  it("lets a player clear all ten tutorial actions inside the production training window", () => {
+  it("lets a player clear all eight tutorial actions inside the production training window", () => {
     const harness = createGameHarness("story");
     harness.game.start("keyboard");
-    harness.game.continueStoryScene("story.first_package");
-    harness.game.continueStoryScene("story.quality_promise");
+    harness.continueCurrentSceneFully();
     harness.advance(STORY_REFRAME_SECONDS + 3.05);
     expect(harness.storyUpdates.at(-1)?.state).toBe("play");
 
     let jumpedObstacle: object | null = null;
-    harness.advance(25.05, () => {
+    harness.advance(45, () => {
       const internals = harness.game as unknown as {
         obstacles: Array<{
           active: boolean;
@@ -283,7 +288,7 @@ describe("campaign collision contract", () => {
       }
     });
 
-    expect(harness.storyUpdates.at(-1)?.playSegment?.id).toBe("epoch_1.cable_chaos");
+    expect(harness.storyUpdates.at(-1)?.scene?.id).toBe("story.order_backlog");
     expect(harness.snapshots.at(-1)?.storyObjectives.epoch1.training).toMatchObject({
       jumps: 4,
       slides: 4,
@@ -293,19 +298,38 @@ describe("campaign collision contract", () => {
     harness.game.destroy();
   });
 
-  it("resolves Cable Chaos into the process scene inside its production window", () => {
+  it("holds the tutorial until the required jump and slide patterns are cleared", () => {
     const harness = createGameHarness("story");
     harness.game.start("keyboard");
-    harness.game.continueStoryScene("story.first_package");
-    harness.game.continueStoryScene("story.quality_promise");
+    harness.continueCurrentSceneFully();
     harness.advance(STORY_REFRAME_SECONDS + 3.05);
-    harness.advance(25.05);
-    expect(harness.storyUpdates.at(-1)?.playSegment?.id).toBe("epoch_1.cable_chaos");
+    harness.advance(35);
 
-    harness.advance(15.05, harness.avoidObstacles);
+    expect(harness.storyUpdates.at(-1)?.playSegment?.id).toBe("epoch_1.training");
+    const internals = harness.game as unknown as {
+      storyTimeline: { snapshot: StoryTimelineSnapshot };
+    };
+    expect(internals.storyTimeline.snapshot.sectionElapsedSeconds).toBe(25);
+    expect(harness.snapshots.at(-1)?.storyObjectives.epoch1.training.completed).toBe(false);
+    expect(harness.game.state).toBe("running");
+    harness.game.destroy();
+  });
+
+  it("resolves Zator Zamówień into the process scene after its required actions", () => {
+    const harness = createGameHarness("story");
+    harness.game.start("keyboard");
+    harness.continueCurrentSceneFully();
+    harness.advance(STORY_REFRAME_SECONDS + 3.05);
+    harness.advance(45, harness.avoidObstacles);
+    expect(harness.storyUpdates.at(-1)?.scene?.id).toBe("story.order_backlog");
+    harness.continueCurrentSceneFully();
+    harness.advance(STORY_REFRAME_SECONDS + 3.05);
+    expect(harness.storyUpdates.at(-1)?.playSegment?.id).toBe("epoch_1.order_backlog");
+
+    harness.advance(45, harness.avoidObstacles);
 
     expect(harness.storyUpdates.at(-1)?.scene?.id).toBe("story.first_process");
-    expect(harness.snapshots.at(-1)?.storyObjectives.epoch1.cableChaos.bestAlternation)
+    expect(harness.snapshots.at(-1)?.storyObjectives.epoch1.orderBacklog.bestAlternation)
       .toBeGreaterThanOrEqual(1);
     expect(harness.snapshots.at(-1)?.storyClimaxesCompleted).toContain(0);
     harness.game.destroy();
@@ -337,8 +361,11 @@ describe("campaign collision contract", () => {
     expect(harness.storyUpdates.filter(({ state }) => state === "scene")
       .map(({ scene }) => scene?.id)
       .filter((id, index, ids) => index === 0 || id !== ids[index - 1]))
-      .toEqual(config.story.scenes.map(({ id }) => id));
-    const challengeSnapshot = harness.snapshots.at(-1);
+      .toEqual(config.story.sequence
+        .filter((step): step is Extract<(typeof config.story.sequence)[number], { type: "scene" }> =>
+          step.type === "scene")
+        .map(({ sceneId }) => sceneId));
+    const challengeSnapshot = harness.snapshots.find(({ mode }) => mode === "challenge");
     expect(challengeSnapshot).toMatchObject({
       mode: "challenge",
       storyPhase: null,
@@ -352,10 +379,11 @@ describe("campaign collision contract", () => {
     });
     expect(challengeSnapshot?.durationSeconds).toBeGreaterThanOrEqual(250);
     expect(challengeSnapshot?.score).toBeGreaterThanOrEqual(config.story.firstCompletionBonusScore);
+    expect(challengeSnapshot?.challengeScore).toBe(0);
+    expect(challengeSnapshot?.challengePackagesCollected).toBe(0);
     expect(challengeSnapshot?.storyObjectivesCompleted).toEqual(expect.arrayContaining([
-      "epoch_4.logistic_hydra",
-      "epoch_5.counter",
-      "epoch_5.million_wave"
+      "epoch_4.order_peak_final",
+      "epoch_5.million_threshold"
     ]));
 
     harness.advance(1);
@@ -366,6 +394,9 @@ describe("campaign collision contract", () => {
       bossPhase: "inactive",
       logisticWavePhase: "inactive"
     });
+    expect(harness.snapshots.at(-1)?.challengeScore).toBeGreaterThan(0);
+    expect(harness.snapshots.at(-1)!.score - challengeSnapshot!.score)
+      .toBe(harness.snapshots.at(-1)!.challengeScore);
     harness.game.destroy();
   });
 
@@ -427,29 +458,17 @@ describe("campaign collision contract", () => {
     harness.game.destroy();
   });
 
-  it("derives timed objective completion from a shortened configured segment", () => {
+  it("derives three peak phases from the configured 24 + 48 seconds", () => {
     const config = parseRunnerConfig(productionConfig);
     if (!config) throw new Error("production config should parse");
-    const shortened: StoryConfig = {
-      ...config.story,
-      activeDurationSeconds: 240,
-      sequence: config.story.sequence.map((step) =>
-        step.type === "play" && step.id === "epoch_4.logistic_hydra"
-          ? { ...step, durationSeconds: 10 }
-          : step
-      ),
-      epochs: config.story.epochs.map((epoch) =>
-        epoch.index === 3 ? { ...epoch, durationSeconds: 55 } : epoch
-      )
-    };
-    const harness = createGameHarness("story", shortened);
+    const harness = createGameHarness("story", config.story);
     harness.game.start("keyboard");
     harness.driveStory();
 
     expect(harness.snapshots.at(-1)?.storyObjectivesCompleted)
-      .toContain("epoch_4.logistic_hydra");
-    expect(harness.snapshots.at(-1)?.storyObjectives.epoch4.hydra)
-      .toMatchObject({ elapsedSeconds: 10, completed: true });
+      .toContain("epoch_4.order_peak_final");
+    expect(harness.snapshots.at(-1)?.storyObjectives.epoch4.flow)
+      .toMatchObject({ elapsedSeconds: 72, completed: true, phasesCompleted: 3 });
     harness.game.destroy();
   });
 
@@ -462,24 +481,24 @@ describe("campaign collision contract", () => {
       if (story?.state === "scene" && story.scene) {
         harness.game.continueStoryScene(story.scene.id);
       } else {
-        harness.advance(story?.state === "countdown" ? 3.05 : 1);
+        harness.advance(story?.state === "countdown" ? 3.05 : 1, harness.avoidObstacles);
       }
     }
     expect(harness.storyUpdates.at(-1)?.scene?.id).toBe("challenge.million_wave");
 
-    harness.game.continueStoryScene("challenge.million_wave");
+    harness.continueCurrentSceneFully();
     harness.advance(STORY_REFRAME_SECONDS + 3.05);
     harness.advance(0.1);
     expect(harness.snapshots.at(-1)).toMatchObject({
       mode: "story",
-      storyObjectiveSegmentId: "epoch_5.million_wave",
+      storyObjectiveSegmentId: "epoch_5.million_threshold",
       bossEncounterPhase: 1,
       bossAttackCount: 8,
       bossesDefeated: 0
     });
     expect(harness.snapshots.at(-1)?.bossPhase).not.toBe("inactive");
     harness.advance(50);
-    expect(harness.storyUpdates.at(-1)?.playSegment?.id).toBe("epoch_5.million_wave");
+    expect(harness.storyUpdates.at(-1)?.playSegment?.id).toBe("epoch_5.million_threshold");
     harness.game.destroy();
   });
 });
@@ -491,8 +510,7 @@ describe("story lifecycle pauses", () => {
 
     harness.blurWindow();
     expect(harness.game.state).toBe("running");
-    expect(harness.game.continueStoryScene("story.first_package")).toBe(true);
-    expect(harness.game.continueStoryScene("story.quality_promise")).toBe(true);
+    harness.continueCurrentSceneFully();
 
     harness.hideDocument();
     expect(harness.game.state).toBe("running");

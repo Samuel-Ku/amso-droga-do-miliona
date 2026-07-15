@@ -8,7 +8,7 @@ import type { CampaignWorldId } from "../visuals/scene-manifest";
 
 export type ObstacleKind = "box-stack" | "pallet" | "trolley" | "overhead";
 export type ObstacleSource = "normal" | "boss" | "story-climax" | "story-reward";
-export type PackageKind = "standard" | "golden" | "story-symbol" | PowerUpKind;
+export type PackageKind = "standard" | "golden" | PowerUpKind;
 export type BossPhase = "inactive" | "pending" | "warning" | "attacking" | "reward";
 
 export interface RunnerModel {
@@ -47,8 +47,6 @@ export interface PackageModel {
   packageType: PackageType;
   /** Shipping weight in kilograms, accumulated for the collect_weight trigger. */
   weightKg: number;
-  /** Zero-based identity for one of the eight physical finale keepsakes. */
-  storySymbolIndex?: number;
   /** Keeps regular spawning reserved until the authored reward pattern leaves. */
   storyRewardPattern?: boolean;
   /** Marks the one typed unit that advances the epoch-four order queue. */
@@ -97,14 +95,13 @@ export interface RenderScene {
   }>;
   cutscene: CutsceneInfo | null;
   activePowerUps: readonly PowerUpKind[];
-  /** Campaign presentation hints. Optional to preserve the legacy renderer contract. */
+  /** Campaign presentation hints used by story and challenge rendering. */
   mode?: CampaignMode;
   trustCorridor?: boolean;
   combo?: number;
   recoverySeconds?: number;
   storyPhase?: StoryPhase | null;
   storyProgress?: number;
-  storySymbols?: number;
   storyObjectives?: Readonly<StoryObjectivesSnapshot>;
   storyClimax?: Readonly<StoryClimaxModel>;
   obstacleTransformations?: readonly Readonly<StoryObstacleTransformation>[];

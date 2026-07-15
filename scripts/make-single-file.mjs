@@ -40,26 +40,28 @@ function builtAssetPath(source) {
   return path.join(demoDir, cleanSource);
 }
 
-function inlineCampaignAvifAssets(document) {
-  const avifPaths = collectFiles(campaignAssetDir).filter(
-    (assetPath) => path.extname(assetPath).toLowerCase() === ".avif",
+function inlineCampaignImageAssets(document) {
+  const imagePaths = collectFiles(campaignAssetDir).filter(
+    (assetPath) => [".avif", ".svg"].includes(path.extname(assetPath).toLowerCase()),
   );
 
-  if (avifPaths.length === 0) {
-    throw new Error("Nie znaleziono plikow AVIF kampanii do osadzenia");
+  if (imagePaths.length === 0) {
+    throw new Error("Nie znaleziono grafik kampanii do osadzenia");
   }
 
   let inlinedDocument = document;
   let inlinedReferenceCount = 0;
 
-  for (const assetPath of avifPaths) {
+  for (const assetPath of imagePaths) {
     const assetRelativePath = path
       .relative(path.join(root, "public"), assetPath)
       .split(path.sep)
       .join("/");
     const publicPath = `/${assetRelativePath}`;
-    const dataUri = `data:image/avif;base64,${fs.readFileSync(assetPath).toString("base64")}`;
-    if (dataUri.length > embeddedAvifMaxLength) {
+    const extension = path.extname(assetPath).toLowerCase();
+    const mimeType = extension === ".svg" ? "image/svg+xml" : "image/avif";
+    const dataUri = `data:${mimeType};base64,${fs.readFileSync(assetPath).toString("base64")}`;
+    if (extension === ".avif" && dataUri.length > embeddedAvifMaxLength) {
       throw new Error(
         `Osadzony AVIF ${assetRelativePath} przekracza limit ${embeddedAvifMaxLength} znakow`,
       );
@@ -77,7 +79,7 @@ function inlineCampaignAvifAssets(document) {
 
   return {
     html: inlinedDocument,
-    assetCount: avifPaths.length,
+    assetCount: imagePaths.length,
     referenceCount: inlinedReferenceCount,
   };
 }
@@ -132,7 +134,7 @@ html = html.replace(
 // Vite intentionally leaves files from public/ as external URLs. The production
 // demo keeps that behaviour, while this QA artifact embeds the campaign artwork
 // so it remains complete when opened directly via file:// without a web server.
-const inlineResult = inlineCampaignAvifAssets(html);
+const inlineResult = inlineCampaignImageAssets(html);
 html = inlineResult.html;
 html = html.replace(/^[\t ]+$/gmu, "");
 
@@ -143,7 +145,7 @@ console.log(
   fs.statSync(outputPath).size,
   "bytes; embedded",
   inlineResult.assetCount,
-  "AVIF files in",
+  "image files in",
   inlineResult.referenceCount,
   "references",
 );

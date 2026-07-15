@@ -24,6 +24,7 @@ import {
 import {
   campaignWorld,
   sceneVisualState,
+  storyPageVisualStateId,
   type CampaignWorldId
 } from "./visuals/scene-manifest";
 
@@ -216,24 +217,37 @@ export class CampaignController {
       onStoryObjectiveCompleted: (objectiveId) => {
         const label = {
           "epoch_1.training": "Skok i ślizg opanowane.",
-          "epoch_1.cable_chaos": "Kablowy Chaos uporządkowany.",
+          "epoch_1.order_backlog": "Zator Zamówień opanowany.",
           "epoch_2.quality_series": "SPRAWDZONY — cztery serie ukończone.",
-          "epoch_3.creative_contract": "Kreatywny start ukończony.",
-          "epoch_3.growth_contract": "Kontrakt rozwoju ukończony.",
-          "epoch_3.trust_contract": "Kontrakt zaufania ukończony.",
-          "epoch_4.orders": "Sześć zamówień gotowych.",
-          "epoch_4.logistic_hydra": "Logistyczna Hydra opanowana.",
-          "epoch_5.counter": "Licznik: 999 999.",
-          "epoch_5.million_wave": "Fala Miliona ukończona.",
-          "epoch_5.symbols": "Osiem symboli zebranych.",
-          "epoch_5.million_threshold": "Próg Miliona osiągnięty."
+          "epoch_3.matching_creative": "Pierwszy zestaw dopasowany.",
+          "epoch_3.matching_growth": "Drugi zestaw dopasowany.",
+          "epoch_3.matching_trust": "Trzeci zestaw dopasowany.",
+          "epoch_4.order_peak": "Sześć zamówień gotowych.",
+          "epoch_4.order_peak_final": "Szczyt Zamówień opanowany.",
+          "epoch_5.million_threshold": "1 000 000 zamówień. Droga trwa dalej."
         }[objectiveId];
         this.shell.showStoryObjective(`✓ ${label}`);
         this.shell.announce(label);
       },
+      onSpecialPickup: (kind) => {
+        if (this.shownPowerUpHints.has(kind)) return;
+        this.shownPowerUpHints.add(kind);
+        const copy = {
+          golden: "BONUS — +350 pkt.",
+          audyt_jakosci: "AUDYT — więcej czasu na ocenę następnej przeszkody.",
+          drugie_zycie: "2× PUNKTY — każda zebrana paczka liczy się podwójnie.",
+          gwarancja_48: "OCHRONA 48 M — osłona uratuje jedną próbę w Trybie Wyzwania."
+        } as const;
+        this.shell.showPickupNotice(copy[kind]);
+      },
       onModeChange: (mode) => {
         this.shell.showStoryObjective(null);
         this.shell.showGame(mode);
+        if (mode === "challenge") {
+          this.shell.announce(
+            "Tryb Wyzwania. Wynik i paczki zostały zachowane. Tempo rośnie, a pierwsze niezabezpieczone zderzenie kończy bieg."
+          );
+        }
         this.tracker.track("game_started", { mode });
       }
     };
@@ -249,30 +263,11 @@ export class CampaignController {
       if (snapshot.collisions > previous.collisions) {
         this.audio.playCue("collision");
       }
+      if (snapshot.warrantySaves > previous.warrantySaves) {
+        this.shell.showPickupNotice("OCHRONA zadziałała — próba trwa dalej.");
+      }
       if (snapshot.activePowerUps.some((kind) => !previous.activePowerUps.includes(kind))) {
         this.audio.playCue("power-up");
-        const newPowerUp = snapshot.activePowerUps.find(
-          (kind) => !previous.activePowerUps.includes(kind) && !this.shownPowerUpHints.has(kind)
-        );
-        if (snapshot.mode === "story" && !snapshot.trustCorridor &&
-            newPowerUp !== undefined) {
-          this.shownPowerUpHints.add(newPowerUp);
-          const copy = {
-            audyt_jakosci: this.uiCopy(
-              "powerupAudit",
-              "Audyt jakości — zobacz przeszkody wcześniej."
-            ),
-            drugie_zycie: this.uiCopy(
-              "powerupSecondLife",
-              "Drugie życie — każda paczka liczy się podwójnie."
-            ),
-            gwarancja_48: this.uiCopy(
-              "powerupWarranty",
-              "Gwarancja 48 miesięcy — jedno bezpieczne uderzenie."
-            )
-          } as const;
-          this.shell.announce(copy[newPowerUp]);
-        }
       }
     }
     this.lastSnapshot = snapshot;
@@ -308,6 +303,10 @@ export class CampaignController {
       this.shell.showStoryObjective(null);
       this.shell.showStoryScene({
         sceneId: update.scene.id,
+        visualStateId: storyPageVisualStateId(update.scene.id, update.scenePageId ?? null),
+        presentationId: update.scenePageId === null || update.scenePageId === undefined
+          ? update.scene.id
+          : `${update.scene.id}:${update.scenePageId}`,
         eyebrow: update.scene.eyebrow,
         title: update.scene.title,
         body: update.scene.body,
@@ -331,17 +330,15 @@ export class CampaignController {
         this.lastStorySegmentId = segmentId;
         const objective = {
           "epoch_1.training": "Cel: 5 skoków i 5 ślizgów",
-          "epoch_1.cable_chaos": "Kablowy Chaos: skok i ślizg naprzemiennie",
+          "epoch_1.order_backlog": "Zator Zamówień: skok i ślizg naprzemiennie",
           "epoch_2.quality_series": "Cel: 4 serie po 3 udane akcje",
-          "epoch_2.doubt_cloud": "Chmura Wątpliwości: utrzymaj trasę",
-          "epoch_3.creative_contract": "Kreatywny start: zbierz 3 elementy",
-          "epoch_3.growth_contract": "Rozwój firmy: zbuduj combo ×8",
-          "epoch_3.trust_contract": "Zaufanie na lata: 12 czystych akcji",
-          "epoch_3.budget_eater": "Budżetożerca: przejdź finał kontraktów",
-          "epoch_4.orders": "Fala zamówień: przygotuj 6 paczek",
-          "epoch_4.logistic_hydra": "Logistyczna Hydra: przetrwaj 3 fazy",
-          "epoch_5.counter": "Licznik: dojdź do 999 999",
-          "epoch_5.million_wave": "Fala Miliona: zbierz 8 symboli"
+          "epoch_2.quality_trial": "Próba Jakości: przygotuj urządzenie do wysyłki",
+          "epoch_3.matching_creative": "Wyzwanie Dopasowania: zestaw dla klientki kreatywnej",
+          "epoch_3.matching_growth": "Wyzwanie Dopasowania: zestaw dla rozwijającej się firmy",
+          "epoch_3.matching_trust": "Wyzwanie Dopasowania: zestaw dla zespołu B2B",
+          "epoch_4.order_peak": "Szczyt Zamówień: kompletuj realne kategorie",
+          "epoch_4.order_peak_final": "Szczyt Zamówień: utrzymaj przepływ przez 3 fazy",
+          "epoch_5.million_threshold": "Próg Miliona: 30 paczek i 8 kombinacji"
         }[segmentId] ?? null;
         this.shell.showStoryObjective(objective);
       }
@@ -359,11 +356,17 @@ export class CampaignController {
       return;
     }
 
-    this.profile.recordChallengeResult(result.score, result.packagesCollected);
+    const firstChallengeResult = this.profile.snapshot.challengeRuns === 0;
+    this.profile.recordChallengeResult(
+      result.challengeScore,
+      result.challengePackagesCollected
+    );
     this.shell.showChallengeResult({
       packages: result.packagesCollected,
-      score: result.score,
+      totalScore: result.score,
+      challengeScore: result.challengeScore,
       bestScore: this.profile.snapshot.bestChallengeScore,
+      firstChallengeResult,
       distanceM: result.distanceM,
       warrantySaves: result.warrantySaves
     });

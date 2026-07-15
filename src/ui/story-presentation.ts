@@ -23,6 +23,8 @@ export function fullscreenPreferenceFromElement(
 
 export interface CampaignStorySceneInput {
   sceneId: string;
+  presentationId?: string;
+  visualStateId?: string;
   eyebrow?: string;
   title: string;
   body: string | readonly string[];
@@ -32,6 +34,8 @@ export interface CampaignStorySceneInput {
 
 export interface CampaignStoryScene {
   readonly sceneId: string;
+  readonly presentationId: string;
+  readonly visualStateId: string;
   readonly eyebrow?: string;
   readonly title: string;
   readonly body: readonly string[];
@@ -51,6 +55,8 @@ export function snapshotStoryScene(input: CampaignStorySceneInput): CampaignStor
   );
   return Object.freeze({
     sceneId: input.sceneId,
+    presentationId: input.presentationId ?? input.sceneId,
+    visualStateId: input.visualStateId ?? input.sceneId,
     ...(input.eyebrow === undefined ? {} : { eyebrow: input.eyebrow }),
     title: input.title,
     body,
@@ -84,9 +90,9 @@ export class StoryContinuationGate {
 }
 
 const POWER_UP_HUD_LABELS: Readonly<Record<PowerUpKind, string>> = {
-  audyt_jakosci: "Audyt",
-  drugie_zycie: "2× punkty",
-  gwarancja_48: "Gwarancja"
+  audyt_jakosci: "AUDYT",
+  drugie_zycie: "2× PUNKTY",
+  gwarancja_48: "OCHRONA ×1"
 };
 
 /** Compact enough for the mobile HUD while keeping every carried power visible. */
@@ -108,33 +114,17 @@ const ORDER_TYPE_LABELS: Readonly<Record<PackageType, string>> = {
   telefon: "telefon"
 };
 
-const HYDRA_PHASE_LABELS = {
+const ORDER_PEAK_PHASE_LABELS = {
   intake: "Przyjęcie",
   routing: "Sortowanie",
   dispatch: "Wysyłka",
   completed: "Gotowe"
 } as const;
 
-const MILLION_PHASE_LABELS = {
-  order: "Porządek",
-  quality: "Jakość",
-  choice: "Rozsądny wybór",
-  logistics: "Logistyka",
-  final_wave: "Finał",
-  completed: "Finał"
-} as const;
-
-const integerFormatter = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
-
-function formatInteger(value: number): string {
-  return integerFormatter.format(value).replace(/[\u00a0\u202f]/gu, " ");
-}
-
 /** Turns the objective director's live state into compact, persistent HUD copy. */
 export function formatStoryObjectiveHud(
   objectives: Readonly<StoryObjectivesSnapshot>,
-  activeOrderTypes: readonly PackageType[] = [],
-  boss?: Readonly<{ encounterPhase: number; progress: number; attackCount: number }>
+  activeOrderTypes: readonly PackageType[] = []
 ): string | null {
   const completed = new Set(objectives.completedObjectiveIds);
   const prefix = (objectiveId: StoryObjectiveId): string => completed.has(objectiveId) ? "✓ " : "";
@@ -142,27 +132,25 @@ export function formatStoryObjectiveHud(
     case "epoch_1.training":
       return `${prefix("epoch_1.training")}Cel: skoki ${objectives.epoch1.training.jumps}/${objectives.epoch1.training.targetEach} · ` +
         `ślizgi ${objectives.epoch1.training.slides}/${objectives.epoch1.training.targetEach}`;
-    case "epoch_1.cable_chaos":
-      return `${prefix("epoch_1.cable_chaos")}Kablowy Chaos · seria ` +
-        `${objectives.epoch1.cableChaos.bestAlternation}/${objectives.epoch1.cableChaos.target}`;
+    case "epoch_1.order_backlog":
+      return `${prefix("epoch_1.order_backlog")}Zator Zamówień · sekwencja ` +
+        `${objectives.epoch1.orderBacklog.bestAlternation}/${objectives.epoch1.orderBacklog.target}`;
     case "epoch_2.quality_series":
       return `${prefix("epoch_2.quality_series")}SPRAWDZONY · serie ` +
         `${objectives.epoch2.completedSeries}/${objectives.epoch2.seriesTarget} · ` +
         `akcje ${objectives.epoch2.currentSeries}/${objectives.epoch2.comboTarget}`;
-    case "epoch_2.doubt_cloud":
-      return "Chmura Wątpliwości · utrzymaj trasę";
-    case "epoch_3.creative_contract":
-      return `${prefix("epoch_3.creative_contract")}Kreatywny start · ` +
+    case "epoch_2.quality_trial":
+      return "Próba Jakości · urządzenie rusza do kolejnego użytkownika";
+    case "epoch_3.matching_creative":
+      return `${prefix("epoch_3.matching_creative")}Wyzwanie Dopasowania · klientka kreatywna · ` +
         `${objectives.epoch3.creative.collected}/${objectives.epoch3.creative.target}`;
-    case "epoch_3.growth_contract":
-      return `${prefix("epoch_3.growth_contract")}Rozwój firmy · combo ×` +
+    case "epoch_3.matching_growth":
+      return `${prefix("epoch_3.matching_growth")}Wyzwanie Dopasowania · rozwój firmy · SERIA ×` +
         `${objectives.epoch3.growth.bestCombo}/${objectives.epoch3.growth.target}`;
-    case "epoch_3.trust_contract":
-      return `${prefix("epoch_3.trust_contract")}Zaufanie na lata · czysta seria ` +
+    case "epoch_3.matching_trust":
+      return `${prefix("epoch_3.matching_trust")}Wyzwanie Dopasowania · zespół B2B · czysta seria ` +
         `${objectives.epoch3.trust.longestClean}/${objectives.epoch3.trust.target}`;
-    case "epoch_3.budget_eater":
-      return "Budżetożerca · przejdź finał kontraktów";
-    case "epoch_4.orders": {
+    case "epoch_4.order_peak": {
       const orders = objectives.epoch4.orders;
       if (orders.completed) {
         return `✓ Kolejka gotowa · ${orders.requiredCompleted}/${orders.requiredTarget} · ` +
@@ -172,25 +160,17 @@ export function formatStoryObjectiveHud(
       const type = activeType === undefined ? "" : ` · ${ORDER_TYPE_LABELS[activeType]}`;
       return `Kolejka zamówień${type} · ${orders.requiredCompleted}/${orders.requiredTarget}`;
     }
-    case "epoch_4.logistic_hydra": {
-      const hydra = objectives.epoch4.hydra;
-      if (hydra.completed) return "✓ Logistyczna Hydra · 3/3";
-      return `Logistyczna Hydra · ${HYDRA_PHASE_LABELS[hydra.phase]} · ` +
-        `${hydra.phasesCompleted}/3`;
+    case "epoch_4.order_peak_final": {
+      const flow = objectives.epoch4.flow;
+      if (flow.completed) return "✓ Szczyt Zamówień · 3/3";
+      return `Szczyt Zamówień · ${ORDER_PEAK_PHASE_LABELS[flow.phase]} · ` +
+        `${flow.phasesCompleted}/3`;
     }
-    case "epoch_5.counter":
-      return `${prefix("epoch_5.counter")}Licznik zamówień · ` +
-        formatInteger(objectives.epoch5.counter.value);
-    case "epoch_5.million_wave": {
-      if (boss) {
-        return `Fala Miliona · faza ${Math.max(1, Math.min(3, boss.encounterPhase))}/3 · ` +
-          `kombinacje ${boss.progress}/${boss.attackCount}`;
-      }
-      const wave = objectives.epoch5.wave;
-      const phaseNumber = wave.completed ? 5 : Math.min(5, wave.guidedPhasesCompleted + 1);
-      return `${prefix("epoch_5.million_wave")}Fala Miliona · ${MILLION_PHASE_LABELS[wave.phase]} · ` +
-        `faza ${phaseNumber}/5 · symbole ${objectives.epoch5.symbols.collectedIds.length}/` +
-        `${objectives.epoch5.symbols.collectedIds.length + objectives.epoch5.symbols.pendingIds.length}`;
+    case "epoch_5.million_threshold": {
+      const finale = objectives.epoch5.millionThreshold;
+      return `${prefix("epoch_5.million_threshold")}Próg Miliona · PACZKI ` +
+        `${finale.packagesCollected}/${finale.packageTarget} · KOMBINACJE ` +
+        `${finale.combinationsCompleted}/${finale.combinationTarget}`;
     }
     default:
       return null;

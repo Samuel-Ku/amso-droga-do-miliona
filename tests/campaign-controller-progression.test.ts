@@ -80,7 +80,12 @@ function sceneUpdate(scene: StorySceneConfig): StoryTimelineSnapshot {
     trustCorridor: true,
     controlsEnabled: false,
     worldSpeedScale: 0.3,
-    symbolsCollected: 0,
+    safety: {
+      kind: "narrative_safe",
+      hazardsEnabled: false,
+      pickupsEnabled: false,
+      controlsEnabled: false
+    },
     completed: false
   };
 }
@@ -105,7 +110,7 @@ describe("CampaignController world progression", () => {
 
     controller.warmWorldAssetWindow("first-mile");
     controller.warmWorldAssetWindow("first-mile");
-    controller.warmWorldAssetWindow("cable-route");
+    controller.warmWorldAssetWindow("order-process");
 
     expect(warmBundles).toHaveBeenCalledTimes(1);
     expect(warmBundles).toHaveBeenCalledWith(["epoch_2"]);

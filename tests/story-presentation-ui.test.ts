@@ -10,7 +10,6 @@ import {
   snapshotStoryScene,
   StoryContinuationGate
 } from "../src/ui/story-presentation";
-import { V5_CHALLENGE_SEMANTICS } from "../src/game/v5-contracts";
 import { StoryObjectiveDirector } from "../src/game/story-objectives";
 import {
   campaignVisualStateAtProgress,
@@ -28,13 +27,10 @@ const campaignShellSource = readFileSync(
 );
 
 describe("player-paced story presentation", () => {
-  it("distinguishes AMSO, client and challenge perspectives beside legacy ids", () => {
+  it("distinguishes AMSO, client and challenge perspectives", () => {
     expect(formatStoryPerspective("amso")).toBe("Nasza historia");
     expect(formatStoryPerspective("client")).toBe("Historia klienta");
     expect(formatStoryPerspective("challenge")).toBe("Wyzwanie");
-    expect(V5_CHALLENGE_SEMANTICS["epoch_5.million_wave"]).toEqual({
-      id: "epoch_5.million_threshold", name: "Próg Miliona"
-    });
   });
   it("derives the saved preference from the campaign fullscreen element", () => {
     const campaignRoot = {} as Element;
@@ -64,6 +60,19 @@ describe("player-paced story presentation", () => {
     expect(Object.isFrozen(scene.body)).toBe(true);
   });
 
+  it("uses a page presentation id without changing the scene continuation id", () => {
+    const first = snapshotStoryScene({
+      sceneId: "client.story",
+      presentationId: "client.story:budget",
+      title: "Budżet",
+      body: "Pierwszy krok.",
+      vignette: "creative-desk",
+      continueLabel: "Dalej"
+    });
+    expect(first.presentationId).toBe("client.story:budget");
+    expect(first.sceneId).toBe("client.story");
+  });
+
   it("accepts the active scene id once and rejects stale or double clicks", () => {
     const gate = new StoryContinuationGate();
 
@@ -81,7 +90,7 @@ describe("player-paced story presentation", () => {
   it("formats carried powers compactly for the persistent HUD", () => {
     expect(formatPowerUpHud([])).toBe("");
     expect(formatPowerUpHud(["audyt_jakosci", "drugie_zycie", "gwarancja_48"]))
-      .toBe("Audyt · 2× punkty · Gwarancja");
+      .toBe("AUDYT · 2× PUNKTY · OCHRONA ×1");
   });
 
   it("keeps controls in the top HUD and removes visible bottom gameplay text", () => {
@@ -93,10 +102,18 @@ describe("player-paced story presentation", () => {
     expect(campaignShellSource).not.toContain("data-campaign-story-caption");
   });
 
-  it("formats live order, Hydra, counter and finale progress for the HUD", () => {
+  it("separates total and challenge results and hides an unused protection stat", () => {
+    expect(campaignShellSource).toContain("Wynik łączny");
+    expect(campaignShellSource).toContain("Wynik wyzwania");
+    expect(campaignShellSource).toContain("Pierwszy wynik wyzwania");
+    expect(campaignShellSource).toContain("Twój rekord wyzwania");
+    expect(campaignShellSource).toContain("result.warrantySaves === 0");
+  });
+
+  it("formats live order, peak, counter and finale progress for the HUD", () => {
     const director = new StoryObjectiveDirector();
 
-    director.enterSegment("epoch_4.orders", 45);
+    director.enterSegment("epoch_4.order_peak", 45);
     for (const type of ["pc", "notebook", "lcd", "telefon"] as const) {
       director.recordOrder(type);
     }
@@ -109,26 +126,16 @@ describe("player-paced story presentation", () => {
     expect(formatStoryObjectiveHud(director.snapshot, []))
       .toBe("✓ Kolejka gotowa · 6/6 · bonus +2");
 
-    director.enterSegment("epoch_4.logistic_hydra", 20);
-    director.recordElapsed(7);
+    director.recordElapsed(24);
+    director.enterSegment("epoch_4.order_peak_final", 48);
     expect(formatStoryObjectiveHud(director.snapshot, []))
-      .toBe("Logistyczna Hydra · Sortowanie · 1/3");
+      .toBe("Szczyt Zamówień · Sortowanie · 1/3");
 
-    director.enterSegment("epoch_5.counter", 15);
-    director.recordElapsed(10);
+    director.enterSegment("epoch_5.million_threshold", 72);
+    for (let index = 0; index < 12; index += 1) director.recordMillionPackage();
+    for (let index = 0; index < 3; index += 1) director.recordMillionCombination();
     expect(formatStoryObjectiveHud(director.snapshot, []))
-      .toBe("Licznik zamówień · 999 990");
-
-    director.enterSegment("epoch_5.million_wave", 60);
-    director.recordElapsed(12);
-    director.recordSymbol(0);
-    director.recordSymbol(1);
-    director.recordSymbol(2);
-    expect(formatStoryObjectiveHud(director.snapshot, [], {
-      encounterPhase: 2,
-      progress: 3,
-      attackCount: 8
-    })).toBe("Fala Miliona · faza 2/3 · kombinacje 3/8");
+      .toBe("Próg Miliona · PACZKI 12/30 · KOMBINACJE 3/8");
   });
 
   it("wraps keyboard focus inside the two-control story dialog", () => {

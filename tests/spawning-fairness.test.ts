@@ -16,6 +16,9 @@ import {
   findSafeCollectibleX,
   FairSpawner,
   MIN_AUTHORED_REACTION_SECONDS,
+  OBSTACLE_PATTERN_CATALOG,
+  PACKAGE_PATTERN_HEIGHTS,
+  PACKAGE_PATTERN_IDS,
   type SpawnWave
 } from "../src/game/spawning";
 import type { ObstacleModel, PackageKind } from "../src/game/types";
@@ -45,6 +48,61 @@ function isSpecial(kind: PackageKind): boolean {
 }
 
 describe("challenge spawning fairness", () => {
+  it("publishes fourteen parcel patterns from one to seven parcels", () => {
+    expect(PACKAGE_PATTERN_IDS).toHaveLength(14);
+    const counts = new Set(PACKAGE_PATTERN_IDS.map((id) => PACKAGE_PATTERN_HEIGHTS[id].length));
+    expect([...counts].sort((left, right) => left - right)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+  });
+
+  it("shuffle-bags eighteen real obstacle patterns before repeating", () => {
+    expect(OBSTACLE_PATTERN_CATALOG).toHaveLength(18);
+    expect(new Set(OBSTACLE_PATTERN_CATALOG.map(({ id }) => id)).size).toBe(18);
+    expect(new Set(OBSTACLE_PATTERN_CATALOG.map(({ action }) => action))).toEqual(
+      new Set(["jump", "slide"])
+    );
+    const initial = getChallengeDifficulty(0, CHALLENGE_DIFFICULTY);
+    const spawner = new FairSpawner(new SeededRandom(71), initial.speed);
+    const seen: string[] = [];
+    for (let index = 0; index < 36; index += 1) {
+      const wave = spawner.advance(100_000, initial.speed, initial, SPAWN_X);
+      if (!wave) throw new Error("wave should spawn");
+      seen.push(wave.obstaclePattern);
+      expect(Math.min(wave.x, ...wave.packages.map(({ x }) => x))).toBeGreaterThanOrEqual(SPAWN_X);
+    }
+    expect(new Set(seen.slice(0, 18)).size).toBe(18);
+    expect(new Set(seen.slice(18)).size).toBe(18);
+    for (let index = 1; index < seen.length; index += 1) {
+      expect(seen[index]).not.toBe(seen[index - 1]);
+    }
+  });
+
+  it("keeps every generated parcel hitbox separate from its paired obstacle", () => {
+    for (const narrative of [false, true]) {
+      for (const speed of [280 * 0.8, 280 * 1.15, 280 * 1.55]) {
+        const difficulty = getChallengeDifficulty(0, CHALLENGE_DIFFICULTY);
+        const spawner = new FairSpawner(
+          new SeededRandom(Math.round(speed) + (narrative ? 1 : 0)),
+          speed,
+          undefined,
+          narrative
+        );
+        for (let index = 0; index < 36; index += 1) {
+          const wave = spawner.advance(100_000, speed, difficulty, 390);
+          if (!wave) throw new Error("wave should spawn");
+          expect(Math.min(wave.x, ...wave.packages.map(({ x }) => x))).toBeGreaterThanOrEqual(390);
+          const obstacle = obstacleHitbox(obstacleFromWave(wave));
+          for (const parcel of wave.packages) {
+            expect(rectanglesOverlap(obstacle, {
+              x: parcel.x + PACKAGE_HITBOX_INSET,
+              y: parcel.y + PACKAGE_HITBOX_INSET,
+              width: PACKAGE_SIZE - PACKAGE_HITBOX_INSET * 2,
+              height: PACKAGE_SIZE - PACKAGE_HITBOX_INSET * 2
+            }), `${wave.obstaclePattern}:${wave.pattern}`).toBe(false);
+          }
+        }
+      }
+    }
+  });
   it.each(["jump", "slide"] as const)(
     "authors one atomic %s reward pattern with a safe route and reaction window",
     (action) => {
@@ -55,10 +113,7 @@ describe("challenge spawning fairness", () => {
         speed,
         patternIndex: action === "jump" ? 2 : 3,
         source: "story-reward",
-        rewards: [
-          { kind: "story-symbol", storySymbolIndex: 4 },
-          { kind: "gwarancja_48" }
-        ]
+        rewards: [{ kind: "golden" }, { kind: "gwarancja_48" }]
       });
       expect(wave).not.toBeNull();
       if (!wave) return;
@@ -67,8 +122,8 @@ describe("challenge spawning fairness", () => {
         .toBeGreaterThanOrEqual(MIN_AUTHORED_REACTION_SECONDS);
       expect(wave.kind === "overhead").toBe(action === "slide");
       expect(wave.source).toBe("story-reward");
-      expect(wave.packages.filter(({ kind }) => kind === "story-symbol"))
-        .toMatchObject([{ storySymbolIndex: 4, storyRewardPattern: true }]);
+      expect(wave.packages.filter(({ kind }) => kind === "golden"))
+        .toMatchObject([{ storyRewardPattern: true }]);
       expect(wave.packages.every(({ storyRewardPattern }) => storyRewardPattern)).toBe(true);
 
       const obstacle = obstacleHitbox(obstacleFromWave(wave));
@@ -113,12 +168,12 @@ describe("challenge spawning fairness", () => {
         action,
         spawnX: SPAWN_X,
         speed: 280 * 1.15,
-        rewards: [{ kind: "story-symbol", storySymbolIndex: 2 }]
+        rewards: [{ kind: "golden" }]
       });
       if (!wave) throw new Error("authored wave should be safe");
       const runner = createRunnerModel();
       const obstacle = obstacleFromWave(wave, runner.x);
-      const target = wave.packages.find(({ kind }) => kind === "story-symbol");
+      const target = wave.packages.find(({ kind }) => kind === "golden");
       if (!target) throw new Error("target should exist");
       const parcel = {
         ...target,
@@ -141,10 +196,12 @@ describe("challenge spawning fairness", () => {
         spawnX: SPAWN_X,
         speed,
         patternIndex: variant,
-        rewards: [{ kind: "story-symbol", storySymbolIndex: variant % 8 }]
+        rewards: [{ kind: "golden" }]
       });
       expect(wave).not.toBeNull();
       if (!wave) continue;
+      expect(wave.x).toBeGreaterThanOrEqual(SPAWN_X);
+      expect(Math.min(...wave.packages.map(({ x }) => x))).toBeGreaterThanOrEqual(SPAWN_X);
       expect(wave.gapPixels / speed).toBeGreaterThanOrEqual(MIN_AUTHORED_REACTION_SECONDS);
       const obstacle = obstacleFromWave(wave);
       for (const parcel of wave.packages) {
@@ -159,7 +216,7 @@ describe("challenge spawning fairness", () => {
     }
   });
 
-  it("moves a story symbol away from hazards and existing rewards before spawning", () => {
+  it("moves a special package away from hazards and existing rewards before spawning", () => {
     const obstacle = obstacleFromWave(createBossAttackWave("box-stack", 810));
     const packages = [{
       active: true,

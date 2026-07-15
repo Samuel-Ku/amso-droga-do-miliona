@@ -44,11 +44,47 @@ function playerPacedStory(): StoryConfig {
       { type: "play", id: "first-route", epochIndex: 0, durationSeconds: 4 },
       { type: "scene", sceneId: "final.thanks" }
     ],
-    epochs: []
+    epochs: [],
+    modeHandoff: {
+      id: "story.challenge_handoff",
+      from: "story",
+      to: "challenge",
+      safe: true,
+      confirmationRequired: true,
+      resumeCountdownSeconds: 3
+    },
+    millionThreshold: {
+      counterStart: 999_970,
+      counterTarget: 1_000_000,
+      packageTarget: 30,
+      combinationTarget: 8
+    }
   };
 }
 
 describe("player-paced story timeline", () => {
+  it("advances authored pages inside one safe scene only on explicit continuation", () => {
+    const story = playerPacedStory();
+    story.scenes[0]!.steps = [
+      { id: "origin", body: ["Mały sklep."], continueLabel: "Dalej", safe: true },
+      { id: "packing", title: "Pierwsza paczka", body: ["Pakowana ręcznie."], continueLabel: "Gotowe", safe: true }
+    ];
+    const timeline = new StoryTimeline(story);
+
+    expect(timeline.snapshot.scenePageId).toBe("origin");
+    expect(timeline.snapshot.scenePageIndex).toBe(0);
+    expect(timeline.snapshot.scene?.body).toEqual(["Mały sklep."]);
+    timeline.advance(60);
+    expect(timeline.snapshot.scenePageId).toBe("origin");
+
+    expect(timeline.continueScene("intro.ready")).toBe(true);
+    expect(timeline.snapshot.state).toBe("scene");
+    expect(timeline.snapshot.scenePageId).toBe("packing");
+    expect(timeline.snapshot.scenePageIndex).toBe(1);
+    expect(timeline.snapshot.scene?.title).toBe("Pierwsza paczka");
+    expect(timeline.continueScene("intro.ready")).toBe(true);
+    expect(timeline.snapshot.scene?.id).toBe("intro.promise");
+  });
   it("publishes explicit safe narrative and active-play states", () => {
     const timeline = new StoryTimeline(playerPacedStory());
     expect(timeline.snapshot.safety).toEqual({
@@ -122,16 +158,18 @@ describe("player-paced story timeline", () => {
     expect(timeline.snapshot.totalActiveElapsedSeconds).toBe(4);
   });
 
-  it("presents the approved 10-stop story once within 250 active seconds", () => {
+  it("presents the approved 15-stop story once within 276 active seconds", () => {
     const config = parseRunnerConfig(productionConfig);
     if (!config) throw new Error("production config should parse");
     const timeline = new StoryTimeline(config.story);
     const seen: string[] = [];
+    const presentations: string[] = [];
 
     for (let guard = 0; guard < 100 && !timeline.snapshot.completed; guard += 1) {
       const snapshot = timeline.snapshot;
       if (snapshot.state === "scene" && snapshot.scene) {
         seen.push(snapshot.scene.id);
+        presentations.push(`${snapshot.scene.id}:${snapshot.scenePageId ?? "default"}`);
         expect(timeline.continueScene(snapshot.scene.id)).toBe(true);
       } else if (snapshot.state === "reframe") {
         timeline.advance(STORY_REFRAME_SECONDS);
@@ -142,20 +180,26 @@ describe("player-paced story timeline", () => {
       }
     }
 
-    expect(seen).toEqual([
+    expect([...new Set(seen)]).toEqual([
       "story.first_package",
-      "story.quality_promise",
+      "story.order_backlog",
       "story.first_process",
+      "story.quality_promise",
+      "story.quality_result",
       "client.creative_start",
       "client.business_growth",
       "client.b2b_trust",
+      "story.matching_result",
       "story.scale",
+      "story.order_peak_result",
       "story.million_approach",
       "challenge.million_wave",
-      "story.million_finale"
+      "story.million_finale",
+      "story.challenge_handoff"
     ]);
-    expect(new Set(seen).size).toBe(10);
-    expect(timeline.snapshot.totalActiveElapsedSeconds).toBe(250);
+    expect(seen).toHaveLength(42);
+    expect(new Set(presentations).size).toBe(42);
+    expect(timeline.snapshot.totalActiveElapsedSeconds).toBe(276);
     expect(timeline.snapshot.progress).toBe(1);
     expect(timeline.snapshot.completed).toBe(true);
   });

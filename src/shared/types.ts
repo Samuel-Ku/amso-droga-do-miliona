@@ -86,7 +86,7 @@ export type StoryVignette =
   | "first-package"
   | "small-warehouse"
   | "tested-device"
-  | "cable-route"
+  | "order-process"
   | "quality-stamp"
   | "creative-desk"
   | "growing-business"
@@ -107,7 +107,7 @@ export interface StorySceneConfig {
   body: string[];
   vignette: StoryVignette;
   continueLabel: string;
-  /** Additive v5 attribution; legacy scenes continue to use eyebrow copy. */
+  /** Explicit attribution used to distinguish AMSO, client and challenge scenes. */
   perspective?: StoryPerspective;
   /** Player-paced pages rendered inside one semantic scene. */
   steps?: StoryScenePageConfig[];
@@ -132,13 +132,6 @@ export interface StoryPlayStepConfig {
   id: string;
   epochIndex: number;
   durationSeconds: number;
-  /** v5 identity carried beside the legacy id during expand–contract migration. */
-  semantic?: StoryChallengeSemantic;
-}
-
-export interface StoryChallengeSemantic {
-  id: string;
-  name: string;
 }
 
 export type StorySequenceStepConfig = StorySceneStepConfig | StoryPlayStepConfig;
@@ -169,10 +162,10 @@ export interface StoryConfig {
   scenes: StorySceneConfig[];
   sequence: StorySequenceStepConfig[];
   epochs: StoryEpochConfig[];
-  /** Explicit v5 handoff retained alongside the legacy finale scene. */
-  modeHandoff?: StoryModeHandoffConfig;
-  /** Additive v5 finale contract; legacy counter/symbol objectives remain operational. */
-  millionThreshold?: MillionThresholdConfig;
+  /** Explicit, player-confirmed handoff from the story into the challenge. */
+  modeHandoff: StoryModeHandoffConfig;
+  /** Finale contract tying the physical counter to packages and combinations. */
+  millionThreshold: MillionThresholdConfig;
 }
 
 export interface ChallengeConfig {

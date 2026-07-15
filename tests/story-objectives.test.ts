@@ -9,17 +9,14 @@ describe("StoryObjectiveDirector", () => {
   it("recognises every approved play segment without gating progression", () => {
     expect(STORY_OBJECTIVE_SEGMENT_IDS).toEqual([
       "epoch_1.training",
-      "epoch_1.cable_chaos",
+      "epoch_1.order_backlog",
       "epoch_2.quality_series",
-      "epoch_2.doubt_cloud",
-      "epoch_3.creative_contract",
-      "epoch_3.growth_contract",
-      "epoch_3.trust_contract",
-      "epoch_3.budget_eater",
-      "epoch_4.orders",
-      "epoch_4.logistic_hydra",
-      "epoch_5.counter",
-      "epoch_5.million_wave",
+      "epoch_2.quality_trial",
+      "epoch_3.matching_creative",
+      "epoch_3.matching_growth",
+      "epoch_3.matching_trust",
+      "epoch_4.order_peak",
+      "epoch_4.order_peak_final",
       "epoch_5.million_threshold"
     ]);
 
@@ -42,10 +39,9 @@ describe("StoryObjectiveDirector", () => {
       packagesCollected: 30, combinationsCompleted: 8, counterValue: 1_000_000, completed: true
     });
     expect(director.snapshot.completedObjectiveIds).toContain("epoch_5.million_threshold");
-    expect(director.snapshot.epoch5.symbols.collectedIds).toEqual([]);
   });
 
-  it("tracks successful mixed patterns and alternating Cable Chaos clears", () => {
+  it("tracks successful mixed patterns and alternating order-backlog clears", () => {
     const director = new StoryObjectiveDirector();
     director.enterSegment("epoch_1.training");
     for (let index = 0; index < 5; index += 1) {
@@ -59,12 +55,12 @@ describe("StoryObjectiveDirector", () => {
       completed: true
     });
 
-    director.enterSegment("epoch_1.cable_chaos");
+    director.enterSegment("epoch_1.order_backlog");
     for (const action of ["jump", "slide", "jump"] as const) {
       director.recordSuccessfulPattern(action);
     }
     director.recordError();
-    expect(director.snapshot.epoch1.cableChaos).toMatchObject({
+    expect(director.snapshot.epoch1.orderBacklog).toMatchObject({
       currentAlternation: 0,
       bestAlternation: 3,
       completed: false
@@ -73,7 +69,7 @@ describe("StoryObjectiveDirector", () => {
     for (const action of ["slide", "jump", "slide", "jump"] as const) {
       director.recordSuccessfulPattern(action);
     }
-    expect(director.snapshot.epoch1.cableChaos.completed).toBe(true);
+    expect(director.snapshot.epoch1.orderBacklog.completed).toBe(true);
   });
 
   it("awards four quality stamps from cleared patterns and resets only the current series", () => {
@@ -103,13 +99,13 @@ describe("StoryObjectiveDirector", () => {
 
   it("requires the marked creative set, consumes real combo, and preserves clean streaks", () => {
     const director = new StoryObjectiveDirector();
-    director.enterSegment("epoch_3.creative_contract");
+    director.enterSegment("epoch_3.matching_creative");
     director.recordCreativePickup("notebook");
     director.recordCreativePickup("notebook");
     expect(director.recordCreativePickup("telefon").changed).toBe(false);
     director.recordCreativePickup("lcd");
     const creativeUpdate = director.recordCreativePickup("pc");
-    expect(creativeUpdate.newlyCompletedObjectiveIds).toContain("epoch_3.creative_contract");
+    expect(creativeUpdate.newlyCompletedObjectiveIds).toContain("epoch_3.matching_creative");
     expect(STORY_CREATIVE_EQUIPMENT_IDS).toEqual(["notebook", "lcd", "pc"]);
     expect(director.snapshot.epoch3.creative).toMatchObject({
       collected: 3,
@@ -117,20 +113,20 @@ describe("StoryObjectiveDirector", () => {
       completed: true
     });
 
-    director.enterSegment("epoch_3.growth_contract");
+    director.enterSegment("epoch_3.matching_growth");
     director.recordCurrentCombo(5);
     director.recordCurrentCombo(3);
     expect(director.snapshot.epoch3.growth).toMatchObject({ currentCombo: 3, bestCombo: 5 });
     director.recordError();
     const growthUpdate = director.recordCurrentCombo(8);
-    expect(growthUpdate.newlyCompletedObjectiveIds).toContain("epoch_3.growth_contract");
+    expect(growthUpdate.newlyCompletedObjectiveIds).toContain("epoch_3.matching_growth");
     expect(director.snapshot.epoch3.growth).toMatchObject({
       currentCombo: 8,
       bestCombo: 8,
       completed: true
     });
 
-    director.enterSegment("epoch_3.trust_contract");
+    director.enterSegment("epoch_3.matching_trust");
     for (let index = 0; index < 7; index += 1) director.recordTrustCollection();
     director.recordCollision();
     for (let index = 0; index < 12; index += 1) {
@@ -144,21 +140,9 @@ describe("StoryObjectiveDirector", () => {
     expect(director.snapshot.epoch3.completed).toBe(true);
   });
 
-  it("keeps compatibility aliases on the stricter successful-pattern and marked-set paths", () => {
+  it("separates six required orders from bonus orders and advances three peak phases", () => {
     const director = new StoryObjectiveDirector();
-    director.enterSegment("epoch_1.training");
-    director.recordAction("jump");
-    expect(director.snapshot.epoch1.training.jumps).toBe(1);
-
-    director.enterSegment("epoch_3.creative_contract");
-    expect(director.recordPickup("telefon").changed).toBe(false);
-    expect(director.recordPickup("notebook").changed).toBe(true);
-    expect(director.snapshot.epoch3.creative.collectedIds).toEqual(["notebook"]);
-  });
-
-  it("separates six required orders from bonus orders and advances three Hydra phases by time", () => {
-    const director = new StoryObjectiveDirector();
-    director.enterSegment("epoch_4.orders", 45);
+    director.enterSegment("epoch_4.order_peak", 45);
     for (const type of ["pc", "notebook", "lcd", "telefon", "pc", "notebook", "lcd", "telefon"] as const) {
       director.recordOrder(type);
     }
@@ -169,100 +153,35 @@ describe("StoryObjectiveDirector", () => {
       completed: true
     });
 
-    director.enterSegment("epoch_4.logistic_hydra", 20);
-    director.recordElapsed(7);
-    expect(director.snapshot.epoch4.hydra).toMatchObject({
+    director.recordElapsed(24);
+    expect(director.snapshot.epoch4.flow).toMatchObject({
       phase: "routing",
       phasesCompleted: 1,
       completed: false
     });
-    const update = director.recordElapsed(13);
-    expect(update.newlyCompletedObjectiveIds).toContain("epoch_4.logistic_hydra");
-    expect(director.snapshot.epoch4.hydra).toMatchObject({
+    director.enterSegment("epoch_4.order_peak_final", 48);
+    const update = director.recordElapsed(48);
+    expect(update.newlyCompletedObjectiveIds).toContain("epoch_4.order_peak_final");
+    expect(director.snapshot.epoch4.flow).toMatchObject({
       phase: "completed",
       phasesCompleted: 3,
       completed: true
     });
   });
 
-  it("exposes the million counter and three finale phases", () => {
+  it("keeps the two million goals independent and caps both targets", () => {
     const director = new StoryObjectiveDirector();
-    director.enterSegment("epoch_5.counter", 15);
-    expect(director.snapshot.epoch5.counter.value).toBe(999_970);
-    director.recordElapsed(10);
-    expect(director.snapshot.epoch5.counter.value).toBe(999_990);
-    director.recordElapsed(5);
-    expect(director.snapshot.epoch5.counter).toMatchObject({ value: 999_999, completed: true });
-
-    director.enterSegment("epoch_5.million_wave", 60);
-    director.recordElapsed(39.9);
-    expect(director.snapshot.epoch5.wave).toMatchObject({
-      phase: "quality",
-      guidedPhasesCompleted: 1,
+    director.enterSegment("epoch_5.million_threshold");
+    for (let index = 0; index < 31; index += 1) director.recordMillionPackage();
+    expect(director.snapshot.epoch5.millionThreshold).toMatchObject({
+      packagesCollected: 30,
+      combinationsCompleted: 0,
+      counterValue: 1_000_000,
       completed: false
     });
-    director.recordElapsed(0.1);
-    expect(director.snapshot.epoch5.wave).toMatchObject({
-      phase: "logistics",
-      guidedPhasesCompleted: 2
-    });
-    director.recordElapsed(20);
-    expect(director.snapshot.epoch5.wave).toMatchObject({ phase: "completed", completed: true });
-  });
-
-  it("derives Hydra, counter and three finale phases from tuned segment durations", () => {
-    const director = new StoryObjectiveDirector();
-
-    director.enterSegment("epoch_4.logistic_hydra", 30);
-    director.recordElapsed(20);
-    expect(director.snapshot.epoch4.hydra).toMatchObject({
-      elapsedSeconds: 20,
-      phase: "dispatch",
-      phasesCompleted: 2,
-      completed: false
-    });
-    director.recordElapsed(10);
-    expect(director.snapshot.epoch4.hydra.completed).toBe(true);
-
-    director.enterSegment("epoch_5.counter", 20);
-    director.recordElapsed(15);
-    expect(director.snapshot.epoch5.counter).toMatchObject({
-      value: 999_999,
-      completed: false
-    });
-    director.recordElapsed(5);
-    expect(director.snapshot.epoch5.counter.completed).toBe(true);
-
-    director.enterSegment("epoch_5.million_wave", 70);
-    director.recordElapsed(46.6);
-    expect(director.snapshot.epoch5.wave).toMatchObject({
-      phase: "quality",
-      guidedPhasesCompleted: 1,
-      completed: false
-    });
-    director.recordElapsed(0.1);
-    expect(director.snapshot.epoch5.wave).toMatchObject({
-      phase: "logistics",
-      guidedPhasesCompleted: 2
-    });
-    director.recordElapsed(23.3);
-    expect(director.snapshot.epoch5.wave.completed).toBe(true);
-  });
-
-  it("keeps missed symbols pending until each unique symbol is actually collected", () => {
-    const director = new StoryObjectiveDirector();
-    director.enterSegment("epoch_5.million_wave");
-
-    director.recordSymbolMiss(3);
-    director.recordSymbolMiss(3);
-    expect(director.snapshot.epoch5.symbols.pendingIds).toContain(3);
-    expect(director.snapshot.epoch5.symbols.misses).toBe(2);
-
-    for (let index = 0; index < 8; index += 1) director.recordSymbol(index);
-    director.recordSymbol(7);
-    expect(director.snapshot.epoch5.symbols).toMatchObject({
-      collectedIds: [0, 1, 2, 3, 4, 5, 6, 7],
-      pendingIds: [],
+    for (let index = 0; index < 9; index += 1) director.recordMillionCombination();
+    expect(director.snapshot.epoch5.millionThreshold).toMatchObject({
+      combinationsCompleted: 8,
       completed: true
     });
   });

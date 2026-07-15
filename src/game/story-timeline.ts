@@ -5,7 +5,6 @@ import type {
   StorySceneConfig,
   StorySequenceStepConfig
 } from "../shared/types";
-import { STORY_SYMBOL_COUNT } from "./story-effects";
 
 export const STORY_REFRAME_SECONDS = 0.72;
 
@@ -35,15 +34,16 @@ export interface StoryTimelineSnapshot {
   sceneIndex: number;
   sceneCount: number;
   scene: Readonly<StorySceneConfig> | null;
+  scenePageId?: string | null;
+  scenePageIndex?: number;
+  scenePageCount?: number;
   playSegment: Readonly<StoryPlayStepConfig> | null;
   activeBeats: readonly StoryBeatConfig[];
   trustCorridor: boolean;
   controlsEnabled: boolean;
   worldSpeedScale: number;
-  symbolsCollected: number;
   completed: boolean;
-  /** Additive v5 safety contract; legacy flags remain available during migration. */
-  safety?: Readonly<StorySafetySnapshot>;
+  safety: Readonly<StorySafetySnapshot>;
 }
 
 export interface StoryAdvanceOptions {
@@ -82,7 +82,7 @@ export class StoryTimeline {
   private countdownSecondsRemaining = 0;
   private reframeSecondsRemaining = 0;
   private pendingStepIndex: number | null = null;
-  private readonly collectedStorySymbols = new Set<number>();
+  private scenePageIndex = 0;
 
   public constructor(private readonly story: StoryConfig) {
     this.scenes = new Map(story.scenes.map((scene) => [scene.id, scene]));
@@ -97,6 +97,12 @@ export class StoryTimeline {
   public continueScene(expectedSceneId: string): boolean {
     if (this.state !== "scene" || this.currentStep?.type !== "scene") return false;
     if (this.currentStep.sceneId !== expectedSceneId) return false;
+    const scene = this.scenes.get(expectedSceneId);
+    const pageCount = scene?.steps?.length ?? 0;
+    if (pageCount > 0 && this.scenePageIndex + 1 < pageCount) {
+      this.scenePageIndex += 1;
+      return true;
+    }
     const nextIndex = this.stepIndex + 1;
     const next = this.sequence[nextIndex];
     if (next?.type === "scene") {
@@ -107,22 +113,6 @@ export class StoryTimeline {
     this.pendingStepIndex = nextIndex;
     this.reframeSecondsRemaining = STORY_REFRAME_SECONDS;
     return true;
-  }
-
-  public collectStorySymbol(index: number): boolean {
-    if (!Number.isInteger(index) || index < 0 || index >= STORY_SYMBOL_COUNT ||
-        this.collectedStorySymbols.has(index)) return false;
-    this.collectedStorySymbols.add(index);
-    return true;
-  }
-
-  public get collectedStorySymbolIndices(): readonly number[] {
-    return [...this.collectedStorySymbols].sort((left, right) => left - right);
-  }
-
-  public get missingStorySymbolIndices(): readonly number[] {
-    return Array.from({ length: STORY_SYMBOL_COUNT }, (_, index) => index)
-      .filter((index) => !this.collectedStorySymbols.has(index));
   }
 
   public advance(
@@ -173,7 +163,18 @@ export class StoryTimeline {
 
   public get snapshot(): StoryTimelineSnapshot {
     const step = this.currentStep;
-    const scene = step?.type === "scene" ? this.scenes.get(step.sceneId) ?? null : null;
+    const baseScene = step?.type === "scene" ? this.scenes.get(step.sceneId) ?? null : null;
+    const scenePage = baseScene?.steps?.[this.scenePageIndex] ?? null;
+    const scene = baseScene === null
+      ? null
+      : scenePage === null
+        ? baseScene
+        : {
+            ...baseScene,
+            title: scenePage.title ?? baseScene.title,
+            body: scenePage.body,
+            continueLabel: scenePage.continueLabel
+          };
     const playSegment = step?.type === "play" ? step : null;
     const completed = this.state === "completed";
     const phase = completed ? "completed" : playSegment ? "epoch" : chapterPhase(scene);
@@ -209,12 +210,14 @@ export class StoryTimeline {
       sceneIndex,
       sceneCount: this.story.scenes.length,
       scene,
+      scenePageId: scenePage?.id ?? null,
+      scenePageIndex: scenePage === null ? 0 : this.scenePageIndex,
+      scenePageCount: baseScene?.steps?.length ?? 1,
       playSegment,
       activeBeats: [],
       trustCorridor,
       controlsEnabled: this.state === "play",
       worldSpeedScale: trustCorridor ? this.story.readingSpeedMultiplier : 1,
-      symbolsCollected: this.collectedStorySymbols.size,
       completed,
       safety
     };
@@ -229,6 +232,7 @@ export class StoryTimeline {
     this.segmentElapsedSeconds = 0;
     this.countdownSecondsRemaining = 0;
     this.reframeSecondsRemaining = 0;
+    this.scenePageIndex = 0;
     this.state = this.stateForStep(this.currentStep);
   }
 

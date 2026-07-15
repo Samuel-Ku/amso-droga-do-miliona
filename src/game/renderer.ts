@@ -374,12 +374,8 @@ function drawSmallWarehouseVignette(
   context.fillRect(x + 48, y + 81, 35, 22);
 
   context.strokeStyle = COLORS.inkSoft;
-  context.lineWidth = 5;
-  context.beginPath();
-  context.moveTo(x + 119, y + 12);
-  context.bezierCurveTo(x + 101, y + 37, x + 154, y + 35, x + 132, y + 60);
-  context.bezierCurveTo(x + 110, y + 82, x + 169, y + 88, x + 143, y + 112);
-  context.stroke();
+  context.lineWidth = 4;
+  context.strokeRect(x + 112, y + 10, 48, 104);
   context.strokeStyle = COLORS.orange;
   context.lineWidth = 3;
   for (let index = 0; index < 3; index += 1) {
@@ -542,123 +538,12 @@ function drawScaleVignette(
   drawCheckMark(context, x + 258, conveyorY - 39, 21);
 
   context.strokeStyle = theme.accentCool;
-  context.lineWidth = 3;
-  context.beginPath();
-  context.moveTo(x + 280, y + 24);
-  context.bezierCurveTo(x + 315, y + 53, x + 292, y + 102, x + 327, y + 132);
-  context.lineTo(x + 305, y + 170);
-  context.stroke();
-  for (const node of [[x + 280, y + 24], [x + 327, y + 132], [x + 305, y + 170]] as const) {
-    context.fillStyle = COLORS.orange;
-    context.beginPath();
-    context.arc(node[0], node[1], 7, 0, Math.PI * 2);
-    context.fill();
-  }
-  context.restore();
-}
-
-function drawStorySymbol(
-  context: CanvasRenderingContext2D,
-  index: number,
-  x: number,
-  y: number,
-  size: number,
-  active: boolean
-): void {
-  context.save();
-  context.globalAlpha = active ? 0.96 : 0.2;
-  context.strokeStyle = active ? COLORS.orange : COLORS.inkSoft;
-  context.fillStyle = active ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.28)";
-  context.lineWidth = Math.max(2, size * 0.1);
-  context.beginPath();
-  context.arc(x, y, size * 0.72, 0, Math.PI * 2);
-  context.fill();
-  context.stroke();
-  const left = x - size * 0.38;
-  const top = y - size * 0.38;
-
-  switch (index) {
-    case 0:
-      context.beginPath();
-      context.moveTo(left, top + size * 0.12);
-      context.lineTo(x + size * 0.16, top + size * 0.12);
-      context.lineTo(x + size * 0.4, y);
-      context.lineTo(x + size * 0.16, y + size * 0.3);
-      context.lineTo(left, y + size * 0.3);
-      context.closePath();
-      context.stroke();
-      context.beginPath();
-      context.arc(left + size * 0.13, y, size * 0.05, 0, Math.PI * 2);
-      context.fillStyle = COLORS.red;
-      context.fill();
-      break;
-    case 1:
-      drawCheckMark(context, left, top + size * 0.16, size * 0.72, active ? "#eb32a4" : COLORS.inkSoft);
-      break;
-    case 2:
-      context.beginPath();
-      context.moveTo(x, top);
-      context.lineTo(x + size * 0.34, top + size * 0.16);
-      context.lineTo(x + size * 0.27, y + size * 0.3);
-      context.lineTo(x, y + size * 0.43);
-      context.lineTo(x - size * 0.27, y + size * 0.3);
-      context.lineTo(x - size * 0.34, top + size * 0.16);
-      context.closePath();
-      context.stroke();
-      break;
-    case 3:
-      context.strokeRect(left, top, size * 0.76, size * 0.7);
-      context.beginPath();
-      context.moveTo(left + size * 0.08, y + size * 0.2);
-      context.lineTo(x - size * 0.05, y - size * 0.02);
-      context.lineTo(x + size * 0.09, y + size * 0.09);
-      context.lineTo(x + size * 0.28, y - size * 0.16);
-      context.stroke();
-      break;
-    case 4:
-      roundedRectangle(context, left, top + size * 0.08, size * 0.76, size * 0.55, size * 0.08);
-      context.stroke();
-      context.fillStyle = COLORS.red;
-      context.fillRect(left + size * 0.08, top + size * 0.18, size * 0.16, size * 0.15);
-      context.fillStyle = COLORS.inkSoft;
-      context.fillRect(left + size * 0.31, top + size * 0.2, size * 0.34, size * 0.07);
-      context.fillRect(left + size * 0.31, top + size * 0.34, size * 0.25, size * 0.07);
-      break;
-    case 5:
-      context.beginPath();
-      context.arc(x, y, size * 0.34, -Math.PI / 2, Math.PI * 1.5);
-      context.stroke();
-      context.beginPath();
-      context.moveTo(x, y);
-      context.lineTo(x, y - size * 0.34);
-      context.arc(x, y, size * 0.34, -Math.PI / 2, -Math.PI / 2 + Math.PI * 0.38);
-      context.closePath();
-      context.fillStyle = COLORS.orange;
-      context.fill();
-      break;
-    case 6:
-      fillRoundedRectangle(context, x - size * 0.22, top, size * 0.44, size * 0.58, size * 0.08, COLORS.inkSoft);
-      context.fillStyle = active ? "#f04f45" : COLORS.wallShade;
-      context.fillRect(x - size * 0.13, top + size * 0.1, size * 0.26, size * 0.16);
-      context.strokeStyle = COLORS.inkSoft;
-      context.beginPath();
-      context.moveTo(x + size * 0.2, y + size * 0.09);
-      context.lineTo(x + size * 0.4, y + size * 0.3);
-      context.stroke();
-      break;
-    case 7:
-      context.beginPath();
-      context.moveTo(left, y + size * 0.2);
-      context.bezierCurveTo(x - size * 0.08, top, x + size * 0.08, y + size * 0.35, x + size * 0.38, top + size * 0.12);
-      context.stroke();
-      for (const node of [[left, y + size * 0.2], [x, y], [x + size * 0.38, top + size * 0.12]] as const) {
-        context.beginPath();
-        context.arc(node[0], node[1], size * 0.08, 0, Math.PI * 2);
-        context.fillStyle = COLORS.red;
-        context.fill();
-      }
-      break;
-  }
+  context.lineWidth = 4;
+  context.strokeRect(x + 280, y + 24, 47, 146);
+  context.fillStyle = COLORS.cardboard;
+  context.fillRect(x + 287, y + 104, 33, 27);
+  context.fillStyle = COLORS.orange;
+  context.fillRect(x + 287, y + 138, 33, 24);
   context.restore();
 }
 
@@ -666,80 +551,49 @@ function drawMillionVignette(
   context: CanvasRenderingContext2D,
   scene: Readonly<RenderScene>
 ): void {
-  const phase = scene.reducedMotion ? 0 : scene.elapsedSeconds * 0.65;
-  const collected = Math.max(
-    0,
-    Math.min(
-      8,
-      Math.floor(
-        scene.storyObjectives?.epoch5.symbols.collectedIds.length ?? scene.storySymbols ??
-          (scene.storyPhase === "finale" || scene.storyPhase === "completed" ? 8 : 0)
-      )
-    )
-  );
+  const finale = scene.storyObjectives?.epoch5.millionThreshold;
+  const completed = finale?.completed === true || scene.storyPhase === "finale" ||
+    scene.storyPhase === "completed";
+  const counter = finale?.counterValue ?? (completed ? 1_000_000 : 999_970);
   context.save();
-  context.globalAlpha = 0.82;
-
-  for (let index = 0; index < 14; index += 1) {
-    const x = 493 + index * 37;
-    const y = 278 - Math.sin(index * 0.62 + phase) * 72;
-    const size = 15 + (index % 3) * 3;
-    context.save();
-    context.translate(x, y);
-    context.rotate(scene.reducedMotion ? -0.08 : Math.sin(phase + index) * 0.2);
-    context.fillStyle = index % 4 === 0 ? COLORS.red : COLORS.cardboard;
-    context.fillRect(-size / 2, -size / 2, size, size);
-    context.fillStyle = "rgba(255,255,255,0.76)";
-    context.fillRect(-size * 0.3, -size * 0.15, size * 0.6, size * 0.23);
-    context.restore();
+  const frame = completed
+    ? context.createLinearGradient(560, 0, 914, 0)
+    : COLORS.inkSoft;
+  if (completed && typeof frame !== "string") {
+    frame.addColorStop(0, "#f47100");
+    frame.addColorStop(0.52, "#f04f45");
+    frame.addColorStop(1, "#eb32a4");
   }
+  fillRoundedRectangle(context, 565, 74, 348, 112, 18, COLORS.white);
+  context.strokeStyle = frame;
+  context.lineWidth = 8;
+  roundedRectangle(context, 565, 74, 348, 112, 18);
+  context.stroke();
+  context.fillStyle = frame;
+  context.font = "950 44px ui-monospace, monospace";
+  context.textAlign = "center";
+  context.fillText(INTEGER_FORMATTER.format(counter), 739, 133);
+  context.fillStyle = COLORS.inkSoft;
+  context.font = "850 16px system-ui, sans-serif";
+  context.fillText("ZAMÓWIEŃ", 739, 163);
 
-  const centerX = 741;
-  const centerY = 212;
-
-  if (scene.storyObjectives?.activeSegmentId === "epoch_5.counter") {
-    fillRoundedRectangle(context, 570, 84, 342, 70, 18, "rgba(23,49,59,0.92)");
+  for (let index = 0; index < (completed ? 8 : 4); index += 1) {
+    const x = 579 + index * 43;
+    const y = 223 + (index % 2) * 39;
+    context.fillStyle = index % 3 === 0 ? COLORS.red : COLORS.cardboard;
+    context.fillRect(x, y, 34, 29);
     context.fillStyle = COLORS.white;
-    context.font = "900 36px system-ui, sans-serif";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText(
-      INTEGER_FORMATTER.format(scene.storyObjectives.epoch5.counter.value),
-      741,
-      119
-    );
-    context.textAlign = "start";
-    context.textBaseline = "alphabetic";
+    context.fillRect(x + 6, y + 9, 22, 7);
   }
-  context.strokeStyle = "rgba(244,161,36,0.52)";
-  context.lineWidth = 3;
-  context.beginPath();
-  context.arc(centerX, centerY, 119, 0, Math.PI * 2);
-  context.stroke();
-  for (let index = 0; index < 8; index += 1) {
-    const angle = -Math.PI / 2 + (Math.PI * 2 * index) / 8 + (scene.reducedMotion ? 0 : Math.sin(phase) * 0.025);
-    drawStorySymbol(
-      context,
-      index,
-      centerX + Math.cos(angle) * 119,
-      centerY + Math.sin(angle) * 119,
-      24,
-      index < collected
-    );
+  if (completed) {
+    context.strokeStyle = frame;
+    context.lineWidth = 9;
+    context.beginPath();
+    context.moveTo(530, 318);
+    context.lineTo(913, 318);
+    context.stroke();
+    drawCheckMark(context, 838, 250, 45, "#eb32a4");
   }
-
-  context.fillStyle = COLORS.cardboard;
-  context.beginPath();
-  context.moveTo(centerX - 38, centerY - 17);
-  context.lineTo(centerX, centerY - 39);
-  context.lineTo(centerX + 38, centerY - 17);
-  context.lineTo(centerX + 32, centerY + 36);
-  context.lineTo(centerX - 32, centerY + 36);
-  context.closePath();
-  context.fill();
-  context.strokeStyle = COLORS.cardboardLight;
-  context.lineWidth = 5;
-  context.stroke();
   context.restore();
 }
 
@@ -748,37 +602,25 @@ function drawChallengeVignette(
   scene: Readonly<RenderScene>,
   theme: Readonly<BackgroundTheme>
 ): void {
-  const offset = scene.reducedMotion ? 0 : -positiveModulo(scene.distancePixels * 0.12, 260);
+  const offset = scene.reducedMotion ? 0 : -positiveModulo(scene.distancePixels * 0.12, 220);
   context.save();
-  context.globalAlpha = 0.84;
-  context.strokeStyle = theme.accentCool;
-  context.lineWidth = 4;
-  for (let x = offset - 90; x < WORLD_WIDTH + 120; x += 260) {
-    context.beginPath();
-    context.moveTo(x, 336);
-    context.bezierCurveTo(x + 60, 286, x + 126, 363, x + 208, 305);
-    context.stroke();
-    for (const node of [[x, 336], [x + 102, 326], [x + 208, 305]] as const) {
-      context.fillStyle = COLORS.orange;
-      context.beginPath();
-      context.arc(node[0], node[1], 7, 0, Math.PI * 2);
-      context.fill();
-    }
+  context.globalAlpha = 0.78;
+  context.fillStyle = "rgba(23,23,23,0.08)";
+  context.fillRect(0, 300, WORLD_WIDTH, 92);
+  context.fillStyle = COLORS.ink;
+  context.fillRect(0, 352, WORLD_WIDTH, 10);
+  context.fillStyle = theme.accentCool;
+  context.fillRect(0, 362, WORLD_WIDTH, 5);
+  for (let x = offset - 70; x < WORLD_WIDTH + 120; x += 220) {
     context.fillStyle = COLORS.cardboard;
-    context.fillRect(x + 82, 348, 32, 28);
+    context.fillRect(x + 82, 316, 42, 35);
     context.fillStyle = COLORS.white;
-    context.fillRect(x + 89, 357, 18, 7);
-    context.strokeStyle = COLORS.red;
-    context.lineWidth = 5;
+    context.fillRect(x + 90, 326, 26, 8);
+    context.fillStyle = COLORS.orange;
     context.beginPath();
-    context.moveTo(x + 142, 278);
-    context.lineTo(x + 142, 373);
-    context.lineTo(x + 190, 373);
-    context.lineTo(x + 190, 278);
-    context.stroke();
-    drawCheckMark(context, x + 153, 293, 27);
-    context.strokeStyle = theme.accentCool;
-    context.lineWidth = 4;
+    context.arc(x + 48, 357, 9, 0, Math.PI * 2);
+    context.fill();
+    drawCheckMark(context, x + 150, 320, 28);
   }
   context.restore();
 }
@@ -841,15 +683,10 @@ function drawTrustCorridor(
   context.stroke();
 
   context.globalAlpha = 0.6;
-  context.strokeStyle = theme.accentCool;
-  context.lineWidth = 4;
-  for (let lane = 0; lane < 3; lane += 1) {
-    const y = GROUND_Y - 34 + lane * 12;
-    context.beginPath();
-    context.moveTo(224, y);
-    context.bezierCurveTo(414, y - 12, 655, y + 14, WORLD_WIDTH + 10, y - 4);
-    context.stroke();
-  }
+  context.fillStyle = COLORS.ink;
+  context.fillRect(224, GROUND_Y - 46, WORLD_WIDTH - 224, 8);
+  context.fillStyle = theme.accentCool;
+  context.fillRect(224, GROUND_Y - 34, WORLD_WIDTH - 224, 5);
   for (let index = 0; index < 4; index += 1) {
     const x = 312 + index * 176;
     context.fillStyle = "rgba(255,255,255,0.9)";
@@ -858,86 +695,6 @@ function drawTrustCorridor(
     context.fill();
     drawCheckMark(context, x - 8, GROUND_Y - 47 + (index % 2) * 12, 16);
   }
-  context.restore();
-}
-
-function drawStoryClimax(
-  context: CanvasRenderingContext2D,
-  scene: Readonly<RenderScene>
-): void {
-  const climax = scene.storyClimax;
-  if (!climax?.identity || climax.phase === "inactive") return;
-  const positive = climax.phase === "transforming" || climax.phase === "completed";
-  const bob = scene.reducedMotion ? 0 : Math.sin(scene.elapsedSeconds * 3) * 5;
-  const x = 760;
-  const y = 302 + bob;
-
-  context.save();
-  context.globalAlpha = positive ? 0.92 : 0.82;
-  fillRoundedRectangle(context, 654, 58, 274, 38, 10, "rgba(23,49,59,0.88)");
-  context.fillStyle = COLORS.white;
-  context.font = "800 16px system-ui, sans-serif";
-  context.textAlign = "center";
-  context.fillText(climax.challengeName, 791, 83);
-
-  if (climax.identity === "cable-chaos") {
-    context.strokeStyle = positive ? "#eb32a4" : COLORS.red;
-    context.lineWidth = 6;
-    for (let cable = 0; cable < 3; cable += 1) {
-      context.beginPath();
-      context.moveTo(x - 62, y + cable * 15);
-      if (positive) {
-        context.lineTo(x + 66, y + cable * 15);
-      } else {
-        context.bezierCurveTo(x - 18, y - 48, x + 12, y + 64, x + 66, y - 8 + cable * 12);
-      }
-      context.stroke();
-    }
-    if (positive) drawCheckMark(context, x + 74, y - 4, 25);
-  } else if (climax.identity === "doubt-cloud") {
-    context.fillStyle = positive ? "#fff0f8" : "rgba(68,65,61,0.88)";
-    for (const [dx, dy, radius] of [[-35, 0, 36], [3, -18, 44], [46, 3, 34]] as const) {
-      context.beginPath();
-      context.arc(x + dx, y + dy, radius, 0, Math.PI * 2);
-      context.fill();
-    }
-    if (positive) {
-      drawCheckMark(context, x - 14, y - 17, 46);
-    } else {
-      context.fillStyle = COLORS.white;
-      context.font = "900 34px system-ui, sans-serif";
-      context.fillText("?  ?  ?", x + 4, y + 13);
-    }
-  } else if (climax.identity === "budget-eater") {
-    context.fillStyle = positive ? "#f47100" : COLORS.red;
-    context.beginPath();
-    context.ellipse(x, y, 66, 43, 0, 0, Math.PI * 2);
-    context.fill();
-    context.fillStyle = positive ? COLORS.ink : COLORS.white;
-    context.font = "900 25px system-ui, sans-serif";
-    context.fillText(positive ? "PLN" : "- - -", x, y + 8);
-    context.fillRect(x + 48, y + 29, 12, 22);
-    context.fillRect(x - 50, y + 29, 12, 22);
-  } else {
-    context.strokeStyle = positive ? "#eb32a4" : COLORS.red;
-    context.lineWidth = 7;
-    const rootY = y + 44;
-    const completedPhases = scene.storyObjectives?.epoch4.hydra.phasesCompleted ?? 0;
-    for (let head = 0; head < 3; head += 1) {
-      const targetX = x - 52 + head * 52;
-      const headResolved = positive || head < completedPhases;
-      context.beginPath();
-      context.moveTo(x, rootY);
-      context.quadraticCurveTo(x + (head - 1) * 24, y, targetX, y - 35);
-      context.stroke();
-      context.fillStyle = headResolved ? "#fff0f8" : COLORS.red;
-      context.beginPath();
-      context.arc(targetX, y - 35, 13, 0, Math.PI * 2);
-      context.fill();
-      if (headResolved) drawCheckMark(context, targetX - 7, y - 42, 14);
-    }
-  }
-  context.textAlign = "start";
   context.restore();
 }
 
@@ -952,14 +709,18 @@ function drawTransformedObstacle(
   context.save();
   context.globalAlpha = 0.9 - transformation.progress * 0.24;
   context.translate(0, -lift);
-  if (transformation.motif === "ordered-cables") {
-    context.strokeStyle = "#eb32a4";
-    context.lineWidth = 4;
-    for (let line = 0; line < 3; line += 1) {
-      context.beginPath();
-      context.moveTo(obstacle.x - 8, obstacle.y + 12 + line * 10);
-      context.lineTo(obstacle.x + obstacle.width + 8, obstacle.y + 12 + line * 10);
-      context.stroke();
+  if (transformation.motif === "process-zones") {
+    const zoneWidth = Math.max(18, obstacle.width / 3);
+    for (let zone = 0; zone < 3; zone += 1) {
+      fillRoundedRectangle(
+        context,
+        obstacle.x + zone * zoneWidth,
+        obstacle.y + 8,
+        zoneWidth - 4,
+        Math.max(18, obstacle.height - 12),
+        4,
+        zone % 2 === 0 ? COLORS.white : "#fff0f8"
+      );
     }
   } else if (transformation.motif === "quality-mark") {
     context.fillStyle = "rgba(255,240,248,0.94)";
@@ -967,13 +728,19 @@ function drawTransformedObstacle(
     context.arc(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2, 26, 0, Math.PI * 2);
     context.fill();
     drawCheckMark(context, obstacle.x + obstacle.width / 2 - 14, obstacle.y + obstacle.height / 2 - 12, 28);
-  } else if (transformation.motif === "piggy-bank") {
-    context.fillStyle = COLORS.orange;
-    context.beginPath();
-    context.ellipse(obstacle.x + obstacle.width / 2, GROUND_Y - 30, 34, 23, 0, 0, Math.PI * 2);
-    context.fill();
-    context.fillStyle = COLORS.ink;
-    context.fillRect(obstacle.x + obstacle.width / 2 - 10, GROUND_Y - 51, 21, 4);
+  } else if (transformation.motif === "matched-order") {
+    fillRoundedRectangle(
+      context,
+      obstacle.x + obstacle.width / 2 - 26,
+      GROUND_Y - 58,
+      52,
+      42,
+      5,
+      COLORS.cardboard
+    );
+    context.fillStyle = COLORS.white;
+    context.fillRect(obstacle.x + obstacle.width / 2 - 18, GROUND_Y - 44, 36, 13);
+    drawCheckMark(context, obstacle.x + obstacle.width / 2 - 8, GROUND_Y - 43, 16);
   } else if (obstacle.obstacleKind === "overhead") {
     context.strokeStyle = "#eb32a4";
     context.lineWidth = 5;
@@ -1005,10 +772,10 @@ const POWER_UP_COLORS: Readonly<Record<PowerUpKind, string>> = {
   drugie_zycie: "#f47100"
 };
 
-const POWER_UP_GLYPH: Readonly<Record<PowerUpKind, string>> = {
-  gwarancja_48: "48",
-  audyt_jakosci: "A",
-  drugie_zycie: "2x"
+const POWER_UP_PACKAGE_COPY: Readonly<Record<PowerUpKind, readonly [string, string]>> = {
+  gwarancja_48: ["OCHRONA", "48 M"],
+  audyt_jakosci: ["AUDYT", "TRASY"],
+  drugie_zycie: ["2×", "PUNKTY"]
 };
 
 const PACKAGE_TYPE_ACCENT: Readonly<Record<PackageType, string>> = {
@@ -1030,16 +797,6 @@ function drawParcel(
   const x = parcel.x;
   const y = parcel.y + bob;
   const size = parcel.size;
-
-  if (parcel.kind === "story-symbol") {
-    const symbolIndex = parcel.storySymbolIndex ?? 0;
-    context.save();
-    context.shadowColor = "rgba(244,161,36,0.7)";
-    context.shadowBlur = scene.reducedMotion ? 6 : 10;
-    drawStorySymbol(context, symbolIndex, x + size / 2, y + size / 2, size, true);
-    context.restore();
-    return;
-  }
 
   if (parcel.storyOrder === true) {
     const orderLabel: Readonly<Record<PackageType, string>> = {
@@ -1076,45 +833,49 @@ function drawParcel(
 
   if (parcel.kind === "golden") {
     context.save();
-    context.shadowColor = "rgba(255, 210, 63, 0.72)";
+    context.shadowColor = "rgba(240, 79, 69, 0.55)";
     context.shadowBlur = scene.reducedMotion ? 7 : 11 + Math.sin(scene.elapsedSeconds * 5) * 3;
-    fillRoundedRectangle(context, x - 2, y - 2, size + 4, size + 4, 6, "#ffd23f");
+    fillRoundedRectangle(context, x - 2, y - 2, size + 4, size + 4, 6, COLORS.orange);
     context.shadowBlur = 0;
-    context.fillStyle = "#ffec8a";
-    context.fillRect(x + 3, y + 3, size - 6, 6);
-    context.fillStyle = "#d59c00";
-    context.fillRect(x + size / 2 - 2, y, 5, size);
-    context.fillStyle = COLORS.red;
-    context.beginPath();
-    const centerX = x + size / 2;
-    const centerY = y + size / 2 + 1;
-    for (let index = 0; index < 10; index += 1) {
-      const radius = index % 2 === 0 ? 8 : 3.5;
-      const angle = -Math.PI / 2 + (Math.PI * index) / 5;
-      const pointX = centerX + Math.cos(angle) * radius;
-      const pointY = centerY + Math.sin(angle) * radius;
-      if (index === 0) context.moveTo(pointX, pointY);
-      else context.lineTo(pointX, pointY);
-    }
-    context.closePath();
-    context.fill();
+    context.fillStyle = COLORS.redDark;
+    context.fillRect(x + size / 2, y, size / 2, size);
+    context.strokeStyle = COLORS.ink;
+    context.lineWidth = 2;
+    context.strokeRect(x, y, size, size);
+    context.fillStyle = COLORS.white;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.font = "950 6.5px system-ui, sans-serif";
+    context.fillText("BONUS", x + size / 2, y + 11);
+    context.font = "850 6px system-ui, sans-serif";
+    context.fillText("+350 pkt", x + size / 2, y + 20);
+    context.textAlign = "start";
+    context.textBaseline = "alphabetic";
     context.restore();
     return;
   }
 
   if (parcel.kind !== "standard") {
     const color = POWER_UP_COLORS[parcel.kind as PowerUpKind] ?? COLORS.red;
-    const glyph = POWER_UP_GLYPH[parcel.kind as PowerUpKind] ?? "★";
+    const copy = POWER_UP_PACKAGE_COPY[parcel.kind as PowerUpKind];
+    if (!copy) return;
     context.save();
     context.shadowColor = color;
     context.shadowBlur = scene.reducedMotion ? 7 : 12 + Math.sin(scene.elapsedSeconds * 5) * 3;
-    fillRoundedRectangle(context, x - 2, y - 2, size + 4, size + 4, 8, color);
+    fillRoundedRectangle(context, x - 2, y - 2, size + 4, size + 4, 5, COLORS.white);
     context.shadowBlur = 0;
-    context.fillStyle = "rgba(255,255,255,0.92)";
-    context.font = "800 16px system-ui, sans-serif";
+    context.strokeStyle = COLORS.ink;
+    context.lineWidth = 2;
+    context.strokeRect(x, y, size, size);
+    context.fillStyle = color;
+    context.fillRect(x + 3, y + 3, size - 6, 6);
+    context.fillStyle = COLORS.ink;
+    context.font = "950 5.8px system-ui, sans-serif";
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillText(glyph, x + size / 2, y + size / 2 + 1);
+    context.fillText(copy[0], x + size / 2, y + 15);
+    context.font = "850 6px system-ui, sans-serif";
+    context.fillText(copy[1], x + size / 2, y + 23);
     context.textAlign = "start";
     context.textBaseline = "alphabetic";
     context.restore();
@@ -1371,44 +1132,26 @@ function drawFirstAmsoParcel(
   context.restore();
 }
 
-function drawTrustSpark(
+function drawWarrantyShield(
   context: CanvasRenderingContext2D,
   runner: Readonly<RunnerModel>,
   scene: Readonly<RenderScene>
 ): void {
-  const combo = Math.max(1, scene.combo ?? 1);
-  const recovering = (scene.recoverySeconds ?? 0) > 0;
-  const comboGrowth = Math.min(18, Math.sqrt(combo - 1) * 3.4);
-  const pulse = scene.reducedMotion ? 0 : Math.sin(scene.elapsedSeconds * 5.1) * 2;
-  const radius = 7 + comboGrowth + pulse;
-  const x = runner.x - 8;
-  const y = runner.y + (runner.crouching ? 53 : 36);
-  const alpha = recovering ? 0.28 : 0.82;
-
+  if (!scene.activePowerUps.includes("gwarancja_48")) return;
+  const pulse = scene.reducedMotion ? 0 : Math.sin(scene.elapsedSeconds * 4.2) * 2;
+  const padding = 10 + pulse;
+  const x = runner.x - padding;
+  const y = runner.y - padding;
+  const width = runner.width + padding * 2;
+  const height = runner.height + padding * 2;
   context.save();
-  context.globalAlpha = alpha * 0.18;
-  context.fillStyle = "#fff4b0";
+  context.globalAlpha = (scene.recoverySeconds ?? 0) > 0 ? 0.5 : 0.9;
+  context.strokeStyle = COLORS.redDark;
+  context.lineWidth = 4;
+  context.setLineDash(scene.reducedMotion ? [] : [10, 5]);
   context.beginPath();
-  context.arc(x, y, radius * 1.9, 0, Math.PI * 2);
-  context.fill();
-  context.globalAlpha = alpha * 0.4;
-  context.fillStyle = COLORS.orange;
-  context.beginPath();
-  context.arc(x, y, radius, 0, Math.PI * 2);
-  context.fill();
-  context.globalAlpha = alpha;
-  context.fillStyle = "#fff7cf";
-  context.beginPath();
-  for (let index = 0; index < 8; index += 1) {
-    const angle = -Math.PI / 2 + (Math.PI * index) / 4;
-    const pointRadius = index % 2 === 0 ? radius : radius * 0.34;
-    const pointX = x + Math.cos(angle) * pointRadius;
-    const pointY = y + Math.sin(angle) * pointRadius;
-    if (index === 0) context.moveTo(pointX, pointY);
-    else context.lineTo(pointX, pointY);
-  }
-  context.closePath();
-  context.fill();
+  context.roundRect(x, y, width, height, 18);
+  context.stroke();
   context.restore();
 }
 
@@ -1672,7 +1415,6 @@ export class WarehouseRenderer {
       drawGameplayRoute(context);
     }
     drawTrustCorridor(context, scene, theme);
-    drawStoryClimax(context, scene);
     drawForkliftBoss(
       context,
       scene.boss,
@@ -1687,7 +1429,7 @@ export class WarehouseRenderer {
       drawTransformedObstacle(context, transformation, scene.reducedMotion);
     }
     drawCourier(context, scene.runner, scene);
-    drawTrustSpark(context, scene.runner, scene);
+    drawWarrantyShield(context, scene.runner, scene);
 
     if (scene.cutscene) {
       context.fillStyle = "rgba(17,39,48,0.86)";
@@ -1712,19 +1454,6 @@ export class WarehouseRenderer {
       context.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     }
 
-    if (scene.activePowerUps.length > 0 && !scene.cutscene) {
-      let badgeX = WORLD_WIDTH - 24;
-      for (const powerUp of scene.activePowerUps) {
-        const color = POWER_UP_COLORS[powerUp] ?? COLORS.red;
-        fillRoundedRectangle(context, badgeX - 34, 18, 30, 22, 6, color);
-        context.fillStyle = "rgba(255,255,255,0.95)";
-        context.font = "800 12px system-ui, sans-serif";
-        context.textAlign = "center";
-        context.fillText(POWER_UP_GLYPH[powerUp] ?? "★", badgeX - 19, 33);
-        context.textAlign = "start";
-        badgeX -= 40;
-      }
-    }
     context.restore();
   }
 }

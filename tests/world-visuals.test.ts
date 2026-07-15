@@ -36,7 +36,7 @@ describe("world visual continuity", () => {
       "utf8"
     );
     const start = semanticSvg.indexOf('data-editorial-scene="first-package"');
-    const end = semanticSvg.indexOf('data-world-fallback="cable-route"');
+    const end = semanticSvg.indexOf('data-world-fallback="order-process"');
     const firstPackage = semanticSvg.slice(start, end);
 
     expect(start).toBeGreaterThan(0);
@@ -46,9 +46,10 @@ describe("world visual continuity", () => {
     expect(firstPackage).not.toContain("<text");
     const scene = productionConfig.story.scenes[0]!;
     expect(scene.eyebrow).toBe("Nasza historia");
-    expect(scene.body.join(" ")).toContain("małym sklepie");
-    expect(scene.body.join(" ")).toContain("magazynie wielkości kawalerki");
-    expect(scene.body.join(" ")).toContain("własnymi rękami");
+    const editorialCopy = scene.steps.flatMap(({ body }) => body).join(" ");
+    expect(editorialCopy).toContain("sklep był mały");
+    expect(editorialCopy).toContain("powierzchnię zbliżoną do kawalerki");
+    expect(editorialCopy).toContain("Własnymi rękami");
   });
 
   it("keeps the animated million value inside its own responsive counter plate", () => {
@@ -84,7 +85,7 @@ describe("world visual continuity", () => {
 
   it("keeps consecutive service play segments inside one evolving world", () => {
     const testing = resolvePlaySegmentVisual("epoch_2.quality_series", 0.5);
-    const doubts = resolvePlaySegmentVisual("epoch_2.doubt_cloud", 0.5);
+    const doubts = resolvePlaySegmentVisual("epoch_2.quality_trial", 0.5);
 
     expect(testing.worldId).toBe("quality-service");
     expect(doubts.worldId).toBe("quality-service");
