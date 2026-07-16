@@ -1,5 +1,9 @@
 import type { ObstacleKind } from "./types";
 import { validateAuthoredRouteGeometry } from "./spawning";
+import {
+  isSemanticObstacleVariant,
+  type SemanticObstacleVariant
+} from "./semantic-obstacle";
 
 export type AuthoredWaveAction = "jump" | "slide";
 export type StoryMicrolevelId =
@@ -14,7 +18,7 @@ export interface AuthoredWaveDefinition {
   id: string;
   actions: readonly AuthoredWaveAction[];
   obstacleKinds: readonly ObstacleKind[];
-  obstacleVariant: string;
+  obstacleVariant: SemanticObstacleVariant;
   packageCount: number;
   telegraphSeconds: number;
   breathSeconds: number;
@@ -72,7 +76,7 @@ export interface AuthoredWaveProgressSnapshot {
   waveTarget: number;
   currentWaveId: string;
   currentActions?: readonly AuthoredWaveAction[];
-  currentObstacleVariant?: string;
+  currentObstacleVariant?: SemanticObstacleVariant;
   attemptsOnCurrentWave: number;
   packagesCollectedOnCurrentWave: number;
   packagesAvailableOnCurrentWave: number;
@@ -91,14 +95,6 @@ export const STORY_MIN_BREATH_SECONDS = 0.8;
 export const STORY_MAX_BREATH_SECONDS = 1.2;
 
 const jumpKinds: ReadonlySet<ObstacleKind> = new Set(["box-stack", "pallet", "trolley"]);
-const KNOWN_OBSTACLE_VARIANTS: ReadonlySet<string> = new Set([
-  "parcel-arc", "box-stack", "scanner-gate", "dispatch-pair", "shelf-beam",
-  "loaded-pallet", "warehouse-curtain", "parcel-trolley", "equipment-crate",
-  "low-conveyor", "device-pallet", "checked-device", "first-laptop", "growing-team",
-  "established-office", "intake", "routing", "dispatch", "single", "doublet",
-  "three-action", "long-arc", "low-line", "tempo-change", "mastery", "recovery-route"
-]);
-
 const FINALE_RECOVERY_WAVE: Readonly<AuthoredWaveDefinition> = Object.freeze({
   id: "million-safe-recovery",
   actions: ["jump"] as const,
@@ -152,7 +148,7 @@ export function validateStoryMicrolevel(
       });
     }
     ids.add(wave.id);
-    if (!KNOWN_OBSTACLE_VARIANTS.has(wave.obstacleVariant)) {
+    if (!isSemanticObstacleVariant(wave.obstacleVariant)) {
       issues.push({
         code: "unknown_obstacle_variant",
         microlevelId: definition.id,
@@ -325,7 +321,7 @@ export class AuthoredWaveDirector {
       waveTarget: this.definition.repeatWavesUntil ?? this.definition.waves.length,
       currentWaveId: wave?.id ?? "",
       currentActions: wave?.actions ?? [],
-      currentObstacleVariant: wave?.obstacleVariant ?? "",
+      ...(wave ? { currentObstacleVariant: wave.obstacleVariant } : {}),
       attemptsOnCurrentWave: this.attempts,
       packagesCollectedOnCurrentWave: this.packagesCollected,
       packagesAvailableOnCurrentWave: wave ? availablePackages(wave) : 0,
@@ -345,7 +341,7 @@ function wave(
   kind: ObstacleKind,
   packageCount: number,
   speedMultiplier: number,
-  obstacleVariant: string,
+  obstacleVariant: SemanticObstacleVariant,
   reward?: AuthoredWaveDefinition["reward"]
 ): AuthoredWaveDefinition {
   return {
@@ -367,7 +363,7 @@ function sequence(
   kinds: readonly ObstacleKind[],
   packageCount: number,
   speedMultiplier: number,
-  obstacleVariant: string,
+  obstacleVariant: SemanticObstacleVariant,
   reward?: AuthoredWaveDefinition["reward"]
 ): AuthoredWaveDefinition {
   return {

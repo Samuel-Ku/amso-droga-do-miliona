@@ -7,6 +7,7 @@ import type { StoryObjectivesSnapshot } from "./story-objectives";
 import type { CampaignWorldId } from "../visuals/scene-manifest";
 import type { MilestoneCelebrationSnapshot } from "./milestone-celebration";
 import type { AuthoredWaveProgressSnapshot } from "./authored-wave";
+import type { SemanticObstacleVariant } from "./semantic-obstacle";
 
 export type ObstacleKind = "box-stack" | "pallet" | "trolley" | "overhead";
 export type ObstacleSource = "normal" | "boss" | "story-climax" | "story-reward";
@@ -38,7 +39,7 @@ export interface ObstacleModel {
   authoredWaveId?: string;
   authoredActionIndex?: number;
   /** Concrete authored object/process rendered on top of the collision shape. */
-  semanticVariant?: string;
+  semanticVariant?: SemanticObstacleVariant;
 }
 
 export interface PackageModel {

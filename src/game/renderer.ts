@@ -6,6 +6,9 @@ import type {
   RenderScene,
   RunnerModel
 } from "./types";
+import {
+  SEMANTIC_OBSTACLE_PRESENTATION
+} from "./semantic-obstacle";
 import type { PackageType, PowerUpKind } from "../shared/types";
 import type { StoryObstacleTransformation } from "./story-effects";
 import {
@@ -1116,43 +1119,14 @@ function drawObstacle(context: CanvasRenderingContext2D, obstacle: Readonly<Obst
   drawSemanticObstacleDetail(context, obstacle);
 }
 
-const SEMANTIC_OBSTACLE_LABELS: Readonly<Record<string, string>> = {
-  "parcel-arc": "PACZKA",
-  "box-stack": "ZATOR",
-  "scanner-gate": "SKAN",
-  "dispatch-pair": "WYSYŁKA",
-  "shelf-beam": "REGAŁ",
-  "loaded-pallet": "PALETA",
-  "warehouse-curtain": "STREFA",
-  "parcel-trolley": "WÓZEK",
-  "equipment-crate": "SPRZĘT",
-  "low-conveyor": "TAŚMA",
-  "device-pallet": "LAPTOP",
-  "checked-device": "SPRAWDZONY",
-  "first-laptop": "LAPTOP",
-  "growing-team": "ZESPÓŁ",
-  "established-office": "BIURO",
-  intake: "PRZYJĘCIE",
-  routing: "REALIZACJA",
-  dispatch: "WYSYŁKA",
-  single: "1 RUCH",
-  doublet: "2 RUCHY",
-  "three-action": "3 RUCHY",
-  "long-arc": "DŁUGI ŁUK",
-  "low-line": "NISKO",
-  "tempo-change": "ZMIANA TEMPA",
-  mastery: "FINAŁ",
-  "recovery-route": "ODZYSKAJ"
-};
-
 /** Adds a concrete object/process cue while the proven hitbox remains unchanged. */
 function drawSemanticObstacleDetail(
   context: CanvasRenderingContext2D,
   obstacle: Readonly<ObstacleModel>
 ): void {
   const variant = obstacle.semanticVariant;
-  const label = variant ? SEMANTIC_OBSTACLE_LABELS[variant] : undefined;
-  if (!variant || !label) return;
+  if (!variant) return;
+  const { label, icon } = SEMANTIC_OBSTACLE_PRESENTATION[variant];
   const width = Math.max(48, Math.min(76, obstacle.width - 8));
   const height = 21;
   const x = obstacle.x + (obstacle.width - width) / 2;
@@ -1169,25 +1143,25 @@ function drawSemanticObstacleDetail(
   context.strokeStyle = COLORS.red;
   context.fillStyle = COLORS.orange;
   context.lineWidth = 2;
-  if (["first-laptop", "device-pallet", "checked-device", "equipment-crate"].includes(variant)) {
+  if (icon === "device") {
     context.strokeRect(iconX - 6, iconY - 6, 12, 9);
     context.beginPath();
     context.moveTo(iconX - 8, iconY + 5);
     context.lineTo(iconX + 8, iconY + 5);
     context.stroke();
-  } else if (variant === "growing-team") {
+  } else if (icon === "team") {
     for (const offset of [-4, 4]) {
       context.beginPath();
       context.arc(iconX + offset, iconY - 4, 3, 0, Math.PI * 2);
       context.fill();
     }
     context.fillRect(iconX - 9, iconY + 1, 18, 6);
-  } else if (variant === "established-office") {
+  } else if (icon === "office") {
     context.strokeRect(iconX - 7, iconY - 7, 14, 14);
     context.fillRect(iconX - 4, iconY - 4, 3, 3);
     context.fillRect(iconX + 2, iconY - 4, 3, 3);
     context.fillRect(iconX - 1, iconY + 2, 4, 5);
-  } else if (variant === "dispatch") {
+  } else if (icon === "truck") {
     context.strokeRect(iconX - 8, iconY - 4, 10, 8);
     context.strokeRect(iconX + 2, iconY - 1, 6, 5);
     for (const wheel of [-4, 5]) {

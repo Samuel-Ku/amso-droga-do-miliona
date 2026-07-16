@@ -19,6 +19,7 @@ import type {
   PackageModel
 } from "./types";
 import type { PackageType, PowerUpKind } from "../shared/types";
+import type { SemanticObstacleVariant } from "./semantic-obstacle";
 
 export interface ObstacleSpec {
   width: number;
@@ -63,7 +64,7 @@ export interface SpawnWave {
   gapPixels: number;
   authoredWaveId?: string;
   authoredActionIndex?: number;
-  semanticVariant?: string;
+  semanticVariant?: SemanticObstacleVariant;
 }
 
 export type AuthoredRewardAction = "jump" | "slide";
@@ -85,7 +86,7 @@ export interface AuthoredRewardWaveOptions {
   obstacleKind?: ObstacleKind;
   authoredWaveId?: string;
   authoredActionIndex?: number;
-  semanticVariant?: string;
+  semanticVariant?: SemanticObstacleVariant;
   minimumReactionSeconds?: number;
 }
 

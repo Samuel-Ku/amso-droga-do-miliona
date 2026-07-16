@@ -137,10 +137,11 @@ describe("v7 authored story waves", () => {
       ...STORY_MICROLEVELS[0]!,
       waves: [{ ...STORY_MICROLEVELS[0]!.waves[0]!, obstacleVariant: "mystery-shape" }]
     };
-    expect(validateStoryMicrolevel(invalid)).toContainEqual(expect.objectContaining({
+    expect(validateStoryMicrolevel(invalid as unknown as Parameters<typeof validateStoryMicrolevel>[0]))
+      .toContainEqual(expect.objectContaining({
       code: "unknown_obstacle_variant",
       waveId: "guided-parcel-arc"
-    }));
+      }));
   });
 
   it("defines twelve distinct finale combinations and derives the million counter", () => {
