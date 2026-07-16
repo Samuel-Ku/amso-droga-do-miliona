@@ -24,8 +24,11 @@ sterowanie na wszystkich obsługiwanych formatach bez regresji v7.
 
 ## Comments
 
-`npm run build:all`, walidacja konfiguracji i 246 testów przechodzi. HTML,
+`npm run build:all`, walidacja konfiguracji i 244 testy przechodzą. HTML,
 CSV oraz kadry QA zostały zregenerowane. Interaktywny odbiór wizualny macierzy
 pozostaje do wykonania, ponieważ środowisko implementacyjne nie udostępniło
-przeglądarki. Procedura i anonimowa macierz odbioru znajdują się w
-`qa/raport-rc-v8.md`.
+przeglądarki.
+
+Aktualizacja 2026-07-16: po dodaniu kontrolowanego handoffu przeglądarkowego
+przechodzi 246 testów. Procedura, anonimowa macierz standalone/site-container
+oraz kryteria odbioru znajdują się w `qa/raport-rc-v8.md`.

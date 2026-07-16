@@ -27,41 +27,50 @@ przeglądarki. Nie przenoś wyniku z wcześniejszego uruchomienia.
 5. Przy pierwszym wejściu w kartę historii przytrzymaj poprzednią Spację:
    karta nie może się przełączyć. Następnie kliknij `Dalej` od razu — klik ma
    zadziałać bez blokady czasowej.
-6. Podczas każdej pauzy historii oceń, czy tło płynnie dochodzi do centralnego
+6. Na kolejnej karcie wykonaj nowe, krótkie naciśnięcie Spacji. Karta powinna
+   przejść dokładnie raz; przytrzymanie nie może przełączyć następnej karty.
+7. Podczas każdej pauzy historii oceń, czy tło płynnie dochodzi do centralnego
    kadru, a granica cyklu nie zatrzymuje się pod tekstem.
-7. Wróć do biegu i obserwuj pełne przejście między dwoma światami. Stary i nowy
+8. Wróć do biegu i obserwuj pełne przejście między dwoma światami. Stary i nowy
    obraz mają pokrywać cały kadr, bez białej szczeliny, odbicia lub przesunięcia.
-8. Potwierdź, że przeszkody nie mają napisów, plakietek ani piktogramów, a
+9. Potwierdź, że przeszkody nie mają napisów, plakietek ani piktogramów, a
    kolekcjonerskie i bonusowe paczki zachowują własne oznaczenia.
-9. Na bezpiecznym starcie sprawdź pomarańczowy ciągły shield bez wpisu bonusu w
-   HUD. Po zebraniu bonusu sprawdź ten sam shield i `GWARANCJA 48 M ×1`.
-10. Wymuś kolizję z aktywną Gwarancją. Powinien pojawić się krótki efekt
+10. Na bezpiecznym starcie sprawdź pomarańczowy ciągły shield bez wpisu bonusu
+    w HUD. Poczekaj na koniec ochrony startowej i potwierdź stan bez shielda.
+11. Po zebraniu bonusu sprawdź ten sam shield i `GWARANCJA 48 M ×1`. Z aktywną
+    Gwarancją wykonaj skok i ślizg: obrys ma podążać za kurierem, zmienić się w
+    niższy owal podczas ślizgu i nie obejmować niesionej paczki.
+12. Wymuś kolizję z aktywną Gwarancją. Powinien pojawić się krótki efekt
     pęknięcia, bieg powinien trwać, a shield i `×1` powinny zniknąć. Nie może
     pojawić się słowo `OCHRONA` ani fioletowy przerywany obrys.
-11. Przejdź fabułę do miliona i potwierdź płynne przejście do Trybu Wyzwania
+13. Przejdź fabułę do miliona i potwierdź płynne przejście do Trybu Wyzwania
     bez resetu wyniku i liczby paczek.
-12. Kontynuuj do prędkości 3,5×. Krok ma przyspieszać płynnie, bez drgania;
+14. Kontynuuj do prędkości 3,5×. Krok ma przyspieszać płynnie, bez drgania;
     skok i ślizg muszą zachowywać stabilną pozę oraz hitbox.
-13. Skopiuj anonimowy raport przez `AMSOMillionRunnerQA.copyQaReport()` i zapisz
+15. Skopiuj anonimowy raport przez `AMSOMillionRunnerQA.copyQaReport()` i zapisz
     tylko metryki sesji oraz identyfikator wariantu z tabeli poniżej.
 
 ## Macierz środowisk
 
-Każdy wiersz wymaga osobnego odświeżenia autonomicznego pliku. W kolumnie
-`Wynik` wpisz wyłącznie `PASS` albo krótki identyfikator defektu.
+Warianty `standalone` wymagają osobnego odświeżenia autonomicznego pliku.
+Warianty `site-container` uruchom przez `npm run dev`, otwórz
+`http://localhost:5173/` i ustaw viewport 1920×1080: pole kampanii ma pozostać
+wycentrowane oraz ograniczone do 1600 px. Po załadowaniu odłącz zewnętrzną sieć,
+pozostawiając działający serwer lokalny. W kolumnie `Wynik` wpisz wyłącznie
+`PASS` albo krótki identyfikator defektu.
 
 | ID | Silnik / urządzenie | Viewport | DPR | Ruch | Offline | Pełna sesja | Tło i kadr | Gwarancja | Krok / sterowanie | Wynik |
 | --- | --- | ---: | ---: | --- | --- | --- | --- | --- | --- | --- |
-| C-D1 | Chromium desktop | 1440×900 | 1 | pełny | ☐ | ☐ | ☐ | ☐ | ☐ | — |
-| C-D2 | Chromium, kontener witryny | 1600×900 | 2 | pełny | ☐ | ☐ | ☐ | ☐ | ☐ | — |
-| C-P3 | Chromium telefon, portret | 390×844 | 3 | pełny | ☐ | ☐ | ☐ | ☐ | ☐ | — |
-| C-L3 | Chromium telefon, krajobraz | 844×390 | 3 | pełny | ☐ | ☐ | ☐ | ☐ | ☐ | — |
-| W-D1 | WebKit / Safari desktop | 1440×900 | 1 | pełny | ☐ | ☐ | ☐ | ☐ | ☐ | — |
-| W-D2 | WebKit / Safari desktop | 1600×900 | 2 | pełny | ☐ | ☐ | ☐ | ☐ | ☐ | — |
-| W-P3 | WebKit / Safari telefon, portret | 390×844 | 3 | pełny | ☐ | ☐ | ☐ | ☐ | ☐ | — |
-| W-L3 | WebKit / Safari telefon, krajobraz | 844×390 | 3 | pełny | ☐ | ☐ | ☐ | ☐ | ☐ | — |
-| C-RM | Chromium desktop | 1440×900 | 1 | ograniczony | ☐ | ☐ | ☐ | ☐ | ☐ | — |
-| W-RM | WebKit / Safari desktop | 1440×900 | 1 | ograniczony | ☐ | ☐ | ☐ | ☐ | ☐ | — |
+| chromium-standalone-desktop-dpr1 | Chromium standalone | 1440×900 | 1 | pełny | ☐ | ☐ | ☐ | ☐ | ☐ | — |
+| chromium-site-container-dpr2 | Chromium site-container | 1920×1080; pole ≤1600 | 2 | pełny | ☐ | ☐ | ☐ | ☐ | ☐ | — |
+| chromium-standalone-portrait-dpr3 | Chromium telefon, portret | 390×844 | 3 | pełny | ☐ | ☐ | ☐ | ☐ | ☐ | — |
+| chromium-standalone-landscape-dpr3 | Chromium telefon, krajobraz | 844×390 | 3 | pełny | ☐ | ☐ | ☐ | ☐ | ☐ | — |
+| webkit-standalone-desktop-dpr1 | WebKit / Safari standalone | 1440×900 | 1 | pełny | ☐ | ☐ | ☐ | ☐ | ☐ | — |
+| webkit-site-container-dpr2 | WebKit / Safari site-container | 1920×1080; pole ≤1600 | 2 | pełny | ☐ | ☐ | ☐ | ☐ | ☐ | — |
+| webkit-standalone-portrait-dpr3 | WebKit / Safari telefon, portret | 390×844 | 3 | pełny | ☐ | ☐ | ☐ | ☐ | ☐ | — |
+| webkit-standalone-landscape-dpr3 | WebKit / Safari telefon, krajobraz | 844×390 | 3 | pełny | ☐ | ☐ | ☐ | ☐ | ☐ | — |
+| chromium-standalone-reduced-motion | Chromium standalone | 1440×900 | 1 | ograniczony | ☐ | ☐ | ☐ | ☐ | ☐ | — |
+| webkit-standalone-reduced-motion | WebKit / Safari standalone | 1440×900 | 1 | ograniczony | ☐ | ☐ | ☐ | ☐ | ☐ | — |
 
 ## Kryteria decyzji
 

@@ -6,20 +6,29 @@ const report = readFileSync(
   "utf8"
 );
 
-describe("v8 browser acceptance handoff", () => {
+describe("v8 browser acceptance handoff document", () => {
   it("defines the complete browser, viewport, DPR and motion matrix", () => {
     for (const id of [
-      "C-D1", "C-D2", "C-P3", "C-L3", "W-D1", "W-D2", "W-P3", "W-L3",
-      "C-RM", "W-RM"
+      "chromium-standalone-desktop-dpr1",
+      "chromium-site-container-dpr2",
+      "chromium-standalone-portrait-dpr3",
+      "chromium-standalone-landscape-dpr3",
+      "webkit-standalone-desktop-dpr1",
+      "webkit-site-container-dpr2",
+      "webkit-standalone-portrait-dpr3",
+      "webkit-standalone-landscape-dpr3",
+      "chromium-standalone-reduced-motion",
+      "webkit-standalone-reduced-motion"
     ]) expect(report).toContain(`| ${id} |`);
 
     expect(report).toContain("390×844");
     expect(report).toContain("844×390");
-    expect(report).toContain("1600×900");
+    expect(report).toContain("1920×1080");
+    expect(report).toContain("ograniczone do 1600 px");
     expect(report).toContain("ograniczony");
   });
 
-  it("covers every unresolved v8 visual acceptance contract", () => {
+  it("documents every unresolved v8 visual acceptance step", () => {
     expect(report).toMatch(/intro[\s\S]*Tryb Historii/u);
     expect(report).toMatch(/Trybu Wyzwania/u);
     expect(report).toMatch(/białej szczeliny/u);
@@ -28,6 +37,10 @@ describe("v8 browser acceptance handoff", () => {
     expect(report).toMatch(/3,5×/u);
     expect(report).toMatch(/W.*↑.*Spację/u);
     expect(report).toMatch(/S.*↓/u);
+    expect(report).toMatch(/nowe, krótkie naciśnięcie Spacji/u);
+    expect(report).toMatch(/stan bez shielda/u);
+    expect(report).toMatch(/Z aktywną\s+Gwarancją wykonaj skok i ślizg/u);
+    expect(report).toMatch(/http:\/\/localhost:5173\//u);
     expect(report).toMatch(/AMSOMillionRunnerQA\.copyQaReport/u);
   });
 });
