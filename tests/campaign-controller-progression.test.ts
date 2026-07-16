@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { CampaignController } from "../src/CampaignController";
+import { authoredAudioFeedback, CampaignController } from "../src/CampaignController";
 import { CAMPAIGN_AUDIO_CUES } from "../src/audio/CampaignAudio";
+import type { GameSnapshot } from "../src/game/contracts";
 import type { StoryTimelineSnapshot } from "../src/game/story-timeline";
 import type { AssetBundleId, StorySceneConfig } from "../src/shared/types";
 import {
@@ -146,6 +147,55 @@ describe("CampaignController semantic story sound", () => {
     expect(playCue).toHaveBeenCalledWith("tape");
     expect(warmBundles).toHaveBeenCalledTimes(1);
     expect(warmBundles).toHaveBeenCalledWith(["epoch_1"]);
+  });
+
+  it("maps authored cadence, wave result and finale progress to distinct audio layers", () => {
+    const base = {
+      authoredWavePhase: "burst",
+      authoredWave: {
+        microlevelId: "client-growth",
+        waveIndex: 2,
+        wavesCompleted: 2,
+        waveTarget: 6,
+        currentWaveId: "growth-team-a",
+        attemptsOnCurrentWave: 1,
+        packagesCollectedOnCurrentWave: 0,
+        packagesAvailableOnCurrentWave: 3,
+        totalPackagesCollected: 6,
+        totalPackageTarget: null,
+        elapsedSeconds: 30,
+        minimumDurationSeconds: 30,
+        completed: false,
+        lastResult: {
+          waveId: "first-laptop-b",
+          attempts: 1,
+          packagesCollected: 3,
+          packageTarget: 2,
+          collectionRatio: 1,
+          actionSucceeded: true,
+          passed: true,
+          perfect: true
+        }
+      }
+    } as GameSnapshot;
+
+    const growth = authoredAudioFeedback(base);
+    expect(growth.music).toEqual({ chapter: 4, phase: "burst", finaleLayer: 0 });
+    expect(growth.resultCue).toBe("wave-perfect");
+    expect(growth.completionCue).toBeNull();
+
+    const finale = authoredAudioFeedback({
+      ...base,
+      authoredWave: {
+        ...base.authoredWave!,
+        microlevelId: "million-threshold",
+        wavesCompleted: 12,
+        waveTarget: 12,
+        completed: true
+      }
+    });
+    expect(finale.music.finaleLayer).toBe(4);
+    expect(finale.completionCue).toBe("million");
   });
 
   it("keeps every scene-manifest cue supported by the audio engine", () => {

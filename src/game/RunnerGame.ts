@@ -215,6 +215,11 @@ export class RunnerGame implements RunnerGameApi {
   private crouchBufferRemaining = 0;
   private accumulator = 0;
   private lastFrameTime: number | null = null;
+  private performanceFrameCount = 0;
+  private performanceSampleSeconds = 0;
+  private estimatedFrameRate = 0;
+  private droppedFrames = 0;
+  private lastCollisionType: string | null = null;
   private nextSnapshotAt = 0;
   private frameId: number | null = null;
   private frameUsesTimeout = false;
@@ -283,6 +288,11 @@ export class RunnerGame implements RunnerGameApi {
     this.controlMethod = controlMethod;
     this.accumulator = 0;
     this.lastFrameTime = null;
+    this.performanceFrameCount = 0;
+    this.performanceSampleSeconds = 0;
+    this.estimatedFrameRate = 0;
+    this.droppedFrames = 0;
+    this.lastCollisionType = null;
     this.impact = false;
     this.impactSeconds = 0;
     this.crouchHeld = false;
@@ -427,6 +437,11 @@ export class RunnerGame implements RunnerGameApi {
     this.crouchBufferRemaining = 0;
     this.accumulator = 0;
     this.lastFrameTime = null;
+    this.performanceFrameCount = 0;
+    this.performanceSampleSeconds = 0;
+    this.estimatedFrameRate = 0;
+    this.droppedFrames = 0;
+    this.lastCollisionType = null;
     this.nextSnapshotAt = 0;
     this.impact = false;
     this.impactSeconds = 0;
@@ -521,9 +536,11 @@ export class RunnerGame implements RunnerGameApi {
     if (this.lastFrameTime === null) {
       this.lastFrameTime = timestamp;
     } else {
+      const rawDeltaSeconds = Math.max(0, (timestamp - this.lastFrameTime) / 1_000);
+      this.observeFramePerformance(rawDeltaSeconds);
       const deltaSeconds = Math.min(
         GAMEPLAY.maxFrameSeconds,
-        Math.max(0, (timestamp - this.lastFrameTime) / 1_000)
+        rawDeltaSeconds
       );
       this.lastFrameTime = timestamp;
       this.accumulator += deltaSeconds;
@@ -544,6 +561,20 @@ export class RunnerGame implements RunnerGameApi {
     this.render();
     if (this._state === "running") this.scheduleFrame();
   };
+
+  private observeFramePerformance(deltaSeconds: number): void {
+    if (deltaSeconds <= 0) return;
+    this.performanceFrameCount += 1;
+    this.performanceSampleSeconds += deltaSeconds;
+    const frameBudgetSeconds = 1 / 60;
+    if (deltaSeconds > frameBudgetSeconds * 1.5) {
+      this.droppedFrames += Math.max(1, Math.round(deltaSeconds / frameBudgetSeconds) - 1);
+    }
+    if (this.performanceSampleSeconds < 1) return;
+    this.estimatedFrameRate = this.performanceFrameCount / this.performanceSampleSeconds;
+    this.performanceFrameCount = 0;
+    this.performanceSampleSeconds = 0;
+  }
 
   private update(deltaSeconds: number): void {
     let storyCompletedThisStep = false;
@@ -969,6 +1000,9 @@ export class RunnerGame implements RunnerGameApi {
         this.activePowerUps.has("gwarancja_48")
       );
       this.collisions += 1;
+      this.lastCollisionType = obstacle.source === "boss"
+        ? `boss-${obstacle.kind}`
+        : obstacle.kind;
       this.epochCollisions += 1;
       this.epochHit = true;
       this.impactSeconds = 0.13;
@@ -1775,6 +1809,9 @@ export class RunnerGame implements RunnerGameApi {
       backgroundTravelPixels: backgroundTravelPixels(this.distancePixels),
       reducedMotion: this.reducedMotion,
       durationSeconds: round(this.elapsedSeconds, 2),
+      frameRate: round(this.estimatedFrameRate, 1),
+      droppedFrames: this.droppedFrames,
+      lastCollisionType: this.lastCollisionType,
       difficultyLevel: this.difficultyLevel,
       speed: round(this.speed, 1),
       epochIndex: this.currentEpoch,
@@ -1790,6 +1827,11 @@ export class RunnerGame implements RunnerGameApi {
       factsUnlockedCount: this.factsUnlockedCount,
       milestoneCelebration: this.milestoneCelebrationDirector.snapshot,
       authoredWave: this.authoredWaveDirector?.snapshot ?? null,
+      authoredWavePhase: this.authoredWaveDirector === null
+        ? "inactive"
+        : this.authoredBreathRemaining > 0
+          ? "breath"
+          : "burst",
       millionCounterValue: this.millionCounterValue()
     };
   }

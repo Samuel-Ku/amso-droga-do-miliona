@@ -1993,11 +1993,19 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 }
 
 .amso-campaign__canvas:focus-visible,
-.amso-campaign :is(button, a):focus-visible,
-.amso-campaign__story-scene-body:focus-visible {
+.amso-campaign :is(button, a):focus-visible {
   outline: 3px solid #fff;
   outline-offset: 3px;
   box-shadow: 0 0 0 6px #171717;
+}
+
+/* The story copy receives programmatic focus for screen readers and scroll
+   reset. Keep that focus visible without making static prose look like a form. */
+.amso-campaign__story-scene-body:focus-visible {
+  border-radius: 8px;
+  outline: 2px solid rgb(235 50 164 / 58%);
+  outline-offset: 2px;
+  box-shadow: none;
 }
 
 .amso-campaign__button--secondary,

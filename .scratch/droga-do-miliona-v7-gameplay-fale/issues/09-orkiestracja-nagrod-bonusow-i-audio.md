@@ -17,3 +17,7 @@ Status: ready-for-human
 - [x] Zaliczenie, perfekcja, retry, payoff i milion mają rozróżnialne cue, które respektują wyciszenie i posiadają równoważną informację wizualną.
 - [x] Reduced motion zachowuje treść nagród i statusy bonusów bez intensywnych pulsów, fal, wstrząsów ani skalowania.
 - [x] Test pełnego flow potwierdza kolejkę efektów, brak nakładania dużych celebracji, spójne audio i brak wpływu efektów na spawn, kolizje lub sterowanie.
+
+## Comments
+
+2026-07-16: Warstwy audio są sterowane semantyką aktywnej mikrofali: oddech usuwa perkusję, burst ją dodaje, rozdział zmienia warstwę rytmiczną, a cztery akty finału stopniowo wzbogacają aranżację. Osobne cue obsługują zaliczenie, perfekcję, retry, payoff i milion; test audio potwierdza hierarchię oraz respektowanie wyciszenia.

@@ -12,8 +12,15 @@
 - bonusy: maksymalnie dwa, widoczny czas/ładunek, jednorazowa pauza demonstracyjna
   2,8 s z blokadą wejścia;
 - autonomiczny HTML zawiera konfigurację i wszystkie obrazy bez sieci;
-- raport lokalny bez PII: w konsoli autonomicznego HTML wywołaj
+- raport lokalny bez PII zawiera segmenty, fale, retry, błędy akcji, first-attempt
+  rate, zbieranie, combo, typ kolizji, wynik challenge, FPS i utracone klatki;
+  w konsoli autonomicznego HTML wywołaj
   `AMSOMillionRunnerQA.qaReport()` albo `AMSOMillionRunnerQA.copyQaReport()`.
+- smoke test autonomicznego pliku przeszedł bez błędów konsoli w Playwright
+  Chromium i WebKit dla 1440×900, 390×844 oraz `reduced motion`;
+- w każdym z sześciu wariantów osadzony WebP został zdekodowany (`1672 px`),
+  nie powstał poziomy overflow, a tekst fabuły nie otrzymał ciężkiego czarnego
+  obramowania ani cienia.
 
 ## Wartości balansu
 
@@ -58,6 +65,7 @@ skalowania”, dopóki testerzy nie przejdą procedury poniżej i nie zapiszą w
 ## Znane ograniczenia
 
 - automaty nie zastępują oceny znaczenia ilustracji, rytmu audio ani zrozumiałości HUD;
-- w bieżącej sesji narzędzie przeglądarkowe nie było dostępne, dlatego macierz
-  przeglądarek pozostaje jawnie niezatwierdzona;
+- Playwright WebKit jest użytecznym testem zgodności silnika, ale nie zastępuje
+  ręcznego odbioru w rzeczywistym Safari; testy nie obejmują też Windows Edge i Opery,
+  dlatego macierz pozostaje jawnie niezatwierdzona;
 - pomiar FPS i utraconych klatek wymaga profilera podczas manualnego testu 3,5×.

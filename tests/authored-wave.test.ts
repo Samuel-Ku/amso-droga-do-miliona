@@ -54,6 +54,28 @@ describe("v7 authored story waves", () => {
     ]);
   });
 
+  it("keeps client-growth waves inside the three HUD phases they describe", () => {
+    const growth = STORY_MICROLEVELS.find(({ id }) => id === "client-growth")!;
+    expect(growth.waves).toHaveLength(6);
+    expect(growth.waves.slice(0, 2).map(({ obstacleVariant }) => obstacleVariant))
+      .toEqual(["first-laptop", "first-laptop"]);
+    expect(growth.waves.slice(2, 4).map(({ obstacleVariant }) => obstacleVariant))
+      .toEqual(["growing-team", "growing-team"]);
+    expect(growth.waves.slice(4, 6).map(({ obstacleVariant }) => obstacleVariant))
+      .toEqual(["established-office", "established-office"]);
+  });
+
+  it("keeps each order-scale HUD zone aligned with its three authored waves", () => {
+    const scale = STORY_MICROLEVELS.find(({ id }) => id === "order-scale")!;
+    expect(scale.waves).toHaveLength(9);
+    expect(scale.waves.slice(0, 3).map(({ obstacleVariant }) => obstacleVariant))
+      .toEqual(["intake", "intake", "intake"]);
+    expect(scale.waves.slice(3, 6).map(({ obstacleVariant }) => obstacleVariant))
+      .toEqual(["routing", "routing", "routing"]);
+    expect(scale.waves.slice(6, 9).map(({ obstacleVariant }) => obstacleVariant))
+      .toEqual(["dispatch", "dispatch", "dispatch"]);
+  });
+
   it("requires sixty percent of every package route", () => {
     expect(requiredPackages(2)).toBe(2);
     expect(requiredPackages(3)).toBe(2);

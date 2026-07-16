@@ -53,4 +53,43 @@ describe("milestone audio", () => {
     expect(harness.oscillatorCount()).toBe(afterMusic + tierOneNotes + tierThreeNotes);
     await audio.destroy();
   });
+
+  it("uses distinct wave-result cues and richer finale music without adding percussion in breath", async () => {
+    vi.useFakeTimers();
+    const breathHarness = audioHarness();
+    const breathAudio = new CampaignAudio({ contextFactory: () => breathHarness.context });
+    breathAudio.setMusicState({ chapter: 3, phase: "breath", finaleLayer: 0 });
+    await breathAudio.start();
+    const breathNotes = breathHarness.oscillatorCount();
+
+    const burstHarness = audioHarness();
+    const burstAudio = new CampaignAudio({ contextFactory: () => burstHarness.context });
+    burstAudio.setMusicState({ chapter: 3, phase: "burst", finaleLayer: 0 });
+    await burstAudio.start();
+    const burstNotes = burstHarness.oscillatorCount();
+
+    const finaleHarness = audioHarness();
+    const finaleAudio = new CampaignAudio({ contextFactory: () => finaleHarness.context });
+    finaleAudio.setMusicState({ chapter: 6, phase: "burst", finaleLayer: 4 });
+    await finaleAudio.start();
+    const finaleNotes = finaleHarness.oscillatorCount();
+
+    const beforeCues = finaleHarness.oscillatorCount();
+    finaleAudio.playCue("wave-success");
+    const successNotes = finaleHarness.oscillatorCount() - beforeCues;
+    finaleAudio.playCue("wave-perfect");
+    const perfectNotes = finaleHarness.oscillatorCount() - beforeCues - successNotes;
+    finaleAudio.playCue("wave-retry");
+    const retryNotes = finaleHarness.oscillatorCount() - beforeCues - successNotes - perfectNotes;
+    finaleAudio.playCue("million");
+    const millionNotes = finaleHarness.oscillatorCount() - beforeCues - successNotes - perfectNotes - retryNotes;
+
+    expect(burstNotes).toBeGreaterThan(breathNotes);
+    expect(finaleNotes).toBeGreaterThan(burstNotes);
+    expect(successNotes).toBeGreaterThan(retryNotes);
+    expect(perfectNotes).toBeGreaterThan(successNotes);
+    expect(millionNotes).toBeGreaterThan(perfectNotes);
+
+    await Promise.all([breathAudio.destroy(), burstAudio.destroy(), finaleAudio.destroy()]);
+  });
 });

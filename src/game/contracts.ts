@@ -71,6 +71,12 @@ export interface GameSnapshot {
   backgroundTravelPixels?: number;
   reducedMotion?: boolean;
   durationSeconds: number;
+  /** Rolling browser-frame estimate used only by the local, PII-free QA report. */
+  frameRate?: number;
+  /** Cumulative frames that missed a 60 Hz budget while the run was active. */
+  droppedFrames?: number;
+  /** Most recent collider category; no user or device identity is recorded. */
+  lastCollisionType?: string | null;
   difficultyLevel: number;
   speed: number;
   epochIndex: number;
@@ -87,6 +93,8 @@ export interface GameSnapshot {
   factsUnlockedCount: number;
   milestoneCelebration?: MilestoneCelebrationSnapshot | null;
   authoredWave: AuthoredWaveProgressSnapshot | null;
+  /** Musical cadence mirrors authored gameplay without affecting its rules. */
+  authoredWavePhase?: "inactive" | "breath" | "burst";
   /** Semantic order counter; UI does not reconstruct finale domain rules. */
   millionCounterValue: number;
 }

@@ -16,10 +16,21 @@ export const CAMPAIGN_AUDIO_CUES = [
   "test-signal",
   "scanner",
   "conveyor",
-  "counter"
+  "counter",
+  "wave-success",
+  "wave-perfect",
+  "wave-retry",
+  "chapter-complete",
+  "million"
 ] as const;
 
 export type CampaignAudioCue = (typeof CAMPAIGN_AUDIO_CUES)[number];
+
+export interface CampaignMusicState {
+  chapter: number;
+  phase: "breath" | "burst";
+  finaleLayer: 0 | 1 | 2 | 3 | 4;
+}
 
 export interface CampaignAudioOptions {
   /** Initial preference; the audio graph still starts only after `start()`. */
@@ -81,6 +92,7 @@ export class CampaignAudio {
   private _unlocked = false;
   private _started = false;
   private destroyed = false;
+  private musicState: CampaignMusicState = { chapter: 0, phase: "breath", finaleLayer: 0 };
 
   public constructor(options: CampaignAudioOptions = {}) {
     this._muted = options.muted ?? false;
@@ -174,6 +186,15 @@ export class CampaignAudio {
     return this._muted;
   }
 
+  /** Selects musical layers without starting audio or changing gameplay. */
+  public setMusicState(state: Readonly<CampaignMusicState>): void {
+    this.musicState = {
+      chapter: Math.max(0, Math.min(6, Math.floor(state.chapter))),
+      phase: state.phase,
+      finaleLayer: Math.max(0, Math.min(4, Math.floor(state.finaleLayer))) as CampaignMusicState["finaleLayer"]
+    };
+  }
+
   /** Plays a short synthesized cue after audio has been explicitly started. */
   public playCue(cue: CampaignAudioCue): void {
     if (!this._started || this.destroyed || this.context === null || this.cueGain === null) return;
@@ -260,6 +281,28 @@ export class CampaignAudio {
           break;
         case "counter":
           this.playSequence([523.25, 659.25, 783.99], 0.065, 0.085, 0.31, "triangle");
+          break;
+        case "wave-success":
+          this.playSequence([523.25, 659.25], 0.07, 0.1, 0.42, "triangle");
+          break;
+        case "wave-perfect":
+          this.playSequence([523.25, 659.25, 783.99], 0.055, 0.12, 0.5, "triangle");
+          break;
+        case "wave-retry":
+          this.playTone({
+            frequency: 196,
+            frequencyEnd: 174.61,
+            duration: 0.16,
+            volume: 0.28,
+            type: "sine",
+            destination: this.cueGain
+          });
+          break;
+        case "chapter-complete":
+          this.playSequence([392, 523.25, 659.25, 783.99], 0.07, 0.16, 0.52, "triangle");
+          break;
+        case "million":
+          this.playSequence([261.63, 329.63, 392, 523.25, 659.25], 0.08, 0.24, 0.58, "triangle");
           break;
       }
     } catch {
@@ -353,6 +396,39 @@ export class CampaignAudio {
         destination: this.musicGain
       });
     }
+    const chapterRoot = 98 * Math.pow(2, (this.musicState.chapter % 4) / 12);
+    this.playMusicSequence([chapterRoot, chapterRoot * 1.5], 1.2, 0.28, 0.18, "triangle");
+    if (this.musicState.phase === "burst") {
+      this.playMusicSequence([82, 118, 82], 0.8, 0.08, 0.16, "square");
+    }
+    for (let layer = 0; layer < this.musicState.finaleLayer; layer += 1) {
+      this.playMusicSequence(
+        [392 * Math.pow(2, layer / 12)],
+        0.4 + layer * 0.08,
+        0.2,
+        0.12,
+        "sine"
+      );
+    }
+  }
+
+  private playMusicSequence(
+    frequencies: readonly number[],
+    spacing: number,
+    duration: number,
+    volume: number,
+    type: OscillatorType
+  ): void {
+    const destination = this.musicGain;
+    if (destination === null) return;
+    frequencies.forEach((frequency, index) => this.playTone({
+      frequency,
+      duration,
+      volume,
+      type,
+      delay: index * spacing,
+      destination
+    }));
   }
 
   private playSequence(

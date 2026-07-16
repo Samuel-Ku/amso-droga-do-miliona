@@ -7,7 +7,7 @@
 Status: ready-for-human
 
 - [x] Pełny production-flow test przechodzi sześć mikropoziomów, celebrację miliona, seamless handoff, zabezpieczoną i niezabezpieczoną kolizję oraz czysty retry wyzwania.
-- [x] Obowiązkowa interakcja wraz z payoffami mieści się około pięciu minut, a typowe przejście z czytaniem może trwać około 6–8 minut bez limitowania kart.
+- [ ] Obowiązkowa interakcja wraz z payoffami mieści się około pięciu minut, a typowe przejście z czytaniem może trwać około 6–8 minut bez limitowania kart.
 - [x] Każdy etap kończy się minimalnym czasem i właściwym celem, nigdy samym timerem.
 - [x] Wszystkie fabularne fale zawierają czytelne trasy paczek, a żaden zwalidowany układ nie ma niewidzialnego spawnu, nakładania hitboxów lub niewykonalnego przejścia.
 - [x] Tło zachowuje ciągłość ruchu między światami, settle pod tekst i płynny powrót; reduced motion utrzymuje widoczną liniową paralaksę z 30–40% prędkości bez intensywnych transformacji.
@@ -20,4 +20,4 @@ Status: ready-for-human
 
 ## Comments
 
-2026-07-16: Build, walidacja konfiguracji, pakiet autonomiczny, raport lokalny oraz pełna automatyczna suita są zielone. Czas przejścia, macierz przeglądarek/390 px oraz budżet FPS pozostają świadomie otwarte do manualnego odbioru w tickecie 03.
+2026-07-16: Build, walidacja konfiguracji, pakiet autonomiczny, copydeck CSV, raport lokalny oraz pełna automatyczna suita (35 plików, 227 testów) są zielone. Smoke Chromium/WebKit na desktopie, 390 px i reduced motion przeszedł bez błędów, ale czas przejścia, rzeczywista macierz Safari/Windows/urządzeń oraz budżet FPS przy 3,5× pozostają świadomie otwarte do manualnego odbioru w tickecie 03 i `qa/raport-rc-v7.md`.

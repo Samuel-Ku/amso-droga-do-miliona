@@ -7,7 +7,11 @@ import {
   nextWorldAssetBundle,
   requiredStartAssetBundles
 } from "./assets/asset-bundle-plan";
-import { CampaignAudio } from "./audio/CampaignAudio";
+import {
+  CampaignAudio,
+  type CampaignAudioCue,
+  type CampaignMusicState
+} from "./audio/CampaignAudio";
 import type {
   GameResult,
   GameSnapshot,
@@ -48,6 +52,51 @@ function nextPaint(): Promise<void> {
   return new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
 }
 
+const AUDIO_CHAPTERS = [
+  "first-package",
+  "order-backlog",
+  "quality-process",
+  "client-growth",
+  "order-scale",
+  "million-threshold"
+] as const;
+
+export function authoredAudioFeedback(snapshot: Readonly<GameSnapshot>): {
+  music: CampaignMusicState;
+  resultKey: string | null;
+  resultCue: CampaignAudioCue | null;
+  completionCue: CampaignAudioCue | null;
+} {
+  const authored = snapshot.authoredWave;
+  const chapter = authored === null
+    ? 0
+    : Math.max(0, AUDIO_CHAPTERS.indexOf(authored.microlevelId) + 1);
+  const finaleLayer = authored?.microlevelId === "million-threshold"
+    ? Math.max(0, Math.min(4, Math.ceil((authored.wavesCompleted / Math.max(1, authored.waveTarget)) * 4)))
+    : 0;
+  const result = authored?.lastResult ?? null;
+  return {
+    music: {
+      chapter,
+      phase: snapshot.authoredWavePhase === "burst" ? "burst" : "breath",
+      finaleLayer: finaleLayer as CampaignMusicState["finaleLayer"]
+    },
+    resultKey: authored && result
+      ? `${authored.microlevelId}:${result.waveId}:${result.attempts}:${result.passed}:${authored.wavesCompleted}`
+      : null,
+    resultCue: result === null
+      ? null
+      : result.perfect
+        ? "wave-perfect"
+        : result.passed
+          ? "wave-success"
+          : "wave-retry",
+    completionCue: authored?.completed === true
+      ? authored.microlevelId === "million-threshold" ? "million" : "chapter-complete"
+      : null
+  };
+}
+
 export class CampaignController {
   private readonly profile: PlayerProfileStore;
   private readonly tracker: DataLayerTracker;
@@ -61,6 +110,7 @@ export class CampaignController {
   private lastStorySceneId = "";
   private lastVisualWorldId: CampaignWorldId | null = null;
   private lastLogisticPhase: GameSnapshot["logisticWavePhase"] = "inactive";
+  private lastWaveAudioKey = "";
   private readonly shownPowerUpHints = new Set<string>();
   private readonly qaReport = new QaSessionReportCollector();
   private pendingStart: CampaignStartRequest | null = null;
@@ -160,6 +210,7 @@ export class CampaignController {
     this.lastStorySceneId = "";
     this.lastVisualWorldId = null;
     this.lastLogisticPhase = "inactive";
+    this.lastWaveAudioKey = "";
     this.shownPowerUpHints.clear();
     this.shell.showLoading(undefined);
 
@@ -228,7 +279,6 @@ export class CampaignController {
           "epoch_4.order_peak_final": "Szczyt Zamówień opanowany.",
           "epoch_5.million_threshold": "1 000 000 zamówień. Droga trwa dalej."
         }[objectiveId];
-        this.shell.showStoryObjective(`✓ ${label}`);
         this.shell.announce(label);
       },
       onSpecialPickup: (kind) => {
@@ -261,6 +311,13 @@ export class CampaignController {
 
   private handleSnapshot(snapshot: GameSnapshot): void {
     this.qaReport.record(snapshot);
+    const authoredAudio = authoredAudioFeedback(snapshot);
+    this.audio.setMusicState(authoredAudio.music);
+    if (authoredAudio.resultKey !== null && authoredAudio.resultKey !== this.lastWaveAudioKey) {
+      this.lastWaveAudioKey = authoredAudio.resultKey;
+      if (authoredAudio.resultCue !== null) this.audio.playCue(authoredAudio.resultCue);
+      if (authoredAudio.completionCue !== null) this.audio.playCue(authoredAudio.completionCue);
+    }
     this.warmWorldAssetWindow(snapshot.visualWorldId);
     const previous = this.lastSnapshot;
     if (previous !== null) {
@@ -345,24 +402,15 @@ export class CampaignController {
       const segmentId = update.playSegment?.id ?? "";
       if (segmentId !== this.lastStorySegmentId) {
         this.lastStorySegmentId = segmentId;
-        const objective = {
-          "epoch_1.training": "Cel: 5 skoków i 5 ślizgów",
-          "epoch_1.order_backlog": "Zator Zamówień: skok i ślizg naprzemiennie",
-          "epoch_2.quality_series": "Cel: 4 serie po 3 udane akcje",
-          "epoch_2.quality_trial": "Próba Jakości: przygotuj urządzenie do wysyłki",
-          "epoch_3.matching_creative": "Wyzwanie Dopasowania: zestaw dla klientki kreatywnej",
-          "epoch_3.matching_growth": "Wyzwanie Dopasowania: zestaw dla rozwijającej się firmy",
-          "epoch_3.matching_trust": "Wyzwanie Dopasowania: zestaw dla zespołu B2B",
-          "epoch_4.order_peak": "Szczyt Zamówień: kompletuj realne kategorie",
-          "epoch_4.order_peak_final": "Szczyt Zamówień: utrzymaj przepływ przez 3 fazy",
-          "epoch_5.million_threshold": "Próg Miliona: 50 paczek i 12 kombinacji"
-        }[segmentId] ?? null;
-        this.shell.showStoryObjective(objective);
+        // The first game snapshot supplies the authored semantic HUD. Avoid a
+        // stale legacy objective flashing before it arrives.
+        this.shell.showStoryObjective(null);
       }
     }
   }
 
   private handleGameOver(result: GameResult): void {
+    this.qaReport.recordResult(result);
     this.audio.stop();
     if (result.mode === "story") {
       this.shell.showStoryResult({

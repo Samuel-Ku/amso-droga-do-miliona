@@ -437,8 +437,18 @@ export const STORY_MICROLEVELS: readonly StoryMicrolevelDefinition[] = Object.fr
     repeatWavesUntil: 6,
     waves: [
       wave("client-first-laptop", "jump", "pallet", 3, 1.34, "first-laptop"),
-      wave("client-team", "slide", "overhead", 4, 1.46, "growing-team", "double-score"),
-      sequence("client-office", ["jump", "slide"], ["trolley", "overhead"], 5, 1.58, "established-office")
+      wave("client-first-workspace", "slide", "overhead", 3, 1.38, "first-laptop"),
+      wave("client-growing-team", "jump", "pallet", 4, 1.43, "growing-team", "double-score"),
+      wave("client-growing-routine", "slide", "overhead", 4, 1.48, "growing-team"),
+      wave("client-established-office", "jump", "trolley", 5, 1.53, "established-office"),
+      sequence(
+        "client-established-continuity",
+        ["jump", "slide"],
+        ["box-stack", "overhead"],
+        5,
+        1.58,
+        "established-office"
+      )
     ]
   },
   {
@@ -451,8 +461,21 @@ export const STORY_MICROLEVELS: readonly StoryMicrolevelDefinition[] = Object.fr
     repeatWavesUntil: 9,
     waves: [
       wave("scale-intake", "jump", "trolley", 3, 1.45, "intake", "warranty"),
-      wave("scale-routing", "slide", "overhead", 4, 1.58, "routing"),
-      sequence("scale-dispatch", ["jump", "slide"], ["box-stack", "overhead"], 5, 1.7, "dispatch")
+      wave("scale-intake-scan", "slide", "overhead", 4, 1.48, "intake"),
+      wave("scale-intake-stack", "jump", "pallet", 3, 1.5, "intake"),
+      wave("scale-routing-sort", "slide", "overhead", 4, 1.55, "routing"),
+      wave("scale-routing-lift", "jump", "box-stack", 3, 1.58, "routing"),
+      wave("scale-routing-check", "slide", "overhead", 4, 1.61, "routing"),
+      wave("scale-dispatch-load", "jump", "trolley", 3, 1.64, "dispatch"),
+      wave("scale-dispatch-gate", "slide", "overhead", 4, 1.67, "dispatch"),
+      sequence(
+        "scale-dispatch-flow",
+        ["jump", "slide"],
+        ["box-stack", "overhead"],
+        5,
+        1.7,
+        "dispatch"
+      )
     ]
   },
   {

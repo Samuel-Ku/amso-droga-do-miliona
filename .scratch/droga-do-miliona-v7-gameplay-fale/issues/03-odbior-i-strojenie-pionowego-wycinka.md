@@ -19,4 +19,4 @@ Status: ready-for-human
 
 ## Comments
 
-2026-07-16: Pakiet autonomiczny został zbudowany i przeszedł walidację automatyczną. Manualna macierz Safari, Chromium/Windows, 390 px, reduced motion, czytelność HUD, first-attempt rate i FPS pozostaje do wykonania zgodnie z `qa/raport-rc-v7.md`. Decyzja `zaakceptowano do skalowania` nie została jeszcze wydana.
+2026-07-16: Pakiet autonomiczny został zbudowany i przeszedł walidację automatyczną (35 plików testowych, 227 testów). Smoke test Playwright Chromium/WebKit dla desktopu, 390 px i reduced motion potwierdził start bez błędów, dekodowanie WebP i brak overflow. Manualna macierz rzeczywistych przeglądarek/urządzeń, czytelność HUD, first-attempt rate i FPS pozostaje do wykonania zgodnie z `qa/raport-rc-v7.md`. Decyzja `zaakceptowano do skalowania` nie została jeszcze wydana.
