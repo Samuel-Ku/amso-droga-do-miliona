@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import productionConfig from "../public/assets/milion-runner/runner-config.json";
 import { parseRunnerConfig } from "../src/config/schema";
 import { STORY_REFRAME_SECONDS, StoryTimeline } from "../src/game/story-timeline";
+import {
+  STORY_FINALE_CELEBRATION_SECONDS,
+  STORY_FINALE_REWARD_RUN_SECONDS,
+  STORY_POWER_UP_DEMO_SECONDS
+} from "../src/game/RunnerGame";
 import type { StoryConfig } from "../src/shared/types";
 
 function playerPacedStory(): StoryConfig {
@@ -198,5 +203,27 @@ describe("player-paced story timeline", () => {
     expect(timeline.snapshot.totalActiveElapsedSeconds).toBe(285);
     expect(timeline.snapshot.progress).toBe(1);
     expect(timeline.snapshot.completed).toBe(true);
+  });
+
+  it("keeps the conservative scripted runtime near five minutes before reading and retries", () => {
+    const config = parseRunnerConfig(productionConfig);
+    if (!config) throw new Error("production config should parse");
+    const playSteps = config.story.sequence.filter(({ type }) => type === "play").length;
+    const powerUpDebuts = config.story.epochs.filter(({ powerUpDebut }) =>
+      powerUpDebut !== undefined
+    ).length;
+    const transitionSeconds = playSteps * (
+      STORY_REFRAME_SECONDS + config.story.resumeCountdownSeconds
+    );
+    const payoffSeconds = powerUpDebuts * STORY_POWER_UP_DEMO_SECONDS +
+      STORY_FINALE_REWARD_RUN_SECONDS +
+      STORY_FINALE_CELEBRATION_SECONDS * 2;
+    const conservativeRuntimeSeconds = config.story.activeDurationSeconds +
+      transitionSeconds + payoffSeconds;
+
+    expect(playSteps).toBe(6);
+    expect(powerUpDebuts).toBe(3);
+    expect(conservativeRuntimeSeconds).toBeCloseTo(326.72, 2);
+    expect(conservativeRuntimeSeconds).toBeLessThanOrEqual(330);
   });
 });

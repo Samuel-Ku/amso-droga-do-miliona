@@ -21,12 +21,20 @@
 - w każdym z sześciu wariantów osadzony WebP został zdekodowany (`1672 px`),
   nie powstał poziomy overflow, a tekst fabuły nie otrzymał ciężkiego czarnego
   obramowania ani cienia.
+- regresyjny budżet czasu wylicza 326,72 s dla konserwatywnej ścieżki bez
+  czytania i retry: 285 s aktywnej gry, sześć przejść reframe/countdown, trzy
+  demonstracje bonusów oraz finałowe payoffy; test blokuje wzrost ponad 330 s;
+- stress realnego Canvas 1600×900 przy 3,5× obejmował 12 aktywnych przeszkód,
+  32 paczki, ruchome tło, aktualizowany HUD i efekt `package-rain`. Chromium
+  134 osiągnął 59,5 FPS / p95 16,7 ms, WebKit 18.4 — 60,0 FPS / p95 18 ms;
+  w próbie 240 klatek żaden silnik nie miał klatki >50 ms, a oba mieszczą się
+  w budżecie p95 ≤25 ms.
 
 ## Wartości balansu
 
 | Obszar | Wartość |
 | --- | --- |
-| Obowiązkowy gameplay | 285 s + retry i payoff |
+| Obowiązkowy gameplay | 285 s aktywnie; konserwatywnie 326,72 s z przejściami i payoffami, bez czytania/retry |
 | Fabuła | 0,95×–1,85× |
 | Challenge | 1,85×–3,5× w 180 s |
 | Reakcja fabuła / dotyk | min. 1,6 s / 1,7 s |
@@ -68,4 +76,8 @@ skalowania”, dopóki testerzy nie przejdą procedury poniżej i nie zapiszą w
 - Playwright WebKit jest użytecznym testem zgodności silnika, ale nie zastępuje
   ręcznego odbioru w rzeczywistym Safari; testy nie obejmują też Windows Edge i Opery,
   dlatego macierz pozostaje jawnie niezatwierdzona;
-- pomiar FPS i utraconych klatek wymaga profilera podczas manualnego testu 3,5×.
+- `safaridriver` jest obecny na maszynie, lecz Safari odrzucił sesję komunikatem
+  wymagającym włączenia `Safari Settings → Developer → Allow remote automation`;
+  po włączeniu należy powtórzyć wiersz Safari w macierzy;
+- stress Canvas potwierdza budżet renderera na tej maszynie, ale profiler podczas
+  manualnego testu 3,5× na docelowych telefonach i Windows pozostaje zalecany.

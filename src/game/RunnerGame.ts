@@ -88,7 +88,9 @@ import {
 } from "./challenge-pressure";
 
 const CUTSCENE_SECONDS = 2.6;
-const FINALE_CELEBRATION_SECONDS = 3.5;
+export const STORY_FINALE_CELEBRATION_SECONDS = 3.5;
+export const STORY_FINALE_REWARD_RUN_SECONDS = 4;
+export const STORY_POWER_UP_DEMO_SECONDS = 2.8;
 const OFFSCREEN_SPAWN_X = WORLD_WIDTH + GAMEPLAY.spawnPadding;
 const STORY_CLIMAX_SPAWN_X = OFFSCREEN_SPAWN_X;
 const STORY_ORDER_TYPES: readonly PackageType[] = ["pc", "notebook", "lcd", "telefon"];
@@ -688,7 +690,7 @@ export class RunnerGame implements RunnerGameApi {
         this.finaleRewardRunRemaining - activeDeltaSeconds
       );
       if (this.finaleRewardRunRemaining === 0 && this.authoredFinaleCelebrated) {
-        this.finaleCelebrationRemaining = FINALE_CELEBRATION_SECONDS;
+        this.finaleCelebrationRemaining = STORY_FINALE_CELEBRATION_SECONDS;
         this.clearInteractiveWorld();
       }
     }
@@ -1294,7 +1296,7 @@ export class RunnerGame implements RunnerGameApi {
     if (!director?.completed || director.definition.id !== "million-threshold" ||
         this.authoredFinaleCelebrated) return;
     this.authoredFinaleCelebrated = true;
-    this.finaleRewardRunRemaining = 4;
+    this.finaleRewardRunRemaining = STORY_FINALE_REWARD_RUN_SECONDS;
   }
 
   private hasPendingPowerUpParcel(): boolean {
@@ -1430,7 +1432,7 @@ export class RunnerGame implements RunnerGameApi {
     if (activated && this.mode === "story" && this.storyTimeline !== null &&
         !this.seenPowerUpDemos.has(kind)) {
       this.seenPowerUpDemos.add(kind);
-      this.powerUpDemoRemaining = 2.8;
+      this.powerUpDemoRemaining = STORY_POWER_UP_DEMO_SECONDS;
       this.clearInteractiveWorld();
     }
     return activated;
@@ -1451,7 +1453,7 @@ export class RunnerGame implements RunnerGameApi {
     for (const objectiveId of update.newlyCompletedObjectiveIds) {
       this.bonusScore += 750;
       if (objectiveId === "epoch_5.million_threshold") {
-        this.finaleCelebrationRemaining = FINALE_CELEBRATION_SECONDS;
+        this.finaleCelebrationRemaining = STORY_FINALE_CELEBRATION_SECONDS;
         this.clearInteractiveWorld();
       }
       try {
