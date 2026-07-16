@@ -1156,14 +1156,18 @@ function drawWarrantyShield(
 ): void {
   const presentation = courierProtectionPresentation(
     runner,
-    scene.activePowerUps.includes("gwarancja_48"),
-    scene.recoverySeconds ?? 0,
-    scene.impact
+    scene.activePowerUps.includes("gwarancja_48")
+      ? "warranty"
+      : (scene.warrantyBreakSeconds ?? 0) > 0
+        ? "breaking"
+        : (scene.startProtectionSeconds ?? 0) > 0
+          ? "start"
+          : null
   );
   if (presentation === null) return;
   const pulse = scene.reducedMotion ? 0 : Math.sin(scene.elapsedSeconds * 4.2) * 2;
   context.save();
-  context.globalAlpha = (scene.recoverySeconds ?? 0) > 0 ? 0.72 : 0.94;
+  context.globalAlpha = presentation.breaking ? 0.72 : 0.94;
   context.strokeStyle = presentation.color;
   context.lineWidth = 4;
   context.setLineDash([]);
@@ -1544,8 +1548,8 @@ export class WarehouseRenderer {
     for (const transformation of scene.obstacleTransformations ?? []) {
       drawTransformedObstacle(context, transformation, scene.reducedMotion);
     }
-    drawCourier(context, scene.runner, scene, this.brandArtwork);
     drawWarrantyShield(context, scene.runner, scene);
+    drawCourier(context, scene.runner, scene, this.brandArtwork);
 
     if (scene.cutscene) {
       context.fillStyle = "rgba(17,39,48,0.86)";

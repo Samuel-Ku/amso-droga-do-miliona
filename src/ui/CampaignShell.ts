@@ -108,6 +108,10 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   resultBest: "Rekord",
   resultDistance: "Przebyta droga",
   resultWarranty: "Gwarancja uratowała bieg",
+  powerupWarranty: "GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania.",
+  powerupWarrantyHud: "GWARANCJA 48 M ×1",
+  warrantyConsumed: "GWARANCJA 48 M zadziałała — próba trwa dalej.",
+  controlsHud: "Skok: W/↑/Spacja/tap · Ślizg: S/↓",
   retryChallenge: "Spróbuj jeszcze raz",
   shareResult: "Udostępnij wynik",
   shareLead: "Wybierz, gdzie chcesz udostępnić kartę wyniku.",
@@ -671,7 +675,7 @@ export class CampaignShell {
                 <strong>Bonusy</strong>
                 <span><b>AUDYT</b> — przez 7 s zwiększa odstępy bez zwalniania kuriera.</span>
                 <span><b>×2 WYNIK</b> — przez 7 s podwaja punkty za paczki.</span>
-                <span><b>GWARANCJA 48 M ×1</b> — pochłania jedno zderzenie, a potem pęka.</span>
+                <span data-campaign-copy="powerupWarranty">GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania.</span>
               </div>
               <div class="amso-campaign__actions">
                 <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-resume data-campaign-copy="resume">Wznów</button>
@@ -1080,10 +1084,18 @@ export class CampaignShell {
     this.hudPackages.textContent = formatInteger(snapshot.packagesCollected);
     this.hudScore.textContent = formatInteger(snapshot.score);
     this.hudCombo.textContent = `×${formatInteger(snapshot.combo)}`;
-    const activePowerUps = formatPowerUpHud(snapshot.activePowerUps, snapshot.activePowerUpStatuses);
+    const activePowerUps = formatPowerUpHud(
+      snapshot.activePowerUps,
+      snapshot.activePowerUpStatuses,
+      { gwarancja_48: this.copy.powerupWarrantyHud }
+    );
     this.hudPowerUps.textContent = activePowerUps;
     this.hudPowerUps.hidden = activePowerUps.length === 0;
-    const controls = formatStoryControlsHud(snapshot.storyObjectiveSegmentId, snapshot.authoredWave);
+    const controls = formatStoryControlsHud(
+      snapshot.storyObjectiveSegmentId,
+      snapshot.authoredWave,
+      this.copy.controlsHud
+    );
     this.hudControls.textContent = controls ?? "";
     this.hudControls.hidden = controls === null;
     if (this.activeMode === "story") {

@@ -43,6 +43,7 @@ export interface GameSnapshot {
   challengePackagesCollected: number;
   collisions: number;
   recoverySeconds: number;
+  startProtectionSeconds: number;
   combo: number;
   bestCombo: number;
   warrantySaves: number;

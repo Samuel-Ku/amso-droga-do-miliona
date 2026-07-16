@@ -288,7 +288,10 @@ export class CampaignController {
           golden: "BONUS — +350 pkt.",
           audyt_jakosci: "AUDYT — więcej czasu na ocenę następnej przeszkody.",
           drugie_zycie: "2× PUNKTY — każda zebrana paczka liczy się podwójnie.",
-          gwarancja_48: "GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania."
+          gwarancja_48: this.uiCopy(
+            "powerupWarranty",
+            "GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania."
+          )
         } as const;
         this.shell.showPickupNotice(copy[kind]);
       },
@@ -328,7 +331,10 @@ export class CampaignController {
         this.audio.playCue("collision");
       }
       if (snapshot.warrantySaves > previous.warrantySaves) {
-        this.shell.showPickupNotice("GWARANCJA 48 M zadziałała — próba trwa dalej.");
+        this.shell.showPickupNotice(this.uiCopy(
+          "warrantyConsumed",
+          "GWARANCJA 48 M zadziałała — próba trwa dalej."
+        ));
       }
       if (snapshot.activePowerUps.some((kind) => !previous.activePowerUps.includes(kind))) {
         this.audio.playCue("power-up");

@@ -7,6 +7,7 @@ import { createRunnerModel, queueJump, stepRunnerPhysics } from "../src/game/phy
 import { SeededRandom } from "../src/game/random";
 import { RunnerGame } from "../src/game/RunnerGame";
 import { WarehouseRenderer } from "../src/game/renderer";
+import { SEMANTIC_OBSTACLE_PRESENTATION } from "../src/game/semantic-obstacle";
 import { calculateScore, distanceInMeters, packageBonusScore } from "../src/game/scoring";
 import {
   activateWave,
@@ -341,18 +342,21 @@ describe("boss rendering", () => {
         return true;
       }
     }) as unknown as CanvasRenderingContext2D;
-    const obstacles = createObstaclePool(3);
+    const semanticVariants = Object.keys(SEMANTIC_OBSTACLE_PRESENTATION) as Array<
+      keyof typeof SEMANTIC_OBSTACLE_PRESENTATION
+    >;
+    const obstacles = createObstaclePool(semanticVariants.length);
     const obstacleFixtures = [
-      { kind: "pallet", semanticVariant: "first-laptop", y: 410, width: 92, height: 72 },
-      { kind: "trolley", semanticVariant: "growing-team", y: 395, width: 78, height: 88 },
-      { kind: "overhead", semanticVariant: "dispatch", y: 318, width: 76, height: 70 }
+      { kind: "pallet", y: 410, width: 92, height: 72 },
+      { kind: "trolley", y: 395, width: 78, height: 88 },
+      { kind: "overhead", y: 318, width: 76, height: 70 }
     ] as const;
     obstacles.forEach((obstacle, index) => {
-      const fixture = obstacleFixtures[index]!;
+      const fixture = obstacleFixtures[index % obstacleFixtures.length]!;
       obstacle.active = true;
       obstacle.kind = fixture.kind;
-      obstacle.semanticVariant = fixture.semanticVariant;
-      obstacle.x = 500 + index * 110;
+      obstacle.semanticVariant = semanticVariants[index]!;
+      obstacle.x = 420 + index * 24;
       obstacle.y = fixture.y;
       obstacle.width = fixture.width;
       obstacle.height = fixture.height;
@@ -384,7 +388,9 @@ describe("boss rendering", () => {
     });
 
     expect(drawnText).toContain("PC");
-    expect(drawnText).not.toEqual(expect.arrayContaining(["LAPTOP", "ZESPÓŁ", "WYSYŁKA"]));
+    const obstacleLabels = Object.values(SEMANTIC_OBSTACLE_PRESENTATION)
+      .map(({ label }) => label);
+    expect(drawnText).not.toEqual(expect.arrayContaining(obstacleLabels));
   });
 
   it("renders warning, attack and reward states with a golden parcel", () => {

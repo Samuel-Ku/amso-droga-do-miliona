@@ -115,25 +115,27 @@ const POWER_UP_HUD_LABELS: Readonly<Record<PowerUpKind, string>> = {
 /** Compact enough for the mobile HUD while keeping every carried power visible. */
 export function formatPowerUpHud(
   powerUps: readonly PowerUpKind[],
-  statuses: readonly ActivePowerUpStatus[] = []
+  statuses: readonly ActivePowerUpStatus[] = [],
+  labels: Partial<Readonly<Record<PowerUpKind, string>>> = {}
 ): string {
   const remainingByKind = new Map(statuses.map(({ kind, remainingSeconds }) => [kind, remainingSeconds]));
   return powerUps.map((kind) => {
     const seconds = remainingByKind.get(kind);
     const timer = seconds === undefined || seconds === null ? "" : ` ${Math.ceil(seconds)} s`;
-    return `${POWER_UP_HUD_LABELS[kind]}${timer}`;
+    return `${labels[kind] ?? POWER_UP_HUD_LABELS[kind]}${timer}`;
   }).join(" · ");
 }
 
 /** First-run controls stay visible in the top HUD without covering the route. */
 export function formatStoryControlsHud(
   segmentId: string,
-  authoredProgress?: Readonly<AuthoredWaveProgressSnapshot> | null
+  authoredProgress?: Readonly<AuthoredWaveProgressSnapshot> | null,
+  copy = "Skok: W/↑/Spacja/tap · Ślizg: S/↓"
 ): string | null {
   return segmentId === "epoch_1.training" ||
     (authoredProgress?.microlevelId === "first-package" &&
       authoredProgress.wavesCompleted === 0)
-    ? "Skok: W/↑/Spacja/tap · Ślizg: S/↓"
+    ? copy
     : null;
 }
 

@@ -76,6 +76,7 @@ export class WorldVisualLayer {
       ]
     ];
     this.panels[0].classList.add("is-active");
+    this.host.style.setProperty("--world-tile-blend-width", `${WORLD_TILE_BLEND_PIXELS}px`);
   }
 
   public show(selection: WorldVisualSelection): CampaignSceneVisualState {
@@ -174,6 +175,8 @@ export class WorldVisualLayer {
     const nextTiles = this.tiles[nextIndex]!;
     const nextImage = nextTiles[0];
     this.host.dataset.assetState = "loading";
+    previousPanel.style.zIndex = "2";
+    nextPanel.style.zIndex = "1";
     nextPanel.classList.remove("is-active");
 
     const activate = (): void => {

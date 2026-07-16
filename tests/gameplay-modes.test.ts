@@ -237,7 +237,8 @@ describe("campaign collision contract", () => {
     const harness = createGameHarness("challenge");
     harness.game.start("keyboard");
     expect(START_PROTECTION_SECONDS).toBe(1.5);
-    expect(harness.snapshots.at(-1)?.recoverySeconds).toBe(1.5);
+    expect(harness.snapshots.at(-1)?.startProtectionSeconds).toBe(1.5);
+    expect(harness.snapshots.at(-1)?.recoverySeconds).toBe(0);
     harness.game.destroy();
   });
 

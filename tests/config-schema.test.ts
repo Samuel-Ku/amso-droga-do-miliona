@@ -25,6 +25,14 @@ describe("runner config v5 story validation", () => {
     expect(visibleCopy).toContain("GWARANCJA 48 M");
   });
 
+  it("documents both keyboard pairs in the configurable tutorial copy", () => {
+    expect(productionConfig.ui?.tutorialJump).toMatch(/W.*↑.*Spacj/u);
+    expect(productionConfig.ui?.tutorialSlide).toMatch(/S.*↓/u);
+    expect(productionConfig.ui?.controlsHud).toBe("Skok: W/↑/Spacja/tap · Ślizg: S/↓");
+    expect(productionConfig.ui?.powerupWarrantyHud).toBe("GWARANCJA 48 M ×1");
+    expect(productionConfig.ui?.warrantyConsumed).toContain("GWARANCJA 48 M");
+  });
+
   it("accepts the player-paced story contracts", () => {
     const production = parseRunnerConfig(validConfig());
     expect(production?.schemaVersion).toBe(4);

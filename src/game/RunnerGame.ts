@@ -207,6 +207,8 @@ export class RunnerGame implements RunnerGameApi {
   private collisions = 0;
   private epochCollisions = 0;
   private recoverySeconds = 0;
+  private startProtectionSeconds = 0;
+  private warrantyBreakSeconds = 0;
   private combo = 1;
   private bestCombo = 1;
   private warrantySaves = 0;
@@ -458,7 +460,9 @@ export class RunnerGame implements RunnerGameApi {
     this.totalWeightKg = 0;
     this.collisions = 0;
     this.epochCollisions = 0;
-    this.recoverySeconds = START_PROTECTION_SECONDS;
+    this.recoverySeconds = 0;
+    this.startProtectionSeconds = START_PROTECTION_SECONDS;
+    this.warrantyBreakSeconds = 0;
     this.combo = 1;
     this.bestCombo = 1;
     this.warrantySaves = 0;
@@ -681,6 +685,8 @@ export class RunnerGame implements RunnerGameApi {
     this.milestoneCelebrationDirector.advance(activeDeltaSeconds, milestoneSafe);
     if (this.mode === "challenge") this.challengeElapsedSeconds += activeDeltaSeconds;
     this.recoverySeconds = Math.max(0, this.recoverySeconds - activeDeltaSeconds);
+    this.startProtectionSeconds = Math.max(0, this.startProtectionSeconds - activeDeltaSeconds);
+    this.warrantyBreakSeconds = Math.max(0, this.warrantyBreakSeconds - activeDeltaSeconds);
     this.impactSeconds = Math.max(0, this.impactSeconds - activeDeltaSeconds);
     this.impact = this.impactSeconds > 0;
     this.storyObstacleTransformer.advance(deltaSeconds);
@@ -997,7 +1003,7 @@ export class RunnerGame implements RunnerGameApi {
 
     for (const obstacle of this.obstacles) {
       if (!collidesWithObstacle(this.runner, obstacle)) continue;
-      if (this.recoverySeconds > 0) continue;
+      if (this.startProtectionSeconds > 0) continue;
       const resolution = resolveCollision(
         this.mode,
         this.activePowerUps.has("gwarancja_48")
@@ -1013,7 +1019,10 @@ export class RunnerGame implements RunnerGameApi {
       this.handleStoryObjectiveUpdate(this.storyObjectiveDirector.recordCollision());
 
       if (resolution.consumeWarranty) {
-        if (this.activePowerUps.consumeWarranty()) this.warrantySaves += 1;
+        if (this.activePowerUps.consumeWarranty()) {
+          this.warrantySaves += 1;
+          this.warrantyBreakSeconds = 0.18;
+        }
       }
       if (resolution.resetCombo) {
         this.combo = 1;
@@ -1612,7 +1621,9 @@ export class RunnerGame implements RunnerGameApi {
     this.epochCollisions = 0;
     this.resetChallengeRunState();
     this.challengeWorldDirector.reset("story-continuation");
-    this.recoverySeconds = START_PROTECTION_SECONDS;
+    this.recoverySeconds = 0;
+    this.startProtectionSeconds = START_PROTECTION_SECONDS;
+    this.warrantyBreakSeconds = 0;
     this.crouchHeld = false;
     this.runner.crouching = false;
     this.clearInteractiveWorld();
@@ -1779,6 +1790,7 @@ export class RunnerGame implements RunnerGameApi {
         : 0,
       collisions: this.collisions,
       recoverySeconds: round(this.recoverySeconds, 2),
+      startProtectionSeconds: round(this.startProtectionSeconds, 2),
       combo: this.combo,
       bestCombo: this.bestCombo,
       warrantySaves: this.warrantySaves,
@@ -1964,6 +1976,8 @@ export class RunnerGame implements RunnerGameApi {
       trustCorridor: this.storyTimeline?.snapshot.trustCorridor ?? false,
       combo: this.combo,
       recoverySeconds: this.recoverySeconds,
+      startProtectionSeconds: this.startProtectionSeconds,
+      warrantyBreakSeconds: this.warrantyBreakSeconds,
       storyPhase: this.storyTimeline?.snapshot.phase ?? null,
       storyProgress: this.storyTimeline?.snapshot.progress ?? 0,
       storyObjectives: this.storyObjectiveDirector.snapshot,

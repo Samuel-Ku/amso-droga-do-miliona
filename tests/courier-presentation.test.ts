@@ -15,20 +15,27 @@ describe("courier presentation", () => {
 
   it("shows one orange protection shape only when a collision is actually absorbed", () => {
     const runner = createRunnerModel();
-    expect(courierProtectionPresentation(runner, false, 0, false)).toBeNull();
+    expect(courierProtectionPresentation(runner, null)).toBeNull();
 
-    const warranty = courierProtectionPresentation(runner, true, 0, false);
-    const recovery = courierProtectionPresentation(runner, false, 1.2, false);
-    expect(warranty).toMatchObject({ color: "#f47100", breaking: false, shape: "circle" });
-    expect(recovery).toMatchObject({ color: "#f47100", breaking: false, shape: "circle" });
+    const warranty = courierProtectionPresentation(runner, "warranty");
+    const start = courierProtectionPresentation(runner, "start");
+    expect(warranty).toMatchObject({ color: "#f47100", breaking: false });
+    expect(start).toMatchObject({ color: "#f47100", breaking: false });
   });
 
   it("follows the courier into a lower oval while sliding and marks an absorbed impact", () => {
     const runner = { ...createRunnerModel(), crouching: true, height: 52 };
-    const presentation = courierProtectionPresentation(runner, false, 1.8, true);
+    const presentation = courierProtectionPresentation(runner, "breaking");
 
-    expect(presentation).toMatchObject({ shape: "oval", breaking: true });
+    expect(presentation).toMatchObject({ breaking: true });
     expect(presentation!.radiusY).toBeLessThan(presentation!.radiusX);
-    expect(presentation!.centerX).toBe(runner.x + runner.width / 2);
+    expect(presentation!.centerX - presentation!.radiusX).toBeGreaterThanOrEqual(runner.x - 3);
+  });
+
+  it("does not turn ordinary post-collision recovery into a warranty shield", () => {
+    const runner = createRunnerModel();
+
+    expect(courierProtectionPresentation(runner, null)).toBeNull();
+    expect(courierProtectionPresentation(runner, "breaking")?.breaking).toBe(true);
   });
 });

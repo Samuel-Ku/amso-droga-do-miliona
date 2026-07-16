@@ -26,7 +26,7 @@ describe("world visual continuity", () => {
     const renderer = readFileSync(new URL("../src/game/renderer.ts", import.meta.url), "utf8");
 
     expect(css).toContain("object-fit: cover");
-    expect(css).toContain("linear-gradient(to right, transparent 0, #000 32px)");
+    expect(css).toContain("linear-gradient(to right, transparent 0, #000 var(--world-tile-blend-width))");
     expect(css).not.toMatch(/\.amso-world-visual__panel\.is-leaving\s*\{[^}]*translateX/su);
     expect(worldLayer).toContain("WORLD_ROUTE_SVG");
     expect(renderer).toContain("drawGameplayRoute(context)");

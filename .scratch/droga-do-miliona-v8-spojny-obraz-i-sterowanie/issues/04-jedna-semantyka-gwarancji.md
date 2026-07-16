@@ -22,5 +22,6 @@ shielda podążającego za kurierem, a bonus ma wszędzie nazywać się
 
 ## Comments
 
-Wspólna prezentacja ochrony jest wyliczana z realnego stanu mechaniki;
-bezpieczny start trwa 1,5 s i rzeczywiście blokuje kolizję.
+Prezentacja jest wyliczana z jawnego źródła ochrony: bezpieczny start trwa
+1,5 s, aktywna Gwarancja ma jeden ładunek, a jej zużycie ma osobny krótki stan
+łamania. Zwykłe odtwarzanie po kolizji nie rysuje shielda.

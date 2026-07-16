@@ -11,9 +11,10 @@ export interface CourierProtectionPresentation {
   readonly radiusX: number;
   readonly radiusY: number;
   readonly color: "#f47100";
-  readonly shape: "circle" | "oval";
   readonly breaking: boolean;
 }
+
+export type CourierProtectionState = "start" | "warranty" | "breaking";
 
 export function runnerStrideCyclesPerSecond(speed: number): number {
   const safeSpeed = Number.isFinite(speed) ? speed : MIN_STRIDE_SPEED;
@@ -27,21 +28,20 @@ export function runnerStrideCyclesPerSecond(speed: number): number {
 
 export function courierProtectionPresentation(
   runner: Readonly<RunnerModel>,
-  hasWarranty: boolean,
-  recoverySeconds: number,
-  impact: boolean
+  state: CourierProtectionState | null
 ): CourierProtectionPresentation | null {
-  if (!hasWarranty && recoverySeconds <= 0) return null;
+  if (state === null) return null;
   const crouching = runner.crouching;
-  const radiusX = runner.width / 2 + (crouching ? 14 : 18);
+  const radiusX = crouching
+    ? runner.width / 2 + 14
+    : Math.max(runner.width / 2 + 18, runner.height / 2 + 7);
   const radiusY = crouching ? Math.max(24, runner.height * 0.34 + 8) : radiusX;
   return {
-    centerX: runner.x + runner.width / 2,
+    centerX: runner.x + radiusX - 2,
     centerY: runner.y + runner.height / 2 + (crouching ? 10 : 0),
     radiusX,
     radiusY,
     color: "#f47100",
-    shape: crouching ? "oval" : "circle",
-    breaking: impact && recoverySeconds > 0 && !hasWarranty
+    breaking: state === "breaking"
   };
 }

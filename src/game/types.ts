@@ -108,6 +108,8 @@ export interface RenderScene {
   trustCorridor?: boolean;
   combo?: number;
   recoverySeconds?: number;
+  startProtectionSeconds?: number;
+  warrantyBreakSeconds?: number;
   storyPhase?: StoryPhase | null;
   storyProgress?: number;
   storyObjectives?: Readonly<StoryObjectivesSnapshot>;

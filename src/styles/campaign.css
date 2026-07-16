@@ -1698,8 +1698,8 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 }
 
 .amso-world-visual__image[data-world-tile="1"] {
-  mask-image: linear-gradient(to right, transparent 0, #000 32px);
-  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 32px);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--world-tile-blend-width));
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--world-tile-blend-width));
 }
 
 .amso-campaign__world-visual[data-phase="game"] .amso-world-visual__panel {

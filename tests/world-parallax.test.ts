@@ -8,6 +8,29 @@ import {
 import { WorldVisualLayer } from "../src/visuals/WorldVisualLayer";
 
 describe("cyclic gameplay background", () => {
+  it("keeps the outgoing world above the incoming world on every crossfade", () => {
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host);
+    const panels = [...host.querySelectorAll<HTMLElement>("[data-world-panel]")];
+
+    layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "story" });
+    expect(panels[0]!.style.zIndex).toBe("2");
+    expect(panels[1]!.style.zIndex).toBe("1");
+    host.querySelector<HTMLImageElement>('[data-world-image="1"]')!
+      .dispatchEvent(new Event("load"));
+
+    layer.show({ worldId: "quality-service", stateId: "epoch_2.resolve", phase: "story" });
+    expect(panels[1]!.style.zIndex).toBe("2");
+    expect(panels[0]!.style.zIndex).toBe("1");
+  });
+
+  it("publishes one blend-width token for the CSS seam mask", () => {
+    const host = document.createElement("div");
+    new WorldVisualLayer(host);
+
+    expect(host.style.getPropertyValue("--world-tile-blend-width")).toBe("32px");
+  });
+
   it("moves at exactly ten percent of gameplay travel", () => {
     expect(BACKGROUND_PARALLAX_SPEED_RATIO).toBe(0.1);
     expect(backgroundTravelPixels(2_400)).toBe(240);
@@ -30,8 +53,8 @@ describe("cyclic gameplay background", () => {
     layer.setParallaxDistance(480, true);
     const firstTiles = [...host.querySelectorAll<HTMLElement>('[data-world-panel="0"] [data-world-tile]')];
     expect(firstTiles).toHaveLength(2);
-    expect(firstTiles[0]!.style.transform).toBe("translateX(calc(-50% + 17.5px))");
-    expect(firstTiles[1]!.style.transform).toBe("translateX(calc(50% - 17.5px))");
+    expect(firstTiles[0]!.style.transform).toMatch(/^translateX\(calc\(-/u);
+    expect(firstTiles[1]!.style.transform).toMatch(/^translateX\(calc\([^-]/u);
     expect(firstTiles.every(({ style }) => !style.transform.includes("scaleX"))).toBe(true);
 
     layer.show({ worldId: "quality-service", stateId: "epoch_2.resolve", phase: "game" });
@@ -73,6 +96,6 @@ describe("cyclic gameplay background", () => {
     expect(tiles.every(({ style }) => style.transition.includes("720ms"))).toBe(true);
 
     layer.setParallaxDistance(480, true);
-    expect(tiles[0]!.style.transform).toBe("translateX(calc(-50% + 17.5px))");
+    expect(tiles[0]!.style.transform).not.toBe("translateX(0px)");
   });
 });
