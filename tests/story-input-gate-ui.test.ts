@@ -7,9 +7,11 @@ function createShell(): {
   shell: CampaignShell;
   callbacks: CampaignShellCallbacks;
   onStoryContinue: ReturnType<typeof vi.fn>;
+  onJump: ReturnType<typeof vi.fn>;
   onSlide: ReturnType<typeof vi.fn>;
 } {
   const onStoryContinue = vi.fn();
+  const onJump = vi.fn();
   const onSlide = vi.fn();
   const callbacks: CampaignShellCallbacks = {
     onStart: vi.fn(),
@@ -18,7 +20,7 @@ function createShell(): {
     onRestart: vi.fn(),
     onReturnToMenu: vi.fn(),
     onRetryLoad: vi.fn(),
-    onJump: vi.fn(),
+    onJump,
     onSlide,
     onMuteChange: vi.fn(),
     onFullscreenPreferenceChange: vi.fn(),
@@ -26,7 +28,7 @@ function createShell(): {
   };
   const host = document.createElement("div");
   document.body.append(host);
-  return { shell: new CampaignShell(host, callbacks), callbacks, onStoryContinue, onSlide };
+  return { shell: new CampaignShell(host, callbacks), callbacks, onStoryContinue, onJump, onSlide };
 }
 
 function showScene(shell: CampaignShell, presentationId = "story.client:budget"): HTMLButtonElement {
@@ -66,48 +68,62 @@ describe("story input safety gate", () => {
     document.body.replaceChildren();
   });
 
-  it("discards early Space, Enter, click and tap instead of queueing them", () => {
+  it("enables Dalej immediately without carrying a held gameplay Space into the story", () => {
     const { shell, onStoryContinue } = createShell();
+    shell.showGame("story");
+    document.dispatchEvent(new KeyboardEvent("keydown", {
+      code: "Space", key: " ", bubbles: true
+    }));
     const button = showScene(shell);
 
-    expect(button.disabled).toBe(true);
-    document.dispatchEvent(new KeyboardEvent("keydown", { code: "Space", key: " ", bubbles: true }));
-    document.dispatchEvent(new KeyboardEvent("keydown", { code: "Enter", key: "Enter", bubbles: true }));
-    button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "touch" }));
-    button.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerType: "touch" }));
-    button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-
-    vi.advanceTimersByTime(1_500);
     expect(button.disabled).toBe(false);
+    document.dispatchEvent(new KeyboardEvent("keydown", {
+      code: "Space", key: " ", repeat: true, bubbles: true
+    }));
     expect(onStoryContinue).not.toHaveBeenCalled();
 
-    document.dispatchEvent(new KeyboardEvent("keydown", { code: "Space", key: " ", bubbles: true }));
-    document.dispatchEvent(new KeyboardEvent("keydown", { code: "Enter", key: "Enter", bubbles: true }));
     button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(onStoryContinue).toHaveBeenCalledTimes(1);
     expect(onStoryContinue).toHaveBeenCalledWith("story.client");
     shell.destroy();
   });
 
-  it("uses a 500 ms lock when reduced motion is requested", () => {
-    vi.mocked(window.matchMedia).mockImplementation((query: string) => ({
-      matches: query === "(prefers-reduced-motion: reduce)",
-      media: query,
-      onchange: null,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }));
-    const { shell } = createShell();
-    const button = showScene(shell);
+  it("lets a fresh Space continue the story immediately", () => {
+    const { shell, onStoryContinue } = createShell();
+    showScene(shell);
 
-    vi.advanceTimersByTime(499);
-    expect(button.disabled).toBe(true);
-    vi.advanceTimersByTime(1);
-    expect(button.disabled).toBe(false);
+    document.dispatchEvent(new KeyboardEvent("keydown", {
+      code: "Space", key: " ", bubbles: true
+    }));
+
+    expect(onStoryContinue).toHaveBeenCalledTimes(1);
+    expect(onStoryContinue).toHaveBeenCalledWith("story.client");
+    shell.destroy();
+  });
+
+  it("treats W and ArrowUp as the same jump control", () => {
+    const { shell, onJump } = createShell();
+    shell.showGame("story");
+    const w = new KeyboardEvent("keydown", { code: "KeyW", key: "w", bubbles: true, cancelable: true });
+    const up = new KeyboardEvent("keydown", {
+      code: "ArrowUp", key: "ArrowUp", bubbles: true, cancelable: true
+    });
+
+    document.dispatchEvent(w);
+    document.dispatchEvent(up);
+
+    expect(onJump.mock.calls).toEqual([["keyboard"], ["keyboard"]]);
+    expect(up.defaultPrevented).toBe(true);
+    shell.destroy();
+  });
+
+  it("documents both one-hand key pairs plus Space and touch", () => {
+    const { shell } = createShell();
+    const canvas = document.querySelector<HTMLCanvasElement>("[data-campaign-canvas]");
+
+    expect(canvas?.getAttribute("aria-label")).toContain("W lub strzałka w górę");
+    expect(canvas?.getAttribute("aria-label")).toContain("Spacja lub tapnięcie");
+    expect(canvas?.getAttribute("aria-label")).toContain("S lub strzałka w dół");
     shell.destroy();
   });
 

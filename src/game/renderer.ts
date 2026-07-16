@@ -6,9 +6,6 @@ import type {
   RenderScene,
   RunnerModel
 } from "./types";
-import {
-  SEMANTIC_OBSTACLE_PRESENTATION
-} from "./semantic-obstacle";
 import type { PackageType, PowerUpKind } from "../shared/types";
 import type { StoryObstacleTransformation } from "./story-effects";
 import {
@@ -16,6 +13,10 @@ import {
   DEFAULT_COURIER_BRAND_ARTWORK,
   type CourierBrandArtwork
 } from "./courier-brand";
+import {
+  courierProtectionPresentation,
+  runnerStrideCyclesPerSecond
+} from "./courier-presentation";
 import {
   WORLD_ROUTE_ACCENT_WIDTH,
   WORLD_ROUTE_BASE_COLOR,
@@ -789,7 +790,7 @@ const POWER_UP_COLORS: Readonly<Record<PowerUpKind, string>> = {
 };
 
 const POWER_UP_PACKAGE_COPY: Readonly<Record<PowerUpKind, readonly [string, string]>> = {
-  gwarancja_48: ["OCHRONA", "48 M"],
+  gwarancja_48: ["GWARANCJA", "48 M"],
   audyt_jakosci: ["AUDYT", "TRASY"],
   drugie_zycie: ["2×", "PUNKTY"]
 };
@@ -1116,76 +1117,6 @@ function drawObstacle(context: CanvasRenderingContext2D, obstacle: Readonly<Obst
       drawOverhead(context, obstacle);
       break;
   }
-  drawSemanticObstacleDetail(context, obstacle);
-}
-
-/** Adds a concrete object/process cue while the proven hitbox remains unchanged. */
-function drawSemanticObstacleDetail(
-  context: CanvasRenderingContext2D,
-  obstacle: Readonly<ObstacleModel>
-): void {
-  const variant = obstacle.semanticVariant;
-  if (!variant) return;
-  const { label, icon } = SEMANTIC_OBSTACLE_PRESENTATION[variant];
-  const width = Math.max(48, Math.min(76, obstacle.width - 8));
-  const height = 21;
-  const x = obstacle.x + (obstacle.width - width) / 2;
-  const y = obstacle.y + Math.max(4, Math.min(obstacle.height - height - 3, 8));
-  context.save();
-  fillRoundedRectangle(context, x, y, width, height, 5, "rgba(255,255,255,0.94)");
-  context.strokeStyle = COLORS.ink;
-  context.lineWidth = 1.5;
-  roundedRectangle(context, x, y, width, height, 5);
-  context.stroke();
-
-  const iconX = x + 10;
-  const iconY = y + 10.5;
-  context.strokeStyle = COLORS.red;
-  context.fillStyle = COLORS.orange;
-  context.lineWidth = 2;
-  if (icon === "device") {
-    context.strokeRect(iconX - 6, iconY - 6, 12, 9);
-    context.beginPath();
-    context.moveTo(iconX - 8, iconY + 5);
-    context.lineTo(iconX + 8, iconY + 5);
-    context.stroke();
-  } else if (icon === "team") {
-    for (const offset of [-4, 4]) {
-      context.beginPath();
-      context.arc(iconX + offset, iconY - 4, 3, 0, Math.PI * 2);
-      context.fill();
-    }
-    context.fillRect(iconX - 9, iconY + 1, 18, 6);
-  } else if (icon === "office") {
-    context.strokeRect(iconX - 7, iconY - 7, 14, 14);
-    context.fillRect(iconX - 4, iconY - 4, 3, 3);
-    context.fillRect(iconX + 2, iconY - 4, 3, 3);
-    context.fillRect(iconX - 1, iconY + 2, 4, 5);
-  } else if (icon === "truck") {
-    context.strokeRect(iconX - 8, iconY - 4, 10, 8);
-    context.strokeRect(iconX + 2, iconY - 1, 6, 5);
-    for (const wheel of [-4, 5]) {
-      context.beginPath();
-      context.arc(iconX + wheel, iconY + 6, 2, 0, Math.PI * 2);
-      context.fill();
-    }
-  } else {
-    context.fillRect(iconX - 6, iconY - 5, 12, 10);
-    context.beginPath();
-    context.moveTo(iconX, iconY - 9);
-    context.lineTo(iconX, iconY + 9);
-    context.moveTo(iconX - 4, iconY + 5);
-    context.lineTo(iconX, iconY + 9);
-    context.lineTo(iconX + 4, iconY + 5);
-    context.stroke();
-  }
-
-  context.fillStyle = COLORS.ink;
-  context.font = "900 6.5px system-ui, sans-serif";
-  context.textAlign = "left";
-  context.textBaseline = "middle";
-  context.fillText(label, x + 21, y + height / 2 + 0.5, width - 24);
-  context.restore();
 }
 
 function drawFirstAmsoParcel(
@@ -1223,21 +1154,44 @@ function drawWarrantyShield(
   runner: Readonly<RunnerModel>,
   scene: Readonly<RenderScene>
 ): void {
-  if (!scene.activePowerUps.includes("gwarancja_48")) return;
+  const presentation = courierProtectionPresentation(
+    runner,
+    scene.activePowerUps.includes("gwarancja_48"),
+    scene.recoverySeconds ?? 0,
+    scene.impact
+  );
+  if (presentation === null) return;
   const pulse = scene.reducedMotion ? 0 : Math.sin(scene.elapsedSeconds * 4.2) * 2;
-  const padding = 10 + pulse;
-  const x = runner.x - padding;
-  const y = runner.y - padding;
-  const width = runner.width + padding * 2;
-  const height = runner.height + padding * 2;
   context.save();
-  context.globalAlpha = (scene.recoverySeconds ?? 0) > 0 ? 0.5 : 0.9;
-  context.strokeStyle = COLORS.redDark;
+  context.globalAlpha = (scene.recoverySeconds ?? 0) > 0 ? 0.72 : 0.94;
+  context.strokeStyle = presentation.color;
   context.lineWidth = 4;
-  context.setLineDash(scene.reducedMotion ? [] : [10, 5]);
+  context.setLineDash([]);
   context.beginPath();
-  context.roundRect(x, y, width, height, 18);
+  context.ellipse(
+    presentation.centerX,
+    presentation.centerY,
+    presentation.radiusX + pulse,
+    presentation.radiusY + pulse,
+    0,
+    0,
+    Math.PI * 2
+  );
   context.stroke();
+  if (presentation.breaking && !scene.reducedMotion) {
+    context.lineWidth = 3;
+    for (const angle of [-0.9, -0.2, 0.55]) {
+      const innerX = presentation.centerX + Math.cos(angle) * presentation.radiusX * 0.45;
+      const innerY = presentation.centerY + Math.sin(angle) * presentation.radiusY * 0.45;
+      context.beginPath();
+      context.moveTo(innerX, innerY);
+      context.lineTo(
+        presentation.centerX + Math.cos(angle + 0.16) * presentation.radiusX,
+        presentation.centerY + Math.sin(angle + 0.16) * presentation.radiusY
+      );
+      context.stroke();
+    }
+  }
   context.restore();
 }
 
@@ -1320,7 +1274,7 @@ function drawCourier(
     return;
   }
   const stride = runner.grounded && !scene.reducedMotion
-    ? Math.sin(scene.elapsedSeconds * Math.max(12, scene.speed * 0.075))
+    ? Math.sin(scene.elapsedSeconds * runnerStrideCyclesPerSecond(scene.speed) * Math.PI * 2)
     : 0;
   const bob = runner.grounded && !scene.reducedMotion ? Math.abs(stride) * -1.8 : 0;
   const x = runner.x;

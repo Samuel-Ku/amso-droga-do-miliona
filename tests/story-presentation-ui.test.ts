@@ -91,7 +91,7 @@ describe("player-paced story presentation", () => {
   it("formats carried powers compactly for the persistent HUD", () => {
     expect(formatPowerUpHud([])).toBe("");
     expect(formatPowerUpHud(["audyt_jakosci", "drugie_zycie", "gwarancja_48"]))
-      .toBe("AUDYT · ×2 WYNIK · GWARANCJA ×1");
+      .toBe("AUDYT · ×2 WYNIK · GWARANCJA 48 M ×1");
     expect(formatPowerUpHud(["audyt_jakosci"], [{
       kind: "audyt_jakosci",
       remainingSeconds: 6.2
@@ -139,7 +139,7 @@ describe("player-paced story presentation", () => {
 
   it("keeps controls in the top HUD and removes visible bottom gameplay text", () => {
     expect(formatStoryControlsHud("epoch_1.training"))
-      .toBe("Skok: tap/Spacja · Ślizg: ↓/S");
+      .toBe("Skok: W/↑/Spacja/tap · Ślizg: S/↓");
     expect(formatStoryControlsHud("epoch_2.quality_series")).toBeNull();
     expect(campaignShellSource).toContain("data-campaign-hud-controls");
     expect(campaignShellSource).not.toContain("data-campaign-gameplay-hint");

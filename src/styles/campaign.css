@@ -1669,7 +1669,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 
 .amso-world-visual__panel {
   opacity: 0;
-  transform: translateX(100%) scale(var(--world-reading-zoom, 1));
+  transform: scale(var(--world-reading-zoom, 1));
   transform-origin:
     var(--world-reading-origin-x, 50%)
     var(--world-reading-origin-y, 50%);
@@ -1681,20 +1681,25 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 
 .amso-world-visual__panel.is-active {
   opacity: 0.8;
-  transform: translateX(0) scale(var(--world-reading-zoom, 1));
+  transform: scale(var(--world-reading-zoom, 1));
 }
 
 .amso-world-visual__panel.is-leaving {
   opacity: 0;
-  transform: translateX(-100%) scale(var(--world-reading-zoom, 1));
+  transform: scale(var(--world-reading-zoom, 1));
 }
 
 .amso-world-visual__image {
   display: block;
   max-width: none;
-  object-fit: contain;
+  object-fit: cover;
   object-position: 50% 50%;
   will-change: transform;
+}
+
+.amso-world-visual__image[data-world-tile="1"] {
+  mask-image: linear-gradient(to right, transparent 0, #000 32px);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 32px);
 }
 
 .amso-campaign__world-visual[data-phase="game"] .amso-world-visual__panel {

@@ -3,7 +3,7 @@ import productionConfig from "../public/assets/milion-runner/runner-config.json"
 import { parseRunnerConfig } from "../src/config/schema";
 import type { GameSnapshot } from "../src/game/contracts";
 import type { MilestoneCelebrationEvent } from "../src/game/milestone-celebration";
-import { resolveCollision } from "../src/game/mode-rules";
+import { resolveCollision, START_PROTECTION_SECONDS } from "../src/game/mode-rules";
 import { RunnerGame } from "../src/game/RunnerGame";
 import {
   STORY_REFRAME_SECONDS,
@@ -233,6 +233,14 @@ function createGameHarness(
 }
 
 describe("campaign collision contract", () => {
+  it("starts each run with a real short protection window", () => {
+    const harness = createGameHarness("challenge");
+    harness.game.start("keyboard");
+    expect(START_PROTECTION_SECONDS).toBe(1.5);
+    expect(harness.snapshots.at(-1)?.recoverySeconds).toBe(1.5);
+    harness.game.destroy();
+  });
+
   it("maps story collisions to recovery and challenge collisions to game over", () => {
     expect(resolveCollision("story", false)).toEqual({
       finishRun: false,
@@ -263,6 +271,7 @@ describe("campaign collision contract", () => {
     harness.game.start("keyboard");
     harness.continueCurrentSceneFully();
     harness.advance(STORY_REFRAME_SECONDS + 3.05);
+    harness.advance(START_PROTECTION_SECONDS + 0.1);
     const internals = harness.game as unknown as {
       obstacles: Array<{
         active: boolean; kind: "pallet"; source: "story-reward"; x: number; y: number;

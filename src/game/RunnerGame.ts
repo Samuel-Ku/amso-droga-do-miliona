@@ -45,7 +45,7 @@ import {
 import type { NarrativeConfig, PackageType, PowerUpKind, StoryConfig } from "../shared/types";
 import type { ObstacleKind, ObstacleModel, PackageModel, RenderScene, RunnerModel } from "./types";
 import { calculateCanvasBuffer } from "./viewport";
-import { resolveCollision } from "./mode-rules";
+import { resolveCollision, START_PROTECTION_SECONDS } from "./mode-rules";
 import {
   ActivePowerUps,
   spawnTravelDistance,
@@ -458,7 +458,7 @@ export class RunnerGame implements RunnerGameApi {
     this.totalWeightKg = 0;
     this.collisions = 0;
     this.epochCollisions = 0;
-    this.recoverySeconds = 0;
+    this.recoverySeconds = START_PROTECTION_SECONDS;
     this.combo = 1;
     this.bestCombo = 1;
     this.warrantySaves = 0;
@@ -997,6 +997,7 @@ export class RunnerGame implements RunnerGameApi {
 
     for (const obstacle of this.obstacles) {
       if (!collidesWithObstacle(this.runner, obstacle)) continue;
+      if (this.recoverySeconds > 0) continue;
       const resolution = resolveCollision(
         this.mode,
         this.activePowerUps.has("gwarancja_48")
@@ -1611,7 +1612,7 @@ export class RunnerGame implements RunnerGameApi {
     this.epochCollisions = 0;
     this.resetChallengeRunState();
     this.challengeWorldDirector.reset("story-continuation");
-    this.recoverySeconds = 0;
+    this.recoverySeconds = START_PROTECTION_SECONDS;
     this.crouchHeld = false;
     this.runner.crouching = false;
     this.clearInteractiveWorld();

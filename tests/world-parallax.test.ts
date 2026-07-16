@@ -23,17 +23,16 @@ describe("cyclic gameplay background", () => {
     expect(Number.parseInt(fast)).toBeLessThan(Number.parseInt(slow));
   });
 
-  it("uses two alternating mirrored tiles and preserves the phase across worlds", () => {
+  it("uses two equally oriented blended tiles and preserves the phase across worlds", () => {
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host);
 
     layer.setParallaxDistance(480, true);
     const firstTiles = [...host.querySelectorAll<HTMLElement>('[data-world-panel="0"] [data-world-tile]')];
     expect(firstTiles).toHaveLength(2);
-    expect(firstTiles[0]!.style.transform).toContain("translateX(-50%)");
-    expect(firstTiles[1]!.style.transform).toContain("translateX(50%)");
-    expect(firstTiles[0]!.style.transform).toContain("scaleX(1)");
-    expect(firstTiles[1]!.style.transform).toContain("scaleX(-1)");
+    expect(firstTiles[0]!.style.transform).toBe("translateX(calc(-50% + 17.5px))");
+    expect(firstTiles[1]!.style.transform).toBe("translateX(calc(50% - 17.5px))");
+    expect(firstTiles.every(({ style }) => !style.transform.includes("scaleX"))).toBe(true);
 
     layer.show({ worldId: "quality-service", stateId: "epoch_2.resolve", phase: "game" });
     const secondTiles = [...host.querySelectorAll<HTMLElement>('[data-world-panel="1"] [data-world-tile]')];
@@ -41,7 +40,7 @@ describe("cyclic gameplay background", () => {
     expect(secondTiles[1]!.style.transform).toBe(firstTiles[1]!.style.transform);
   });
 
-  it("freezes in story and pause while reduced motion keeps slow linear travel", () => {
+  it("recenters in story and pause while reduced motion keeps slow linear travel", () => {
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host);
     const tile = host.querySelector<HTMLElement>('[data-world-tile="0"]')!;
@@ -52,26 +51,28 @@ describe("cyclic gameplay background", () => {
     expect(tile.style.transition).toBe("transform 140ms linear");
     layer.setParallaxDistance(400, false);
     expect(tile.style.transform).not.toBe(activeTransform);
-    const frozenTransform = tile.style.transform;
-    expect(tile.style.transition).toBe("none");
+    expect(tile.style.transform).toBe("translateX(0px)");
+    const centeredTransform = tile.style.transform;
+    expect(tile.style.transition).toContain("720ms");
     layer.setParallaxDistance(600, true, true);
-    expect(tile.style.transform).not.toBe(frozenTransform);
+    expect(tile.style.transform).not.toBe(centeredTransform);
     expect(tile.style.transition).toBe("transform 280ms linear");
   });
 
-  it("freezes the visible phase without snapping when a story card is opened", () => {
+  it("moves to a whole centered frame when a story card is opened", () => {
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host);
     const tiles = [...host.querySelectorAll<HTMLElement>('[data-world-panel="0"] [data-world-tile]')];
     layer.setParallaxDistance(480, true);
-    const transforms = tiles.map(({ style }) => style.transform);
-
     layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "story" });
     layer.setParallaxDistance(600, false);
-    expect(tiles.map(({ style }) => style.transform)).toEqual(transforms);
-    expect(tiles.every(({ style }) => style.transition === "none")).toBe(true);
+    expect(tiles.map(({ style }) => style.transform)).toEqual([
+      "translateX(0px)",
+      "translateX(calc(100% - 35px))"
+    ]);
+    expect(tiles.every(({ style }) => style.transition.includes("720ms"))).toBe(true);
 
     layer.setParallaxDistance(480, true);
-    expect(tiles[0]!.style.transform).toContain("translateX(-50%)");
+    expect(tiles[0]!.style.transform).toBe("translateX(calc(-50% + 17.5px))");
   });
 });

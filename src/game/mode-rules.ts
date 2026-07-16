@@ -1,6 +1,7 @@
 import type { GameMode } from "./contracts";
 
 export const COLLISION_RECOVERY_SECONDS = 2;
+export const START_PROTECTION_SECONDS = 1.5;
 
 export interface CollisionResolution {
   finishRun: boolean;

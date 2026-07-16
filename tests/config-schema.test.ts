@@ -17,6 +17,14 @@ function validConfig(): Record<string, unknown> {
 }
 
 describe("runner config v5 story validation", () => {
+  it("uses the Gwarancja 48 M name consistently in player-facing config copy", () => {
+    const visibleCopy = JSON.stringify(productionConfig);
+
+    expect(visibleCopy).not.toMatch(/OCHRONA|Ochrona/u);
+    expect(productionConfig.ui?.powerupWarranty).toMatch(/^GWARANCJA 48 M\b/u);
+    expect(visibleCopy).toContain("GWARANCJA 48 M");
+  });
+
   it("accepts the player-paced story contracts", () => {
     const production = parseRunnerConfig(validConfig());
     expect(production?.schemaVersion).toBe(4);

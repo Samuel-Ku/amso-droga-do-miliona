@@ -109,7 +109,7 @@ export class StoryContinuationGate {
 const POWER_UP_HUD_LABELS: Readonly<Record<PowerUpKind, string>> = {
   audyt_jakosci: "AUDYT",
   drugie_zycie: "×2 WYNIK",
-  gwarancja_48: "GWARANCJA ×1"
+  gwarancja_48: "GWARANCJA 48 M ×1"
 };
 
 /** Compact enough for the mobile HUD while keeping every carried power visible. */
@@ -133,7 +133,7 @@ export function formatStoryControlsHud(
   return segmentId === "epoch_1.training" ||
     (authoredProgress?.microlevelId === "first-package" &&
       authoredProgress.wavesCompleted === 0)
-    ? "Skok: tap/Spacja · Ślizg: ↓/S"
+    ? "Skok: W/↑/Spacja/tap · Ślizg: S/↓"
     : null;
 }
 

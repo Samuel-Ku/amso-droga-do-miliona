@@ -16,6 +16,11 @@ export interface WorldVisualSelection {
   readonly phase: WorldVisualPhase;
 }
 
+const WORLD_TILE_BLEND_PIXELS = 32;
+const WORLD_TILE_SOLID_OVERLAP_PIXELS = 3;
+const WORLD_TILE_OVERLAP_PIXELS = WORLD_TILE_BLEND_PIXELS + WORLD_TILE_SOLID_OVERLAP_PIXELS;
+const WORLD_RECENTER_MILLISECONDS = 720;
+
 function requiredElement<T extends Element>(root: ParentNode, selector: string): T {
   const element = root.querySelector<T>(selector);
   if (element === null) throw new Error(`World visual element not found: ${selector}`);
@@ -130,7 +135,13 @@ export class WorldVisualLayer {
     this.host.style.setProperty("--world-transition-ms", `${Math.round(transitionMilliseconds)}ms`);
     if (!active || !Number.isFinite(distancePixels)) {
       for (const panelTiles of this.tiles) {
-        for (const tile of panelTiles) tile.style.transition = "none";
+        for (const tile of panelTiles) {
+          tile.style.transition = `transform ${reducedMotion ? 1_200 : WORLD_RECENTER_MILLISECONDS}ms ` +
+            "cubic-bezier(0.2, 0.7, 0.2, 1)";
+        }
+        panelTiles[0].style.transform = "translateX(0px)";
+        panelTiles[1].style.transform =
+          `translateX(calc(100% - ${WORLD_TILE_OVERLAP_PIXELS}px))`;
       }
       return;
     }
@@ -139,7 +150,6 @@ export class WorldVisualLayer {
       : Math.max(0, distancePixels);
     const cycle = Math.floor(distance / WORLD_WIDTH);
     const progress = (distance % WORLD_WIDTH) / WORLD_WIDTH;
-    const firstScale = cycle % 2 === 0 ? 1 : -1;
     const wrapped = this.lastParallaxCycle !== null && cycle !== this.lastParallaxCycle;
     for (const panelTiles of this.tiles) {
       for (const tile of panelTiles) {
@@ -147,8 +157,10 @@ export class WorldVisualLayer {
           ? "none"
           : `transform ${reducedMotion ? 280 : 140}ms linear`;
       }
-      panelTiles[0].style.transform = `translateX(${-progress * 100}%) scaleX(${firstScale})`;
-      panelTiles[1].style.transform = `translateX(${(1 - progress) * 100}%) scaleX(${-firstScale})`;
+      panelTiles[0].style.transform =
+        `translateX(calc(${-progress * 100}% + ${progress * WORLD_TILE_OVERLAP_PIXELS}px))`;
+      panelTiles[1].style.transform =
+        `translateX(calc(${(1 - progress) * 100}% - ${(1 - progress) * WORLD_TILE_OVERLAP_PIXELS}px))`;
     }
     this.lastParallaxCycle = cycle;
   }

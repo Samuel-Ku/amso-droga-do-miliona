@@ -83,7 +83,7 @@
     "corridorResume": "Biegniemy dalej.",
     "powerupAudit": "AUDYT — więcej czasu na ocenę następnej przeszkody.",
     "powerupSecondLife": "2× PUNKTY — każda paczka liczy się podwójnie.",
-    "powerupWarranty": "OCHRONA 48 M — jedna osłona na Tryb Wyzwania.",
+    "powerupWarranty": "GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania.",
     "logisticWarning": "Uwaga: fala logistyczna",
     "logisticReward": "Fala opanowana — złote paczki są Twoje."
   },
@@ -178,7 +178,7 @@
         "body": ["Pierwsze zamówienie przygotowaliśmy własnymi rękami. Tak rozpoczęła się droga AMSO."],
         "vignette": "first-package", "continueLabel": "Dalej", "perspective": "amso",
         "steps": [
-          { "id": "game-purpose", "title": "To gra o drodze AMSO.", "body": ["Bieg łączy etapy rozwoju firmy z bezpiecznymi kartami historii. Skacz Spacją, ślizgaj się klawiszem S lub ↓ i zbieraj paczki aż do miliona."], "continueLabel": "Poznaj początek", "safe": true, "fact": "Gra opowiada prawdziwą drogę AMSO od pierwszej paczki do miliona zamówień.", "action": "Pierwsza paczka rusza przez podgląd kolejnych miejsc: magazynu, stanowiska jakości i licznika.", "finalFrame": "Pierwsza paczka stoi na początku trasy prowadzącej do czytelnego znaku 1 000 000." },
+          { "id": "game-purpose", "title": "To gra o drodze AMSO.", "body": ["Bieg łączy etapy rozwoju firmy z bezpiecznymi kartami historii. Skacz klawiszem W, ↑, Spacją lub dotykiem; ślizgaj się klawiszem S, ↓ lub gestem w dół i zbieraj paczki aż do miliona."], "continueLabel": "Poznaj początek", "safe": true, "fact": "Gra opowiada prawdziwą drogę AMSO od pierwszej paczki do miliona zamówień.", "action": "Pierwsza paczka rusza przez podgląd kolejnych miejsc: magazynu, stanowiska jakości i licznika.", "finalFrame": "Pierwsza paczka stoi na początku trasy prowadzącej do czytelnego znaku 1 000 000." },
           { "id": "first-hand-packed", "title": "Pierwszą paczkę przygotowaliśmy sami.", "body": ["Z małego sklepu i magazynu wielkości kawalerki własnymi rękami wysłaliśmy pierwsze zamówienie. Ty poprowadzisz tę drogę aż do miliona."], "continueLabel": "Rozpocznij drogę", "safe": true, "fact": "Pierwsze zamówienie AMSO zostało przygotowane własnymi rękami w małym sklepie i magazynie.", "action": "Pracownik składa karton, wkłada urządzenie, zamyka paczkę i nakleja etykietę.", "finalFrame": "Gotowa pierwsza paczka stoi przy wyjściu z małego magazynu, a zespół AMSO jest obok." }
         ]
       },
@@ -252,7 +252,7 @@
         "id": "story.challenge_handoff", "chapter": "finale", "eyebrow": "TRYB WYZWANIA", "title": "Wynik zostaje. Zasady się zmieniają.",
         "body": ["Płynnie przechodzisz z historii do Trybu Wyzwania."], "vignette": "thank-you", "continueLabel": "Podejmuję wyzwanie", "perspective": "challenge",
         "steps": [
-          { "id": "rules-change", "title": "Wynik zostaje. Zasady się zmieniają.", "body": ["Zachowujesz punkty, paczki i aktywne bonusy. Teraz tempo rośnie, a pierwsze niezabezpieczone zderzenie kończy bieg. Ochrona może uratować próbę raz."], "continueLabel": "Podejmuję wyzwanie", "safe": true, "fact": "Po fabule wynik pozostaje, a challenge kończy pierwsze niezabezpieczone zderzenie.", "action": "Panel zachowanego wyniku przesuwa się obok znaku TRYB WYZWANIA i tarczy Ochrony.", "finalFrame": "Zachowany wynik, nowe zasady i aktywna Ochrona są opisane przed odliczaniem 3–2–1." }
+          { "id": "rules-change", "title": "Wynik zostaje. Zasady się zmieniają.", "body": ["Zachowujesz punkty, paczki i aktywne bonusy. Teraz tempo rośnie, a pierwsze niezabezpieczone zderzenie kończy bieg. Gwarancja 48 M może uratować próbę raz."], "continueLabel": "Podejmuję wyzwanie", "safe": true, "fact": "Po fabule wynik pozostaje, a challenge kończy pierwsze niezabezpieczone zderzenie.", "action": "Panel zachowanego wyniku przesuwa się obok znaku TRYB WYZWANIA i tarczy Gwarancji 48 M.", "finalFrame": "Zachowany wynik, nowe zasady i aktywna Gwarancja 48 M są opisane przed odliczaniem 3–2–1." }
         ]
       }
     ],

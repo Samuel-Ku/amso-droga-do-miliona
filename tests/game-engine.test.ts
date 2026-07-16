@@ -325,6 +325,68 @@ describe("difficulty and responsive canvas", () => {
 });
 
 describe("boss rendering", () => {
+  it("keeps every obstacle family free of overlay copy while package labels stay visible", () => {
+    const drawnText: string[] = [];
+    const contextTarget: Record<PropertyKey, unknown> = {
+      createLinearGradient: () => ({ addColorStop(): void {} }),
+      fillText: (value: string) => drawnText.push(value)
+    };
+    const context = new Proxy(contextTarget, {
+      get(target, key) {
+        if (key in target) return target[key];
+        return (): void => {};
+      },
+      set(target, key, value) {
+        target[key] = value;
+        return true;
+      }
+    }) as unknown as CanvasRenderingContext2D;
+    const obstacles = createObstaclePool(3);
+    const obstacleFixtures = [
+      { kind: "pallet", semanticVariant: "first-laptop", y: 410, width: 92, height: 72 },
+      { kind: "trolley", semanticVariant: "growing-team", y: 395, width: 78, height: 88 },
+      { kind: "overhead", semanticVariant: "dispatch", y: 318, width: 76, height: 70 }
+    ] as const;
+    obstacles.forEach((obstacle, index) => {
+      const fixture = obstacleFixtures[index]!;
+      obstacle.active = true;
+      obstacle.kind = fixture.kind;
+      obstacle.semanticVariant = fixture.semanticVariant;
+      obstacle.x = 500 + index * 110;
+      obstacle.y = fixture.y;
+      obstacle.width = fixture.width;
+      obstacle.height = fixture.height;
+    });
+    const parcel = createPackagePool(1)[0]!;
+    parcel.active = true;
+    parcel.storyOrder = true;
+    parcel.packageType = "pc";
+    parcel.x = 420;
+    parcel.y = 380;
+
+    new WarehouseRenderer().render(context, 960, 540, {
+      state: "running",
+      runner: createRunnerModel(),
+      obstacles,
+      packages: [parcel],
+      boss: new BossDirector().model,
+      elapsedSeconds: 1,
+      distancePixels: 100,
+      speed: 280,
+      reducedMotion: false,
+      impact: false,
+      epochIndex: 0,
+      epochName: "",
+      epochYear: "",
+      themeIndex: -1,
+      cutscene: null,
+      activePowerUps: []
+    });
+
+    expect(drawnText).toContain("PC");
+    expect(drawnText).not.toEqual(expect.arrayContaining(["LAPTOP", "ZESPÓŁ", "WYSYŁKA"]));
+  });
+
   it("renders warning, attack and reward states with a golden parcel", () => {
     const contextTarget: Record<PropertyKey, unknown> = {
       createLinearGradient: () => ({ addColorStop(): void {} })

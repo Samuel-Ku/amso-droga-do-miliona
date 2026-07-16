@@ -529,7 +529,6 @@ export class CampaignShell {
   private challengeResult: CampaignChallengeResult | null = null;
   private lastCountdownValue: CampaignStoryCountdownValue | null = null;
   private readonly storyContinuationGate = new StoryContinuationGate();
-  private storyUnlockTimer: number | null = null;
   private readonly orientationQuery: MediaQueryList | null;
 
   public constructor(
@@ -573,7 +572,7 @@ export class CampaignShell {
             height="540"
             tabindex="-1"
             aria-hidden="true"
-            aria-label="Pole gry. Spacja lub tapnięcie wykonuje skok. Strzałka w dół, S lub przesunięcie w dół wykonuje ślizg."
+            aria-label="Pole gry. W lub strzałka w górę oraz Spacja lub tapnięcie wykonują skok. S lub strzałka w dół oraz przesunięcie w dół wykonują ślizg."
           ></canvas>
           <div class="amso-campaign__milestone-message" data-campaign-milestone-message hidden aria-hidden="true"></div>
           <div class="amso-campaign__trust-sphere" aria-hidden="true"></div>
@@ -672,7 +671,7 @@ export class CampaignShell {
                 <strong>Bonusy</strong>
                 <span><b>AUDYT</b> — przez 7 s zwiększa odstępy bez zwalniania kuriera.</span>
                 <span><b>×2 WYNIK</b> — przez 7 s podwaja punkty za paczki.</span>
-                <span><b>GWARANCJA ×1</b> — pochłania jedno zderzenie, a potem pęka.</span>
+                <span><b>GWARANCJA 48 M ×1</b> — pochłania jedno zderzenie, a potem pęka.</span>
               </div>
               <div class="amso-campaign__actions">
                 <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-resume data-campaign-copy="resume">Wznów</button>
@@ -711,7 +710,7 @@ export class CampaignShell {
                 <span><small>Wynik wyzwania</small> <strong data-campaign-challenge-score>0</strong></span>
                 <span><small data-campaign-challenge-best-label>Twój rekord wyzwania</small> <strong data-campaign-challenge-best>0</strong></span>
                 <span><small data-campaign-copy="resultDistance">Przebyta droga</small> <strong><i data-campaign-challenge-distance>0</i> m</strong></span>
-                <span data-campaign-challenge-saves-stat><small data-campaign-copy="resultWarranty">Ochrona uratowała bieg</small> <strong data-campaign-challenge-saves>0</strong></span>
+                <span data-campaign-challenge-saves-stat><small data-campaign-copy="resultWarranty">Gwarancja 48 M uratowała bieg</small> <strong data-campaign-challenge-saves>0</strong></span>
               </div>
               <div class="amso-campaign__actions">
                 <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-restart-challenge data-campaign-copy="retryChallenge">Spróbuj jeszcze raz</button>
@@ -909,10 +908,7 @@ export class CampaignShell {
     if (this.destroyed) return;
     const scene = snapshotStoryScene(input);
     const wasGame = this.root.dataset.view === "game";
-    const lockDurationMs = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-      ? 500
-      : 1_500;
-    const isNewScene = this.storyContinuationGate.arm(scene.presentationId, lockDurationMs);
+    const isNewScene = this.storyContinuationGate.arm(scene.presentationId);
     if (wasGame) this.callbacks.onSlide(false, "keyboard");
 
     this.activeMode = "story";
@@ -949,15 +945,8 @@ export class CampaignShell {
     this.storyContinueButton.textContent = scene.continueLabel;
     this.storyContinueButton.dataset.sceneId = scene.sceneId;
     this.storyContinueButton.dataset.presentationId = scene.presentationId;
-    this.storyContinueButton.disabled = true;
+    this.storyContinueButton.disabled = false;
     this.storySceneBody.focus({ preventScroll: true });
-    if (this.storyUnlockTimer !== null) window.clearTimeout(this.storyUnlockTimer);
-    this.storyUnlockTimer = window.setTimeout(() => {
-      this.storyUnlockTimer = null;
-      if (this.destroyed || this.storyContinueButton.dataset.presentationId !== scene.presentationId ||
-          this.storyContinuationGate.isLocked(scene.presentationId)) return;
-      this.storyContinueButton.disabled = false;
-    }, lockDurationMs);
     this.announce([
       scene.eyebrow, scene.title, ...scene.body, scene.action, scene.finalFrame
     ].filter(Boolean).join(". "));
@@ -1204,7 +1193,6 @@ export class CampaignShell {
   public destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
-    if (this.storyUnlockTimer !== null) window.clearTimeout(this.storyUnlockTimer);
     document.removeEventListener("keydown", this.handleKeydown, true);
     document.removeEventListener("keyup", this.handleKeyup, true);
     document.removeEventListener("visibilitychange", this.handleVisibilityChange);
@@ -1348,10 +1336,6 @@ export class CampaignShell {
   }
 
   private hideStoryPresentation(): void {
-    if (this.storyUnlockTimer !== null) {
-      window.clearTimeout(this.storyUnlockTimer);
-      this.storyUnlockTimer = null;
-    }
     this.storyPresentation.hidden = true;
     this.storySceneCard.hidden = false;
     this.storyCountdown.hidden = true;
@@ -1575,7 +1559,8 @@ export class CampaignShell {
     if (!this.canControl() || event.repeat) return;
     const interactive = event.target instanceof Element && event.target.closest("button, a, input") !== null;
     if (interactive) return;
-    const jump = event.code === "Space" || event.key === " ";
+    const jump = event.code === "Space" || event.key === " " ||
+      event.code === "ArrowUp" || event.code === "KeyW";
     const slide = event.code === "ArrowDown" || event.code === "KeyS";
     if (jump) {
       event.preventDefault();
