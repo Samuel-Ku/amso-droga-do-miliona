@@ -24,16 +24,29 @@ describe("v6 player-paced story content", () => {
         "fact" in step && "action" in step && "finalFrame" in step
       )).toBe(true);
     }
-    expect(scene("client.business_growth").steps).toHaveLength(4);
+    expect(scene("client.business_start").steps).toHaveLength(1);
+    expect(scene("client.business_growth").steps).toHaveLength(3);
     expect(activeScenes.flatMap(({ steps }) => steps)).toHaveLength(14);
   });
 
   it("preserves the approved 300 zł to 100 000 zł growth facts", () => {
-    const story = text("client.business_growth");
-    for (const fact of ["do 400 zł", "za 300 zł", "Po roku", "100 000 zł"]) {
+    const story = `${text("client.business_start")} ${text("client.business_growth")}`;
+    for (const fact of ["do 400 zł", "za 300 zł", "Po roku", "100 000 zł", "siedem lat"]) {
       expect(story).toContain(fact);
     }
     expect(story).not.toContain("300 000");
+  });
+
+  it("reveals client outcomes and annual scale only after their gameplay", () => {
+    const sequence = productionConfig.story.sequence.map((step) =>
+      step.type === "scene" ? `scene:${step.sceneId}` : `play:${step.id}`
+    );
+    expect(sequence.indexOf("scene:client.business_start"))
+      .toBeLessThan(sequence.indexOf("play:epoch_3.client_growth"));
+    expect(sequence.indexOf("scene:client.business_growth"))
+      .toBeGreaterThan(sequence.indexOf("play:epoch_3.client_growth"));
+    expect(sequence.indexOf("scene:story.scale"))
+      .toBeGreaterThan(sequence.indexOf("play:epoch_4.order_scale"));
   });
 
   it("keeps removed client stories out of production while acknowledging many stories", () => {

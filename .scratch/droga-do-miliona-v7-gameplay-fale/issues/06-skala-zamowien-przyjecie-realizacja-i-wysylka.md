@@ -16,3 +16,7 @@ Status: ready-for-human
 - [x] Payoff pokazuje domknięty przepływ przyjęcie → realizacja → wysyłka bez abstrakcyjnych linii i ramek.
 - [x] Bezpieczna animacja po poziomie wyjaśnia `28 000 telefonów rocznie ≈ 240 m ≈ PKiN` za pomocą rozpoznawalnych obiektów.
 - [x] Test lifecycle potwierdza trwałość ukończonych stref, retry bieżącej fali, ochronę gwarancji, semantyczny HUD i przejście do porównania skali.
+
+## Comments
+
+2026-07-16: Payoff `28 000 telefonów rocznie ≈ 240 m ≈ PKiN` został przeniesiony za grywalne strefy Przyjęcie → Realizacja → Wysyłka. Test kolejności produkcyjnej blokuje ponowne umieszczenie porównania przed poziomem.

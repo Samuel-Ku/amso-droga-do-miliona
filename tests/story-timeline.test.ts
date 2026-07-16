@@ -184,6 +184,7 @@ describe("player-paced story timeline", () => {
       "story.first_package",
       "story.order_backlog",
       "story.quality_promise",
+      "client.business_start",
       "client.business_growth",
       "story.matching_result",
       "story.scale",

@@ -138,6 +138,8 @@ export function formatStoryControlsHud(
 }
 
 const SCALE_ZONE_LABELS = ["PRZYJĘCIE", "REALIZACJA", "WYSYŁKA"] as const;
+const SCALE_ZONE_SYMBOLS = ["📥", "⚙️", "🚚"] as const;
+const GROWTH_PHASE_SYMBOLS = ["💻", "👥", "🏢"] as const;
 
 /** One semantic objective slot for every authored v7 microlevel. */
 export function formatAuthoredWaveHud(
@@ -145,22 +147,30 @@ export function formatAuthoredWaveHud(
 ): string | null {
   if (progress === null) return null;
   const completed = Math.min(progress.wavesCompleted, progress.waveTarget);
+  const actionCue = progress.currentObstacleVariant === "parcel-arc"
+    ? "ZBIERZ PACZKI"
+    : (progress.currentActions ?? [])
+      .map((action) => action === "jump" ? "↑ SKOK" : "↓ ŚLIZG")
+      .join(" + ");
+  const actionSuffix = actionCue ? ` · ${actionCue}` : "";
   switch (progress.microlevelId) {
     case "first-package":
-      return `RUCHY ${completed}/${progress.waveTarget}`;
+      return `📦 RUCHY ${completed}/${progress.waveTarget}${actionSuffix}`;
     case "order-backlog":
-      return `FALE ZATORU ${completed}/${progress.waveTarget}`;
+      return `📦 FALE ZATORU ${completed}/${progress.waveTarget}${actionSuffix}`;
     case "quality-process": {
       const devices = Math.min(4, Math.floor(completed / 3));
       const step = progress.completed ? 3 : completed % 3 + 1;
-      return `SPRAWDZONE ${devices}/4 · KROK ${step}/3`;
+      return `💻 SPRAWDZONE ${devices}/4 · KROK ${step}/3`;
     }
-    case "client-growth":
-      return `ROZWÓJ ${Math.min(3, Math.floor(completed / 2) + (progress.completed ? 0 : 1))}/3`;
+    case "client-growth": {
+      const phase = Math.min(2, Math.floor(completed / 2));
+      return `${GROWTH_PHASE_SYMBOLS[phase]} ROZWÓJ ${progress.completed ? 3 : phase + 1}/3`;
+    }
     case "order-scale": {
       const zoneIndex = Math.min(2, Math.floor(completed / 3));
       const step = progress.completed ? 3 : completed % 3 + 1;
-      return `${SCALE_ZONE_LABELS[zoneIndex]} ${step}/3`;
+      return `${SCALE_ZONE_SYMBOLS[zoneIndex]} ${SCALE_ZONE_LABELS[zoneIndex]} ${step}/3`;
     }
     case "million-threshold": {
       const target = progress.totalPackageTarget ?? 50;

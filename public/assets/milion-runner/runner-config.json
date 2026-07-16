@@ -197,13 +197,19 @@
         ]
       },
       {
-        "id": "client.business_growth", "chapter": "epoch_3", "eyebrow": "Historia klienta", "title": "Od laptopa za 300 zł do budżetu 100 000 zł.",
-        "body": ["Firma klienta urosła, ale rozsądny wybór sprzętu pozostał ważny."], "vignette": "growing-business", "continueLabel": "Dalej", "perspective": "client",
+        "id": "client.business_start", "chapter": "epoch_3", "eyebrow": "Historia klienta", "title": "Firma zaczynała od jednego potrzebnego narzędzia.",
+        "body": ["Najpierw poznajemy potrzebę i budżet. Rezultat tej historii odsłoni się dopiero po przejściu trzech faz rozwoju."], "vignette": "growing-business", "continueLabel": "Rozpocznij historię klienta", "perspective": "client",
         "steps": [
-          { "id": "new-business", "title": "Na początku liczył się budżet.", "body": ["Klient dopiero rozpoczynał działalność. Potrzebował pierwszego narzędzia do pracy i przyszedł do AMSO po laptop w budżecie do 400 zł."], "continueLabel": "Dalej", "safe": true, "fact": "Klient rozpoczynający działalność szukał laptopa w budżecie do 400 zł.", "action": "Klient sprawdza portfel i przekazuje pracownikowi kartę z budżetem do 400 zł.", "finalFrame": "Ten sam anonimowy klient siedzi przy pustym biurku obok czytelnej kwoty 400 zł." },
+          { "id": "new-business", "title": "Na początku liczył się budżet.", "body": ["Klient dopiero rozpoczynał działalność. Potrzebował pierwszego narzędzia do pracy i przyszedł do AMSO po laptop w budżecie do 400 zł."], "continueLabel": "Rozpocznij trzy fazy", "safe": true, "fact": "Klient rozpoczynający działalność szukał laptopa w budżecie do 400 zł.", "action": "Klient sprawdza portfel i przekazuje pracownikowi kartę z budżetem do 400 zł.", "finalFrame": "Ten sam anonimowy klient siedzi przy pustym biurku obok czytelnej kwoty 400 zł." }
+        ]
+      },
+      {
+        "id": "client.business_growth", "chapter": "epoch_3", "eyebrow": "Historia klienta — rezultat", "title": "Trzy fazy pokazały, jak rosła firma klienta.",
+        "body": ["Po ukończeniu faz: pierwszy laptop, większy zespół i rozwinięte biuro — odsłaniamy potwierdzone rezultaty."], "vignette": "growing-business", "continueLabel": "Poznaj rezultat", "perspective": "client",
+        "steps": [
           { "id": "three-hundred", "title": "Wybrał laptop za 300 zł.", "body": ["Sprawdzony laptop zmieścił się w budżecie i pozwolił rozpocząć pracę bez nadmiernego obciążania młodej firmy."], "continueLabel": "Dalej", "safe": true, "fact": "Klient wybrał w AMSO laptop za 300 zł.", "action": "Pracownik przekazuje klientowi pierwszy laptop, a klient ustawia go na biurku.", "finalFrame": "Klient pracuje przy pierwszym laptopie; obok pozostaje etykieta 300 zł." },
           { "id": "one-year", "title": "Po roku firma była większa.", "body": ["Pojawiły się nowe zadania, pracownicy i większe potrzeby sprzętowe. Pierwszy laptop nadal stoi na biurku i łączy oba etapy historii."], "continueLabel": "Dalej", "safe": true, "fact": "Po roku firma klienta rozwinęła się i potrzebowała więcej sprzętu.", "action": "Kalendarz przesuwa się o rok, a wokół pierwszego biurka pojawiają się nowe stanowiska.", "finalFrame": "Ten sam klient i laptop są w większym biurze z kilkoma przygotowanymi stanowiskami." },
-          { "id": "hundred-thousand", "title": "Wrócił z budżetem 100 000 zł.", "body": ["Rozwinięta firma nadal wybierała sprzęt poleasingowy. Pierwszy zakup nie był przypadkiem, lecz początkiem sposobu skalowania wyposażenia."], "continueLabel": "Zbuduj rozwój firmy", "safe": true, "fact": "Po roku ten sam klient wrócił do AMSO z budżetem 100 000 zł.", "action": "Klient przekazuje plan większego zakupu, a stanowiska zespołu wypełniają się sprzętem.", "finalFrame": "Rozwinięte biuro, ten sam klient i pierwszy laptop stoją obok czytelnej kwoty 100 000 zł." }
+          { "id": "hundred-thousand", "title": "Wrócił z budżetem 100 000 zł.", "body": ["Rozwinięta firma nadal wybierała sprzęt poleasingowy. Od tamtej decyzji minęło siedem lat, a klient nadal uważa ten kierunek za dobry wybór dla firmy."], "continueLabel": "Zbuduj rozwój firmy", "safe": true, "fact": "Po roku ten sam klient wrócił do AMSO z budżetem 100 000 zł; przez kolejne siedem lat nadal wybierał sprzęt poleasingowy.", "action": "Klient przekazuje plan większego zakupu, a oś siedmiu lat prowadzi do współczesnego, rozwiniętego biura.", "finalFrame": "Rozwinięte biuro, ten sam klient i pierwszy laptop stoją obok kwoty 100 000 zł oraz podpisu 7 LAT PÓŹNIEJ." }
         ]
       },
       {
@@ -257,11 +263,12 @@
       { "type": "play", "id": "epoch_1.order_backlog", "epochIndex": 0, "durationSeconds": 50 },
       { "type": "scene", "sceneId": "story.quality_promise" },
       { "type": "play", "id": "epoch_2.quality_process", "epochIndex": 1, "durationSeconds": 45 },
-      { "type": "scene", "sceneId": "client.business_growth" },
+      { "type": "scene", "sceneId": "client.business_start" },
       { "type": "play", "id": "epoch_3.client_growth", "epochIndex": 2, "durationSeconds": 40 },
+      { "type": "scene", "sceneId": "client.business_growth" },
       { "type": "scene", "sceneId": "story.matching_result" },
-      { "type": "scene", "sceneId": "story.scale" },
       { "type": "play", "id": "epoch_4.order_scale", "epochIndex": 3, "durationSeconds": 50 },
+      { "type": "scene", "sceneId": "story.scale" },
       { "type": "scene", "sceneId": "story.million_approach" },
       { "type": "scene", "sceneId": "challenge.million_wave" },
       { "type": "play", "id": "epoch_5.million_threshold", "epochIndex": 4, "durationSeconds": 75 },

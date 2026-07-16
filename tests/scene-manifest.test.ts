@@ -11,22 +11,22 @@ import {
 } from "../src/visuals/scene-manifest";
 
 describe("campaign visual scene manifest", () => {
-  it("is the one-to-one visual source for all ten production scenes", () => {
+  it("is the one-to-one visual source for all eleven production scenes", () => {
     const sceneIds = productionConfig.story.scenes.map(({ id }) => id);
     const stateIds = CAMPAIGN_SCENE_MANIFEST.map(({ stateId }) => stateId);
 
     expect(CAMPAIGN_WORLDS).toHaveLength(7);
-    expect(CAMPAIGN_SCENE_MANIFEST).toHaveLength(10);
-    expect(new Set(stateIds).size).toBe(10);
+    expect(CAMPAIGN_SCENE_MANIFEST).toHaveLength(11);
+    expect(new Set(stateIds).size).toBe(11);
     expect(stateIds).toEqual(sceneIds);
     expect(validateSceneManifest(sceneIds)).toEqual([]);
   });
 
   it("gives every card unique art direction and a semantic fallback", () => {
     expect(new Set(CAMPAIGN_SCENE_MANIFEST.map(({ visualEvent }) => visualEvent)).size)
-      .toBe(10);
+      .toBe(11);
     expect(new Set(CAMPAIGN_SCENE_MANIFEST.map(({ revealMotion }) => revealMotion)).size)
-      .toBe(10);
+      .toBe(11);
     for (const state of CAMPAIGN_SCENE_MANIFEST) {
       expect(state.motifs.length).toBeGreaterThan(0);
       expect(state.fallbackId).toMatch(/^fallback-/u);

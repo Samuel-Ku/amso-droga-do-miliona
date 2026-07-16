@@ -48,13 +48,16 @@ function regexEscape(value) {
 }
 
 function sceneMetadata(sceneId) {
+  const copydeckSceneId = sceneId === "client.business_start"
+    ? "client.business_growth"
+    : sceneId;
   const pattern = new RegExp(
-    "###\\s+\\d+\\.\\s+`" + regexEscape(sceneId) +
+    "###\\s+\\d+\\.\\s+`" + regexEscape(copydeckSceneId) +
       "`[^\\n]*\\n([\\s\\S]*?)(?=\\n###\\s+\\d+\\.|\\n##\\s+Fakty wymagające)",
     "u"
   );
   const section = pattern.exec(copydeck)?.[1];
-  if (!section) throw new Error(`Brak sekcji copydecku dla ${sceneId}`);
+  if (!section) throw new Error(`Brak sekcji copydecku dla ${copydeckSceneId}`);
   return {
     goal: /\*\*Cel:\*\*\s*([^\n]+)/u.exec(section)?.[1]?.trim() ?? "",
     facts: /\*\*Fakty:\*\*\s*([^\n]+)/u.exec(section)?.[1]?.trim() ?? "",

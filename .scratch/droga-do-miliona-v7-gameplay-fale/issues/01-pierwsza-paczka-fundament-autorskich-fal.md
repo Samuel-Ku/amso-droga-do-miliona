@@ -17,3 +17,7 @@ Status: ready-for-human
 - [x] HUD pokazuje jeden semantyczny cel `RUCHY 2/4` z czytelnymi miniaturami ruchów.
 - [x] Publiczny snapshot i lokalny raport QA zawierają wynik fali, próby, zebranie, pomyłkę akcji, combo i czas segmentu.
 - [x] Test lifecycle przechodzi cały mikropoziom, w tym success, perfect, retry i zakończenie dopiero po minimalnym czasie oraz celu.
+
+## Comments
+
+2026-07-16: `obstacleVariant` nie jest już wyłącznie metadanymi walidatora. Przechodzi przez `SpawnWave` do modelu i renderera, który dodaje konkretną etykietę oraz piktogram przedmiotu/procesu bez zmiany sprawdzonego hitboxa. Semantyczny HUD pokazuje również bieżący ruch `↑ SKOK` / `↓ ŚLIZG` albo bezpieczne `ZBIERZ PACZKI`.

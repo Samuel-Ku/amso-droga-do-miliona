@@ -16,3 +16,7 @@ Status: ready-for-human
 - [x] Kolejne zebrania bonusu nie przerywają gry, a etykieta i licznik czasu zapobiegają pomyleniu go z dodatkowym życiem.
 - [x] Payoff łączy trzy fazy w jedną emocjonalną przemianę bez dopisywania niepotwierdzonych faktów.
 - [x] Test lifecycle potwierdza kolejność faktów, brak tekstu podczas biegu, retry fazy, działanie `×2 WYNIK` i poprawne przejście świata.
+
+## Comments
+
+2026-07-16: Scena przed poziomem podaje wyłącznie punkt wyjścia i budżet do 400 zł. Dopiero po ukończeniu trzech grywalnych faz bezpieczna, sterowana przez gracza animacja odsłania laptop za 300 zł, powrót po roku z budżetem 100 000 zł oraz siedem lat dalszego wyboru sprzętu poleasingowego. Fakty klienta pozostają oznaczone perspektywą `Historia klienta — rezultat`.

@@ -71,6 +71,8 @@ export interface AuthoredWaveProgressSnapshot {
   wavesCompleted: number;
   waveTarget: number;
   currentWaveId: string;
+  currentActions?: readonly AuthoredWaveAction[];
+  currentObstacleVariant?: string;
   attemptsOnCurrentWave: number;
   packagesCollectedOnCurrentWave: number;
   packagesAvailableOnCurrentWave: number;
@@ -322,6 +324,8 @@ export class AuthoredWaveDirector {
       wavesCompleted: this.wavesCompleted,
       waveTarget: this.definition.repeatWavesUntil ?? this.definition.waves.length,
       currentWaveId: wave?.id ?? "",
+      currentActions: wave?.actions ?? [],
+      currentObstacleVariant: wave?.obstacleVariant ?? "",
       attemptsOnCurrentWave: this.attempts,
       packagesCollectedOnCurrentWave: this.packagesCollected,
       packagesAvailableOnCurrentWave: wave ? availablePackages(wave) : 0,

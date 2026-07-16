@@ -20,4 +20,4 @@ Status: ready-for-human
 
 ## Comments
 
-2026-07-16: Build, walidacja konfiguracji, pakiet autonomiczny, copydeck CSV, raport lokalny oraz pełna automatyczna suita (35 plików, 227 testów) są zielone. Smoke Chromium/WebKit na desktopie, 390 px i reduced motion przeszedł bez błędów, ale czas przejścia, rzeczywista macierz Safari/Windows/urządzeń oraz budżet FPS przy 3,5× pozostają świadomie otwarte do manualnego odbioru w tickecie 03 i `qa/raport-rc-v7.md`.
+2026-07-16: Build, walidacja konfiguracji, pakiet autonomiczny, copydeck CSV, raport lokalny oraz pełna automatyczna suita (35 plików, 230 testów) są zielone. Smoke Chromium/WebKit na desktopie, 390 px i reduced motion przeszedł bez błędów, ale czas przejścia, rzeczywista macierz Safari/Windows/urządzeń oraz budżet FPS przy 3,5× pozostają świadomie otwarte do manualnego odbioru w tickecie 03 i `qa/raport-rc-v7.md`.

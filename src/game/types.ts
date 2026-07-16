@@ -37,6 +37,8 @@ export interface ObstacleModel {
   objectiveCredited?: boolean;
   authoredWaveId?: string;
   authoredActionIndex?: number;
+  /** Concrete authored object/process rendered on top of the collision shape. */
+  semanticVariant?: string;
 }
 
 export interface PackageModel {

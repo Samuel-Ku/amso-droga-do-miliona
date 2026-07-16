@@ -1234,6 +1234,7 @@ export class RunnerGame implements RunnerGameApi {
       source: "story-reward",
       authoredWaveId: wave.id,
       authoredActionIndex: this.authoredActionIndex,
+      semanticVariant: wave.obstacleVariant,
       minimumReactionSeconds: reactionSeconds,
       rewards: [{ kind: "standard" }]
     });

@@ -49,7 +49,7 @@ const STORY_VIGNETTES: readonly StoryVignette[] = [
 ];
 const CANONICAL_SCENE_ORDER = [
   "story.first_package", "story.order_backlog", "story.quality_promise",
-  "client.business_growth", "story.matching_result", "story.scale",
+  "client.business_start", "client.business_growth", "story.matching_result", "story.scale",
   "story.million_approach", "challenge.million_wave",
   "story.million_finale", "story.challenge_handoff"
 ] as const;
@@ -57,8 +57,9 @@ const CANONICAL_SEQUENCE = [
   "scene:story.first_package", "play:epoch_1.first_package:0",
   "scene:story.order_backlog", "play:epoch_1.order_backlog:0",
   "scene:story.quality_promise", "play:epoch_2.quality_process:1",
-  "scene:client.business_growth", "play:epoch_3.client_growth:2",
-  "scene:story.matching_result", "scene:story.scale", "play:epoch_4.order_scale:3",
+  "scene:client.business_start", "play:epoch_3.client_growth:2",
+  "scene:client.business_growth", "scene:story.matching_result", "play:epoch_4.order_scale:3",
+  "scene:story.scale",
   "scene:story.million_approach", "scene:challenge.million_wave",
   "play:epoch_5.million_threshold:4",
   "scene:story.million_finale", "scene:story.challenge_handoff"

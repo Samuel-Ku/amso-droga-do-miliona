@@ -1113,6 +1113,105 @@ function drawObstacle(context: CanvasRenderingContext2D, obstacle: Readonly<Obst
       drawOverhead(context, obstacle);
       break;
   }
+  drawSemanticObstacleDetail(context, obstacle);
+}
+
+const SEMANTIC_OBSTACLE_LABELS: Readonly<Record<string, string>> = {
+  "parcel-arc": "PACZKA",
+  "box-stack": "ZATOR",
+  "scanner-gate": "SKAN",
+  "dispatch-pair": "WYSYŁKA",
+  "shelf-beam": "REGAŁ",
+  "loaded-pallet": "PALETA",
+  "warehouse-curtain": "STREFA",
+  "parcel-trolley": "WÓZEK",
+  "equipment-crate": "SPRZĘT",
+  "low-conveyor": "TAŚMA",
+  "device-pallet": "LAPTOP",
+  "checked-device": "SPRAWDZONY",
+  "first-laptop": "LAPTOP",
+  "growing-team": "ZESPÓŁ",
+  "established-office": "BIURO",
+  intake: "PRZYJĘCIE",
+  routing: "REALIZACJA",
+  dispatch: "WYSYŁKA",
+  single: "1 RUCH",
+  doublet: "2 RUCHY",
+  "three-action": "3 RUCHY",
+  "long-arc": "DŁUGI ŁUK",
+  "low-line": "NISKO",
+  "tempo-change": "ZMIANA TEMPA",
+  mastery: "FINAŁ",
+  "recovery-route": "ODZYSKAJ"
+};
+
+/** Adds a concrete object/process cue while the proven hitbox remains unchanged. */
+function drawSemanticObstacleDetail(
+  context: CanvasRenderingContext2D,
+  obstacle: Readonly<ObstacleModel>
+): void {
+  const variant = obstacle.semanticVariant;
+  const label = variant ? SEMANTIC_OBSTACLE_LABELS[variant] : undefined;
+  if (!variant || !label) return;
+  const width = Math.max(48, Math.min(76, obstacle.width - 8));
+  const height = 21;
+  const x = obstacle.x + (obstacle.width - width) / 2;
+  const y = obstacle.y + Math.max(4, Math.min(obstacle.height - height - 3, 8));
+  context.save();
+  fillRoundedRectangle(context, x, y, width, height, 5, "rgba(255,255,255,0.94)");
+  context.strokeStyle = COLORS.ink;
+  context.lineWidth = 1.5;
+  roundedRectangle(context, x, y, width, height, 5);
+  context.stroke();
+
+  const iconX = x + 10;
+  const iconY = y + 10.5;
+  context.strokeStyle = COLORS.red;
+  context.fillStyle = COLORS.orange;
+  context.lineWidth = 2;
+  if (["first-laptop", "device-pallet", "checked-device", "equipment-crate"].includes(variant)) {
+    context.strokeRect(iconX - 6, iconY - 6, 12, 9);
+    context.beginPath();
+    context.moveTo(iconX - 8, iconY + 5);
+    context.lineTo(iconX + 8, iconY + 5);
+    context.stroke();
+  } else if (variant === "growing-team") {
+    for (const offset of [-4, 4]) {
+      context.beginPath();
+      context.arc(iconX + offset, iconY - 4, 3, 0, Math.PI * 2);
+      context.fill();
+    }
+    context.fillRect(iconX - 9, iconY + 1, 18, 6);
+  } else if (variant === "established-office") {
+    context.strokeRect(iconX - 7, iconY - 7, 14, 14);
+    context.fillRect(iconX - 4, iconY - 4, 3, 3);
+    context.fillRect(iconX + 2, iconY - 4, 3, 3);
+    context.fillRect(iconX - 1, iconY + 2, 4, 5);
+  } else if (variant === "dispatch") {
+    context.strokeRect(iconX - 8, iconY - 4, 10, 8);
+    context.strokeRect(iconX + 2, iconY - 1, 6, 5);
+    for (const wheel of [-4, 5]) {
+      context.beginPath();
+      context.arc(iconX + wheel, iconY + 6, 2, 0, Math.PI * 2);
+      context.fill();
+    }
+  } else {
+    context.fillRect(iconX - 6, iconY - 5, 12, 10);
+    context.beginPath();
+    context.moveTo(iconX, iconY - 9);
+    context.lineTo(iconX, iconY + 9);
+    context.moveTo(iconX - 4, iconY + 5);
+    context.lineTo(iconX, iconY + 9);
+    context.lineTo(iconX + 4, iconY + 5);
+    context.stroke();
+  }
+
+  context.fillStyle = COLORS.ink;
+  context.font = "900 6.5px system-ui, sans-serif";
+  context.textAlign = "left";
+  context.textBaseline = "middle";
+  context.fillText(label, x + 21, y + height / 2 + 0.5, width - 24);
+  context.restore();
 }
 
 function drawFirstAmsoParcel(

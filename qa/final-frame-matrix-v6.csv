@@ -7,8 +7,8 @@ FF03-D;story.order_backlog;backlog-challenge;desktop;1600;900
 FF03-M;story.order_backlog;backlog-challenge;mobile;390;844
 FF04-D;story.quality_promise;quality-process;desktop;1600;900
 FF04-M;story.quality_promise;quality-process;mobile;390;844
-FF05-D;client.business_growth;new-business;desktop;1600;900
-FF05-M;client.business_growth;new-business;mobile;390;844
+FF05-D;client.business_start;new-business;desktop;1600;900
+FF05-M;client.business_start;new-business;mobile;390;844
 FF06-D;client.business_growth;three-hundred;desktop;1600;900
 FF06-M;client.business_growth;three-hundred;mobile;390;844
 FF07-D;client.business_growth;one-year;desktop;1600;900

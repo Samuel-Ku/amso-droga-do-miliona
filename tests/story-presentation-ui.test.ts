@@ -114,14 +114,27 @@ describe("player-paced story presentation", () => {
       completed: false,
       lastResult: null
     } as const;
-    expect(formatAuthoredWaveHud({ ...base, microlevelId: "order-backlog" }))
-      .toBe("FALE ZATORU 3/8");
+    expect(formatAuthoredWaveHud({
+      ...base,
+      microlevelId: "order-backlog",
+      currentActions: ["jump", "slide"]
+    })).toBe("📦 FALE ZATORU 3/8 · ↑ SKOK + ↓ ŚLIZG");
     expect(formatAuthoredWaveHud({
       ...base,
       microlevelId: "million-threshold",
       totalPackagesCollected: 12,
       totalPackageTarget: 50
     })).toBe("999 962");
+  });
+
+  it("uses recognizable object and process symbols in authored HUD slots", () => {
+    const source = readFileSync(
+      new URL("../src/ui/story-presentation.ts", import.meta.url),
+      "utf8"
+    );
+    for (const symbol of ["📦", "💻", "👥", "🏢", "📥", "🚚"]) {
+      expect(source).toContain(symbol);
+    }
   });
 
   it("keeps controls in the top HUD and removes visible bottom gameplay text", () => {

@@ -11,7 +11,7 @@ const worldByBeat = {
   "story.first_package:first-hand-packed": "first-mile",
   "story.order_backlog:backlog-challenge": "order-process",
   "story.quality_promise:quality-process": "quality-service",
-  "client.business_growth:new-business": "client-paths",
+  "client.business_start:new-business": "client-paths",
   "client.business_growth:three-hundred": "client-paths",
   "client.business_growth:one-year": "client-paths",
   "client.business_growth:hundred-thousand": "client-paths",

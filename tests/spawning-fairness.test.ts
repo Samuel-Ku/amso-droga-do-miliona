@@ -12,6 +12,9 @@ import { SeededRandom } from "../src/game/random";
 import {
   createBossAttackWave,
   createAuthoredRewardWave,
+  createObstaclePool,
+  createPackagePool,
+  activateWave,
   authoredRewardSpawnX,
   findSafeCollectibleX,
   FairSpawner,
@@ -234,6 +237,23 @@ describe("challenge spawning fairness", () => {
         })).toBe(false);
       }
     }
+  });
+
+  it("carries the semantic authored variant into the activated obstacle", () => {
+    const obstacles = createObstaclePool(1);
+    const packages = createPackagePool(8);
+    const wave = createAuthoredRewardWave({
+      action: "jump",
+      obstacleKind: "pallet",
+      spawnX: 1_400,
+      speed: 300,
+      rewards: [{ kind: "standard" }],
+      packageCount: 3,
+      semanticVariant: "first-laptop"
+    });
+    expect(wave).not.toBeNull();
+    expect(activateWave(wave!, obstacles, packages)).toBe(true);
+    expect(obstacles[0]?.semanticVariant).toBe("first-laptop");
   });
 
   it("moves a special package away from hazards and existing rewards before spawning", () => {

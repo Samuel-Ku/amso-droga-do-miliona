@@ -63,6 +63,7 @@ export interface SpawnWave {
   gapPixels: number;
   authoredWaveId?: string;
   authoredActionIndex?: number;
+  semanticVariant?: string;
 }
 
 export type AuthoredRewardAction = "jump" | "slide";
@@ -84,6 +85,7 @@ export interface AuthoredRewardWaveOptions {
   obstacleKind?: ObstacleKind;
   authoredWaveId?: string;
   authoredActionIndex?: number;
+  semanticVariant?: string;
   minimumReactionSeconds?: number;
 }
 
@@ -538,7 +540,8 @@ export function createAuthoredRewardWave(
     ...(options.authoredWaveId ? { authoredWaveId: options.authoredWaveId } : {}),
     ...(options.authoredActionIndex === undefined
       ? {}
-      : { authoredActionIndex: options.authoredActionIndex })
+      : { authoredActionIndex: options.authoredActionIndex }),
+    ...(options.semanticVariant ? { semanticVariant: options.semanticVariant } : {})
   };
 }
 
@@ -583,6 +586,8 @@ export function activateWave(
   else delete obstacle.authoredWaveId;
   if (wave.authoredActionIndex !== undefined) obstacle.authoredActionIndex = wave.authoredActionIndex;
   else delete obstacle.authoredActionIndex;
+  if (wave.semanticVariant) obstacle.semanticVariant = wave.semanticVariant;
+  else delete obstacle.semanticVariant;
 
   for (let index = 0; index < wave.packages.length; index += 1) {
     const spawn = wave.packages[index];

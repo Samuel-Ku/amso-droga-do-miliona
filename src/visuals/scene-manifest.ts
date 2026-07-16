@@ -492,11 +492,12 @@ function editorialScene(
   };
 }
 
-/** The ten production story scenes approved for the clearly attributed story. */
+/** The eleven production story scenes approved for the clearly attributed story. */
 export const CAMPAIGN_SCENE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze([
   editorialScene("intro.ready", "story.first_package", "prologue"),
   editorialScene("epoch_1.challenge", "story.order_backlog", "epoch_1"),
   editorialScene("epoch_2.setup", "story.quality_promise", "epoch_2"),
+  editorialScene("epoch_3.start", "client.business_start", "epoch_3"),
   editorialScene("epoch_3.business", "client.business_growth", "epoch_3"),
   editorialScene("epoch_3.b2b", "story.matching_result", "epoch_3", {
     motifs: ["separate-clients", "equipment-sets", "dispatch-bench"],
@@ -547,7 +548,7 @@ const STORY_PAGE_VISUAL_STATES: Readonly<Record<string, string>> = Object.freeze
   "story.first_package:first-hand-packed": "intro.promise",
   "story.order_backlog:backlog-challenge": "epoch_1.challenge",
   "story.quality_promise:quality-process": "epoch_2.resolve",
-  "client.business_growth:new-business": "epoch_3.start",
+  "client.business_start:new-business": "epoch_3.start",
   "client.business_growth:three-hundred": "epoch_3.laptop",
   "client.business_growth:one-year": "epoch_3.business",
   "client.business_growth:hundred-thousand": "client.business_growth",
@@ -753,7 +754,7 @@ export function validateSceneManifest(
   const stateIds = states.map(({ stateId }) => stateId);
   const suppliedWorldIds = new Set(worlds.map(({ worldId }) => worldId));
   if (worlds.length !== 7) errors.push("world_count");
-  if (states.length !== 10) errors.push("state_count");
+  if (states.length !== 11) errors.push("state_count");
   if (new Set(stateIds).size !== stateIds.length) errors.push("duplicate_state_id");
   if (sceneIds.length !== stateIds.length ||
       sceneIds.some((sceneId, index) => sceneId !== stateIds[index])) {
