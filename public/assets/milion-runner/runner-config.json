@@ -95,6 +95,7 @@
           { "id": "courier-animation", "type": "procedural", "source": "procedural:courier-animation", "critical": true },
           { "id": "base-ui", "type": "procedural", "source": "procedural:base-ui", "critical": true },
           { "id": "first-audio-cues", "type": "procedural", "source": "procedural:first-audio-cues", "critical": true },
+          { "id": "courier-amso-a", "type": "image", "source": "/assets/milion-runner/courier-amso-a.webp", "critical": false },
           { "id": "mz-main-lockup-v1", "type": "image", "source": "/assets/milion-runner/brand/mz-main-lockup-v1.avif", "critical": false },
           { "id": "mz-compact-lockup-v1", "type": "image", "source": "/assets/milion-runner/brand/mz-compact-lockup-v1.avif", "critical": false }
         ]

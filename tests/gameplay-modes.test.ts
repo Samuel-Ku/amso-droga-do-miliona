@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import productionConfig from "../public/assets/milion-runner/runner-config.json";
 import { parseRunnerConfig } from "../src/config/schema";
 import type { GameSnapshot } from "../src/game/contracts";
+import type { MilestoneCelebrationEvent } from "../src/game/milestone-celebration";
 import { resolveCollision } from "../src/game/mode-rules";
 import { RunnerGame } from "../src/game/RunnerGame";
 import {
@@ -9,6 +10,7 @@ import {
   type StoryTimelineSnapshot
 } from "../src/game/story-timeline";
 import type { StoryConfig } from "../src/shared/types";
+import type { PackageModel } from "../src/game/types";
 
 function createGameHarness(
   mode: "story" | "challenge",
@@ -75,6 +77,8 @@ function createGameHarness(
   const snapshots: GameSnapshot[] = [];
   const storyUpdates: StoryTimelineSnapshot[] = [];
   const modeChanges: string[] = [];
+  const milestoneCelebrations: MilestoneCelebrationEvent[] = [];
+  const milestoneModes: string[] = [];
   let gameOvers = 0;
   let storyCompletions = 0;
   let narrativeEnds = 0;
@@ -89,6 +93,10 @@ function createGameHarness(
       },
       onStoryUpdate: (snapshot) => storyUpdates.push(snapshot),
       onModeChange: (mode) => modeChanges.push(mode),
+      onMilestoneCelebration: (celebration) => {
+        milestoneCelebrations.push(celebration);
+        milestoneModes.push(snapshots.at(-1)?.mode ?? mode);
+      },
       onNarrativeEnd: () => { narrativeEnds += 1; },
       onStoryComplete: () => { storyCompletions += 1; }
     },
@@ -135,6 +143,8 @@ function createGameHarness(
     snapshots,
     storyUpdates,
     modeChanges,
+    milestoneCelebrations,
+    milestoneModes,
     get gameOvers() { return gameOvers; },
     get storyCompletions() { return storyCompletions; },
     get narrativeEnds() { return narrativeEnds; },
@@ -147,6 +157,25 @@ function createGameHarness(
       visibilityListener?.();
     },
     avoidObstacles,
+    collectPackagesUntil(total: number): void {
+      const internals = game as unknown as {
+        packagesCollected: number;
+        collectPackage(parcel: PackageModel): void;
+      };
+      while (internals.packagesCollected < total) {
+        internals.collectPackage({
+          active: true,
+          kind: "standard",
+          scoreValue: 100,
+          x: 120,
+          y: 400,
+          size: 30,
+          phase: 0,
+          packageType: "notebook",
+          weightKg: 1
+        });
+      }
+    },
     continueCurrentSceneFully(): void {
       const sceneId = storyUpdates.at(-1)?.scene?.id;
       if (!sceneId) throw new Error("story should be waiting on a scene");
@@ -355,11 +384,21 @@ describe("campaign collision contract", () => {
     });
 
     harness.driveStory();
+    harness.advance(3, harness.avoidObstacles);
 
     expect(harness.game.state).toBe("running");
     expect(harness.gameOvers).toBe(0);
     expect(harness.storyCompletions).toBe(1);
     expect(harness.modeChanges).toEqual(["challenge"]);
+    expect(harness.milestoneCelebrations.length).toBeGreaterThan(0);
+    expect(harness.milestoneCelebrations[0]).toMatchObject({
+      threshold: 10,
+      kind: "confetti",
+      intensity: 1,
+      text: "10 PACZEK!"
+    });
+    expect(new Set(harness.milestoneCelebrations.map(({ threshold }) => threshold)).size)
+      .toBe(harness.milestoneCelebrations.length);
     expect(harness.storyUpdates.filter(({ state }) => state === "scene")
       .map(({ scene }) => scene?.id)
       .filter((id, index, ids) => index === 0 || id !== ids[index - 1]))
@@ -399,6 +438,25 @@ describe("campaign collision contract", () => {
     expect(harness.snapshots.at(-1)?.challengeScore).toBeGreaterThan(0);
     expect(harness.snapshots.at(-1)!.score - challengeSnapshot!.score)
       .toBe(harness.snapshots.at(-1)!.challengeScore);
+
+    const finalStorySnapshot = harness.snapshots
+      .filter(({ mode }) => mode === "story")
+      .at(-1);
+    expect(challengeSnapshot?.backgroundTravelPixels)
+      .toBeGreaterThanOrEqual(finalStorySnapshot?.backgroundTravelPixels ?? 0);
+
+    harness.collectPackagesUntil(1_000);
+    expect(harness.milestoneCelebrations.map(({ threshold }) => threshold))
+      .toEqual([10, 50, 100, 500, 1_000]);
+    expect(harness.milestoneModes).toContain("story");
+    expect(harness.milestoneModes).toContain("challenge");
+
+    const eventsBeforeReset = harness.milestoneCelebrations.length;
+    harness.game.reset();
+    harness.game.start("keyboard");
+    harness.collectPackagesUntil(10);
+    expect(harness.milestoneCelebrations.slice(eventsBeforeReset).map(({ threshold }) => threshold))
+      .toEqual([10]);
     harness.game.destroy();
   });
 

@@ -5,6 +5,7 @@ import type { StoryClimaxModel } from "./story-climax";
 import type { StoryObstacleTransformation } from "./story-effects";
 import type { StoryObjectivesSnapshot } from "./story-objectives";
 import type { CampaignWorldId } from "../visuals/scene-manifest";
+import type { MilestoneCelebrationSnapshot } from "./milestone-celebration";
 
 export type ObstacleKind = "box-stack" | "pallet" | "trolley" | "overhead";
 export type ObstacleSource = "normal" | "boss" | "story-climax" | "story-reward";
@@ -105,4 +106,5 @@ export interface RenderScene {
   storyObjectives?: Readonly<StoryObjectivesSnapshot>;
   storyClimax?: Readonly<StoryClimaxModel>;
   obstacleTransformations?: readonly Readonly<StoryObstacleTransformation>[];
+  milestoneCelebration?: Readonly<MilestoneCelebrationSnapshot> | null;
 }

@@ -240,6 +240,10 @@ export class CampaignController {
         } as const;
         this.shell.showPickupNotice(copy[kind]);
       },
+      onMilestoneCelebration: (celebration) => {
+        this.audio.playMilestoneCue(celebration.kind, celebration.intensity);
+        this.shell.announce(celebration.text);
+      },
       onModeChange: (mode) => {
         this.shell.showStoryObjective(null);
         this.shell.showGame(mode);

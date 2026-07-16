@@ -16,6 +16,10 @@ import type { LogisticWavePhase } from "./logistic-wave";
 import type { StoryClimaxPhase, StoryPositiveMotif } from "./story-climax";
 import type { StoryObjectiveId, StoryObjectivesSnapshot } from "./story-objectives";
 import type { CampaignWorldId } from "../visuals/scene-manifest";
+import type {
+  MilestoneCelebrationEvent,
+  MilestoneCelebrationSnapshot
+} from "./milestone-celebration";
 
 export type GameState = "ready" | "running" | "paused" | "game_over" | "destroyed";
 export type ControlMethod = "keyboard" | "pointer" | "touch";
@@ -59,6 +63,9 @@ export interface GameSnapshot {
   bossProgress: number;
   bossAttackCount: number;
   distanceM: number;
+  /** Absolute 10% parallax travel for the cyclic gameplay background. */
+  backgroundTravelPixels?: number;
+  reducedMotion?: boolean;
   durationSeconds: number;
   difficultyLevel: number;
   speed: number;
@@ -71,6 +78,7 @@ export interface GameSnapshot {
   totalWeightKg: number;
   activePowerUps: PowerUpKind[];
   factsUnlockedCount: number;
+  milestoneCelebration?: MilestoneCelebrationSnapshot | null;
 }
 
 export interface GameResult extends GameSnapshot {
@@ -92,6 +100,7 @@ export interface RunnerGameCallbacks {
   onStoryComplete?: () => void;
   onStoryObjectiveCompleted?: (objectiveId: StoryObjectiveId) => void;
   onSpecialPickup?: (kind: Exclude<PackageKind, "standard">) => void;
+  onMilestoneCelebration?: (celebration: MilestoneCelebrationEvent) => void;
   onModeChange?: (mode: GameMode, previousMode: GameMode) => void;
 }
 

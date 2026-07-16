@@ -1,3 +1,8 @@
+import {
+  MILESTONE_CELEBRATION_PRESENTATION,
+  type MilestoneCelebrationKind
+} from "../game/milestone-celebration";
+
 export const CAMPAIGN_AUDIO_CUES = [
   "jump",
   "slide",
@@ -259,6 +264,20 @@ export class CampaignAudio {
       }
     } catch {
       // Web Audio is enhancement-only and must always fail open.
+    }
+  }
+
+  /** Plays the rotating achievement phrase; later cycles add a higher harmony. */
+  public playMilestoneCue(kind: MilestoneCelebrationKind, intensity: number): void {
+    if (this._muted || !this._started || this.destroyed || this.context === null ||
+        this.cueGain === null) return;
+    const notes: number[] = [...MILESTONE_CELEBRATION_PRESENTATION[kind].audioNotes];
+    if (intensity >= 2) notes.push(notes.at(-1)! * 1.25);
+    if (intensity >= 3) notes.push(notes.at(-2)! * 1.5);
+    try {
+      this.playSequence(notes, 0.055, 0.12, 0.55, "triangle");
+    } catch {
+      // Achievement audio is enhancement-only.
     }
   }
 

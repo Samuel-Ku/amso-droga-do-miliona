@@ -3,6 +3,7 @@ import { AMSO_LOGO_DATA_URI } from "./brandLogo";
 import type { ControlMethod, GameSnapshot } from "../game/contracts";
 import { WorldVisualLayer } from "../visuals/WorldVisualLayer";
 import { sceneVisualState } from "../visuals/scene-manifest";
+import { milestoneLayoutForViewport } from "./milestone-layout";
 import {
   fullscreenPreferenceFromElement,
   formatPowerUpHud,
@@ -491,6 +492,7 @@ export class CampaignShell {
   private readonly storyCountdownValue: HTMLElement;
   private readonly presentationBackground: readonly HTMLElement[];
   private readonly hud: HTMLElement;
+  private readonly milestoneMessage: HTMLElement;
   private readonly hudMode: HTMLElement;
   private readonly hudEpoch: HTMLElement;
   private readonly hudObjective: HTMLElement;
@@ -571,6 +573,7 @@ export class CampaignShell {
             aria-hidden="true"
             aria-label="Pole gry. Spacja lub tapnięcie wykonuje skok. Strzałka w dół, S lub przesunięcie w dół wykonuje ślizg."
           ></canvas>
+          <div class="amso-campaign__milestone-message" data-campaign-milestone-message hidden aria-hidden="true"></div>
           <div class="amso-campaign__trust-sphere" aria-hidden="true"></div>
 
           <section class="amso-campaign__hud" data-campaign-hud hidden aria-label="Wynik biegu">
@@ -792,6 +795,7 @@ export class CampaignShell {
     this.storyCountdownLabel = requiredElement(this.root, "[data-campaign-story-countdown-label]");
     this.storyCountdownValue = requiredElement(this.root, "[data-campaign-story-countdown-value]");
     this.hud = requiredElement(this.root, "[data-campaign-hud]");
+    this.milestoneMessage = requiredElement(this.root, "[data-campaign-milestone-message]");
     this.hudMode = requiredElement(this.root, "[data-campaign-hud-mode]");
     this.hudEpoch = requiredElement(this.root, "[data-campaign-hud-epoch]");
     this.hudObjective = requiredElement(this.root, "[data-campaign-hud-objective]");
@@ -823,6 +827,7 @@ export class CampaignShell {
     });
 
     this.installListeners();
+    this.applyMilestoneLayout();
     this.updateNarrowState();
   }
 
@@ -1051,6 +1056,15 @@ export class CampaignShell {
       displayedVisualStateId,
       snapshot.storyObjectives.epoch5.millionThreshold.counterValue,
     ));
+    this.worldVisualLayer.setParallaxDistance(
+      snapshot.backgroundTravelPixels ?? 0,
+      this.root.dataset.view === "game" && !this.paused,
+      snapshot.reducedMotion === true
+    );
+    this.showMilestoneCelebration(
+      snapshot.milestoneCelebration ?? null,
+      snapshot.reducedMotion === true
+    );
     this.hudPackages.textContent = formatInteger(snapshot.packagesCollected);
     this.hudScore.textContent = formatInteger(snapshot.score);
     this.hudCombo.textContent = `×${formatInteger(snapshot.combo)}`;
@@ -1069,6 +1083,26 @@ export class CampaignShell {
         formatStoryObjectiveHud(snapshot.storyObjectives, snapshot.activeStoryOrderTypes)
       );
     }
+  }
+
+  public showMilestoneCelebration(
+    celebration: GameSnapshot["milestoneCelebration"],
+    reducedMotion = false
+  ): void {
+    if (this.destroyed) return;
+    if (celebration === null || celebration === undefined) {
+      this.milestoneMessage.hidden = true;
+      this.milestoneMessage.textContent = "";
+      delete this.milestoneMessage.dataset.kind;
+      delete this.milestoneMessage.dataset.intensity;
+      this.milestoneMessage.removeAttribute("data-reduced-motion");
+      return;
+    }
+    this.milestoneMessage.textContent = celebration.text;
+    this.milestoneMessage.dataset.kind = celebration.kind;
+    this.milestoneMessage.dataset.intensity = String(celebration.intensity);
+    this.milestoneMessage.toggleAttribute("data-reduced-motion", reducedMotion);
+    this.milestoneMessage.hidden = false;
   }
 
   public showPickupNotice(message: string): void {
@@ -1562,8 +1596,15 @@ export class CampaignShell {
   };
 
   private readonly handleResize = (): void => {
+    this.applyMilestoneLayout();
     this.updateNarrowState();
   };
+
+  private applyMilestoneLayout(): void {
+    const layout = milestoneLayoutForViewport(window.innerWidth, window.innerHeight);
+    this.root.style.setProperty("--campaign-milestone-top", `${layout.message.y}px`);
+    this.root.style.setProperty("--campaign-milestone-max-width", `${layout.message.width}px`);
+  }
 
   private tryContinueStory(): void {
     const sceneId = this.storyContinueButton.dataset.sceneId;

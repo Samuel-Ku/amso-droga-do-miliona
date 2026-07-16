@@ -5,6 +5,7 @@ import {
   type CampaignWorldId
 } from "./scene-manifest";
 import { WORLD_ROUTE_SVG } from "./world-route";
+import { WORLD_WIDTH } from "../game/constants";
 
 export type WorldVisualPhase = "landing" | "story" | "game" | "result";
 
@@ -26,27 +27,49 @@ function requiredElement<T extends Element>(root: ParentNode, selector: string):
  * same environment instance.
  */
 export class WorldVisualLayer {
-  private readonly images: readonly [HTMLImageElement, HTMLImageElement];
+  private readonly panels: readonly [HTMLElement, HTMLElement];
+  private readonly tiles: readonly [
+    readonly [HTMLImageElement, HTMLImageElement],
+    readonly [HTMLImageElement, HTMLImageElement]
+  ];
   private activeImageIndex = 0;
   private requestedAssetPath = "";
   private currentWorldId: CampaignWorldId | null = null;
   private currentStateId = "";
+  private lastParallaxCycle: number | null = null;
 
   public constructor(private readonly host: HTMLElement) {
     host.innerHTML = `
       <div class="amso-world-visual__image-stack" aria-hidden="true">
-        <img class="amso-world-visual__image" data-world-image="0" alt="" width="1672" height="941" decoding="async" loading="eager" fetchpriority="high" />
-        <img class="amso-world-visual__image" data-world-image="1" alt="" width="1672" height="941" decoding="async" loading="eager" fetchpriority="high" />
+        <div class="amso-world-visual__panel" data-world-panel="0">
+          <img class="amso-world-visual__image" data-world-image="0" data-world-tile="0" alt="" width="1672" height="941" decoding="async" loading="eager" fetchpriority="high" />
+          <img class="amso-world-visual__image" data-world-image="0-copy" data-world-tile="1" alt="" width="1672" height="941" decoding="async" loading="eager" fetchpriority="high" />
+        </div>
+        <div class="amso-world-visual__panel" data-world-panel="1">
+          <img class="amso-world-visual__image" data-world-image="1" data-world-tile="0" alt="" width="1672" height="941" decoding="async" loading="eager" fetchpriority="high" />
+          <img class="amso-world-visual__image" data-world-image="1-copy" data-world-tile="1" alt="" width="1672" height="941" decoding="async" loading="eager" fetchpriority="high" />
+        </div>
       </div>
       ${WORLD_ROUTE_SVG}
       <div class="amso-world-visual__counter" aria-hidden="true">
         <span data-world-counter>999 970</span>
       </div>
     `;
-    this.images = [
-      requiredElement(host, '[data-world-image="0"]'),
-      requiredElement(host, '[data-world-image="1"]')
+    this.panels = [
+      requiredElement(host, '[data-world-panel="0"]'),
+      requiredElement(host, '[data-world-panel="1"]')
     ];
+    this.tiles = [
+      [
+        requiredElement(host, '[data-world-image="0"]'),
+        requiredElement(host, '[data-world-image="0-copy"]')
+      ],
+      [
+        requiredElement(host, '[data-world-image="1"]'),
+        requiredElement(host, '[data-world-image="1-copy"]')
+      ]
+    ];
+    this.panels[0].classList.add("is-active");
   }
 
   public show(selection: WorldVisualSelection): CampaignSceneVisualState {
@@ -93,19 +116,50 @@ export class WorldVisualLayer {
     this.host.dataset.phase = phase;
   }
 
+  /** Applies an absolute phase so story-to-challenge and world crossfades never jump. */
+  public setParallaxDistance(
+    distancePixels: number,
+    active: boolean,
+    reducedMotion = false
+  ): void {
+    if (!active || reducedMotion || !Number.isFinite(distancePixels)) {
+      for (const panelTiles of this.tiles) {
+        for (const tile of panelTiles) tile.style.transition = "none";
+      }
+      return;
+    }
+    const distance = Math.max(0, distancePixels);
+    const cycle = Math.floor(distance / WORLD_WIDTH);
+    const progress = (distance % WORLD_WIDTH) / WORLD_WIDTH;
+    const firstScale = cycle % 2 === 0 ? 1 : -1;
+    const wrapped = this.lastParallaxCycle !== null && cycle !== this.lastParallaxCycle;
+    for (const panelTiles of this.tiles) {
+      for (const tile of panelTiles) {
+        tile.style.transition = this.lastParallaxCycle === null || wrapped
+          ? "none"
+          : "transform 140ms linear";
+      }
+      panelTiles[0].style.transform = `translateX(${-progress * 100}%) scaleX(${firstScale})`;
+      panelTiles[1].style.transform = `translateX(${(1 - progress) * 100}%) scaleX(${-firstScale})`;
+    }
+    this.lastParallaxCycle = cycle;
+  }
+
   private loadWorldAsset(assetPath: string): void {
     if (this.requestedAssetPath === assetPath) return;
     this.requestedAssetPath = assetPath;
     const nextIndex = this.activeImageIndex === 0 ? 1 : 0;
-    const nextImage = this.images[nextIndex]!;
-    const previousImage = this.images[this.activeImageIndex]!;
+    const nextPanel = this.panels[nextIndex]!;
+    const previousPanel = this.panels[this.activeImageIndex]!;
+    const nextTiles = this.tiles[nextIndex]!;
+    const nextImage = nextTiles[0];
     this.host.dataset.assetState = "loading";
-    nextImage.classList.remove("is-active");
+    nextPanel.classList.remove("is-active");
 
     const activate = (): void => {
       if (this.requestedAssetPath !== assetPath) return;
-      previousImage.classList.remove("is-active");
-      nextImage.classList.add("is-active");
+      previousPanel.classList.remove("is-active");
+      nextPanel.classList.add("is-active");
       this.activeImageIndex = nextIndex;
       this.host.dataset.assetState = "loaded";
     };
@@ -115,7 +169,9 @@ export class WorldVisualLayer {
 
     nextImage.addEventListener("load", activate, { once: true });
     nextImage.addEventListener("error", fail, { once: true });
-    nextImage.src = assetPath;
+    nextTiles[0].src = assetPath;
+    nextTiles[1].src = assetPath;
     if (nextImage.complete && nextImage.naturalWidth > 0) activate();
   }
+
 }

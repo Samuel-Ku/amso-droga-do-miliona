@@ -433,6 +433,85 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   opacity: 0.28;
 }
 
+.amso-campaign__milestone-message {
+  position: absolute;
+  z-index: 20;
+  top: var(--campaign-milestone-top, clamp(110px, 16%, 150px));
+  left: 50%;
+  width: max-content;
+  max-width: min(calc(100% - 28px), var(--campaign-milestone-max-width, 560px));
+  padding: 0.7rem 1.4rem;
+  border: 3px solid var(--campaign-black);
+  border-radius: 1rem;
+  color: transparent;
+  background:
+    var(--campaign-gradient),
+    rgb(250 247 240 / 96%);
+  box-shadow: 0 0.55rem 0 rgb(23 23 23 / 18%);
+  font-size: clamp(1.25rem, 3.2vw, 2.35rem);
+  font-weight: 950;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+  -webkit-text-fill-color: transparent;
+  -webkit-background-clip: text, padding-box;
+  background-clip: text, padding-box;
+  background-origin: border-box, padding-box;
+  animation: amso-milestone-pop 360ms cubic-bezier(0.2, 0.85, 0.2, 1) both;
+}
+
+.amso-campaign__milestone-message[hidden] {
+  display: none;
+}
+
+.amso-campaign__milestone-message[data-kind="pulse"] {
+  animation-name: amso-milestone-pulse;
+}
+
+.amso-campaign__milestone-message[data-kind="ribbons"] {
+  animation-name: amso-milestone-rise;
+}
+
+.amso-campaign__milestone-message[data-kind="package-rain"] {
+  animation-name: amso-milestone-drop;
+}
+
+.amso-campaign__milestone-message[data-kind="route-wave"] {
+  animation-name: amso-milestone-wave;
+}
+
+.amso-campaign__milestone-message[data-reduced-motion] {
+  animation: none;
+}
+
+@keyframes amso-milestone-pop {
+  from { opacity: 0; transform: translateX(-50%) scale(0.82); }
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+@keyframes amso-milestone-pulse {
+  from { opacity: 0; transform: translateX(-50%) scale(0.9); }
+  55% { transform: translateX(-50%) scale(1.08); }
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+@keyframes amso-milestone-rise {
+  from { opacity: 0; transform: translate(-50%, 1.2rem); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@keyframes amso-milestone-drop {
+  from { opacity: 0; transform: translate(-50%, -1.2rem); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@keyframes amso-milestone-wave {
+  from { opacity: 0; transform: translateX(-58%); }
+  to { opacity: 1; transform: translateX(-50%); }
+}
+
 .amso-campaign__hud-context,
 .amso-campaign__hud-stats,
 .amso-campaign__pause-button {
@@ -1556,6 +1635,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 }
 
 .amso-world-visual__image-stack,
+.amso-world-visual__panel,
 .amso-world-visual__image,
 .amso-world-visual__route {
   position: absolute;
@@ -1572,11 +1652,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     height 720ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
-.amso-world-visual__image {
-  display: block;
-  max-width: none;
-  object-fit: contain;
-  object-position: 50% 50%;
+.amso-world-visual__panel {
   opacity: 0;
   transform: scale(var(--world-reading-zoom, 1));
   transform-origin:
@@ -1588,14 +1664,26 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     filter 320ms ease;
 }
 
-.amso-world-visual__image.is-active {
+.amso-world-visual__panel.is-active {
   opacity: 0.8;
 }
 
-.amso-campaign__world-visual[data-phase="game"] .amso-world-visual__image {
+.amso-world-visual__image {
+  display: block;
+  max-width: none;
+  object-fit: contain;
+  object-position: 50% 50%;
+  will-change: transform;
+}
+
+.amso-campaign__world-visual[data-phase="game"] .amso-world-visual__panel {
   filter: none;
   transform: scale(1);
   transform-origin: 50% 50%;
+}
+
+.amso-campaign__world-visual[data-phase="game"] .amso-world-visual__panel.is-active {
+  opacity: 0.6;
 }
 
 .amso-world-visual__route {
@@ -2000,6 +2088,11 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     height: 100%;
   }
 
+  .amso-campaign__milestone-message {
+    padding: 0.65rem 1rem;
+    font-size: clamp(1.15rem, 6vw, 1.65rem);
+  }
+
   .amso-campaign__screen--landing {
     display: flex;
     padding: clamp(18px, 4.5vw, 26px);
@@ -2201,7 +2294,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .amso-world-visual__image,
+  .amso-world-visual__panel,
   .amso-world-visual__route {
     transition: none;
   }

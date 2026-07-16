@@ -1,0 +1,66 @@
+// @vitest-environment happy-dom
+
+import { describe, expect, it } from "vitest";
+import {
+  BACKGROUND_PARALLAX_SPEED_RATIO,
+  backgroundTravelPixels
+} from "../src/visuals/background-parallax";
+import { WorldVisualLayer } from "../src/visuals/WorldVisualLayer";
+
+describe("cyclic gameplay background", () => {
+  it("moves at exactly ten percent of gameplay travel", () => {
+    expect(BACKGROUND_PARALLAX_SPEED_RATIO).toBe(0.1);
+    expect(backgroundTravelPixels(2_400)).toBe(240);
+  });
+
+  it("uses two alternating mirrored tiles and preserves the phase across worlds", () => {
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host);
+
+    layer.setParallaxDistance(480, true);
+    const firstTiles = [...host.querySelectorAll<HTMLElement>('[data-world-panel="0"] [data-world-tile]')];
+    expect(firstTiles).toHaveLength(2);
+    expect(firstTiles[0]!.style.transform).toContain("translateX(-50%)");
+    expect(firstTiles[1]!.style.transform).toContain("translateX(50%)");
+    expect(firstTiles[0]!.style.transform).toContain("scaleX(1)");
+    expect(firstTiles[1]!.style.transform).toContain("scaleX(-1)");
+
+    layer.show({ worldId: "quality-service", stateId: "epoch_2.resolve", phase: "game" });
+    const secondTiles = [...host.querySelectorAll<HTMLElement>('[data-world-panel="1"] [data-world-tile]')];
+    expect(secondTiles[0]!.style.transform).toBe(firstTiles[0]!.style.transform);
+    expect(secondTiles[1]!.style.transform).toBe(firstTiles[1]!.style.transform);
+  });
+
+  it("freezes in story, pause and reduced-motion states", () => {
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host);
+    const tile = host.querySelector<HTMLElement>('[data-world-tile="0"]')!;
+
+    layer.setParallaxDistance(200, true);
+    const activeTransform = tile.style.transform;
+    layer.setParallaxDistance(220, true);
+    expect(tile.style.transition).toBe("transform 140ms linear");
+    layer.setParallaxDistance(400, false);
+    expect(tile.style.transform).not.toBe(activeTransform);
+    const frozenTransform = tile.style.transform;
+    expect(tile.style.transition).toBe("none");
+    layer.setParallaxDistance(600, true, true);
+    expect(tile.style.transform).toBe(frozenTransform);
+  });
+
+  it("freezes the visible phase without snapping when a story card is opened", () => {
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host);
+    const tiles = [...host.querySelectorAll<HTMLElement>('[data-world-panel="0"] [data-world-tile]')];
+    layer.setParallaxDistance(480, true);
+    const transforms = tiles.map(({ style }) => style.transform);
+
+    layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "story" });
+    layer.setParallaxDistance(600, false);
+    expect(tiles.map(({ style }) => style.transform)).toEqual(transforms);
+    expect(tiles.every(({ style }) => style.transition === "none")).toBe(true);
+
+    layer.setParallaxDistance(480, true);
+    expect(tiles[0]!.style.transform).toContain("translateX(-50%)");
+  });
+});

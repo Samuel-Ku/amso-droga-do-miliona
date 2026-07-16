@@ -9,6 +9,11 @@ import type {
 import type { PackageType, PowerUpKind } from "../shared/types";
 import type { StoryObstacleTransformation } from "./story-effects";
 import {
+  COURIER_PALETTE,
+  DEFAULT_COURIER_BRAND_ARTWORK,
+  type CourierBrandArtwork
+} from "./courier-brand";
+import {
   WORLD_ROUTE_ACCENT_WIDTH,
   WORLD_ROUTE_BASE_COLOR,
   WORLD_ROUTE_BASE_OFFSET_Y,
@@ -1165,7 +1170,8 @@ function drawWarrantyShield(
 
 function drawCrouchingCourier(
   context: CanvasRenderingContext2D,
-  runner: Readonly<RunnerModel>
+  runner: Readonly<RunnerModel>,
+  brandArtwork: CourierBrandArtwork
 ): void {
   const x = runner.x;
   const y = runner.y + 14;
@@ -1195,7 +1201,7 @@ function drawCrouchingCourier(
   context.lineTo(x + 52, y + 80);
   context.stroke();
 
-  context.strokeStyle = COLORS.redDark;
+  context.strokeStyle = COURIER_PALETTE.capAndShirt;
   context.lineWidth = 9;
   context.beginPath();
   context.moveTo(x + 15, y + 36);
@@ -1204,16 +1210,13 @@ function drawCrouchingCourier(
   context.lineTo(x + 53, y + 52);
   context.stroke();
 
-  fillRoundedRectangle(context, x + 13, y + 32, 36, 30, 7, COLORS.red);
-  context.fillStyle = COLORS.redDark;
+  fillRoundedRectangle(context, x + 13, y + 32, 36, 30, 7, COURIER_PALETTE.capAndShirt);
+  context.fillStyle = COURIER_PALETTE.belt;
   context.fillRect(x + 13, y + 50, 36, 7);
-  context.fillStyle = COLORS.white;
-  context.fillRect(x + 21, y + 39, 20, 11);
-  context.fillStyle = COLORS.red;
-  context.fillRect(x + 25, y + 42, 12, 4);
+  brandArtwork.drawMark(context, { x: x + 23, y: y + 38, width: 16, height: 11 });
 
-  fillRoundedRectangle(context, x + 4, y + 34, 12, 24, 3, COLORS.inkSoft);
-  context.fillStyle = COLORS.orange;
+  fillRoundedRectangle(context, x + 4, y + 34, 12, 24, 3, COURIER_PALETTE.scanner);
+  context.fillStyle = COURIER_PALETTE.scannerScreen;
   context.fillRect(x + 7, y + 38, 6, 11);
 
   context.fillStyle = "#f0bf94";
@@ -1225,7 +1228,7 @@ function drawCrouchingCourier(
   context.fillStyle = COLORS.ink;
   context.fillRect(x + 37, y + 19, 3, 3);
 
-  context.fillStyle = COLORS.red;
+  context.fillStyle = COURIER_PALETTE.capAndShirt;
   context.fillRect(x + 17, y + 8, 30, 9);
   context.fillRect(x + 13, y + 14, 34, 5);
   context.fillStyle = COLORS.white;
@@ -1236,10 +1239,11 @@ function drawCrouchingCourier(
 function drawCourier(
   context: CanvasRenderingContext2D,
   runner: Readonly<RunnerModel>,
-  scene: Readonly<RenderScene>
+  scene: Readonly<RenderScene>,
+  brandArtwork: CourierBrandArtwork
 ): void {
   if (runner.crouching) {
-    drawCrouchingCourier(context, runner);
+    drawCrouchingCourier(context, runner, brandArtwork);
     return;
   }
   const stride = runner.grounded && !scene.reducedMotion
@@ -1291,7 +1295,7 @@ function drawCourier(
   context.lineTo(x + 52 + stride * 8, y + 80);
   context.stroke();
 
-  context.strokeStyle = COLORS.redDark;
+  context.strokeStyle = COURIER_PALETTE.capAndShirt;
   context.lineWidth = 9;
   context.beginPath();
   context.moveTo(x + 17, y + 35);
@@ -1300,16 +1304,13 @@ function drawCourier(
   context.lineTo(x + 52 + stride * 7, y + 50);
   context.stroke();
 
-  fillRoundedRectangle(context, x + 14, y + 27, 35, 36, 7, COLORS.red);
-  context.fillStyle = COLORS.redDark;
+  fillRoundedRectangle(context, x + 14, y + 27, 35, 36, 7, COURIER_PALETTE.capAndShirt);
+  context.fillStyle = COURIER_PALETTE.belt;
   context.fillRect(x + 14, y + 49, 35, 8);
-  context.fillStyle = COLORS.white;
-  context.fillRect(x + 22, y + 36, 20, 12);
-  context.fillStyle = COLORS.red;
-  context.fillRect(x + 26, y + 40, 12, 4);
+  brandArtwork.drawMark(context, { x: x + 23, y: y + 34, width: 18, height: 13 });
 
-  fillRoundedRectangle(context, x + 5, y + 30, 12, 27, 3, COLORS.inkSoft);
-  context.fillStyle = COLORS.orange;
+  fillRoundedRectangle(context, x + 5, y + 30, 12, 27, 3, COURIER_PALETTE.scanner);
+  context.fillStyle = COURIER_PALETTE.scannerScreen;
   context.fillRect(x + 8, y + 35, 6, 12);
 
   context.fillStyle = "#f0bf94";
@@ -1321,7 +1322,7 @@ function drawCourier(
   context.fillStyle = COLORS.ink;
   context.fillRect(x + 37, y + 13, 3, 3);
 
-  context.fillStyle = COLORS.red;
+  context.fillStyle = COURIER_PALETTE.capAndShirt;
   context.fillRect(x + 17, y + 2, 30, 9);
   context.fillRect(x + 13, y + 9, 34, 5);
   context.fillStyle = COLORS.white;
@@ -1371,7 +1372,88 @@ function drawGameplayRoute(context: CanvasRenderingContext2D): void {
   context.restore();
 }
 
+function drawMilestoneParticles(
+  context: CanvasRenderingContext2D,
+  scene: Readonly<RenderScene>
+): void {
+  const celebration = scene.milestoneCelebration;
+  if (celebration === null || celebration === undefined || scene.reducedMotion) return;
+  const progress = Math.max(0, Math.min(1, celebration.progress));
+  const motion = progress * (1 + Math.min(3, celebration.intensity) * 0.12);
+  const alpha = Math.sin(progress * Math.PI) * 0.72;
+  const particleCount = Math.min(42, 10 + celebration.intensity * 5);
+  context.save();
+  context.globalAlpha = alpha;
+  const gradient = context.createLinearGradient(0, 0, WORLD_WIDTH, 0);
+  for (const { offset, color } of WORLD_ROUTE_GRADIENT_STOPS) {
+    gradient.addColorStop(offset, color);
+  }
+
+  if (celebration.kind === "confetti") {
+    for (let index = 0; index < particleCount; index += 1) {
+      const x = positiveModulo(index * 137 + celebration.threshold, WORLD_WIDTH);
+      const y = positiveModulo(index * 71 + motion * 440, WORLD_HEIGHT - 90);
+      context.fillStyle = index % 3 === 0 ? COLORS.orange : index % 3 === 1 ? COLORS.red : COLORS.redDark;
+      context.save();
+      context.translate(x, y);
+      context.rotate(motion * 5 + index);
+      context.fillRect(-5, -2, 10, 4);
+      context.restore();
+    }
+  } else if (celebration.kind === "pulse") {
+    context.strokeStyle = gradient;
+    for (let ring = 0; ring < Math.min(5, celebration.intensity + 2); ring += 1) {
+      context.globalAlpha = alpha * (1 - ring * 0.12);
+      context.lineWidth = 7 - ring;
+      context.beginPath();
+      context.arc(WORLD_WIDTH / 2, 245, 55 + (motion + ring * 0.25) * 105, 0, Math.PI * 2);
+      context.stroke();
+    }
+  } else if (celebration.kind === "ribbons") {
+    context.strokeStyle = gradient;
+    context.lineWidth = 8;
+    for (let ribbon = 0; ribbon < Math.min(7, celebration.intensity + 3); ribbon += 1) {
+      const offset = ribbon * 36;
+      context.beginPath();
+      context.moveTo(-40, 100 + offset);
+      context.bezierCurveTo(
+        190 + motion * 80,
+        20 + offset,
+        650 - motion * 80,
+        390 - offset * 0.3,
+        WORLD_WIDTH + 40,
+        80 + offset
+      );
+      context.stroke();
+    }
+  } else if (celebration.kind === "package-rain") {
+    for (let index = 0; index < particleCount; index += 1) {
+      const x = positiveModulo(index * 113 + celebration.threshold, WORLD_WIDTH);
+      const y = positiveModulo(index * 83 + motion * 520, WORLD_HEIGHT + 70) - 70;
+      context.fillStyle = COLORS.cardboard;
+      context.fillRect(x, y, 18, 15);
+      context.fillStyle = index % 2 === 0 ? COLORS.orange : COLORS.redDark;
+      context.fillRect(x + 7, y, 4, 15);
+    }
+  } else {
+    context.strokeStyle = gradient;
+    context.lineWidth = 10 + Math.min(8, celebration.intensity * 2);
+    context.beginPath();
+    context.moveTo(-20, WORLD_ROUTE_Y);
+    for (let x = 0; x <= WORLD_WIDTH + 20; x += 24) {
+      const wave = Math.sin(x / 62 - motion * Math.PI * 4) * (10 + celebration.intensity * 3);
+      context.lineTo(x, WORLD_ROUTE_Y + wave);
+    }
+    context.stroke();
+  }
+  context.restore();
+}
+
 export class WarehouseRenderer {
+  public constructor(
+    private readonly brandArtwork: CourierBrandArtwork = DEFAULT_COURIER_BRAND_ARTWORK
+  ) {}
+
   render(
     context: CanvasRenderingContext2D,
     pixelWidth: number,
@@ -1421,6 +1503,7 @@ export class WarehouseRenderer {
       drawGameplayRoute(context);
     }
     drawTrustCorridor(context, scene, theme);
+    drawMilestoneParticles(context, scene);
     drawForkliftBoss(
       context,
       scene.boss,
@@ -1434,7 +1517,7 @@ export class WarehouseRenderer {
     for (const transformation of scene.obstacleTransformations ?? []) {
       drawTransformedObstacle(context, transformation, scene.reducedMotion);
     }
-    drawCourier(context, scene.runner, scene);
+    drawCourier(context, scene.runner, scene, this.brandArtwork);
     drawWarrantyShield(context, scene.runner, scene);
 
     if (scene.cutscene) {

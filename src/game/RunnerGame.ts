@@ -67,6 +67,8 @@ import {
   sceneVisualState,
   type CampaignWorldId
 } from "../visuals/scene-manifest";
+import { backgroundTravelPixels } from "../visuals/background-parallax";
+import { MilestoneCelebrationDirector } from "./milestone-celebration";
 
 const CUTSCENE_SECONDS = 2.6;
 const FINALE_CELEBRATION_SECONDS = 3.5;
@@ -112,6 +114,7 @@ export class RunnerGame implements RunnerGameApi {
   private readonly bossDirector = new BossDirector();
   private readonly storyClimaxDirector = new StoryClimaxDirector();
   private readonly storyObstacleTransformer = new StoryObstacleTransformer();
+  private readonly milestoneCelebrationDirector = new MilestoneCelebrationDirector();
   private storyObjectiveDirector = new StoryObjectiveDirector();
   private readonly storyClimaxesCompleted = new Set<number>();
   private runner: RunnerModel = createRunnerModel();
@@ -354,6 +357,7 @@ export class RunnerGame implements RunnerGameApi {
     this.bossDirector.reset();
     this.storyClimaxDirector.reset();
     this.storyObstacleTransformer.reset();
+    this.milestoneCelebrationDirector.reset();
     this.storyObjectiveDirector = new StoryObjectiveDirector();
     this.storyClimaxesCompleted.clear();
     this.logisticWaveDirector.reset();
@@ -559,6 +563,7 @@ export class RunnerGame implements RunnerGameApi {
 
     this.visualElapsedSeconds += deltaSeconds;
     this.elapsedSeconds += activeDeltaSeconds;
+    this.milestoneCelebrationDirector.advance(activeDeltaSeconds);
     if (this.mode === "challenge") this.challengeElapsedSeconds += activeDeltaSeconds;
     this.recoverySeconds = Math.max(0, this.recoverySeconds - activeDeltaSeconds);
     this.impactSeconds = Math.max(0, this.impactSeconds - activeDeltaSeconds);
@@ -953,6 +958,15 @@ export class RunnerGame implements RunnerGameApi {
     );
     if (collection.countsAsPackage) {
       this.packagesCollected += 1;
+      for (const celebration of this.milestoneCelebrationDirector.recordPackages(
+        this.packagesCollected
+      )) {
+        try {
+          this.callbacks.onMilestoneCelebration?.(celebration);
+        } catch {
+          // Host callbacks are isolated from package collection.
+        }
+      }
       this.bonusScore += collection.bonusScoreAwarded;
       this.combo = collection.nextCombo;
       this.bestCombo = Math.max(this.bestCombo, this.combo);
@@ -1402,6 +1416,8 @@ export class RunnerGame implements RunnerGameApi {
       bossProgress: this.bossDirector.model.attacksSurvived,
       bossAttackCount: this.bossDirector.model.attackCount,
       distanceM,
+      backgroundTravelPixels: backgroundTravelPixels(this.distancePixels),
+      reducedMotion: this.reducedMotion,
       durationSeconds: round(this.elapsedSeconds, 2),
       difficultyLevel: this.difficultyLevel,
       speed: round(this.speed, 1),
@@ -1413,7 +1429,8 @@ export class RunnerGame implements RunnerGameApi {
       packageTypeCounts: { ...this.packageTypeCounts },
       totalWeightKg: Math.round(this.totalWeightKg),
       activePowerUps: this.activePowerUps.keys(),
-      factsUnlockedCount: this.factsUnlockedCount
+      factsUnlockedCount: this.factsUnlockedCount,
+      milestoneCelebration: this.milestoneCelebrationDirector.snapshot
     };
   }
 
@@ -1535,7 +1552,8 @@ export class RunnerGame implements RunnerGameApi {
       storyProgress: this.storyTimeline?.snapshot.progress ?? 0,
       storyObjectives: this.storyObjectiveDirector.snapshot,
       storyClimax: this.storyClimaxDirector.model,
-      obstacleTransformations: this.storyObstacleTransformer.models
+      obstacleTransformations: this.storyObstacleTransformer.models,
+      milestoneCelebration: this.milestoneCelebrationDirector.snapshot
     };
     this.renderer.render(this.context, this.canvas.width, this.canvas.height, scene);
   }

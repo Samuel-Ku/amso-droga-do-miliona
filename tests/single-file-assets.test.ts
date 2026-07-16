@@ -16,6 +16,7 @@ const campaignStyles = readFileSync(
 );
 
 const campaignImagePaths = [
+  "/assets/milion-runner/courier-amso-a.webp",
   "/assets/milion-runner/brand/mz-main-lockup-v1.avif",
   "/assets/milion-runner/brand/mz-compact-lockup-v1.avif",
   "/assets/milion-runner/worlds/world-01-first-mile-v2.webp",
@@ -110,7 +111,7 @@ describe("single-file QA artwork", () => {
     const embeddedWebps = new Set(
       qaPreview.match(/data:image\/webp;base64,[A-Za-z0-9+/=]+/g) ?? []
     );
-    expect(embeddedWebps.size).toBe(7);
+    expect(embeddedWebps.size).toBe(8);
     const embeddedSvgs = new Set(
       qaPreview.match(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+/g) ?? []
     );
