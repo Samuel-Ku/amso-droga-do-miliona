@@ -18,13 +18,14 @@ sterowanie na wszystkich obsługiwanych formatach bez regresji v7.
 - [ ] Macierz obejmuje desktop, kontener do 1600 px, telefon 390 px, portret, krajobraz, standardowy i wysoki DPR.
 - [ ] Macierz obejmuje Chromium i WebKit/Safari oraz nie zgłasza błędów konsoli, overflow ani czarnego ekranu.
 - [ ] Reduced motion zachowuje pełne tło, czytelny shield i kompletną informację bez intensywnych efektów.
-- [ ] Raport QA nie zawiera danych osobowych i opisuje kroki ludzkiego odbioru miękkiego styku, centralnego kadru oraz naturalności animacji.
+- [x] Raport QA nie zawiera danych osobowych i opisuje kroki ludzkiego odbioru miękkiego styku, centralnego kadru oraz naturalności animacji.
 - [ ] Ludzkie kryterium wizualne potwierdza brak widocznej szczeliny, lustrzanego odbicia, przypadkowego centrum i drgania kuriera.
 - [x] Nie występują regresje fal v7, punktacji, kolizji, finału, przejścia do wyzwania ani celebracji progów.
 
 ## Comments
 
-`npm run build:all`, walidacja konfiguracji i 244 testy przechodzą. HTML,
+`npm run build:all`, walidacja konfiguracji i 246 testów przechodzi. HTML,
 CSV oraz kadry QA zostały zregenerowane. Interaktywny odbiór wizualny macierzy
 pozostaje do wykonania, ponieważ środowisko implementacyjne nie udostępniło
-przeglądarki.
+przeglądarki. Procedura i anonimowa macierz odbioru znajdują się w
+`qa/raport-rc-v8.md`.
