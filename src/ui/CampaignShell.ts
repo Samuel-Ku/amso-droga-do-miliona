@@ -107,7 +107,7 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   challengeResultTitle: "Koniec próby",
   resultBest: "Rekord",
   resultDistance: "Przebyta droga",
-  resultWarranty: "Gwarancja uratowała bieg",
+  resultWarranty: "Gwarancja 48 M uratowała bieg",
   powerupWarranty: "GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania.",
   powerupWarrantyHud: "GWARANCJA 48 M ×1",
   warrantyConsumed: "GWARANCJA 48 M zadziałała — próba trwa dalej.",

@@ -173,6 +173,7 @@ export class RunnerGame implements RunnerGameApi {
   private readonly story: StoryConfig | null;
   private readonly challenge: RunnerGameOptions["challenge"];
   private readonly awardStoryCompletionBonus: boolean;
+  private readonly powerUpPackageCopy: NonNullable<RunnerGameOptions["powerUpPackageCopy"]>;
   private narrative: NarrativeConfig | null;
   private storyTimeline: StoryTimeline | null = null;
   private lastStorySignal = "";
@@ -252,6 +253,7 @@ export class RunnerGame implements RunnerGameApi {
     this.story = this.mode === "story" ? options.story ?? null : null;
     this.challenge = options.challenge ?? null;
     this.awardStoryCompletionBonus = options.awardStoryCompletionBonus ?? true;
+    this.powerUpPackageCopy = options.powerUpPackageCopy ?? {};
     this.logisticWaveDirector = new LogisticWaveDirector(
       this.challenge?.logisticWaveMinSeconds ?? 45,
       this.challenge?.logisticWaveMaxSeconds ?? 60
@@ -1972,6 +1974,7 @@ export class RunnerGame implements RunnerGameApi {
       },
       cutscene: this.cutscene,
       activePowerUps: this.activePowerUps.keys(),
+      powerUpPackageCopy: this.powerUpPackageCopy,
       mode: this.mode,
       trustCorridor: this.storyTimeline?.snapshot.trustCorridor ?? false,
       combo: this.combo,

@@ -240,7 +240,21 @@ export class CampaignController {
         story: safeRequest.mode === "story" ? this.config.story : null,
         challenge: this.config.challenge,
         awardStoryCompletionBonus: safeRequest.mode === "story" &&
-          !this.profile.snapshot.storyCompleted
+          !this.profile.snapshot.storyCompleted,
+        powerUpPackageCopy: {
+          gwarancja_48: [
+            this.uiCopy("parcelWarrantyLine1", "GWARANCJA"),
+            this.uiCopy("parcelWarrantyLine2", "48 M")
+          ],
+          audyt_jakosci: [
+            this.uiCopy("parcelAuditLine1", "AUDYT"),
+            this.uiCopy("parcelAuditLine2", "TRASY")
+          ],
+          drugie_zycie: [
+            this.uiCopy("parcelSecondLifeLine1", "2×"),
+            this.uiCopy("parcelSecondLifeLine2", "PUNKTY")
+          ]
+        }
       });
       this.shell.showGame(safeRequest.mode);
       this.game.start("pointer");

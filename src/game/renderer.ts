@@ -789,7 +789,9 @@ const POWER_UP_COLORS: Readonly<Record<PowerUpKind, string>> = {
   drugie_zycie: "#f47100"
 };
 
-const POWER_UP_PACKAGE_COPY: Readonly<Record<PowerUpKind, readonly [string, string]>> = {
+// Fail-safe labels for direct RunnerGame embeds. Campaign builds pass the
+// marketing-owned equivalents from runner-config.json through RenderScene.
+const DEFAULT_POWER_UP_PACKAGE_COPY: Readonly<Record<PowerUpKind, readonly [string, string]>> = {
   gwarancja_48: ["GWARANCJA", "48 M"],
   audyt_jakosci: ["AUDYT", "TRASY"],
   drugie_zycie: ["2×", "PUNKTY"]
@@ -874,7 +876,8 @@ function drawParcel(
 
   if (parcel.kind !== "standard") {
     const color = POWER_UP_COLORS[parcel.kind as PowerUpKind] ?? COLORS.red;
-    const copy = POWER_UP_PACKAGE_COPY[parcel.kind as PowerUpKind];
+    const kind = parcel.kind as PowerUpKind;
+    const copy = scene.powerUpPackageCopy?.[kind] ?? DEFAULT_POWER_UP_PACKAGE_COPY[kind];
     if (!copy) return;
     context.save();
     context.shadowColor = color;

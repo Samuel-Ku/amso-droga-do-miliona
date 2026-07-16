@@ -103,6 +103,7 @@ export interface RenderScene {
   }>;
   cutscene: CutsceneInfo | null;
   activePowerUps: readonly PowerUpKind[];
+  powerUpPackageCopy?: Partial<Readonly<Record<PowerUpKind, readonly [string, string]>>>;
   /** Campaign presentation hints used by story and challenge rendering. */
   mode?: CampaignMode;
   trustCorridor?: boolean;

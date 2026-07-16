@@ -24,7 +24,7 @@ sterowanie na wszystkich obsługiwanych formatach bez regresji v7.
 
 ## Comments
 
-`npm run build:all`, walidacja konfiguracji i 243 testy przechodzą. HTML,
+`npm run build:all`, walidacja konfiguracji i 244 testy przechodzą. HTML,
 CSV oraz kadry QA zostały zregenerowane. Interaktywny odbiór wizualny macierzy
 pozostaje do wykonania, ponieważ środowisko implementacyjne nie udostępniło
 przeglądarki.

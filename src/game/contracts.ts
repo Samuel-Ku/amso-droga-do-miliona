@@ -131,6 +131,8 @@ export interface RunnerGameOptions {
   awardStoryCompletionBonus?: boolean;
   challenge?: ChallengeConfig | null;
   narrative?: NarrativeConfig | null;
+  /** Configurable two-line labels rendered on procedural power-up parcels. */
+  powerUpPackageCopy?: Partial<Readonly<Record<PowerUpKind, readonly [string, string]>>>;
 }
 
 export interface RunnerGameApi {

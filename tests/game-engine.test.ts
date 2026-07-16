@@ -349,7 +349,8 @@ describe("boss rendering", () => {
     const obstacleFixtures = [
       { kind: "pallet", y: 410, width: 92, height: 72 },
       { kind: "trolley", y: 395, width: 78, height: 88 },
-      { kind: "overhead", y: 318, width: 76, height: 70 }
+      { kind: "overhead", y: 318, width: 76, height: 70 },
+      { kind: "box-stack", y: 386, width: 76, height: 96 }
     ] as const;
     obstacles.forEach((obstacle, index) => {
       const fixture = obstacleFixtures[index % obstacleFixtures.length]!;
@@ -391,6 +392,54 @@ describe("boss rendering", () => {
     const obstacleLabels = Object.values(SEMANTIC_OBSTACLE_PRESENTATION)
       .map(({ label }) => label);
     expect(drawnText).not.toEqual(expect.arrayContaining(obstacleLabels));
+  });
+
+  it("uses configurable labels on power-up parcels", () => {
+    const drawnText: string[] = [];
+    const contextTarget: Record<PropertyKey, unknown> = {
+      createLinearGradient: () => ({ addColorStop(): void {} }),
+      fillText: (value: string) => drawnText.push(value)
+    };
+    const context = new Proxy(contextTarget, {
+      get(target, key) {
+        if (key in target) return target[key];
+        return (): void => {};
+      },
+      set(target, key, value) {
+        target[key] = value;
+        return true;
+      }
+    }) as unknown as CanvasRenderingContext2D;
+    const parcel = createPackagePool(1)[0]!;
+    parcel.active = true;
+    parcel.kind = "gwarancja_48";
+    parcel.x = 420;
+    parcel.y = 380;
+
+    new WarehouseRenderer().render(context, 960, 540, {
+      state: "running",
+      runner: createRunnerModel(),
+      obstacles: [],
+      packages: [parcel],
+      boss: new BossDirector().model,
+      elapsedSeconds: 1,
+      distancePixels: 100,
+      speed: 280,
+      reducedMotion: false,
+      impact: false,
+      epochIndex: 0,
+      epochName: "",
+      epochYear: "",
+      themeIndex: -1,
+      cutscene: null,
+      activePowerUps: [],
+      powerUpPackageCopy: {
+        gwarancja_48: ["TESTOWA", "ETYKIETA"]
+      }
+    });
+
+    expect(drawnText).toEqual(expect.arrayContaining(["TESTOWA", "ETYKIETA"]));
+    expect(drawnText).not.toContain("GWARANCJA");
   });
 
   it("renders warning, attack and reward states with a golden parcel", () => {
