@@ -21,9 +21,11 @@ przeglądarki. Nie przenoś wyniku z wcześniejszego uruchomienia.
 1. Wyłącz sieć i otwórz lokalnie `droga-do-miliona-qa.html`.
 2. Potwierdź brak czarnego ekranu, błędów konsoli oraz poziomego overflow.
 3. Przejdź intro i rozpocznij Tryb Historii.
-4. W aktywnym biegu sprawdź kolejno skok przez `W`, `↑`, Spację i klik/tap oraz
-   ślizg przez `S`, `↓` i gest w dół. Strzałki nie mogą przewijać strony podczas
-   biegu, ale poza gameplay powinny zachowywać standardowe działanie.
+4. W aktywnym biegu sprawdź osobno skok przez `W`, `↑`, Spację, klik myszą oraz
+   tap na ekranie dotykowym. Sprawdź osobno ślizg przez `S`, `↓` i gest w dół.
+   Strzałki nie mogą przewijać strony podczas biegu, ale poza gameplay powinny
+   zachowywać standardowe działanie. Wyniku desktop nie wolno uznać za test tap,
+   a wyniku telefonu za test kliknięcia myszą.
 5. Przy pierwszym wejściu w kartę historii przytrzymaj poprzednią Spację:
    karta nie może się przełączyć. Następnie kliknij `Dalej` od razu — klik ma
    zadziałać bez blokady czasowej.
@@ -31,23 +33,26 @@ przeglądarki. Nie przenoś wyniku z wcześniejszego uruchomienia.
    przejść dokładnie raz; przytrzymanie nie może przełączyć następnej karty.
 7. Podczas każdej pauzy historii oceń, czy tło płynnie dochodzi do centralnego
    kadru, a granica cyklu nie zatrzymuje się pod tekstem.
-8. Wróć do biegu i obserwuj pełne przejście między dwoma światami. Stary i nowy
+8. W aktywnym biegu obserwuj jeden pełny cykl paralaksy: wybierz rozpoznawalny
+   element tła, zaczekaj aż opuści kadr i pojawi się ponownie z prawej strony.
+   Pełne zawinięcie nie może pokazać białej szczeliny, odbicia ani skoku fazy.
+9. Obserwuj pełne przejście między dwoma światami. Stary i nowy
    obraz mają pokrywać cały kadr, bez białej szczeliny, odbicia lub przesunięcia.
-9. Potwierdź, że przeszkody nie mają napisów, plakietek ani piktogramów, a
+10. Potwierdź, że przeszkody nie mają napisów, plakietek ani piktogramów, a
    kolekcjonerskie i bonusowe paczki zachowują własne oznaczenia.
-10. Na bezpiecznym starcie sprawdź pomarańczowy ciągły shield bez wpisu bonusu
+11. Na bezpiecznym starcie sprawdź pomarańczowy ciągły shield bez wpisu bonusu
     w HUD. Poczekaj na koniec ochrony startowej i potwierdź stan bez shielda.
-11. Po zebraniu bonusu sprawdź ten sam shield i `GWARANCJA 48 M ×1`. Z aktywną
+12. Po zebraniu bonusu sprawdź ten sam shield i `GWARANCJA 48 M ×1`. Z aktywną
     Gwarancją wykonaj skok i ślizg: obrys ma podążać za kurierem, zmienić się w
     niższy owal podczas ślizgu i nie obejmować niesionej paczki.
-12. Wymuś kolizję z aktywną Gwarancją. Powinien pojawić się krótki efekt
+13. Wymuś kolizję z aktywną Gwarancją. Powinien pojawić się krótki efekt
     pęknięcia, bieg powinien trwać, a shield i `×1` powinny zniknąć. Nie może
     pojawić się słowo `OCHRONA` ani fioletowy przerywany obrys.
-13. Przejdź fabułę do miliona i potwierdź płynne przejście do Trybu Wyzwania
+14. Przejdź fabułę do miliona i potwierdź płynne przejście do Trybu Wyzwania
     bez resetu wyniku i liczby paczek.
-14. Kontynuuj do prędkości 3,5×. Krok ma przyspieszać płynnie, bez drgania;
+15. Kontynuuj do prędkości 3,5×. Krok ma przyspieszać płynnie, bez drgania;
     skok i ślizg muszą zachowywać stabilną pozę oraz hitbox.
-15. Skopiuj anonimowy raport przez `AMSOMillionRunnerQA.copyQaReport()` i zapisz
+16. Skopiuj anonimowy raport przez `AMSOMillionRunnerQA.copyQaReport()` i zapisz
     tylko metryki sesji oraz identyfikator wariantu z tabeli poniżej.
 
 ## Macierz środowisk

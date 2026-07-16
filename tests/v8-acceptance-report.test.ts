@@ -37,6 +37,9 @@ describe("v8 browser acceptance handoff document", () => {
     expect(report).toMatch(/3,5×/u);
     expect(report).toMatch(/W.*↑.*Spację/u);
     expect(report).toMatch(/S.*↓/u);
+    expect(report).toMatch(/osobno skok[\s\S]*klik myszą[\s\S]*tap na ekranie dotykowym/u);
+    expect(report).toMatch(/jeden pełny cykl paralaksy/u);
+    expect(report).toMatch(/Pełne zawinięcie/u);
     expect(report).toMatch(/nowe, krótkie naciśnięcie Spacji/u);
     expect(report).toMatch(/stan bez shielda/u);
     expect(report).toMatch(/Z aktywną\s+Gwarancją wykonaj skok i ślizg/u);
