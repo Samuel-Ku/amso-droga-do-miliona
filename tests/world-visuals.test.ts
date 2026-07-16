@@ -83,7 +83,7 @@ describe("world visual continuity", () => {
     );
 
     expect(worldLayer.match(/<span data-world-counter/gu)).toHaveLength(1);
-    expect(worldLayer).toContain("999 970");
+    expect(worldLayer).toContain("999 950");
     expect(css).toContain(".amso-world-visual__counter");
     expect(css).toContain('[data-world-id="million-finale"]');
     expect(css).toContain("color-scheme: only light");

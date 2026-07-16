@@ -44,10 +44,10 @@ describe("runner config v5 story validation", () => {
       resumeCountdownSeconds: 3
     };
     story.millionThreshold = {
-      counterStart: 999_970,
+      counterStart: 999_950,
       counterTarget: 1_000_000,
-      packageTarget: 30,
-      combinationTarget: 8
+      packageTarget: 50,
+      combinationTarget: 12
     };
 
     const parsed = parseRunnerConfig(expanded);
@@ -57,7 +57,7 @@ describe("runner config v5 story validation", () => {
       steps: [{ id: "first-package.origin", safe: true }]
     });
     expect(parsed?.story.sequence.find(({ type }) => type === "play")).toMatchObject({
-      id: "epoch_1.training"
+      id: "epoch_1.first_package"
     });
     expect(parsed?.story.sequence.some((step) =>
       step.type === "play" && step.id === "epoch_1.order_backlog"
@@ -71,10 +71,10 @@ describe("runner config v5 story validation", () => {
       resumeCountdownSeconds: 3
     });
     expect(parsed?.story.millionThreshold).toEqual({
-      counterStart: 999_970,
+      counterStart: 999_950,
       counterTarget: 1_000_000,
-      packageTarget: 30,
-      combinationTarget: 8
+      packageTarget: 50,
+      combinationTarget: 12
     });
   });
 
@@ -99,7 +99,7 @@ describe("runner config v5 story validation", () => {
     expect(parseRunnerConfig(expanded)).toBeNull();
   });
 
-  it("parses the v6 story as 14 player-paced beats and 210 seconds of play", () => {
+  it("parses the v7 story as 14 player-paced beats and 285 seconds of play", () => {
     const result = validateRunnerConfig(validConfig());
 
     expect(result.success).toBe(true);
@@ -108,10 +108,10 @@ describe("runner config v5 story validation", () => {
     expect(result.data.schemaVersion).toBe(4);
     expect(result.data.modulePath).toBe(DEFAULT_RUNNER_MODULE_PATH);
     expect(result.data.stylePath).toBe(DEFAULT_RUNNER_STYLE_PATH);
-    expect(result.data.story.activeDurationSeconds).toBe(210);
+    expect(result.data.story.activeDurationSeconds).toBe(285);
     expect(result.data.story.readingSpeedMultiplier).toBe(0.3);
-    expect(result.data.story.speedStartMultiplier).toBe(0.85);
-    expect(result.data.story.speedMaxMultiplier).toBe(1.35);
+    expect(result.data.story.speedStartMultiplier).toBe(0.95);
+    expect(result.data.story.speedMaxMultiplier).toBe(1.85);
     expect(result.data.story.resumeCountdownSeconds).toBe(3);
     expect(result.data.story.scenes).toHaveLength(10);
     expect(result.data.story.scenes[0]?.id).toBe("story.first_package");
@@ -125,10 +125,10 @@ describe("runner config v5 story validation", () => {
     expect(activeScenes.reduce((sum, scene) => sum + (scene.steps?.length ?? 1), 0)).toBe(14);
     expect(result.data.story.epochs.map(({ index }) => index)).toEqual([0, 1, 2, 3, 4]);
     expect(result.data.story.epochs.map(({ durationSeconds }) => durationSeconds))
-      .toEqual([40, 40, 25, 60, 45]);
+      .toEqual([75, 45, 40, 50, 75]);
     expect(result.data.story.sequence
       .filter((step) => step.type === "play")
-      .reduce((total, step) => total + step.durationSeconds, 0)).toBe(210);
+      .reduce((total, step) => total + step.durationSeconds, 0)).toBe(285);
 
     for (const scene of activeScenes) {
       for (const page of scene.steps ?? []) {
@@ -185,13 +185,13 @@ describe("runner config v5 story validation", () => {
 
     const tuned = validConfig();
     const tunedStory = tuned.story as Record<string, unknown>;
-    tunedStory.activeDurationSeconds = 220;
+    tunedStory.activeDurationSeconds = 295;
     const tunedSequence = tunedStory.sequence as Array<Record<string, unknown>>;
     const finalPlay = tunedSequence.find(({ id }) => id === "epoch_5.million_threshold");
     if (!finalPlay) throw new Error("final play segment should exist");
-    finalPlay.durationSeconds = 55;
+    finalPlay.durationSeconds = 85;
     const tunedEpochs = tunedStory.epochs as Array<Record<string, unknown>>;
-    tunedEpochs[4]!.durationSeconds = 55;
+    tunedEpochs[4]!.durationSeconds = 85;
     expect(parseRunnerConfig(tuned)).not.toBeNull();
   });
 
@@ -214,7 +214,7 @@ describe("runner config v5 story validation", () => {
     const renamed = validConfig();
     const renamedSequence = (renamed.story as Record<string, unknown>)
       .sequence as Array<Record<string, unknown>>;
-    const training = renamedSequence.find(({ id }) => id === "epoch_1.training");
+    const training = renamedSequence.find(({ id }) => id === "epoch_1.first_package");
     if (!training) throw new Error("training step should exist");
     training.id = "epoch_1.renamed";
     expect(parseRunnerConfig(renamed)).toBeNull();
@@ -222,7 +222,7 @@ describe("runner config v5 story validation", () => {
     const wrongEpoch = validConfig();
     const wrongEpochSequence = (wrongEpoch.story as Record<string, unknown>)
       .sequence as Array<Record<string, unknown>>;
-    const peakFinal = wrongEpochSequence.find(({ id }) => id === "epoch_4.order_peak_final");
+    const peakFinal = wrongEpochSequence.find(({ id }) => id === "epoch_4.order_scale");
     if (!peakFinal) throw new Error("peak-final step should exist");
     peakFinal.epochIndex = 2;
     expect(parseRunnerConfig(wrongEpoch)).toBeNull();

@@ -1,6 +1,6 @@
 import { collidesWithObstacle, collectsPackage } from "./collision";
 import { BossDirector } from "./boss";
-import { BOSS, CANVAS_LIMITS, GAMEPLAY, WORLD_HEIGHT, WORLD_WIDTH } from "./constants";
+import { BOSS, CANVAS_LIMITS, GAMEPLAY, GROUND_Y, WORLD_HEIGHT, WORLD_WIDTH } from "./constants";
 import type {
   ControlMethod,
   GameResult,
@@ -11,11 +11,21 @@ import type {
   RunnerGameCallbacks,
   RunnerGameOptions
 } from "./contracts";
-import { getChallengeDifficulty, getDifficulty, getStoryDifficulty } from "./difficulty";
+import {
+  getAuthoredStoryDifficulty,
+  getChallengeDifficulty,
+  getDifficulty,
+  getStoryDifficulty
+} from "./difficulty";
 import { createRunnerModel, queueJump, stepRunnerPhysics } from "./physics";
 import { mixSeed, normalizeSeed, SeededRandom } from "./random";
 import { WarehouseRenderer } from "./renderer";
-import { calculateScore, distanceInMeters, resolvePackageCollection } from "./scoring";
+import {
+  calculateScore,
+  distanceInMeters,
+  resolvePackageCollection,
+  resolveWaveCombo
+} from "./scoring";
 import {
   activateTutorialPackages,
   activateWave,
@@ -35,11 +45,7 @@ import {
 import type { NarrativeConfig, PackageType, PowerUpKind, StoryConfig } from "../shared/types";
 import type { ObstacleKind, ObstacleModel, PackageModel, RenderScene, RunnerModel } from "./types";
 import { calculateCanvasBuffer } from "./viewport";
-import {
-  recoverStoryGapAssist,
-  resolveCollision,
-  storyGapAssistAfterCollision
-} from "./mode-rules";
+import { resolveCollision } from "./mode-rules";
 import {
   ActivePowerUps,
   spawnTravelDistance,
@@ -69,12 +75,25 @@ import {
 } from "../visuals/scene-manifest";
 import { backgroundTravelPixels } from "../visuals/background-parallax";
 import { MilestoneCelebrationDirector } from "./milestone-celebration";
+import {
+  AuthoredWaveDirector,
+  STORY_WAVE_COLLECTION_RATIO,
+  storyMicrolevelForSegment,
+  type AuthoredWaveDefinition
+} from "./authored-wave";
+import {
+  challengeAtomAt,
+  challengePatternTuning,
+  challengePressureAt
+} from "./challenge-pressure";
 
 const CUTSCENE_SECONDS = 2.6;
 const FINALE_CELEBRATION_SECONDS = 3.5;
 const OFFSCREEN_SPAWN_X = WORLD_WIDTH + GAMEPLAY.spawnPadding;
 const STORY_CLIMAX_SPAWN_X = OFFSCREEN_SPAWN_X;
 const STORY_ORDER_TYPES: readonly PackageType[] = ["pc", "notebook", "lcd", "telefon"];
+const CROUCH_MINIMUM_SECONDS = 0.3;
+const CROUCH_BUFFER_SECONDS = 0.11;
 const FINALE_POWER_UPS: readonly PowerUpKind[] = [
   "audyt_jakosci",
   "drugie_zycie",
@@ -116,6 +135,21 @@ export class RunnerGame implements RunnerGameApi {
   private readonly storyObstacleTransformer = new StoryObstacleTransformer();
   private readonly milestoneCelebrationDirector = new MilestoneCelebrationDirector();
   private storyObjectiveDirector = new StoryObjectiveDirector();
+  private authoredWaveDirector: AuthoredWaveDirector | null = null;
+  private authoredActionIndex = 0;
+  private authoredActionSpawned = false;
+  private authoredBreathRemaining = 0;
+  private finaleRewardRunRemaining = 0;
+  private authoredFinaleCelebrated = false;
+  private challengePatternIndex = 0;
+  private challengeSpawnCooldown = 0;
+  private challengeWaveId: string | null = null;
+  private challengeWavePackagesAvailable = 0;
+  private challengeWavePackagesCollected = 0;
+  private challengeSequenceRemaining = 0;
+  private challengeSequencePackagesAvailable = 0;
+  private challengeSequencePackagesCollected = 0;
+  private challengeSequenceBreathSeconds = 0;
   private readonly storyClimaxesCompleted = new Set<number>();
   private runner: RunnerModel = createRunnerModel();
   private spawner!: FairSpawner;
@@ -165,15 +199,20 @@ export class RunnerGame implements RunnerGameApi {
   };
   private totalWeightKg = 0;
   private readonly activePowerUps = new ActivePowerUps();
+  private readonly seenPowerUpDemos = new Set<PowerUpKind>();
+  private powerUpDemoRemaining = 0;
+  private pendingPowerUpReward: PowerUpKind | null = null;
   private collisions = 0;
   private epochCollisions = 0;
-  private storyGapAssist = 0;
   private recoverySeconds = 0;
   private combo = 1;
   private bestCombo = 1;
   private warrantySaves = 0;
   private factEngine: FactEngine | null = null;
   private crouchHeld = false;
+  private crouchInputHeld = false;
+  private crouchMinimumRemaining = 0;
+  private crouchBufferRemaining = 0;
   private accumulator = 0;
   private lastFrameTime: number | null = null;
   private nextSnapshotAt = 0;
@@ -247,6 +286,7 @@ export class RunnerGame implements RunnerGameApi {
     this.impact = false;
     this.impactSeconds = 0;
     this.crouchHeld = false;
+    this.crouchInputHeld = false;
     this.setState("running");
     this.emitStorySignals(true);
     this.emitSnapshot();
@@ -273,9 +313,10 @@ export class RunnerGame implements RunnerGameApi {
     }
     if (this._state === "ready") this.start(controlMethod);
     if (this._state !== "running") return;
-    if (this.storyTimeline?.snapshot.trustCorridor) return;
+    if (this.storyTimeline?.snapshot.trustCorridor || this.powerUpDemoRemaining > 0) return;
     this.controlMethod = controlMethod;
     this.crouchHeld = false;
+    this.crouchInputHeld = false;
     this.runner.crouching = false;
     queueJump(this.runner);
   }
@@ -286,12 +327,22 @@ export class RunnerGame implements RunnerGameApi {
     }
     if (this._state === "ready") this.start(controlMethod);
     if (this._state !== "running") return;
-    if (this.storyTimeline?.snapshot.trustCorridor) {
+    if (this.storyTimeline?.snapshot.trustCorridor || this.powerUpDemoRemaining > 0) {
       this.crouchHeld = false;
+      this.crouchInputHeld = false;
       return;
     }
     this.controlMethod = controlMethod;
-    this.crouchHeld = active;
+    this.crouchInputHeld = active;
+    if (active) {
+      this.crouchBufferRemaining = CROUCH_BUFFER_SECONDS;
+      if (this.runner.grounded) {
+        this.crouchHeld = true;
+        this.crouchMinimumRemaining = CROUCH_MINIMUM_SECONDS;
+      }
+    } else if (this.crouchMinimumRemaining <= 0) {
+      this.crouchHeld = false;
+    }
   }
 
   pause(): void {
@@ -345,7 +396,7 @@ export class RunnerGame implements RunnerGameApi {
     const random = new SeededRandom(mixSeed(this.baseSeed, this.runIndex));
     this.elapsedSeconds = 0;
     this.visualElapsedSeconds = 0;
-    this.challengeElapsedSeconds = 0;
+    this.resetChallengeRunState();
     this.challengeWorldDirector.reset("direct");
     this.distancePixels = 0;
     this.visualDistancePixels = 0;
@@ -359,10 +410,21 @@ export class RunnerGame implements RunnerGameApi {
     this.storyObstacleTransformer.reset();
     this.milestoneCelebrationDirector.reset();
     this.storyObjectiveDirector = new StoryObjectiveDirector();
+    this.authoredWaveDirector = null;
+    this.authoredActionIndex = 0;
+    this.authoredActionSpawned = false;
+    this.authoredBreathRemaining = 0;
+    this.finaleRewardRunRemaining = 0;
+    this.authoredFinaleCelebrated = false;
+    this.powerUpDemoRemaining = 0;
+    this.pendingPowerUpReward = null;
     this.storyClimaxesCompleted.clear();
     this.logisticWaveDirector.reset();
     this.bossStarted = false;
     this.crouchHeld = false;
+    this.crouchInputHeld = false;
+    this.crouchMinimumRemaining = 0;
+    this.crouchBufferRemaining = 0;
     this.accumulator = 0;
     this.lastFrameTime = null;
     this.nextSnapshotAt = 0;
@@ -379,7 +441,6 @@ export class RunnerGame implements RunnerGameApi {
     this.totalWeightKg = 0;
     this.collisions = 0;
     this.epochCollisions = 0;
-    this.storyGapAssist = 0;
     this.recoverySeconds = 0;
     this.combo = 1;
     this.bestCombo = 1;
@@ -489,9 +550,14 @@ export class RunnerGame implements RunnerGameApi {
     let activeDeltaSeconds = deltaSeconds;
     if (this.storyTimeline !== null) {
       const previousStory = this.storyTimeline.snapshot;
-      const celebratingMillion = this.finaleCelebrationRemaining > 0;
+      const presentingMillion = this.finaleCelebrationRemaining > 0;
+      const presentingPowerUp = this.powerUpDemoRemaining > 0;
+      const millionTransitionActive = presentingMillion || this.finaleRewardRunRemaining > 0;
       const waitingForFinaleGoals = previousStory.playSegment?.id === "epoch_5.million_threshold" &&
-        (!this.storyObjectiveDirector.snapshot.epoch5.millionThreshold.completed || celebratingMillion);
+        ((this.authoredWaveDirector
+          ? !this.authoredWaveDirector.completed
+          : !this.storyObjectiveDirector.snapshot.epoch5.millionThreshold.completed) ||
+          millionTransitionActive);
       const waitingForTutorialActions = previousStory.playSegment?.id === "epoch_1.training" &&
         !this.storyObjectiveDirector.snapshot.epoch1.training.completed;
       const waitingForQualitySeries = previousStory.playSegment?.id === "epoch_2.quality_series" &&
@@ -506,8 +572,10 @@ export class RunnerGame implements RunnerGameApi {
           !this.storyObjectiveDirector.snapshot.epoch3.growth.completed) ||
         (matchingSegmentId === "epoch_3.matching_trust" &&
           !this.storyObjectiveDirector.snapshot.epoch3.trust.completed);
-      const waitingForGameplayResolution = waitingForFinaleGoals || waitingForTutorialActions ||
-        waitingForQualitySeries || waitingForBacklog || waitingForMatching;
+      const waitingForGameplayResolution = presentingPowerUp || (this.authoredWaveDirector !== null
+        ? !this.authoredWaveDirector.completed || millionTransitionActive
+        : waitingForFinaleGoals || waitingForTutorialActions || waitingForQualitySeries ||
+          waitingForBacklog || waitingForMatching);
       const nextStory = this.storyTimeline.advance(deltaSeconds, {
         allowPlayCompletion: !waitingForGameplayResolution
       });
@@ -515,7 +583,7 @@ export class RunnerGame implements RunnerGameApi {
         0,
         nextStory.totalActiveElapsedSeconds - previousStory.totalActiveElapsedSeconds
       );
-      activeDeltaSeconds = celebratingMillion
+      activeDeltaSeconds = presentingMillion || presentingPowerUp
         ? 0
         : waitingForGameplayResolution &&
           nextStory.sectionElapsedSeconds >= nextStory.sectionDurationSeconds
@@ -544,6 +612,8 @@ export class RunnerGame implements RunnerGameApi {
         );
       }
       this.syncStorySection(previousStory, nextStory);
+      this.authoredWaveDirector?.advance(activeDeltaSeconds);
+      this.beginFinaleRewardRunIfReady();
       this.storyObjectiveDirector.enterSegment(
         nextStory.playSegment?.id ?? null,
         nextStory.playSegment?.durationSeconds
@@ -562,13 +632,35 @@ export class RunnerGame implements RunnerGameApi {
     }
 
     this.visualElapsedSeconds += deltaSeconds;
+    if (this.powerUpDemoRemaining > 0) {
+      this.powerUpDemoRemaining = Math.max(0, this.powerUpDemoRemaining - deltaSeconds);
+      this.crouchHeld = false;
+      this.crouchInputHeld = false;
+      this.runner.crouching = false;
+      this.clearInteractiveWorld();
+      this.emitSnapshot();
+      return;
+    }
     this.elapsedSeconds += activeDeltaSeconds;
-    this.milestoneCelebrationDirector.advance(activeDeltaSeconds);
+    const milestoneSafe = !this.obstacles.some(({ active, x }) =>
+      active && x >= this.runner.x
+    );
+    this.milestoneCelebrationDirector.advance(activeDeltaSeconds, milestoneSafe);
     if (this.mode === "challenge") this.challengeElapsedSeconds += activeDeltaSeconds;
     this.recoverySeconds = Math.max(0, this.recoverySeconds - activeDeltaSeconds);
     this.impactSeconds = Math.max(0, this.impactSeconds - activeDeltaSeconds);
     this.impact = this.impactSeconds > 0;
     this.storyObstacleTransformer.advance(deltaSeconds);
+    if (this.finaleRewardRunRemaining > 0) {
+      this.finaleRewardRunRemaining = Math.max(
+        0,
+        this.finaleRewardRunRemaining - activeDeltaSeconds
+      );
+      if (this.finaleRewardRunRemaining === 0 && this.authoredFinaleCelebrated) {
+        this.finaleCelebrationRemaining = FINALE_CELEBRATION_SECONDS;
+        this.clearInteractiveWorld();
+      }
+    }
     if (this.finaleCelebrationRemaining > 0) {
       this.finaleCelebrationRemaining = Math.max(
         0,
@@ -587,9 +679,6 @@ export class RunnerGame implements RunnerGameApi {
 
     const trustCorridor = this.storyTimeline?.snapshot.trustCorridor ?? false;
     const enteredTrustCorridor = trustCorridor && !this.lastTrustCorridor;
-    if (this.mode === "story" && !trustCorridor && this.recoverySeconds <= 0) {
-      this.storyGapAssist = recoverStoryGapAssist(this.storyGapAssist, activeDeltaSeconds);
-    }
     if (enteredTrustCorridor) {
       const activeObstacles = this.obstacles.filter(({ active }) => active);
       if (activeObstacles.length > 0) {
@@ -613,11 +702,19 @@ export class RunnerGame implements RunnerGameApi {
         storySnapshot.totalActiveElapsedSeconds,
         this.currentEpoch
       );
-      difficulty = getStoryDifficulty(
-        storySnapshot.totalActiveElapsedSeconds,
-        this.story.activeDurationSeconds,
-        this.story
-      );
+      const authored = this.authoredWaveDirector?.definition;
+      difficulty = authored
+        ? getAuthoredStoryDifficulty(
+            storySnapshot.sectionElapsedSeconds,
+            storySnapshot.sectionDurationSeconds,
+            authored.speedStartMultiplier,
+            authored.speedEndMultiplier
+          )
+        : getStoryDifficulty(
+            storySnapshot.totalActiveElapsedSeconds,
+            this.story.activeDurationSeconds,
+            this.story
+          );
       this.speed = difficulty.speed;
       this.difficultyLevel = difficulty.level;
     } else if (this.mode === "story" && this.narrative && this.narrative.epochs.length > 0) {
@@ -633,12 +730,6 @@ export class RunnerGame implements RunnerGameApi {
       this.speed = difficulty.speed;
       this.difficultyLevel = difficulty.level;
     }
-    if (this.mode === "story" && this.storyGapAssist > 0) {
-      difficulty = {
-        ...difficulty,
-        minimumGapSeconds: difficulty.minimumGapSeconds * (1 + this.storyGapAssist)
-      };
-    }
 
     const worldScale = this.storyTimeline?.snapshot.worldSpeedScale ?? 1;
     const visualTravelledPixels = this.speed * (
@@ -653,9 +744,22 @@ export class RunnerGame implements RunnerGameApi {
       return;
     }
 
+    this.crouchBufferRemaining = Math.max(0, this.crouchBufferRemaining - activeDeltaSeconds);
+    this.crouchMinimumRemaining = Math.max(0, this.crouchMinimumRemaining - activeDeltaSeconds);
     stepRunnerPhysics(this.runner, activeDeltaSeconds);
+    if (this.runner.grounded && this.crouchBufferRemaining > 0) {
+      this.crouchHeld = true;
+      this.crouchMinimumRemaining = Math.max(
+        this.crouchMinimumRemaining,
+        CROUCH_MINIMUM_SECONDS
+      );
+      this.crouchBufferRemaining = 0;
+    }
+    if (!this.crouchInputHeld && this.crouchMinimumRemaining <= 0) this.crouchHeld = false;
     this.runner.crouching = this.crouchHeld && this.runner.grounded;
     this.tickPowerUps(activeDeltaSeconds);
+    this.authoredBreathRemaining = Math.max(0, this.authoredBreathRemaining - activeDeltaSeconds);
+    this.challengeSpawnCooldown = Math.max(0, this.challengeSpawnCooldown - activeDeltaSeconds);
 
     for (const obstacle of this.obstacles) {
       if (!obstacle.active) continue;
@@ -681,6 +785,9 @@ export class RunnerGame implements RunnerGameApi {
       if (parcel.x + parcel.size < -40) parcel.active = false;
     }
 
+    this.advanceAuthoredWaveIfClear();
+    this.resolveChallengeWaveIfClear();
+
     const bossHazardActive = this.obstacles.some(
       (obstacle) =>
         obstacle.active &&
@@ -703,9 +810,11 @@ export class RunnerGame implements RunnerGameApi {
     const storyOrdersActive = activeStorySegment?.id === "epoch_4.order_peak";
     const scriptedObjectiveActive = activeStorySegment?.id === "epoch_1.training" ||
       activeStorySegment?.id === "epoch_2.quality_series";
+    const authoredProgramActive = this.authoredWaveDirector !== null;
     const climaxCommand = activeStorySegment &&
         STORY_CLIMAX_SEGMENTS.has(activeStorySegment.id) &&
         this.currentEpoch < 4
+      && !authoredProgramActive
       ? this.storyClimaxDirector.advance(
           activeDeltaSeconds,
           this.storyTimeline?.snapshot.sectionElapsedSeconds ?? 0,
@@ -746,9 +855,19 @@ export class RunnerGame implements RunnerGameApi {
       this.spawnScriptedObjectivePattern(routeClear, activeStorySegment.id);
     }
 
+
+    if (this.pendingPowerUpReward && routeClear && this.recoverySeconds <= 0 &&
+        !this.hasPendingPowerUpParcel()) {
+      this.spawnPendingPowerUpReward();
+    } else if (authoredProgramActive && !this.pendingPowerUpReward && routeClear &&
+        this.recoverySeconds <= 0 &&
+        this.authoredBreathRemaining <= 0 && !this.hasAuthoredRuntimeObjects()) {
+      this.spawnCurrentAuthoredAction();
+    }
+
     const legacyBossReady = this.storyTimeline === null && epoch !== undefined &&
       this.epochElapsed >= epoch.durationSeconds * 0.55;
-    const timelineBossReady = millionThresholdActive;
+    const timelineBossReady = false;
     if (this.mode === "story" && epoch?.bossClimax && !this.bossStarted &&
         (legacyBossReady || timelineBossReady)) {
       this.bossDirector.forceEncounter();
@@ -757,7 +876,7 @@ export class RunnerGame implements RunnerGameApi {
 
     const runBoss = this.mode === "story" && (this.storyTimeline === null
       ? (!this.narrative || epoch?.bossClimax === true)
-      : timelineBossReady);
+      : false);
     const bossCanWarnInCorridor = this.storyTimeline !== null &&
       (this.bossDirector.model.phase === "pending" || this.bossDirector.model.phase === "warning");
     const bossCommand = runBoss && (!trustCorridor || bossCanWarnInCorridor) &&
@@ -765,45 +884,13 @@ export class RunnerGame implements RunnerGameApi {
       ? this.bossDirector.advance(activeDeltaSeconds, this.elapsedSeconds, routeClear, bossHazardActive)
       : { type: "none" } as const;
 
-    const logisticCommand = this.mode === "challenge" && this.recoverySeconds <= 0
-      ? this.logisticWaveDirector.advance(
-          activeDeltaSeconds,
-          this.challengeElapsedSeconds,
-          routeClear,
-          bossHazardActive
-        )
-      : { type: "none" } as const;
-
     if (this.mode === "challenge") {
-      const visualRouteClear = routeClear &&
-        this.bossDirector.model.phase === "inactive" &&
-        this.logisticWaveDirector.snapshot.phase === "inactive";
+      const visualRouteClear = routeClear && this.bossDirector.model.phase === "inactive";
       this.challengeWorldDirector.advance(activeDeltaSeconds, visualRouteClear);
-    }
-
-    if (logisticCommand.type === "attack") {
-      activateWave(
-        createBossAttackWave(logisticCommand.kind, OFFSCREEN_SPAWN_X),
-        this.obstacles,
-        this.packages
-      );
-    } else if (logisticCommand.type === "complete") {
-      this.bonusScore += BOSS.scoreBonus;
-      this.clearInteractiveWorld();
-      const rewardWave = createAuthoredRewardWave({
-        action: this.logisticWaveDirector.snapshot.patternsCompleted % 2 === 0
-          ? "jump"
-          : "slide",
-        spawnX: authoredRewardSpawnX(
-          this.speed,
-          WORLD_WIDTH + GAMEPLAY.spawnPadding
-        ),
-        speed: this.speed,
-        patternIndex: this.logisticWaveDirector.snapshot.patternsCompleted,
-        source: "story-reward",
-        rewards: [{ kind: "golden" }]
-      });
-      if (rewardWave) activateWave(rewardWave, this.obstacles, this.packages);
+      if (routeClear && this.recoverySeconds <= 0 && this.challengeSpawnCooldown <= 0 &&
+          this.challengeWaveId === null) {
+        this.spawnChallengePattern();
+      }
     }
 
     if (bossCommand.type === "attack") {
@@ -838,7 +925,7 @@ export class RunnerGame implements RunnerGameApi {
       }
     }
 
-    const finaleNeedsPackages = millionThresholdActive && this.bossesDefeated > 0 &&
+    const finaleNeedsPackages = millionThresholdActive && !authoredProgramActive && this.bossesDefeated > 0 &&
       this.storyObjectiveDirector.snapshot.epoch5.millionThreshold.packagesCollected <
         this.storyObjectiveDirector.snapshot.epoch5.millionThreshold.packageTarget;
     if (finaleNeedsPackages && routeClear && !this.bossDirector.blocksRegularSpawns) {
@@ -852,7 +939,9 @@ export class RunnerGame implements RunnerGameApi {
         !this.hasAuthoredRewardPattern() &&
         !storyOrdersActive &&
         !scriptedObjectiveActive &&
-        !millionThresholdActive) {
+        !authoredProgramActive &&
+        !millionThresholdActive &&
+        this.mode !== "challenge") {
       const wave = this.spawner.advance(
         spawnTravelDistance(travelledPixels, this.activePowerUps.has("audyt_jakosci")),
         this.speed,
@@ -885,12 +974,6 @@ export class RunnerGame implements RunnerGameApi {
       this.impactSeconds = 0.13;
       this.impact = true;
       this.handleStoryObjectiveUpdate(this.storyObjectiveDirector.recordCollision());
-      if (this.mode === "story") {
-        this.storyGapAssist = storyGapAssistAfterCollision(
-          this.storyGapAssist,
-          this.epochCollisions
-        );
-      }
 
       if (resolution.consumeWarranty) {
         if (this.activePowerUps.consumeWarranty()) this.warrantySaves += 1;
@@ -908,6 +991,19 @@ export class RunnerGame implements RunnerGameApi {
       }
 
       this.recoverySeconds = resolution.recoverySeconds;
+      if (obstacle.authoredWaveId && this.authoredWaveDirector?.currentWave?.id === obstacle.authoredWaveId) {
+        this.resolveCurrentAuthoredWave(false);
+      }
+      if (obstacle.authoredWaveId && obstacle.authoredWaveId === this.challengeWaveId) {
+        for (const parcel of this.packages) {
+          if (parcel.authoredWaveId === this.challengeWaveId) parcel.active = false;
+        }
+        this.challengeWaveId = null;
+        this.challengeWavePackagesAvailable = 0;
+        this.challengeWavePackagesCollected = 0;
+        this.resetChallengeSequence();
+        this.challengeSpawnCooldown = Math.max(this.challengeSpawnCooldown, 1.1);
+      }
       for (const activeObstacle of this.obstacles) activeObstacle.active = false;
       if (obstacle.source === "story-reward" ||
           (obstacle.source === "boss" && this.storyTimeline !== null)) {
@@ -919,9 +1015,6 @@ export class RunnerGame implements RunnerGameApi {
         this.bossDirector.resolveCollision();
       } else if (obstacle.source === "story-climax") {
         this.storyClimaxDirector.retryCurrentAttack();
-      } else if (obstacle.source === "boss" && this.mode === "challenge" &&
-          !resolution.finishRun) {
-        this.logisticWaveDirector.advance(0, this.challengeElapsedSeconds, true, false);
       }
       this.emitSnapshot();
       break;
@@ -957,9 +1050,16 @@ export class RunnerGame implements RunnerGameApi {
       this.activePowerUps.has("drugie_zycie")
     );
     if (collection.countsAsPackage) {
+      if (parcel.authoredWaveId &&
+          this.authoredWaveDirector?.currentWave?.id === parcel.authoredWaveId) {
+        this.authoredWaveDirector.recordPackage();
+      } else if (parcel.authoredWaveId && parcel.authoredWaveId === this.challengeWaveId) {
+        this.challengeWavePackagesCollected += 1;
+      }
       this.packagesCollected += 1;
       for (const celebration of this.milestoneCelebrationDirector.recordPackages(
-        this.packagesCollected
+        this.packagesCollected,
+        !this.obstacles.some(({ active, x }) => active && x >= this.runner.x)
       )) {
         try {
           this.callbacks.onMilestoneCelebration?.(celebration);
@@ -968,8 +1068,10 @@ export class RunnerGame implements RunnerGameApi {
         }
       }
       this.bonusScore += collection.bonusScoreAwarded;
-      this.combo = collection.nextCombo;
-      this.bestCombo = Math.max(this.bestCombo, this.combo);
+      if (!parcel.authoredWaveId) {
+        this.combo = collection.nextCombo;
+        this.bestCombo = Math.max(this.bestCombo, this.combo);
+      }
       this.packageTypeCounts[parcel.packageType] += 1;
       this.totalWeightKg += parcel.weightKg;
       this.factEngine?.recordPackage(parcel.packageType, parcel.weightKg);
@@ -988,8 +1090,8 @@ export class RunnerGame implements RunnerGameApi {
       }
       if (parcel.kind === "golden") this.callbacks.onSpecialPickup?.("golden");
     } else if (parcel.kind !== "standard" && parcel.kind !== "golden") {
-      this.activatePowerUp(parcel.kind);
-      this.callbacks.onSpecialPickup?.(parcel.kind);
+      if (parcel.authoredWaveId === "safe-power-up") this.pendingPowerUpReward = null;
+      if (this.activatePowerUp(parcel.kind)) this.callbacks.onSpecialPickup?.(parcel.kind);
     }
     this.emitUnlockedFacts();
   }
@@ -1044,6 +1146,229 @@ export class RunnerGame implements RunnerGameApi {
       );
   }
 
+  private hasAuthoredRuntimeObjects(): boolean {
+    const waveId = this.authoredWaveDirector?.currentWave?.id;
+    if (!waveId) return false;
+    return this.obstacles.some(({ active, authoredWaveId }) => active && authoredWaveId === waveId) ||
+      this.packages.some(({ active, authoredWaveId }) => active && authoredWaveId === waveId);
+  }
+
+  private packagesForAuthoredAction(
+    wave: Readonly<AuthoredWaveDefinition>,
+    _actionIndex: number
+  ): number {
+    return wave.packageCount;
+  }
+
+  private spawnCurrentAuthoredAction(): void {
+    const director = this.authoredWaveDirector;
+    const wave = director?.currentWave;
+    if (!director || !wave || this.authoredActionSpawned) return;
+    const action = wave.actions[this.authoredActionIndex];
+    const kind = wave.obstacleKinds[this.authoredActionIndex];
+    if (!action || !kind) return;
+    const packageCount = this.packagesForAuthoredAction(wave, this.authoredActionIndex);
+    const reactionSeconds = wave.telegraphSeconds + (this.controlMethod === "touch" ? 0.1 : 0);
+    if ((wave.obstacleVariant === "parcel-arc" || wave.obstacleVariant === "recovery-route") &&
+        this.authoredActionIndex === 0) {
+      const free = this.packages.filter(({ active }) => !active).slice(0, packageCount);
+      if (free.length < packageCount) return;
+      const startX = authoredRewardSpawnX(this.speed, STORY_CLIMAX_SPAWN_X, reactionSeconds);
+      const heights = [28, 78, 118, 78, 28];
+      free.forEach((parcel, index) => {
+        parcel.active = true;
+        parcel.kind = "standard";
+        parcel.scoreValue = GAMEPLAY.packageScore;
+        parcel.x = startX + index * 66;
+        parcel.y = GROUND_Y - parcel.size - (heights[index] ?? 28);
+        parcel.phase = index * 0.72;
+        parcel.packageType = "notebook";
+        parcel.weightKg = 0;
+        parcel.storyRewardPattern = true;
+        parcel.authoredWaveId = wave.id;
+      });
+      this.authoredActionSpawned = true;
+      return;
+    }
+    const runtimeWave = createAuthoredRewardWave({
+      action,
+      obstacleKind: kind,
+      spawnX: authoredRewardSpawnX(this.speed, STORY_CLIMAX_SPAWN_X),
+      speed: this.speed,
+      packageCount,
+      patternIndex: director.snapshot.wavesCompleted + this.authoredActionIndex,
+      source: "story-reward",
+      authoredWaveId: wave.id,
+      authoredActionIndex: this.authoredActionIndex,
+      minimumReactionSeconds: reactionSeconds,
+      rewards: [{ kind: "standard" }]
+    });
+    if (!runtimeWave || !activateWave(runtimeWave, this.obstacles, this.packages)) return;
+    this.authoredActionSpawned = true;
+  }
+
+  private advanceAuthoredWaveIfClear(): void {
+    const director = this.authoredWaveDirector;
+    const wave = director?.currentWave;
+    if (!director || !wave || !this.authoredActionSpawned || this.hasAuthoredRuntimeObjects()) return;
+    if (this.authoredActionIndex + 1 < wave.actions.length) {
+      this.authoredActionIndex += 1;
+      this.authoredActionSpawned = false;
+      this.authoredBreathRemaining = 0.25;
+      return;
+    }
+    this.resolveCurrentAuthoredWave(true);
+  }
+
+  private resolveCurrentAuthoredWave(actionSucceeded: boolean): void {
+    const director = this.authoredWaveDirector;
+    const wave = director?.currentWave;
+    if (!director || !wave) return;
+    const result = director.resolve(actionSucceeded);
+    if (director.definition.id !== "first-package") {
+      const combo = resolveWaveCombo(this.combo, result.passed, result.perfect);
+      this.combo = combo.nextCombo;
+      this.bestCombo = Math.max(this.bestCombo, this.combo);
+      this.bonusScore += combo.perfectBonus;
+    }
+    if (result.passed && wave.reward) {
+      const powerUp: PowerUpKind | undefined = wave.reward === "audit"
+        ? "audyt_jakosci"
+        : wave.reward === "double-score"
+          ? "drugie_zycie"
+          : wave.reward === "warranty"
+            ? "gwarancja_48"
+            : undefined;
+      if (powerUp) this.pendingPowerUpReward = powerUp;
+    }
+    this.beginFinaleRewardRunIfReady();
+    this.authoredActionIndex = 0;
+    this.authoredActionSpawned = false;
+    this.authoredBreathRemaining = result.passed ? wave.breathSeconds : 0.45;
+    for (const obstacle of this.obstacles) {
+      if (obstacle.authoredWaveId === wave.id) obstacle.active = false;
+    }
+    for (const parcel of this.packages) {
+      if (parcel.authoredWaveId === wave.id) parcel.active = false;
+    }
+    this.emitSnapshot();
+  }
+
+  private beginFinaleRewardRunIfReady(): void {
+    const director = this.authoredWaveDirector;
+    if (!director?.completed || director.definition.id !== "million-threshold" ||
+        this.authoredFinaleCelebrated) return;
+    this.authoredFinaleCelebrated = true;
+    this.finaleRewardRunRemaining = 4;
+  }
+
+  private hasPendingPowerUpParcel(): boolean {
+    return this.packages.some(({ active, authoredWaveId }) =>
+      active && authoredWaveId === "safe-power-up"
+    );
+  }
+
+  private spawnPendingPowerUpReward(): void {
+    const kind = this.pendingPowerUpReward;
+    const parcel = this.packages.find(({ active }) => !active);
+    if (!kind || !parcel) return;
+    parcel.active = true;
+    parcel.kind = kind;
+    parcel.scoreValue = 0;
+    parcel.x = authoredRewardSpawnX(this.speed, STORY_CLIMAX_SPAWN_X, 1.6);
+    parcel.y = GROUND_Y - parcel.size - 12;
+    parcel.phase = 0;
+    parcel.packageType = "notebook";
+    parcel.weightKg = 0;
+    parcel.storyRewardPattern = true;
+    parcel.authoredWaveId = "safe-power-up";
+  }
+
+  private resetChallengeRunState(): void {
+    this.challengeElapsedSeconds = 0;
+    this.challengePatternIndex = 0;
+    this.challengeSpawnCooldown = 0;
+    this.challengeWaveId = null;
+    this.challengeWavePackagesAvailable = 0;
+    this.challengeWavePackagesCollected = 0;
+    this.resetChallengeSequence();
+  }
+
+  private resetChallengeSequence(): void {
+    this.challengeSequenceRemaining = 0;
+    this.challengeSequencePackagesAvailable = 0;
+    this.challengeSequencePackagesCollected = 0;
+    this.challengeSequenceBreathSeconds = 0;
+  }
+
+  private spawnChallengePattern(): void {
+    const atom = challengeAtomAt(this.challengePatternIndex);
+    const tuning = challengePatternTuning(
+      this.challengeElapsedSeconds,
+      this.challengePatternIndex,
+      atom.packageCount
+    );
+    if (this.challengeSequenceRemaining === 0) {
+      this.challengeSequenceRemaining = tuning.sequenceLength;
+      this.challengeSequencePackagesAvailable = 0;
+      this.challengeSequencePackagesCollected = 0;
+      this.challengeSequenceBreathSeconds = tuning.breathSeconds;
+    }
+    const waveId = `challenge-${this.challengePatternIndex}`;
+    const wave = createAuthoredRewardWave({
+      action: atom.action,
+      obstacleKind: atom.obstacleKind,
+      spawnX: authoredRewardSpawnX(
+        this.speed,
+        WORLD_WIDTH + GAMEPLAY.spawnPadding,
+        tuning.reactionSeconds
+      ),
+      speed: this.speed,
+      packageCount: tuning.packageCount,
+      patternIndex: this.challengePatternIndex,
+      source: "normal",
+      authoredWaveId: waveId,
+      minimumReactionSeconds: tuning.reactionSeconds,
+      rewards: [{ kind: "standard" }]
+    });
+    if (!wave || !activateWave(wave, this.obstacles, this.packages)) return;
+    this.challengeWaveId = waveId;
+    this.challengeWavePackagesAvailable = tuning.packageCount;
+    this.challengeWavePackagesCollected = 0;
+    this.challengePatternIndex += 1;
+  }
+
+  private resolveChallengeWaveIfClear(): void {
+    const waveId = this.challengeWaveId;
+    if (this.mode !== "challenge" || waveId === null) return;
+    const active = this.obstacles.some(({ active, authoredWaveId }) =>
+      active && authoredWaveId === waveId
+    ) || this.packages.some(({ active, authoredWaveId }) =>
+      active && authoredWaveId === waveId
+    );
+    if (active) return;
+    this.challengeSequencePackagesAvailable += this.challengeWavePackagesAvailable;
+    this.challengeSequencePackagesCollected += this.challengeWavePackagesCollected;
+    this.challengeSequenceRemaining = Math.max(0, this.challengeSequenceRemaining - 1);
+    this.challengeWaveId = null;
+    this.challengeWavePackagesAvailable = 0;
+    this.challengeWavePackagesCollected = 0;
+    if (this.challengeSequenceRemaining > 0) {
+      this.challengeSpawnCooldown = 0.18;
+      return;
+    }
+    const passed = this.challengeSequencePackagesCollected >=
+      Math.ceil(this.challengeSequencePackagesAvailable * STORY_WAVE_COLLECTION_RATIO);
+    const perfect = passed &&
+      this.challengeSequencePackagesCollected === this.challengeSequencePackagesAvailable;
+    const resolution = resolveWaveCombo(this.combo, passed, perfect);
+    this.combo = resolution.nextCombo;
+    this.bestCombo = Math.max(this.bestCombo, this.combo);
+    this.bonusScore += resolution.perfectBonus;
+    this.challengeSpawnCooldown = this.challengeSequenceBreathSeconds;
+    this.resetChallengeSequence();
+  }
+
   private prepareStoryWave(wave: SpawnWave, segmentId: string | null): SpawnWave {
     if (segmentId !== "epoch_3.matching_creative") return wave;
     const packages = wave.packages.map((parcel, index) => ({
@@ -1065,8 +1390,15 @@ export class RunnerGame implements RunnerGameApi {
     ][Math.max(0, Math.min(3, epochIndex))] as StoryPositiveMotif;
   }
 
-  private activatePowerUp(kind: PowerUpKind): void {
-    this.activePowerUps.activate(kind);
+  private activatePowerUp(kind: PowerUpKind): boolean {
+    const activated = this.activePowerUps.activate(kind);
+    if (activated && this.mode === "story" && this.storyTimeline !== null &&
+        !this.seenPowerUpDemos.has(kind)) {
+      this.seenPowerUpDemos.add(kind);
+      this.powerUpDemoRemaining = 2.8;
+      this.clearInteractiveWorld();
+    }
+    return activated;
   }
 
   private completeBossEncounter(): void {
@@ -1142,7 +1474,27 @@ export class RunnerGame implements RunnerGameApi {
     }
     const enteredPlaySegment = next.state === "play" && next.playSegment !== null &&
       previous.playSegment?.id !== next.playSegment.id;
-    if (enteredPlaySegment) this.clearInteractiveWorld();
+    if (enteredPlaySegment) {
+      this.clearInteractiveWorld();
+      const definition = storyMicrolevelForSegment(next.playSegment?.id ?? "");
+      const runtimeDefinition = definition?.id === "million-threshold" && this.story
+        ? {
+            ...definition,
+            finalePackageTarget: this.story.millionThreshold.packageTarget,
+            repeatWavesUntil: this.story.millionThreshold.combinationTarget
+          }
+        : definition;
+      this.authoredWaveDirector = runtimeDefinition
+        ? new AuthoredWaveDirector(runtimeDefinition)
+        : null;
+      this.authoredActionIndex = 0;
+      this.authoredActionSpawned = false;
+      this.authoredBreathRemaining = 0;
+    } else if (next.state !== "play") {
+      this.authoredWaveDirector = null;
+      this.authoredActionIndex = 0;
+      this.authoredActionSpawned = false;
+    }
     if (next.playSegment?.id === "epoch_3.matching_creative" && enteredPlaySegment) {
       this.creativeEquipmentCursor = 0;
     }
@@ -1220,8 +1572,7 @@ export class RunnerGame implements RunnerGameApi {
     this.epochElapsed = 0;
     this.epochHit = false;
     this.epochCollisions = 0;
-    this.storyGapAssist = 0;
-    this.challengeElapsedSeconds = 0;
+    this.resetChallengeRunState();
     this.challengeWorldDirector.reset("story-continuation");
     this.recoverySeconds = 0;
     this.crouchHeld = false;
@@ -1265,7 +1616,6 @@ export class RunnerGame implements RunnerGameApi {
     this.epochElapsed = 0;
     this.epochHit = false;
     this.epochCollisions = 0;
-    this.storyGapAssist = 0;
     this.furthestEpochReached = Math.max(this.furthestEpochReached, index);
     this.cutscene = null;
     const random = new SeededRandom(mixSeed(this.baseSeed, this.runIndex + index * 97));
@@ -1294,7 +1644,9 @@ export class RunnerGame implements RunnerGameApi {
     } else {
       this.storyClimaxDirector.reset();
     }
-    if (epoch.powerUpDebut) this.activatePowerUp(epoch.powerUpDebut);
+    if (this.storyTimeline === null && epoch.powerUpDebut) {
+      this.activatePowerUp(epoch.powerUpDebut);
+    }
     this.speed = this.story
       ? getStoryDifficulty(
           this.storyTimeline?.snapshot.totalActiveElapsedSeconds ?? 0,
@@ -1396,7 +1748,8 @@ export class RunnerGame implements RunnerGameApi {
       storyProgress: storySnapshot?.progress ?? 0,
       activeStoryBeatIds: storySnapshot?.activeBeats.map(({ id }) => id) ?? [],
       trustCorridor: storySnapshot?.trustCorridor ?? false,
-      storyObjectiveSegmentId: objectives.activeSegmentId ?? "",
+      storyObjectiveSegmentId: this.authoredWaveDirector?.definition.segmentId ??
+        objectives.activeSegmentId ?? "",
       storyObjectivesCompleted: [...objectives.completedObjectiveIds],
       storyObjectives: objectives,
       activeStoryOrderTypes,
@@ -1410,6 +1763,9 @@ export class RunnerGame implements RunnerGameApi {
       ],
       logisticWavePhase: this.logisticWaveDirector.snapshot.phase,
       logisticWaveProgress: this.logisticWaveDirector.snapshot.patternsCompleted,
+      challengePressureAxis: this.mode === "challenge"
+        ? challengePressureAt(this.challengeElapsedSeconds).axis
+        : null,
       bossesDefeated: this.bossesDefeated,
       bossPhase: this.bossDirector.model.phase,
       bossEncounterPhase: this.bossDirector.model.encounterPhase,
@@ -1429,9 +1785,23 @@ export class RunnerGame implements RunnerGameApi {
       packageTypeCounts: { ...this.packageTypeCounts },
       totalWeightKg: Math.round(this.totalWeightKg),
       activePowerUps: this.activePowerUps.keys(),
+      activePowerUpStatuses: this.activePowerUps.statuses(),
+      powerUpDemoRemaining: round(this.powerUpDemoRemaining, 2),
       factsUnlockedCount: this.factsUnlockedCount,
-      milestoneCelebration: this.milestoneCelebrationDirector.snapshot
+      milestoneCelebration: this.milestoneCelebrationDirector.snapshot,
+      authoredWave: this.authoredWaveDirector?.snapshot ?? null,
+      millionCounterValue: this.millionCounterValue()
     };
+  }
+
+  private millionCounterValue(): number {
+    if (this.mode === "challenge") return 1_000_000;
+    const authored = this.authoredWaveDirector;
+    if (authored?.definition.id !== "million-threshold") {
+      return this.storyObjectiveDirector.snapshot.epoch5.millionThreshold.counterValue;
+    }
+    const target = authored.snapshot.totalPackageTarget ?? 50;
+    return 1_000_000 - target + Math.min(target, authored.snapshot.totalPackagesCollected);
   }
 
   private currentWorldVisual(): {
@@ -1553,7 +1923,8 @@ export class RunnerGame implements RunnerGameApi {
       storyObjectives: this.storyObjectiveDirector.snapshot,
       storyClimax: this.storyClimaxDirector.model,
       obstacleTransformations: this.storyObstacleTransformer.models,
-      milestoneCelebration: this.milestoneCelebrationDirector.snapshot
+      milestoneCelebration: this.milestoneCelebrationDirector.snapshot,
+      authoredWave: this.authoredWaveDirector?.snapshot ?? null
     };
     this.renderer.render(this.context, this.canvas.width, this.canvas.height, scene);
   }

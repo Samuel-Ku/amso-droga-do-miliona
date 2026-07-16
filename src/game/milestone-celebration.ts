@@ -70,12 +70,12 @@ export class MilestoneCelebrationDirector {
     return this.active === null ? null : { ...this.active };
   }
 
-  public recordPackages(total: number): MilestoneCelebrationEvent[] {
+  public recordPackages(total: number, safeToPresent = true): MilestoneCelebrationEvent[] {
     const emitted: MilestoneCelebrationEvent[] = [];
     while (total >= this.threshold) {
       const celebration = createCelebration(this.threshold, this.sequenceIndex);
       emitted.push(celebration);
-      if (this.active === null) this.activate(celebration);
+      if (this.active === null && safeToPresent) this.activate(celebration);
       else this.queue.push(celebration);
       this.threshold = nextPackageMilestone(this.threshold, this.sequenceIndex);
       this.sequenceIndex += 1;
@@ -83,8 +83,15 @@ export class MilestoneCelebrationDirector {
     return emitted;
   }
 
-  public advance(deltaSeconds: number): void {
-    if (this.active === null || deltaSeconds <= 0) return;
+  public advance(deltaSeconds: number, safeToPresent = true): void {
+    if (this.active === null) {
+      if (safeToPresent) {
+        const next = this.queue.shift();
+        if (next !== undefined) this.activate(next);
+      }
+      return;
+    }
+    if (deltaSeconds <= 0) return;
     const remainingSeconds = Math.max(0, this.active.remainingSeconds - deltaSeconds);
     if (remainingSeconds > 0) {
       this.active = {
@@ -94,9 +101,11 @@ export class MilestoneCelebrationDirector {
       };
       return;
     }
-    const next = this.queue.shift();
     this.active = null;
-    if (next !== undefined) this.activate(next);
+    if (safeToPresent) {
+      const next = this.queue.shift();
+      if (next !== undefined) this.activate(next);
+    }
   }
 
   public reset(): void {

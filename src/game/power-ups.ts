@@ -2,6 +2,13 @@ import type { PowerUpKind } from "../shared/types";
 import { POWER_UP_DURATION } from "./narrative";
 
 export const AUDIT_SPAWN_RATE = 0.72;
+export const MAX_ACTIVE_POWER_UPS = 2;
+
+export interface ActivePowerUpStatus {
+  kind: PowerUpKind;
+  /** Warranty is a charge, represented by null instead of a countdown. */
+  remainingSeconds: number | null;
+}
 
 const STORY_POWER_UP_ORDER: readonly PowerUpKind[] = [
   "audyt_jakosci",
@@ -31,14 +38,19 @@ export class ActivePowerUps {
     return this.remainingSeconds.has(kind);
   }
 
-  public activate(kind: PowerUpKind): void {
+  public activate(kind: PowerUpKind): boolean {
     if (kind === "gwarancja_48") {
       if (!this.remainingSeconds.has(kind)) {
+        if (this.remainingSeconds.size >= MAX_ACTIVE_POWER_UPS) return false;
         this.remainingSeconds.set(kind, Number.POSITIVE_INFINITY);
       }
-      return;
+      return true;
+    }
+    if (!this.remainingSeconds.has(kind) && this.remainingSeconds.size >= MAX_ACTIVE_POWER_UPS) {
+      return false;
     }
     this.remainingSeconds.set(kind, POWER_UP_DURATION[kind]);
+    return true;
   }
 
   public consumeWarranty(): boolean {
@@ -59,6 +71,15 @@ export class ActivePowerUps {
 
   public keys(): PowerUpKind[] {
     return [...this.remainingSeconds.keys()];
+  }
+
+  public statuses(): ActivePowerUpStatus[] {
+    return [...this.remainingSeconds].map(([kind, remainingSeconds]) => ({
+      kind,
+      remainingSeconds: Number.isFinite(remainingSeconds)
+        ? Math.max(0, remainingSeconds)
+        : null
+    }));
   }
 
   public clear(): void {

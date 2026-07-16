@@ -1,4 +1,6 @@
 import type { StoryObjectiveId, StoryObjectivesSnapshot } from "../game/story-objectives";
+import type { AuthoredWaveProgressSnapshot } from "../game/authored-wave";
+import type { ActivePowerUpStatus } from "../game/power-ups";
 import type { PackageType, PowerUpKind, StoryPerspective } from "../shared/types";
 
 const STORY_PERSPECTIVE_LABELS: Readonly<Record<StoryPerspective, string>> = {
@@ -106,20 +108,66 @@ export class StoryContinuationGate {
 
 const POWER_UP_HUD_LABELS: Readonly<Record<PowerUpKind, string>> = {
   audyt_jakosci: "AUDYT",
-  drugie_zycie: "2× PUNKTY",
-  gwarancja_48: "OCHRONA ×1"
+  drugie_zycie: "×2 WYNIK",
+  gwarancja_48: "GWARANCJA ×1"
 };
 
 /** Compact enough for the mobile HUD while keeping every carried power visible. */
-export function formatPowerUpHud(powerUps: readonly PowerUpKind[]): string {
-  return powerUps.map((kind) => POWER_UP_HUD_LABELS[kind]).join(" · ");
+export function formatPowerUpHud(
+  powerUps: readonly PowerUpKind[],
+  statuses: readonly ActivePowerUpStatus[] = []
+): string {
+  const remainingByKind = new Map(statuses.map(({ kind, remainingSeconds }) => [kind, remainingSeconds]));
+  return powerUps.map((kind) => {
+    const seconds = remainingByKind.get(kind);
+    const timer = seconds === undefined || seconds === null ? "" : ` ${Math.ceil(seconds)} s`;
+    return `${POWER_UP_HUD_LABELS[kind]}${timer}`;
+  }).join(" · ");
 }
 
 /** First-run controls stay visible in the top HUD without covering the route. */
-export function formatStoryControlsHud(segmentId: string): string | null {
-  return segmentId === "epoch_1.training"
+export function formatStoryControlsHud(
+  segmentId: string,
+  authoredProgress?: Readonly<AuthoredWaveProgressSnapshot> | null
+): string | null {
+  return segmentId === "epoch_1.training" ||
+    (authoredProgress?.microlevelId === "first-package" &&
+      authoredProgress.wavesCompleted === 0)
     ? "Skok: tap/Spacja · Ślizg: ↓/S"
     : null;
+}
+
+const SCALE_ZONE_LABELS = ["PRZYJĘCIE", "REALIZACJA", "WYSYŁKA"] as const;
+
+/** One semantic objective slot for every authored v7 microlevel. */
+export function formatAuthoredWaveHud(
+  progress: Readonly<AuthoredWaveProgressSnapshot> | null
+): string | null {
+  if (progress === null) return null;
+  const completed = Math.min(progress.wavesCompleted, progress.waveTarget);
+  switch (progress.microlevelId) {
+    case "first-package":
+      return `RUCHY ${completed}/${progress.waveTarget}`;
+    case "order-backlog":
+      return `FALE ZATORU ${completed}/${progress.waveTarget}`;
+    case "quality-process": {
+      const devices = Math.min(4, Math.floor(completed / 3));
+      const step = progress.completed ? 3 : completed % 3 + 1;
+      return `SPRAWDZONE ${devices}/4 · KROK ${step}/3`;
+    }
+    case "client-growth":
+      return `ROZWÓJ ${Math.min(3, Math.floor(completed / 2) + (progress.completed ? 0 : 1))}/3`;
+    case "order-scale": {
+      const zoneIndex = Math.min(2, Math.floor(completed / 3));
+      const step = progress.completed ? 3 : completed % 3 + 1;
+      return `${SCALE_ZONE_LABELS[zoneIndex]} ${step}/3`;
+    }
+    case "million-threshold": {
+      const target = progress.totalPackageTarget ?? 50;
+      const counter = 1_000_000 - target + Math.min(target, progress.totalPackagesCollected);
+      return new Intl.NumberFormat("pl-PL").format(counter);
+    }
+  }
 }
 
 const ORDER_TYPE_LABELS: Readonly<Record<PackageType, string>> = {

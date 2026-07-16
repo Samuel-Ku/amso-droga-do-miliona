@@ -35,6 +35,7 @@ export interface PackageSpawn {
   weightKg: number;
   storyRewardPattern?: boolean;
   storyOrder?: boolean;
+  authoredWaveId?: string;
 }
 
 export type PackagePattern =
@@ -60,6 +61,8 @@ export interface SpawnWave {
   height: number;
   packages: readonly PackageSpawn[];
   gapPixels: number;
+  authoredWaveId?: string;
+  authoredActionIndex?: number;
 }
 
 export type AuthoredRewardAction = "jump" | "slide";
@@ -77,16 +80,55 @@ export interface AuthoredRewardWaveOptions {
   rewards: readonly AuthoredRewardSpec[];
   patternIndex?: number;
   source?: ObstacleSource;
+  packageCount?: number;
+  obstacleKind?: ObstacleKind;
+  authoredWaveId?: string;
+  authoredActionIndex?: number;
+  minimumReactionSeconds?: number;
 }
 
 export const MIN_AUTHORED_REACTION_SECONDS = 1.6;
+const PACKAGE_MODEL_SIZE = 30;
 
 /** Keeps authored reward patterns reachable as challenge speed increases. */
-export function authoredRewardSpawnX(speed: number, preferredSpawnX: number): number {
+export function authoredRewardSpawnX(
+  speed: number,
+  preferredSpawnX: number,
+  minimumReactionSeconds = MIN_AUTHORED_REACTION_SECONDS
+): number {
   const safeSpeed = Math.max(1, speed);
   const minimumSpawnX = RUNNER_X + RUNNER_WIDTH +
-    safeSpeed * MIN_AUTHORED_REACTION_SECONDS;
+    safeSpeed * Math.max(0, minimumReactionSeconds);
   return Math.max(preferredSpawnX, Math.ceil(minimumSpawnX));
+}
+
+export function validateAuthoredRouteGeometry(options: {
+  action: AuthoredRewardAction;
+  obstacleKind: ObstacleKind;
+  packageCount: number;
+  speed: number;
+  minimumReactionSeconds: number;
+}): string | null {
+  const spawnX = authoredRewardSpawnX(
+    options.speed,
+    WORLD_WIDTH + GAMEPLAY.spawnPadding,
+    options.minimumReactionSeconds
+  );
+  const wave = createAuthoredRewardWave({
+    ...options,
+    spawnX,
+    rewards: [{ kind: "standard" }]
+  });
+  if (!wave) return "wave cannot be spawned with the requested reaction time";
+  const obstacleX = RUNNER_X;
+  const obstacleRight = obstacleX + wave.width;
+  for (const parcel of wave.packages) {
+    const parcelX = obstacleX + (parcel.x - wave.x);
+    const overlaps = parcelX < obstacleRight && parcelX + PACKAGE_MODEL_SIZE > obstacleX &&
+      parcel.y < wave.y + wave.height && parcel.y + PACKAGE_MODEL_SIZE > wave.y;
+    if (overlaps) return "reward route intersects the paired obstacle hitbox";
+  }
+  return null;
 }
 
 export interface SafeCollectiblePlacement {
@@ -185,7 +227,7 @@ export function createPackagePool(size: number = GAMEPLAY.packagePoolSize): Pack
     scoreValue: GAMEPLAY.packageScore,
     x: 0,
     y: 0,
-    size: 30,
+    size: PACKAGE_MODEL_SIZE,
     phase: 0,
     packageType: "notebook" as PackageType,
     weightKg: 0
@@ -418,8 +460,10 @@ export function createAuthoredRewardWave(
   options: AuthoredRewardWaveOptions
 ): SpawnWave | null {
   const speed = Math.max(1, options.speed);
+  const minimumReactionSeconds = options.minimumReactionSeconds ?? MIN_AUTHORED_REACTION_SECONDS;
   const reactionSeconds = (options.spawnX - (RUNNER_X + RUNNER_WIDTH)) / speed;
-  if (reactionSeconds < MIN_AUTHORED_REACTION_SECONDS ||
+  const packageCount = Math.max(2, Math.min(5, Math.floor(options.packageCount ?? 5)));
+  if (reactionSeconds < minimumReactionSeconds ||
       options.rewards.length < 1 || options.rewards.length > 2) return null;
   if (options.rewards.some(({ kind, packageType, storyOrder }) =>
     (storyOrder === true &&
@@ -428,17 +472,29 @@ export function createAuthoredRewardWave(
 
   const patternIndex = Math.max(0, Math.floor(options.patternIndex ?? 0));
   const jumpKinds: readonly ObstacleKind[] = ["pallet", "box-stack", "trolley"];
-  const kind = options.action === "slide"
+  const requestedKind = options.obstacleKind;
+  if (requestedKind &&
+      (options.action === "slide" ? requestedKind !== "overhead" : requestedKind === "overhead")) {
+    return null;
+  }
+  const kind = requestedKind ?? (options.action === "slide"
     ? "overhead"
-    : jumpKinds[patternIndex % jumpKinds.length] ?? "pallet";
+    : jumpKinds[patternIndex % jumpKinds.length] ?? "pallet");
   const spec = OBSTACLE_SPECS[kind];
-  const heights = kind === "overhead"
+  const fullHeights = kind === "overhead"
     ? OVERHEAD_PACKAGE_HEIGHTS
     : PACKAGE_PATTERN_HEIGHTS["five-arc"];
+  const heights = packageCount === fullHeights.length
+    ? fullHeights
+    : Array.from({ length: packageCount }, (_, index) => {
+        const sourceIndex = Math.round(index * (fullHeights.length - 1) / Math.max(1, packageCount - 1));
+        return fullHeights[sourceIndex] ?? fullHeights[0]!;
+      });
   const span = speed * JUMP_FLIGHT_SECONDS * PACKAGE_ARC_SPAN_FRACTION;
-  const rewardSlots = options.action === "slide"
-    ? options.rewards.length === 1 ? [3] : [3, 4]
-    : options.rewards.length === 1 ? [2] : [2, 3];
+  const center = Math.floor((packageCount - 1) / 2);
+  const rewardSlots = options.rewards.length === 1
+    ? [center]
+    : [center, Math.min(packageCount - 1, center + 1)];
   const packageTypes = PACKAGE_TYPE_VALUES;
   const packages = heights.map((height, index): PackageSpawn => {
     const centering = index / (heights.length - 1) - 0.5;
@@ -447,7 +503,9 @@ export function createAuthoredRewardWave(
     const packageKind = reward?.kind ?? "standard";
     return {
       x: options.spawnX + span * centering,
-      y: GROUND_Y - height - 15,
+      // Slide-route parcels sit completely below the hanging beam; jump-route
+      // parcels keep a small visual gap above the floor/obstacle arc.
+      y: kind === "overhead" ? GROUND_Y - height : GROUND_Y - height - 15,
       phase: (patternIndex + index) * 0.73,
       kind: packageKind,
       scoreValue: packageKind === "golden"
@@ -459,6 +517,7 @@ export function createAuthoredRewardWave(
         packageTypes[(patternIndex + index) % packageTypes.length] ?? "notebook",
       weightKg: 0,
       storyRewardPattern: true,
+      ...(options.authoredWaveId ? { authoredWaveId: options.authoredWaveId } : {}),
       ...(reward?.storyOrder === true ? { storyOrder: true } : {})
     };
   });
@@ -475,7 +534,11 @@ export function createAuthoredRewardWave(
     width: spec.width,
     height: spec.height,
     packages: packages.map((parcel) => ({ ...parcel, x: parcel.x + offscreenShift })),
-    gapPixels: speed * MIN_AUTHORED_REACTION_SECONDS
+    gapPixels: speed * minimumReactionSeconds,
+    ...(options.authoredWaveId ? { authoredWaveId: options.authoredWaveId } : {}),
+    ...(options.authoredActionIndex === undefined
+      ? {}
+      : { authoredActionIndex: options.authoredActionIndex })
   };
 }
 
@@ -516,6 +579,10 @@ export function activateWave(
   obstacle.width = wave.width;
   obstacle.height = wave.height;
   obstacle.objectiveCredited = false;
+  if (wave.authoredWaveId) obstacle.authoredWaveId = wave.authoredWaveId;
+  else delete obstacle.authoredWaveId;
+  if (wave.authoredActionIndex !== undefined) obstacle.authoredActionIndex = wave.authoredActionIndex;
+  else delete obstacle.authoredActionIndex;
 
   for (let index = 0; index < wave.packages.length; index += 1) {
     const spawn = wave.packages[index];
@@ -530,6 +597,8 @@ export function activateWave(
     parcel.packageType = spawn.packageType;
     parcel.weightKg = spawn.weightKg;
     parcel.storyRewardPattern = spawn.storyRewardPattern === true;
+    if (wave.authoredWaveId) parcel.authoredWaveId = wave.authoredWaveId;
+    else delete parcel.authoredWaveId;
     if (spawn.storyOrder === true) parcel.storyOrder = true;
     else delete parcel.storyOrder;
   }

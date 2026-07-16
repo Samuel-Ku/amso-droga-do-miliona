@@ -16,6 +16,7 @@ import type {
 import { RunnerGame } from "./game/RunnerGame";
 import type { StoryTimelineSnapshot } from "./game/story-timeline";
 import { PlayerProfileStore } from "./profile";
+import { QaSessionReportCollector } from "./qa/session-report";
 import type { RunnerConfig } from "./shared/types";
 import {
   CampaignShell,
@@ -61,6 +62,7 @@ export class CampaignController {
   private lastVisualWorldId: CampaignWorldId | null = null;
   private lastLogisticPhase: GameSnapshot["logisticWavePhase"] = "inactive";
   private readonly shownPowerUpHints = new Set<string>();
+  private readonly qaReport = new QaSessionReportCollector();
   private pendingStart: CampaignStartRequest | null = null;
   private startToken = 0;
   private destroyed = false;
@@ -258,6 +260,7 @@ export class CampaignController {
   }
 
   private handleSnapshot(snapshot: GameSnapshot): void {
+    this.qaReport.record(snapshot);
     this.warmWorldAssetWindow(snapshot.visualWorldId);
     const previous = this.lastSnapshot;
     if (previous !== null) {
@@ -287,6 +290,10 @@ export class CampaignController {
         ));
       }
     }
+  }
+
+  public qaReportText(): string {
+    return this.qaReport.text();
   }
 
   private handleStoryUpdate(update: StoryTimelineSnapshot): void {
@@ -348,7 +355,7 @@ export class CampaignController {
           "epoch_3.matching_trust": "Wyzwanie Dopasowania: zestaw dla zespołu B2B",
           "epoch_4.order_peak": "Szczyt Zamówień: kompletuj realne kategorie",
           "epoch_4.order_peak_final": "Szczyt Zamówień: utrzymaj przepływ przez 3 fazy",
-          "epoch_5.million_threshold": "Próg Miliona: 30 paczek i 8 kombinacji"
+          "epoch_5.million_threshold": "Próg Miliona: 50 paczek i 12 kombinacji"
         }[segmentId] ?? null;
         this.shell.showStoryObjective(objective);
       }

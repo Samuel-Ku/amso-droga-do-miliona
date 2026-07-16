@@ -9,6 +9,8 @@ import type {
 
 export interface CampaignMountApi {
   destroy(): void;
+  qaReport(): string;
+  copyQaReport(): Promise<boolean>;
 }
 
 type CampaignNavigate = (path: string) => void;
@@ -44,6 +46,17 @@ export function mountCampaign(
   mountedCampaign = controller;
 
   return {
+    qaReport(): string {
+      return controller.qaReportText();
+    },
+    async copyQaReport(): Promise<boolean> {
+      try {
+        await navigator.clipboard.writeText(controller.qaReportText());
+        return true;
+      } catch {
+        return false;
+      }
+    },
     destroy(): void {
       controller.destroy();
       if (mountedCampaign === controller) mountedCampaign = null;

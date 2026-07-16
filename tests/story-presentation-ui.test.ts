@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   fullscreenPreferenceFromElement,
+  formatAuthoredWaveHud,
   formatPowerUpHud,
   formatStoryControlsHud,
   formatStoryObjectiveHud,
@@ -90,7 +91,37 @@ describe("player-paced story presentation", () => {
   it("formats carried powers compactly for the persistent HUD", () => {
     expect(formatPowerUpHud([])).toBe("");
     expect(formatPowerUpHud(["audyt_jakosci", "drugie_zycie", "gwarancja_48"]))
-      .toBe("AUDYT · 2× PUNKTY · OCHRONA ×1");
+      .toBe("AUDYT · ×2 WYNIK · GWARANCJA ×1");
+    expect(formatPowerUpHud(["audyt_jakosci"], [{
+      kind: "audyt_jakosci",
+      remainingSeconds: 6.2
+    }])).toBe("AUDYT 7 s");
+  });
+
+  it("uses one semantic objective slot for every authored microlevel", () => {
+    const base = {
+      waveIndex: 0,
+      wavesCompleted: 3,
+      waveTarget: 8,
+      currentWaveId: "wave",
+      attemptsOnCurrentWave: 1,
+      packagesCollectedOnCurrentWave: 2,
+      packagesAvailableOnCurrentWave: 3,
+      totalPackagesCollected: 3,
+      totalPackageTarget: null,
+      elapsedSeconds: 20,
+      minimumDurationSeconds: 45,
+      completed: false,
+      lastResult: null
+    } as const;
+    expect(formatAuthoredWaveHud({ ...base, microlevelId: "order-backlog" }))
+      .toBe("FALE ZATORU 3/8");
+    expect(formatAuthoredWaveHud({
+      ...base,
+      microlevelId: "million-threshold",
+      totalPackagesCollected: 12,
+      totalPackageTarget: 50
+    })).toBe("999 962");
   });
 
   it("keeps controls in the top HUD and removes visible bottom gameplay text", () => {
@@ -135,7 +166,7 @@ describe("player-paced story presentation", () => {
     for (let index = 0; index < 12; index += 1) director.recordMillionPackage();
     for (let index = 0; index < 3; index += 1) director.recordMillionCombination();
     expect(formatStoryObjectiveHud(director.snapshot, []))
-      .toBe("Próg Miliona · PACZKI 12/30 · KOMBINACJE 3/8");
+      .toBe("Próg Miliona · PACZKI 12/50 · KOMBINACJE 3/12");
   });
 
   it("wraps keyboard focus inside the two-control story dialog", () => {

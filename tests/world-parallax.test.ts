@@ -13,6 +13,16 @@ describe("cyclic gameplay background", () => {
     expect(backgroundTravelPixels(2_400)).toBe(240);
   });
 
+  it("ties world-entry duration to gameplay speed", () => {
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host);
+    layer.setParallaxDistance(100, true, false, 280);
+    const slow = host.style.getPropertyValue("--world-transition-ms");
+    layer.setParallaxDistance(200, true, false, 700);
+    const fast = host.style.getPropertyValue("--world-transition-ms");
+    expect(Number.parseInt(fast)).toBeLessThan(Number.parseInt(slow));
+  });
+
   it("uses two alternating mirrored tiles and preserves the phase across worlds", () => {
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host);
@@ -31,7 +41,7 @@ describe("cyclic gameplay background", () => {
     expect(secondTiles[1]!.style.transform).toBe(firstTiles[1]!.style.transform);
   });
 
-  it("freezes in story, pause and reduced-motion states", () => {
+  it("freezes in story and pause while reduced motion keeps slow linear travel", () => {
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host);
     const tile = host.querySelector<HTMLElement>('[data-world-tile="0"]')!;
@@ -45,7 +55,8 @@ describe("cyclic gameplay background", () => {
     const frozenTransform = tile.style.transform;
     expect(tile.style.transition).toBe("none");
     layer.setParallaxDistance(600, true, true);
-    expect(tile.style.transform).toBe(frozenTransform);
+    expect(tile.style.transform).not.toBe(frozenTransform);
+    expect(tile.style.transition).toBe("transform 280ms linear");
   });
 
   it("freezes the visible phase without snapping when a story card is opened", () => {

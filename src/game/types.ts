@@ -6,6 +6,7 @@ import type { StoryObstacleTransformation } from "./story-effects";
 import type { StoryObjectivesSnapshot } from "./story-objectives";
 import type { CampaignWorldId } from "../visuals/scene-manifest";
 import type { MilestoneCelebrationSnapshot } from "./milestone-celebration";
+import type { AuthoredWaveProgressSnapshot } from "./authored-wave";
 
 export type ObstacleKind = "box-stack" | "pallet" | "trolley" | "overhead";
 export type ObstacleSource = "normal" | "boss" | "story-climax" | "story-reward";
@@ -34,6 +35,8 @@ export interface ObstacleModel {
   height: number;
   /** Prevents one cleared pattern from being credited more than once. */
   objectiveCredited?: boolean;
+  authoredWaveId?: string;
+  authoredActionIndex?: number;
 }
 
 export interface PackageModel {
@@ -52,6 +55,7 @@ export interface PackageModel {
   storyRewardPattern?: boolean;
   /** Marks the one typed unit that advances the epoch-four order queue. */
   storyOrder?: boolean;
+  authoredWaveId?: string;
 }
 
 export interface BossModel {
@@ -107,4 +111,5 @@ export interface RenderScene {
   storyClimax?: Readonly<StoryClimaxModel>;
   obstacleTransformations?: readonly Readonly<StoryObstacleTransformation>[];
   milestoneCelebration?: Readonly<MilestoneCelebrationSnapshot> | null;
+  authoredWave?: Readonly<AuthoredWaveProgressSnapshot> | null;
 }

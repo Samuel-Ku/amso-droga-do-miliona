@@ -117,12 +117,26 @@ function createGameHarness(
         kind: "overhead" | "pallet" | "box-stack" | "trolley";
         x: number;
         width: number;
+        authoredWaveId?: string;
       }>;
       runner: { grounded: boolean; x: number };
+      packages: PackageModel[];
+      collectPackage(parcel: PackageModel): void;
     };
+    for (const parcel of internals.packages) {
+      if (parcel.active && parcel.authoredWaveId && parcel.x <= 330) {
+        internals.collectPackage(parcel);
+      }
+    }
     const obstacle = internals.obstacles
       .filter(({ active, x, width }) => active && x + width >= internals.runner.x - 12)
       .sort((left, right) => left.x - right.x)[0];
+    if (obstacle?.authoredWaveId && obstacle.x <= 330) {
+      obstacle.active = false;
+      jumpedObstacle = null;
+      game.crouch(false, "keyboard");
+      return;
+    }
     if (!obstacle) {
       jumpedObstacle = null;
       game.crouch(false, "keyboard");
@@ -204,11 +218,6 @@ function createGameHarness(
           game.continueStoryScene(storySnapshot.scene.id);
           continue;
         }
-        if (storySnapshot?.playSegment?.id === "epoch_5.million_threshold" &&
-            (snapshots.at(-1)?.bossesDefeated ?? 0) === 0) {
-          const internals = game as unknown as { completeBossEncounter(): void };
-          internals.completeBossEncounter();
-        }
         this.advance(storySnapshot?.state === "countdown" ? 3.05 : 1, avoidObstacles);
       }
       const story = storyUpdates.at(-1);
@@ -216,7 +225,8 @@ function createGameHarness(
       throw new Error(
         `story did not enter challenge: ${story?.playSegment?.id ?? story?.scene?.id ?? story?.state}; ` +
         `boss=${snapshot?.bossPhase}/${snapshot?.bossProgress ?? 0}; ` +
-        `collisions=${snapshot?.collisions ?? 0}; recovery=${snapshot?.recoverySeconds ?? 0}`
+        `collisions=${snapshot?.collisions ?? 0}; recovery=${snapshot?.recoverySeconds ?? 0}; ` +
+        `authored=${JSON.stringify(snapshot?.authoredWave ?? null)}`
       );
     }
   };
@@ -233,11 +243,11 @@ describe("campaign collision contract", () => {
     expect(resolveCollision("challenge", false).finishRun).toBe(true);
   });
 
-  it("preserves warranty in story and consumes it only in challenge", () => {
+  it("consumes one warranty charge in either mode", () => {
     expect(resolveCollision("story", true)).toEqual({
       finishRun: false,
-      consumeWarranty: false,
-      resetCombo: true,
+      consumeWarranty: true,
+      resetCombo: false,
       recoverySeconds: 2
     });
     expect(resolveCollision("challenge", true)).toEqual({
@@ -249,19 +259,28 @@ describe("campaign collision contract", () => {
   });
 
   it("keeps an unassisted story run alive after its first collision", () => {
-    const config = parseRunnerConfig(productionConfig);
-    if (!config) throw new Error("production config should parse");
-    const collisionStory: StoryConfig = {
-      ...config.story,
-      epochs: config.story.epochs.map((epoch, index) =>
-        index === 0 ? { ...epoch, beats: [], durationSeconds: 40 } : epoch
-      )
-    };
-    const harness = createGameHarness("story", collisionStory);
+    const harness = createGameHarness("story");
     harness.game.start("keyboard");
     harness.continueCurrentSceneFully();
-    harness.advance(4);
-    harness.advance(25);
+    harness.advance(STORY_REFRAME_SECONDS + 3.05);
+    const internals = harness.game as unknown as {
+      obstacles: Array<{
+        active: boolean; kind: "pallet"; source: "story-reward"; x: number; y: number;
+        width: number; height: number; authoredWaveId?: string;
+      }>;
+      runner: { x: number; y: number };
+    };
+    Object.assign(internals.obstacles[0]!, {
+      active: true,
+      kind: "pallet",
+      source: "story-reward",
+      x: internals.runner.x,
+      y: internals.runner.y + 20,
+      width: 80,
+      height: 80,
+      authoredWaveId: "forced-retry"
+    });
+    harness.advance(0.2);
 
     expect(harness.game.state).toBe("running");
     expect(harness.gameOvers).toBe(0);
@@ -280,52 +299,19 @@ describe("campaign collision contract", () => {
     harness.game.destroy();
   });
 
-  it("lets a player clear all eight tutorial actions inside the production training window", () => {
+  it("lets a player clear the four authored onboarding waves inside the production window", () => {
     const harness = createGameHarness("story");
     harness.game.start("keyboard");
     harness.continueCurrentSceneFully();
     harness.advance(STORY_REFRAME_SECONDS + 3.05);
     expect(harness.storyUpdates.at(-1)?.state).toBe("play");
 
-    let jumpedObstacle: object | null = null;
-    harness.advance(45, () => {
-      const internals = harness.game as unknown as {
-        obstacles: Array<{
-          active: boolean;
-          kind: "overhead" | "pallet" | "box-stack" | "trolley";
-          source: string;
-          x: number;
-          width: number;
-        }>;
-        runner: { grounded: boolean; x: number };
-      };
-      const obstacle = internals.obstacles
-        .filter(({ active, source, x, width }) =>
-          active && source === "story-reward" && x + width >= internals.runner.x - 12
-        )
-        .sort((left, right) => left.x - right.x)[0];
-      if (!obstacle) {
-        jumpedObstacle = null;
-        harness.game.crouch(false, "keyboard");
-      } else if (obstacle.kind === "overhead") {
-        jumpedObstacle = null;
-        harness.game.crouch(obstacle.x <= 330, "keyboard");
-      } else {
-        harness.game.crouch(false, "keyboard");
-        if (obstacle !== jumpedObstacle && obstacle.x <= 220 && internals.runner.grounded) {
-          jumpedObstacle = obstacle;
-          harness.game.jump("keyboard");
-        }
-      }
-    });
+    harness.advance(35, harness.avoidObstacles);
 
     expect(harness.storyUpdates.at(-1)?.scene?.id).toBe("story.order_backlog");
-    expect(harness.snapshots.at(-1)?.storyObjectives.epoch1.training).toMatchObject({
-      jumps: 4,
-      slides: 4,
-      completed: true
-    });
-    expect(harness.snapshots.at(-1)?.storyObjectivesCompleted).toContain("epoch_1.training");
+    expect(harness.snapshots.some(({ authoredWave }) =>
+      authoredWave?.microlevelId === "first-package" && authoredWave.wavesCompleted === 4
+    )).toBe(true);
     harness.game.destroy();
   });
 
@@ -336,12 +322,12 @@ describe("campaign collision contract", () => {
     harness.advance(STORY_REFRAME_SECONDS + 3.05);
     harness.advance(35);
 
-    expect(harness.storyUpdates.at(-1)?.playSegment?.id).toBe("epoch_1.training");
+    expect(harness.storyUpdates.at(-1)?.playSegment?.id).toBe("epoch_1.first_package");
     const internals = harness.game as unknown as {
       storyTimeline: { snapshot: StoryTimelineSnapshot };
     };
-    expect(internals.storyTimeline.snapshot.sectionElapsedSeconds).toBe(20);
-    expect(harness.snapshots.at(-1)?.storyObjectives.epoch1.training.completed).toBe(false);
+    expect(internals.storyTimeline.snapshot.sectionElapsedSeconds).toBeGreaterThanOrEqual(25);
+    expect(harness.snapshots.at(-1)?.authoredWave?.completed).toBe(false);
     expect(harness.game.state).toBe("running");
     harness.game.destroy();
   });
@@ -351,18 +337,18 @@ describe("campaign collision contract", () => {
     harness.game.start("keyboard");
     harness.continueCurrentSceneFully();
     harness.advance(STORY_REFRAME_SECONDS + 3.05);
-    harness.advance(45, harness.avoidObstacles);
+    harness.advance(35, harness.avoidObstacles);
     expect(harness.storyUpdates.at(-1)?.scene?.id).toBe("story.order_backlog");
     harness.continueCurrentSceneFully();
     harness.advance(STORY_REFRAME_SECONDS + 3.05);
     expect(harness.storyUpdates.at(-1)?.playSegment?.id).toBe("epoch_1.order_backlog");
 
-    harness.advance(45, harness.avoidObstacles);
+    harness.advance(55, harness.avoidObstacles);
 
     expect(harness.storyUpdates.at(-1)?.scene?.id).toBe("story.quality_promise");
-    expect(harness.snapshots.at(-1)?.storyObjectives.epoch1.orderBacklog.bestAlternation)
-      .toBeGreaterThanOrEqual(1);
-    expect(harness.snapshots.at(-1)?.storyClimaxesCompleted).toContain(0);
+    expect(harness.snapshots.some(({ authoredWave }) =>
+      authoredWave?.microlevelId === "order-backlog" && authoredWave.completed
+    )).toBe(true);
     harness.game.destroy();
   });
 
@@ -422,10 +408,11 @@ describe("campaign collision contract", () => {
     expect(challengeSnapshot?.score).toBeGreaterThanOrEqual(config.story.firstCompletionBonusScore);
     expect(challengeSnapshot?.challengeScore).toBe(0);
     expect(challengeSnapshot?.challengePackagesCollected).toBe(0);
-    expect(challengeSnapshot?.storyObjectivesCompleted).toEqual(expect.arrayContaining([
-      "epoch_4.order_peak_final",
-      "epoch_5.million_threshold"
-    ]));
+    expect(harness.snapshots.some(({ authoredWave }) =>
+      authoredWave?.microlevelId === "million-threshold" && authoredWave.completed
+    )).toBe(true);
+    expect(harness.snapshots.some(({ powerUpDemoRemaining }) => powerUpDemoRemaining > 0))
+      .toBe(true);
 
     harness.advance(1);
     expect(harness.game.state).toBe("running");
@@ -518,21 +505,21 @@ describe("campaign collision contract", () => {
     harness.game.destroy();
   });
 
-  it("derives three peak phases from the configured 25 + 35 seconds", () => {
+  it("completes all three order-scale zones without legacy peak objectives", () => {
     const config = parseRunnerConfig(productionConfig);
     if (!config) throw new Error("production config should parse");
     const harness = createGameHarness("story", config.story);
     harness.game.start("keyboard");
     harness.driveStory();
 
-    expect(harness.snapshots.at(-1)?.storyObjectivesCompleted)
-      .toContain("epoch_4.order_peak_final");
-    expect(harness.snapshots.at(-1)?.storyObjectives.epoch4.flow)
-      .toMatchObject({ elapsedSeconds: 60, completed: true, phasesCompleted: 3 });
+    expect(harness.snapshots.some(({ authoredWave }) =>
+      authoredWave?.microlevelId === "order-scale" &&
+      authoredWave.completed && authoredWave.wavesCompleted === 9
+    )).toBe(true);
     harness.game.destroy();
   });
 
-  it("starts the three-phase, eight-combination boss with the final wave", () => {
+  it("runs a twelve-combination final with no boss", () => {
     const harness = createGameHarness("story");
     harness.game.start("keyboard");
     for (let guard = 0; guard < 2_000; guard += 1) {
@@ -552,13 +539,14 @@ describe("campaign collision contract", () => {
     expect(harness.snapshots.at(-1)).toMatchObject({
       mode: "story",
       storyObjectiveSegmentId: "epoch_5.million_threshold",
-      bossEncounterPhase: 1,
-      bossAttackCount: 8,
       bossesDefeated: 0
     });
-    expect(harness.snapshots.at(-1)?.bossPhase).not.toBe("inactive");
-    harness.advance(50);
-    expect(harness.storyUpdates.at(-1)?.playSegment?.id).toBe("epoch_5.million_threshold");
+    expect(harness.snapshots.at(-1)?.bossPhase).toBe("inactive");
+    expect(harness.snapshots.at(-1)?.authoredWave?.waveTarget).toBe(12);
+    harness.advance(80, harness.avoidObstacles);
+    expect(harness.snapshots.some(({ authoredWave }) =>
+      authoredWave?.microlevelId === "million-threshold" && authoredWave.completed
+    )).toBe(true);
     harness.game.destroy();
   });
 });

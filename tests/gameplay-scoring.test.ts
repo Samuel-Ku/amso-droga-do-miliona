@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  recoverStoryGapAssist,
-  resolveCollision,
-  storyGapAssistAfterCollision
-} from "../src/game/mode-rules";
+import { resolveCollision } from "../src/game/mode-rules";
 import {
   ActivePowerUps,
   AUDIT_SPAWN_RATE,
@@ -44,8 +40,8 @@ describe("package collection and scoring rules", () => {
       .toBe(MAX_COMBO_MULTIPLIER);
     expect(resolveCollision("story", false).resetCombo).toBe(true);
     expect(resolveCollision("challenge", false).resetCombo).toBe(true);
-    expect(resolveCollision("story", true).resetCombo).toBe(true);
-    expect(resolveCollision("story", true).consumeWarranty).toBe(false);
+    expect(resolveCollision("story", true).resetCombo).toBe(false);
+    expect(resolveCollision("story", true).consumeWarranty).toBe(true);
     expect(resolveCollision("challenge", true).resetCombo).toBe(false);
   });
 });
@@ -68,13 +64,6 @@ describe("power-up lifetime and pacing rules", () => {
     const worldTravel = 340 / 60;
     expect(spawnTravelDistance(worldTravel, false)).toBe(worldTravel);
     expect(spawnTravelDistance(worldTravel, true)).toBeCloseTo(worldTravel * AUDIT_SPAWN_RATE);
-  });
-
-  it("widens story gaps after the second epoch collision and eases back after clean play", () => {
-    expect(storyGapAssistAfterCollision(0, 1)).toBe(0);
-    expect(storyGapAssistAfterCollision(0, 2)).toBeGreaterThan(0);
-    expect(recoverStoryGapAssist(0.35, 10)).toBeLessThan(0.35);
-    expect(recoverStoryGapAssist(0.35, 60)).toBe(0);
   });
 
   it("introduces story power-ups only in their approved epochs", () => {

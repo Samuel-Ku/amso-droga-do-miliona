@@ -166,10 +166,10 @@
     ]
   },
   "story": {
-    "activeDurationSeconds": 210,
+    "activeDurationSeconds": 285,
     "readingSpeedMultiplier": 0.3,
-    "speedStartMultiplier": 0.85,
-    "speedMaxMultiplier": 1.35,
+    "speedStartMultiplier": 0.95,
+    "speedMaxMultiplier": 1.85,
     "resumeCountdownSeconds": 3,
     "firstCompletionBonusScore": 10000,
     "scenes": [
@@ -222,17 +222,17 @@
         ]
       },
       {
-        "id": "story.million_approach", "chapter": "epoch_5", "eyebrow": "Nasza historia", "title": "Do miliona zostało 30 zamówień.",
-        "body": ["Licznik zaczyna od 999 970 i rośnie wraz z każdą zebraną paczką."], "vignette": "million-counter", "continueLabel": "Rozpocznij finał", "perspective": "amso",
+        "id": "story.million_approach", "chapter": "epoch_5", "eyebrow": "Nasza historia", "title": "Ostatnia droga do miliona.",
+        "body": ["Licznik zaczyna od 999 950 i rośnie wraz z każdą zebraną paczką."], "vignette": "million-counter", "continueLabel": "Rozpocznij finał", "perspective": "amso",
         "steps": [
-          { "id": "counter-source", "title": "Do miliona zostało 30 zamówień.", "body": ["Licznik zaczyna od 999 970. Każda zebrana paczka doda dokładnie jedno zamówienie, a osiem kombinacji przypomni umiejętności z całej drogi."], "continueLabel": "Poznaj zasady finału", "safe": true, "fact": "Finał rozpoczyna się od 999 970 zamówień i wymaga zebrania 30 paczek.", "action": "Licznik zatrzymuje się na 999 970, a trzydzieści paczek ustawia się przed trasą.", "finalFrame": "Czytelny licznik 999 970 stoi nad trasą, a pierwsza z trzydziestu paczek czeka po prawej." }
+          { "id": "counter-source", "title": "Do miliona zostało 50 zamówień.", "body": ["Licznik zaczyna od 999 950. Każda zebrana paczka doda dokładnie jedno zamówienie, a dwanaście kombinacji przypomni umiejętności z całej drogi."], "continueLabel": "Poznaj zasady finału", "safe": true, "fact": "Finał rozpoczyna się od 999 950 zamówień i wymaga zebrania 50 paczek.", "action": "Licznik zatrzymuje się na 999 950, a pięćdziesiąt paczek ustawia się przed trasą.", "finalFrame": "Czytelny licznik 999 950 stoi nad trasą, a pierwsza z pięćdziesięciu paczek czeka po prawej." }
         ]
       },
       {
         "id": "challenge.million_wave", "chapter": "epoch_5", "eyebrow": "Wyzwanie", "title": "Próg Miliona sprawdza całą drogę.",
-        "body": ["Zbierz 30 paczek i ukończ osiem bezpiecznych kombinacji."], "vignette": "million-wave", "continueLabel": "Podejmij wyzwanie", "perspective": "challenge",
+        "body": ["Zbierz 50 paczek i ukończ dwanaście różnych kombinacji."], "vignette": "million-wave", "continueLabel": "Podejmij wyzwanie", "perspective": "challenge",
         "steps": [
-          { "id": "two-goals", "title": "Dwa cele prowadzą do miliona.", "body": ["Zbierz 30 paczek i ukończ osiem kombinacji skoku oraz ślizgu. W fabule nie ma game over: pominięte elementy wracają do skutku."], "continueLabel": "Rozpocznij finał", "safe": true, "fact": "Próg Miliona wymaga 30 paczek i ośmiu kombinacji bez game over w fabule.", "action": "HUD rozdziela postęp na licznik paczek i licznik ukończonych kombinacji.", "finalFrame": "Oba cele są widoczne nad bezpiecznym początkiem finałowej trasy." }
+          { "id": "two-goals", "title": "Dwanaście prób prowadzi do miliona.", "body": ["Zbierz 50 paczek w dwunastu kombinacjach skoku oraz ślizgu. W fabule nie ma game over: pominięte paczki wracają bez przeszkód."], "continueLabel": "Rozpocznij finał", "safe": true, "fact": "Próg Miliona wymaga 50 paczek i dwunastu kombinacji bez game over w fabule.", "action": "HUD pokazuje jeden licznik zamówień rosnący z każdą zebraną paczką.", "finalFrame": "Licznik zamówień jest widoczny nad bezpiecznym początkiem finałowej trasy." }
         ]
       },
       {
@@ -252,30 +252,28 @@
     ],
     "sequence": [
       { "type": "scene", "sceneId": "story.first_package" },
-      { "type": "play", "id": "epoch_1.training", "epochIndex": 0, "durationSeconds": 20 },
+      { "type": "play", "id": "epoch_1.first_package", "epochIndex": 0, "durationSeconds": 25 },
       { "type": "scene", "sceneId": "story.order_backlog" },
-      { "type": "play", "id": "epoch_1.order_backlog", "epochIndex": 0, "durationSeconds": 20 },
+      { "type": "play", "id": "epoch_1.order_backlog", "epochIndex": 0, "durationSeconds": 50 },
       { "type": "scene", "sceneId": "story.quality_promise" },
-      { "type": "play", "id": "epoch_2.quality_series", "epochIndex": 1, "durationSeconds": 25 },
-      { "type": "play", "id": "epoch_2.quality_trial", "epochIndex": 1, "durationSeconds": 15 },
+      { "type": "play", "id": "epoch_2.quality_process", "epochIndex": 1, "durationSeconds": 45 },
       { "type": "scene", "sceneId": "client.business_growth" },
-      { "type": "play", "id": "epoch_3.matching_growth", "epochIndex": 2, "durationSeconds": 25 },
+      { "type": "play", "id": "epoch_3.client_growth", "epochIndex": 2, "durationSeconds": 40 },
       { "type": "scene", "sceneId": "story.matching_result" },
       { "type": "scene", "sceneId": "story.scale" },
-      { "type": "play", "id": "epoch_4.order_peak", "epochIndex": 3, "durationSeconds": 25 },
-      { "type": "play", "id": "epoch_4.order_peak_final", "epochIndex": 3, "durationSeconds": 35 },
+      { "type": "play", "id": "epoch_4.order_scale", "epochIndex": 3, "durationSeconds": 50 },
       { "type": "scene", "sceneId": "story.million_approach" },
       { "type": "scene", "sceneId": "challenge.million_wave" },
-      { "type": "play", "id": "epoch_5.million_threshold", "epochIndex": 4, "durationSeconds": 45 },
+      { "type": "play", "id": "epoch_5.million_threshold", "epochIndex": 4, "durationSeconds": 75 },
       { "type": "scene", "sceneId": "story.million_finale" },
       { "type": "scene", "sceneId": "story.challenge_handoff" }
     ],
     "epochs": [
-      { "index": 0, "id": "poczatek", "name": "Początek", "year": "Pierwsza paczka", "themeIndex": 0, "durationSeconds": 40, "obstaclePool": ["box-stack", "pallet", "overhead"], "difficultyStart": 0.85, "difficultyEnd": 0.95, "challengeName": "Zator Zamówień" },
-      { "index": 1, "id": "drugie_zycie", "name": "Drugie życie sprzętu", "year": "Jakość i zaufanie", "themeIndex": 1, "durationSeconds": 40, "obstaclePool": ["box-stack", "pallet", "overhead"], "difficultyStart": 0.95, "difficultyEnd": 1.05, "challengeName": "Próba Jakości", "powerUpDebut": "audyt_jakosci" },
-      { "index": 2, "id": "historie_klientow", "name": "Firma rośnie razem ze sprzętem", "year": "Jedna prawdziwa historia", "themeIndex": 2, "durationSeconds": 25, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.05, "difficultyEnd": 1.16, "challengeName": "Rozwój Firmy", "powerUpDebut": "drugie_zycie" },
-      { "index": 3, "id": "skala", "name": "Skala potrzebuje systemu", "year": "Roczna skala", "themeIndex": 3, "durationSeconds": 60, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.16, "difficultyEnd": 1.28, "challengeName": "Szczyt Zamówień", "powerUpDebut": "gwarancja_48" },
-      { "index": 4, "id": "droga_do_miliona", "name": "Droga do Miliona", "year": "999 970 → 1 000 000", "themeIndex": 4, "durationSeconds": 45, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.28, "difficultyEnd": 1.35, "challengeName": "Próg Miliona" }
+      { "index": 0, "id": "poczatek", "name": "Początek i zator", "year": "Pierwsza paczka", "themeIndex": 0, "durationSeconds": 75, "obstaclePool": ["box-stack", "pallet", "overhead"], "difficultyStart": 0.95, "difficultyEnd": 1.35, "challengeName": "Zator Zamówień" },
+      { "index": 1, "id": "drugie_zycie", "name": "Proces i Jakość", "year": "Jakość i zaufanie", "themeIndex": 1, "durationSeconds": 45, "obstaclePool": ["box-stack", "pallet", "overhead"], "difficultyStart": 1.22, "difficultyEnd": 1.48, "challengeName": "Proces i Jakość", "powerUpDebut": "audyt_jakosci" },
+      { "index": 2, "id": "historie_klientow", "name": "Firma rośnie razem ze sprzętem", "year": "Jedna prawdziwa historia", "themeIndex": 2, "durationSeconds": 40, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.34, "difficultyEnd": 1.58, "challengeName": "Rozwój Firmy", "powerUpDebut": "drugie_zycie" },
+      { "index": 3, "id": "skala", "name": "Skala Zamówień", "year": "Roczna skala", "themeIndex": 3, "durationSeconds": 50, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.45, "difficultyEnd": 1.7, "challengeName": "Skala Zamówień", "powerUpDebut": "gwarancja_48" },
+      { "index": 4, "id": "droga_do_miliona", "name": "Droga do Miliona", "year": "999 950 → 1 000 000", "themeIndex": 4, "durationSeconds": 75, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.55, "difficultyEnd": 1.85, "challengeName": "Próg Miliona" }
     ],
     "modeHandoff": {
       "id": "story.challenge_handoff",
@@ -286,18 +284,18 @@
       "resumeCountdownSeconds": 3
     },
     "millionThreshold": {
-      "counterStart": 999970,
+      "counterStart": 999950,
       "counterTarget": 1000000,
-      "packageTarget": 30,
-      "combinationTarget": 8
+      "packageTarget": 50,
+      "combinationTarget": 12
     }
   },
   "challenge": {
     "mode": "challenge",
-    "speedStartMultiplier": 1.3,
-    "speedMaxMultiplier": 2.2,
-    "logisticWaveMinSeconds": 45,
-    "logisticWaveMaxSeconds": 60,
+    "speedStartMultiplier": 1.85,
+    "speedMaxMultiplier": 3.5,
+    "logisticWaveMinSeconds": 20,
+    "logisticWaveMaxSeconds": 30,
     "warrantyOneUse": true
   },
   "audio": {

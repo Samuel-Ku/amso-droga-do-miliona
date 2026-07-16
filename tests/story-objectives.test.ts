@@ -27,16 +27,16 @@ describe("StoryObjectiveDirector", () => {
     expect(director.snapshot.activeSegmentId).toBe("epoch_2.quality_series");
   });
 
-  it("models the million threshold as 30 packages and 8 combinations without symbols", () => {
+  it("models the million threshold as 50 packages and 12 combinations without symbols", () => {
     const director = new StoryObjectiveDirector();
     director.enterSegment("epoch_5.million_threshold");
     expect(director.snapshot.epoch5.millionThreshold).toMatchObject({
-      counterValue: 999_970, packageTarget: 30, combinationTarget: 8, completed: false
+      counterValue: 999_950, packageTarget: 50, combinationTarget: 12, completed: false
     });
-    for (let index = 0; index < 30; index += 1) director.recordMillionPackage();
-    for (let index = 0; index < 8; index += 1) director.recordMillionCombination();
+    for (let index = 0; index < 50; index += 1) director.recordMillionPackage();
+    for (let index = 0; index < 12; index += 1) director.recordMillionCombination();
     expect(director.snapshot.epoch5.millionThreshold).toMatchObject({
-      packagesCollected: 30, combinationsCompleted: 8, counterValue: 1_000_000, completed: true
+      packagesCollected: 50, combinationsCompleted: 12, counterValue: 1_000_000, completed: true
     });
     expect(director.snapshot.completedObjectiveIds).toContain("epoch_5.million_threshold");
   });
@@ -172,16 +172,16 @@ describe("StoryObjectiveDirector", () => {
   it("keeps the two million goals independent and caps both targets", () => {
     const director = new StoryObjectiveDirector();
     director.enterSegment("epoch_5.million_threshold");
-    for (let index = 0; index < 31; index += 1) director.recordMillionPackage();
+    for (let index = 0; index < 51; index += 1) director.recordMillionPackage();
     expect(director.snapshot.epoch5.millionThreshold).toMatchObject({
-      packagesCollected: 30,
+      packagesCollected: 50,
       combinationsCompleted: 0,
       counterValue: 1_000_000,
       completed: false
     });
-    for (let index = 0; index < 9; index += 1) director.recordMillionCombination();
+    for (let index = 0; index < 13; index += 1) director.recordMillionCombination();
     expect(director.snapshot.epoch5.millionThreshold).toMatchObject({
-      combinationsCompleted: 8,
+      combinationsCompleted: 12,
       completed: true
     });
   });

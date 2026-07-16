@@ -54,12 +54,11 @@ const CANONICAL_SCENE_ORDER = [
   "story.million_finale", "story.challenge_handoff"
 ] as const;
 const CANONICAL_SEQUENCE = [
-  "scene:story.first_package", "play:epoch_1.training:0",
+  "scene:story.first_package", "play:epoch_1.first_package:0",
   "scene:story.order_backlog", "play:epoch_1.order_backlog:0",
-  "scene:story.quality_promise", "play:epoch_2.quality_series:1",
-  "play:epoch_2.quality_trial:1", "scene:client.business_growth",
-  "play:epoch_3.matching_growth:2", "scene:story.matching_result", "scene:story.scale",
-  "play:epoch_4.order_peak:3", "play:epoch_4.order_peak_final:3",
+  "scene:story.quality_promise", "play:epoch_2.quality_process:1",
+  "scene:client.business_growth", "play:epoch_3.client_growth:2",
+  "scene:story.matching_result", "scene:story.scale", "play:epoch_4.order_scale:3",
   "scene:story.million_approach", "scene:challenge.million_wave",
   "play:epoch_5.million_threshold:4",
   "scene:story.million_finale", "scene:story.challenge_handoff"
@@ -360,13 +359,15 @@ function parseMillionThreshold(value: unknown): StoryConfig["millionThreshold"] 
     value,
     ["counterStart", "counterTarget", "packageTarget", "combinationTarget"],
     ["counterStart", "counterTarget", "packageTarget", "combinationTarget"]
-  ) || value.counterStart !== 999_970 || value.counterTarget !== 1_000_000 ||
-      value.packageTarget !== 30 || value.combinationTarget !== 8) return null;
+  ) || value.counterTarget !== 1_000_000 || !Number.isInteger(value.packageTarget) ||
+      !finiteInRange(value.packageTarget, 40, 60) ||
+      value.counterStart !== 1_000_000 - value.packageTarget ||
+      value.combinationTarget !== 12) return null;
   return {
-    counterStart: 999_970,
+    counterStart: value.counterStart as number,
     counterTarget: 1_000_000,
-    packageTarget: 30,
-    combinationTarget: 8
+    packageTarget: value.packageTarget as number,
+    combinationTarget: 12
   };
 }
 
@@ -427,7 +428,7 @@ function parseStory(value: unknown): StoryConfig | null {
   if (!finiteInRange(value.activeDurationSeconds, 180, 600) ||
       !finiteInRange(value.readingSpeedMultiplier, 0.1, 0.5) ||
       !finiteInRange(value.speedStartMultiplier, 0.5, 1.5) ||
-      !finiteInRange(value.speedMaxMultiplier, value.speedStartMultiplier, 1.5) ||
+      !finiteInRange(value.speedMaxMultiplier, value.speedStartMultiplier, 2) ||
       value.resumeCountdownSeconds !== 3 ||
       !finiteInRange(value.firstCompletionBonusScore, 0, 1_000_000) ||
       !Number.isInteger(value.firstCompletionBonusScore) ||
@@ -501,9 +502,9 @@ function parseChallenge(value: unknown): ChallengeConfig | null {
       "logisticWaveMaxSeconds", "warrantyOneUse"
     ]
   )) return null;
-  if (value.mode !== "challenge" || !finiteInRange(value.speedStartMultiplier, 0.8, 1.8) ||
-      !finiteInRange(value.speedMaxMultiplier, value.speedStartMultiplier, 2.5) ||
-      !finiteInRange(value.logisticWaveMinSeconds, 30, 90) ||
+  if (value.mode !== "challenge" || !finiteInRange(value.speedStartMultiplier, 0.8, 2) ||
+      !finiteInRange(value.speedMaxMultiplier, value.speedStartMultiplier, 3.5) ||
+      !finiteInRange(value.logisticWaveMinSeconds, 20, 90) ||
       !finiteInRange(value.logisticWaveMaxSeconds, value.logisticWaveMinSeconds, 120) ||
       value.warrantyOneUse !== true) return null;
   return {

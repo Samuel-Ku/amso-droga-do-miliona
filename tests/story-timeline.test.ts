@@ -57,7 +57,7 @@ function playerPacedStory(): StoryConfig {
       counterStart: 999_970,
       counterTarget: 1_000_000,
       packageTarget: 30,
-      combinationTarget: 8
+      combinationTarget: 12
     }
   };
 }
@@ -158,7 +158,7 @@ describe("player-paced story timeline", () => {
     expect(timeline.snapshot.totalActiveElapsedSeconds).toBe(4);
   });
 
-  it("presents the approved 14-beat v6 story once within 210 active seconds", () => {
+  it("presents the approved 14-beat v7 story once within 285 active seconds", () => {
     const config = parseRunnerConfig(productionConfig);
     if (!config) throw new Error("production config should parse");
     const timeline = new StoryTimeline(config.story);
@@ -194,7 +194,7 @@ describe("player-paced story timeline", () => {
     ]);
     expect(seen).toHaveLength(14);
     expect(new Set(presentations).size).toBe(14);
-    expect(timeline.snapshot.totalActiveElapsedSeconds).toBe(210);
+    expect(timeline.snapshot.totalActiveElapsedSeconds).toBe(285);
     expect(timeline.snapshot.progress).toBe(1);
     expect(timeline.snapshot.completed).toBe(true);
   });

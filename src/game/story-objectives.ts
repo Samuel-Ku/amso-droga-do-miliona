@@ -105,8 +105,8 @@ export const STORY_OBJECTIVE_TARGETS = {
   trustClean: 12,
   requiredOrders: 6,
   orderPeakSeconds: 60,
-  millionPackages: 30,
-  millionCombinations: 8
+  millionPackages: 50,
+  millionCombinations: 12
 } as const;
 
 const TARGETS = STORY_OBJECTIVE_TARGETS;
@@ -397,9 +397,9 @@ export class StoryObjectiveDirector {
           packageTarget: TARGETS.millionPackages,
           combinationsCompleted: this.thresholdCombinations,
           combinationTarget: TARGETS.millionCombinations,
-          counterStart: 999_970,
+          counterStart: 1_000_000 - TARGETS.millionPackages,
           counterTarget: 1_000_000,
-          counterValue: 999_970 + this.thresholdPackages,
+          counterValue: 1_000_000 - TARGETS.millionPackages + this.thresholdPackages,
           completed: this.thresholdPackages >= TARGETS.millionPackages &&
             this.thresholdCombinations >= TARGETS.millionCombinations
         },

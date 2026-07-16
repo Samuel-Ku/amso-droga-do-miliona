@@ -6,6 +6,7 @@ import {
 } from "./scene-manifest";
 import { WORLD_ROUTE_SVG } from "./world-route";
 import { WORLD_WIDTH } from "../game/constants";
+import { reducedMotionBackgroundTravelPixels } from "./background-parallax";
 
 export type WorldVisualPhase = "landing" | "story" | "game" | "result";
 
@@ -52,7 +53,7 @@ export class WorldVisualLayer {
       </div>
       ${WORLD_ROUTE_SVG}
       <div class="amso-world-visual__counter" aria-hidden="true">
-        <span data-world-counter>999 970</span>
+        <span data-world-counter>999 950</span>
       </div>
     `;
     this.panels = [
@@ -120,15 +121,22 @@ export class WorldVisualLayer {
   public setParallaxDistance(
     distancePixels: number,
     active: boolean,
-    reducedMotion = false
+    reducedMotion = false,
+    gameplaySpeed = 280
   ): void {
-    if (!active || reducedMotion || !Number.isFinite(distancePixels)) {
+    const transitionMilliseconds = reducedMotion
+      ? 1_200
+      : Math.max(360, Math.min(900, (WORLD_WIDTH / Math.max(1, gameplaySpeed)) * 250));
+    this.host.style.setProperty("--world-transition-ms", `${Math.round(transitionMilliseconds)}ms`);
+    if (!active || !Number.isFinite(distancePixels)) {
       for (const panelTiles of this.tiles) {
         for (const tile of panelTiles) tile.style.transition = "none";
       }
       return;
     }
-    const distance = Math.max(0, distancePixels);
+    const distance = reducedMotion
+      ? reducedMotionBackgroundTravelPixels(distancePixels)
+      : Math.max(0, distancePixels);
     const cycle = Math.floor(distance / WORLD_WIDTH);
     const progress = (distance % WORLD_WIDTH) / WORLD_WIDTH;
     const firstScale = cycle % 2 === 0 ? 1 : -1;
@@ -137,7 +145,7 @@ export class WorldVisualLayer {
       for (const tile of panelTiles) {
         tile.style.transition = this.lastParallaxCycle === null || wrapped
           ? "none"
-          : "transform 140ms linear";
+          : `transform ${reducedMotion ? 280 : 140}ms linear`;
       }
       panelTiles[0].style.transform = `translateX(${-progress * 100}%) scaleX(${firstScale})`;
       panelTiles[1].style.transform = `translateX(${(1 - progress) * 100}%) scaleX(${-firstScale})`;
@@ -158,10 +166,13 @@ export class WorldVisualLayer {
 
     const activate = (): void => {
       if (this.requestedAssetPath !== assetPath) return;
+      previousPanel.classList.add("is-leaving");
       previousPanel.classList.remove("is-active");
+      nextPanel.classList.remove("is-leaving");
       nextPanel.classList.add("is-active");
       this.activeImageIndex = nextIndex;
       this.host.dataset.assetState = "loaded";
+      window.setTimeout(() => previousPanel.classList.remove("is-leaving"), 760);
     };
     const fail = (): void => {
       if (this.requestedAssetPath === assetPath) this.host.dataset.assetState = "fallback";

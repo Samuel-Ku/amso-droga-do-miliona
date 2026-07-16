@@ -152,10 +152,10 @@ export interface StoryModeHandoffConfig {
 }
 
 export interface MillionThresholdConfig {
-  counterStart: 999_970;
+  counterStart: number;
   counterTarget: 1_000_000;
-  packageTarget: 30;
-  combinationTarget: 8;
+  packageTarget: number;
+  combinationTarget: 12;
 }
 
 export interface StoryConfig {

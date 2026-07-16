@@ -3,6 +3,24 @@ import type { PackageKind } from "./types";
 
 export const MAX_COMBO_MULTIPLIER = 8;
 
+export interface WaveComboResolution {
+  nextCombo: number;
+  perfectBonus: number;
+}
+
+export function resolveWaveCombo(
+  combo: number,
+  passed: boolean,
+  perfect: boolean
+): WaveComboResolution {
+  const current = normalizedCombo(combo);
+  if (!passed) return { nextCombo: 1, perfectBonus: 0 };
+  return {
+    nextCombo: Math.min(MAX_COMBO_MULTIPLIER, current + 1),
+    perfectBonus: perfect ? GAMEPLAY.packageScore * current : 0
+  };
+}
+
 export interface PackageCollectionResolution {
   countsAsPackage: boolean;
   pointsAwarded: number;

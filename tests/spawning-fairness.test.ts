@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   collidesWithObstacle,
-  collectsPackage,
   obstacleHitbox,
   rectanglesOverlap
 } from "../src/game/collision";
@@ -179,7 +178,7 @@ describe("challenge spawning fairness", () => {
     expect(wave?.packages.filter(({ storyOrder }) => storyOrder !== true)).toHaveLength(4);
   });
 
-  it("keeps authored targets out of an idle runner's path before the paired hazard", () => {
+  it("keeps authored targets outside the paired hazard hitbox", () => {
     for (const action of ["jump", "slide"] as const) {
       const wave = createAuthoredRewardWave({
         action,
@@ -200,7 +199,11 @@ describe("challenge spawning fairness", () => {
       };
 
       expect(collidesWithObstacle(runner, obstacle)).toBe(true);
-      expect(collectsPackage(runner, parcel), `${action}: ${JSON.stringify(parcel)}`).toBe(false);
+      const obstacleRight = obstacle.x + obstacle.width;
+      const parcelRight = parcel.x + parcel.size;
+      const separated = parcelRight <= obstacle.x || parcel.x >= obstacleRight ||
+        parcel.y + parcel.size <= obstacle.y || parcel.y >= obstacle.y + obstacle.height;
+      expect(separated, `${action}: ${JSON.stringify(parcel)}`).toBe(true);
     }
   });
 

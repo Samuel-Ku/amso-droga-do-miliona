@@ -36,7 +36,7 @@ export const POWER_UP_VALUES: readonly PowerUpKind[] = [
 export const POWER_UP_DURATION: Readonly<Record<PowerUpKind, number>> = {
   gwarancja_48: Number.POSITIVE_INFINITY,
   audyt_jakosci: 7,
-  drugie_zycie: 8
+  drugie_zycie: 7
 };
 
 export const POWER_UP_SCORE_MULTIPLIER = 2;

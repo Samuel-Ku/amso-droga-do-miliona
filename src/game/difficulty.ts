@@ -50,8 +50,8 @@ export function getStoryDifficulty(
   settings: ChallengeDifficultySettings
 ): Difficulty {
   const duration = Math.max(1, activeDurationSeconds);
-  const start = Math.max(0.5, Math.min(1.5, settings.speedStartMultiplier));
-  const maximum = Math.max(start, Math.min(1.5, settings.speedMaxMultiplier));
+  const start = Math.max(0.5, Math.min(2, settings.speedStartMultiplier));
+  const maximum = Math.max(start, Math.min(2, settings.speedMaxMultiplier));
   const multiplier = lerp(start, maximum, Math.max(0, activeElapsedSeconds) / duration);
   return {
     level: Math.min(6, 1 + Math.floor(Math.max(0, activeElapsedSeconds) / 60)),
@@ -66,13 +66,37 @@ export function getChallengeDifficulty(
   settings: ChallengeDifficultySettings
 ): Difficulty {
   const seconds = Math.max(0, elapsedSeconds);
-  const start = Math.max(0.8, Math.min(1.8, settings.speedStartMultiplier));
-  const maximum = Math.max(start, Math.min(2.5, settings.speedMaxMultiplier));
-  const multiplier = lerp(start, maximum, seconds / 75);
+  const start = Math.max(0.8, Math.min(2, settings.speedStartMultiplier));
+  const maximum = Math.max(start, Math.min(3.5, settings.speedMaxMultiplier));
+  const minuteOne = Math.min(maximum, 2.4);
+  const minuteTwo = Math.min(maximum, 3);
+  const multiplier = seconds <= 60
+    ? lerp(start, minuteOne, seconds / 60)
+    : seconds <= 120
+      ? lerp(minuteOne, minuteTwo, (seconds - 60) / 60)
+      : lerp(minuteTwo, maximum, (seconds - 120) / 60);
   return {
-    level: Math.min(9, 1 + Math.floor(seconds / 15)),
+    level: Math.min(16, 1 + Math.floor(seconds / 20)),
     speed: BASE_SPEED * multiplier,
     speedMultiplier: multiplier,
-    minimumGapSeconds: lerp(2.05, 1.35, (multiplier - start) / Math.max(0.01, maximum - start))
+    minimumGapSeconds: lerp(2.05, 1.2, (multiplier - start) / Math.max(0.01, maximum - start))
+  };
+}
+
+/** Segment-local story ramp used by the six authored v7 microlevels. */
+export function getAuthoredStoryDifficulty(
+  elapsedSeconds: number,
+  durationSeconds: number,
+  speedStartMultiplier: number,
+  speedEndMultiplier: number
+): Difficulty {
+  const start = Math.max(0.5, Math.min(2, speedStartMultiplier));
+  const end = Math.max(start, Math.min(2, speedEndMultiplier));
+  const multiplier = lerp(start, end, Math.max(0, elapsedSeconds) / Math.max(1, durationSeconds));
+  return {
+    level: 1 + Math.floor(Math.max(0, elapsedSeconds) / 12),
+    speed: BASE_SPEED * multiplier,
+    speedMultiplier: multiplier,
+    minimumGapSeconds: lerp(2.25, 1.55, (multiplier - 0.95) / 0.9)
   };
 }

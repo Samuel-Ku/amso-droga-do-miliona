@@ -6,6 +6,7 @@ import { sceneVisualState } from "../visuals/scene-manifest";
 import { milestoneLayoutForViewport } from "./milestone-layout";
 import {
   fullscreenPreferenceFromElement,
+  formatAuthoredWaveHud,
   formatPowerUpHud,
   formatStoryControlsHud,
   formatStoryObjectiveHud,
@@ -517,6 +518,7 @@ export class CampaignShell {
   private fullscreenPromptSeen = false;
   private fullscreenPreference: "fullscreen" | "portrait" | null = null;
   private muted = false;
+  private lastWaveFeedbackKey = "";
   private paused = false;
   private trustCorridor = false;
   private tooNarrowActive = false;
@@ -666,6 +668,12 @@ export class CampaignShell {
               <p class="amso-campaign__eyebrow" data-campaign-copy="pauseEyebrow">Bezpieczny przystanek</p>
               <h2 id="amso-campaign-pause-title" data-campaign-copy="pauseTitle">Gra wstrzymana</h2>
               <p data-campaign-copy="pauseBody">Twój postęp jest bezpieczny.</p>
+              <div class="amso-campaign__pause-bonuses" aria-label="Bonusy">
+                <strong>Bonusy</strong>
+                <span><b>AUDYT</b> — przez 7 s zwiększa odstępy bez zwalniania kuriera.</span>
+                <span><b>×2 WYNIK</b> — przez 7 s podwaja punkty za paczki.</span>
+                <span><b>GWARANCJA ×1</b> — pochłania jedno zderzenie, a potem pęka.</span>
+              </div>
               <div class="amso-campaign__actions">
                 <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-resume data-campaign-copy="resume">Wznów</button>
                 <button class="amso-campaign__button amso-campaign__button--secondary" type="button" data-campaign-menu data-campaign-copy="returnToMenu">Wróć do menu</button>
@@ -876,6 +884,7 @@ export class CampaignShell {
     if (this.root.dataset.view === "story_scene") this.callbacks.onSlide(false, "keyboard");
     this.hideStoryPresentation();
     this.activeMode = mode;
+    this.lastWaveFeedbackKey = "";
     this.paused = false;
     this.challengeResult = null;
     this.hideScreens();
@@ -1054,24 +1063,38 @@ export class CampaignShell {
     this.worldVisualLayer.setCounterValue(campaignWorldCounterValue(
       snapshot.mode,
       displayedVisualStateId,
-      snapshot.storyObjectives.epoch5.millionThreshold.counterValue,
+      snapshot.millionCounterValue,
     ));
     this.worldVisualLayer.setParallaxDistance(
       snapshot.backgroundTravelPixels ?? 0,
       this.root.dataset.view === "game" && !this.paused,
-      snapshot.reducedMotion === true
+      snapshot.reducedMotion === true,
+      snapshot.speed
     );
     this.showMilestoneCelebration(
       snapshot.milestoneCelebration ?? null,
       snapshot.reducedMotion === true
     );
+    const waveResult = snapshot.authoredWave?.lastResult;
+    if (waveResult) {
+      const key = `${snapshot.authoredWave?.microlevelId}:${waveResult.waveId}:` +
+        `${waveResult.attempts}:${waveResult.passed}:${snapshot.authoredWave?.wavesCompleted}`;
+      if (key !== this.lastWaveFeedbackKey) {
+        this.lastWaveFeedbackKey = key;
+        this.showPickupNotice(waveResult.perfect
+          ? "PERFEKCJA · bonus za pełną trasę"
+          : waveResult.passed
+            ? "FALA ZALICZONA"
+            : "POWTÓRZ FALĘ");
+      }
+    }
     this.hudPackages.textContent = formatInteger(snapshot.packagesCollected);
     this.hudScore.textContent = formatInteger(snapshot.score);
     this.hudCombo.textContent = `×${formatInteger(snapshot.combo)}`;
-    const activePowerUps = formatPowerUpHud(snapshot.activePowerUps);
+    const activePowerUps = formatPowerUpHud(snapshot.activePowerUps, snapshot.activePowerUpStatuses);
     this.hudPowerUps.textContent = activePowerUps;
     this.hudPowerUps.hidden = activePowerUps.length === 0;
-    const controls = formatStoryControlsHud(snapshot.storyObjectiveSegmentId);
+    const controls = formatStoryControlsHud(snapshot.storyObjectiveSegmentId, snapshot.authoredWave);
     this.hudControls.textContent = controls ?? "";
     this.hudControls.hidden = controls === null;
     if (this.activeMode === "story") {
@@ -1080,7 +1103,8 @@ export class CampaignShell {
         : "";
       this.hudEpoch.textContent = [snapshot.epochName, progress].filter(Boolean).join(" · ");
       this.showStoryObjective(
-        formatStoryObjectiveHud(snapshot.storyObjectives, snapshot.activeStoryOrderTypes)
+        formatAuthoredWaveHud(snapshot.authoredWave) ??
+          formatStoryObjectiveHud(snapshot.storyObjectives, snapshot.activeStoryOrderTypes)
       );
     }
   }

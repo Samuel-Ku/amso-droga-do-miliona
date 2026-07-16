@@ -6,8 +6,15 @@ if (host === null) throw new Error("campaign_root_missing");
 
 let campaign: ReturnType<typeof mountCampaign> | null = null;
 
+declare global {
+  interface Window {
+    AMSOMillionRunnerQA?: ReturnType<typeof mountCampaign>;
+  }
+}
+
 try {
   campaign = mountCampaign(demoConfig, host);
+  window.AMSOMillionRunnerQA = campaign;
 } catch (error: unknown) {
   console.error("AMSO campaign bootstrap failed", error);
   host.innerHTML = `
@@ -32,5 +39,8 @@ try {
 }
 
 if (import.meta.hot && campaign !== null) {
-  import.meta.hot.dispose(() => campaign?.destroy());
+  import.meta.hot.dispose(() => {
+    campaign?.destroy();
+    delete window.AMSOMillionRunnerQA;
+  });
 }

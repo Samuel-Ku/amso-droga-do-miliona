@@ -20,6 +20,9 @@ import type {
   MilestoneCelebrationEvent,
   MilestoneCelebrationSnapshot
 } from "./milestone-celebration";
+import type { AuthoredWaveProgressSnapshot } from "./authored-wave";
+import type { ActivePowerUpStatus } from "./power-ups";
+import type { ChallengePressureAxis } from "./challenge-pressure";
 
 export type GameState = "ready" | "running" | "paused" | "game_over" | "destroyed";
 export type ControlMethod = "keyboard" | "pointer" | "touch";
@@ -57,6 +60,7 @@ export interface GameSnapshot {
   storyTransformationMotifs: StoryPositiveMotif[];
   logisticWavePhase: LogisticWavePhase;
   logisticWaveProgress: number;
+  challengePressureAxis: ChallengePressureAxis | null;
   bossesDefeated: number;
   bossPhase: BossPhase;
   bossEncounterPhase: number;
@@ -77,8 +81,14 @@ export interface GameSnapshot {
   packageTypeCounts: Record<PackageType, number>;
   totalWeightKg: number;
   activePowerUps: PowerUpKind[];
+  activePowerUpStatuses: ActivePowerUpStatus[];
+  /** Natural onboarding pause shown once for each newly introduced story bonus. */
+  powerUpDemoRemaining: number;
   factsUnlockedCount: number;
   milestoneCelebration?: MilestoneCelebrationSnapshot | null;
+  authoredWave: AuthoredWaveProgressSnapshot | null;
+  /** Semantic order counter; UI does not reconstruct finale domain rules. */
+  millionCounterValue: number;
 }
 
 export interface GameResult extends GameSnapshot {

@@ -28,8 +28,8 @@ export const DEFAULT_DISABLED_RUNNER_CONFIG: Readonly<RunnerConfig> = Object.fre
   story: Object.freeze({
     activeDurationSeconds: 300,
     readingSpeedMultiplier: 0.3,
-    speedStartMultiplier: 0.85,
-    speedMaxMultiplier: 1.35,
+    speedStartMultiplier: 0.95,
+    speedMaxMultiplier: 1.85,
     resumeCountdownSeconds: 3,
     firstCompletionBonusScore: 0,
     scenes: [],
@@ -44,18 +44,18 @@ export const DEFAULT_DISABLED_RUNNER_CONFIG: Readonly<RunnerConfig> = Object.fre
       resumeCountdownSeconds: 3
     }),
     millionThreshold: Object.freeze({
-      counterStart: 999_970,
+      counterStart: 999_950,
       counterTarget: 1_000_000,
-      packageTarget: 30,
-      combinationTarget: 8
+      packageTarget: 50,
+      combinationTarget: 12
     })
   }),
   challenge: Object.freeze({
     mode: "challenge",
-    speedStartMultiplier: 1.3,
-    speedMaxMultiplier: 2.2,
-    logisticWaveMinSeconds: 45,
-    logisticWaveMaxSeconds: 60,
+    speedStartMultiplier: 1.85,
+    speedMaxMultiplier: 3.5,
+    logisticWaveMinSeconds: 20,
+    logisticWaveMaxSeconds: 30,
     warrantyOneUse: true
   }),
   audio: Object.freeze({ enabled: true }),

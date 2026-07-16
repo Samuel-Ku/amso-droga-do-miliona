@@ -573,6 +573,12 @@ interface PlayVisualRange {
 }
 
 const PLAY_VISUAL_RANGES: Readonly<Record<string, PlayVisualRange>> = {
+  "epoch_1.first_package": {
+    fromStateId: "intro.promise",
+    toStateId: "intro.promise",
+    progressStart: 0,
+    progressEnd: 1
+  },
   "epoch_1.training": {
     fromStateId: "intro.promise",
     toStateId: "intro.promise",
@@ -591,6 +597,12 @@ const PLAY_VISUAL_RANGES: Readonly<Record<string, PlayVisualRange>> = {
     progressStart: 0,
     progressEnd: 0.72
   },
+  "epoch_2.quality_process": {
+    fromStateId: "epoch_2.setup",
+    toStateId: "epoch_2.resolve",
+    progressStart: 0,
+    progressEnd: 1
+  },
   "epoch_2.quality_trial": {
     fromStateId: "epoch_2.setup",
     toStateId: "epoch_2.resolve",
@@ -603,11 +615,23 @@ const PLAY_VISUAL_RANGES: Readonly<Record<string, PlayVisualRange>> = {
     progressStart: 0.5,
     progressEnd: 0.72
   },
+  "epoch_3.client_growth": {
+    fromStateId: "epoch_3.start",
+    toStateId: "epoch_3.b2b",
+    progressStart: 0,
+    progressEnd: 1
+  },
   "epoch_4.order_peak": {
     fromStateId: "epoch_4.numbers",
     toStateId: "epoch_4.resolve",
     progressStart: 0.62,
     progressEnd: 0.82
+  },
+  "epoch_4.order_scale": {
+    fromStateId: "epoch_4.numbers",
+    toStateId: "epoch_4.resolve",
+    progressStart: 0.62,
+    progressEnd: 1
   },
   "epoch_4.order_peak_final": {
     fromStateId: "epoch_4.numbers",
