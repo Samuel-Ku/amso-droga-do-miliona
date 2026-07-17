@@ -33,7 +33,7 @@ describe("StoryObjectiveDirector", () => {
     expect(director.snapshot.epoch5.millionThreshold).toMatchObject({
       counterValue: 999_970, orderTarget: 30, combinationTarget: 12, completed: false
     });
-    for (let index = 0; index < 50; index += 1) director.recordMillionPackage();
+    for (let index = 0; index < 50; index += 1) director.recordMillionOrder();
     for (let index = 0; index < 12; index += 1) director.recordMillionCombination();
     expect(director.snapshot.epoch5.millionThreshold).toMatchObject({
       ordersCollected: 30, combinationsCompleted: 12, counterValue: 1_000_000, completed: true
@@ -172,7 +172,7 @@ describe("StoryObjectiveDirector", () => {
   it("keeps the two million goals independent and caps both targets", () => {
     const director = new StoryObjectiveDirector();
     director.enterSegment("epoch_5.million_threshold");
-    for (let index = 0; index < 51; index += 1) director.recordMillionPackage();
+    for (let index = 0; index < 51; index += 1) director.recordMillionOrder();
     expect(director.snapshot.epoch5.millionThreshold).toMatchObject({
       ordersCollected: 30,
       combinationsCompleted: 0,

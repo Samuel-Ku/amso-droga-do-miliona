@@ -242,7 +242,7 @@ export class CampaignController {
         bestChallengeOrdersAtStart: this.profile.snapshot.bestChallengeOrders,
         awardStoryCompletionBonus: safeRequest.mode === "story" &&
           !this.profile.snapshot.storyCompleted,
-        powerUpPackageCopy: {
+        powerUpCopy: {
           gwarancja_48: [
             this.uiCopy("parcelWarrantyLine1", "GWARANCJA"),
             this.uiCopy("parcelWarrantyLine2", "48 M")

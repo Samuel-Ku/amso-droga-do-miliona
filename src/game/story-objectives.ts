@@ -105,7 +105,7 @@ export const STORY_OBJECTIVE_TARGETS = {
   trustClean: 12,
   requiredOrders: 6,
   orderPeakSeconds: 60,
-  millionPackages: 30,
+  millionOrders: 30,
   millionCombinations: 12
 } as const;
 
@@ -147,7 +147,7 @@ export class StoryObjectiveDirector {
   private lastCompletedOrderType: PackageType | null = null;
   private orderPeakElapsedSeconds = 0;
   private orderPeakDurationSeconds: number = TARGETS.orderPeakSeconds;
-  private thresholdPackages = 0;
+  private thresholdOrders = 0;
   private thresholdCombinations = 0;
 
   public enterSegment(segmentId: string | null, _durationSeconds?: number): boolean {
@@ -290,11 +290,11 @@ export class StoryObjectiveDirector {
     });
   }
 
-  public recordMillionPackage(): StoryObjectiveUpdate {
+  public recordMillionOrder(): StoryObjectiveUpdate {
     return this.update(() => {
       if (this.activeSegmentId !== "epoch_5.million_threshold" ||
-          this.thresholdPackages >= TARGETS.millionPackages) return false;
-      this.thresholdPackages += 1;
+          this.thresholdOrders >= TARGETS.millionOrders) return false;
+      this.thresholdOrders += 1;
       return true;
     });
   }
@@ -393,17 +393,17 @@ export class StoryObjectiveDirector {
       },
       epoch5: {
         millionThreshold: {
-          ordersCollected: this.thresholdPackages,
-          orderTarget: TARGETS.millionPackages,
+          ordersCollected: this.thresholdOrders,
+          orderTarget: TARGETS.millionOrders,
           combinationsCompleted: this.thresholdCombinations,
           combinationTarget: TARGETS.millionCombinations,
-          counterStart: 1_000_000 - TARGETS.millionPackages,
+          counterStart: 1_000_000 - TARGETS.millionOrders,
           counterTarget: 1_000_000,
-          counterValue: 1_000_000 - TARGETS.millionPackages + this.thresholdPackages,
-          completed: this.thresholdPackages >= TARGETS.millionPackages &&
+          counterValue: 1_000_000 - TARGETS.millionOrders + this.thresholdOrders,
+          completed: this.thresholdOrders >= TARGETS.millionOrders &&
             this.thresholdCombinations >= TARGETS.millionCombinations
         },
-        completed: this.thresholdPackages >= TARGETS.millionPackages &&
+        completed: this.thresholdOrders >= TARGETS.millionOrders &&
           this.thresholdCombinations >= TARGETS.millionCombinations
       }
     };
@@ -421,7 +421,7 @@ export class StoryObjectiveDirector {
     if (this.trustBest >= TARGETS.trustClean) ids.push("epoch_3.matching_trust");
     if (this.requiredOrders >= TARGETS.requiredOrders) ids.push("epoch_4.order_peak");
     if (this.orderPeakElapsedSeconds >= this.orderPeakDurationSeconds) ids.push("epoch_4.order_peak_final");
-    if (this.thresholdPackages >= TARGETS.millionPackages &&
+    if (this.thresholdOrders >= TARGETS.millionOrders &&
         this.thresholdCombinations >= TARGETS.millionCombinations) {
       ids.push("epoch_5.million_threshold");
     }

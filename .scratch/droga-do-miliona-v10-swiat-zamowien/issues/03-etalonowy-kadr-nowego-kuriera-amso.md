@@ -15,3 +15,6 @@
 - [ ] Powstaje review-ready podgląd na jasnym tle świata i na przezroczystym tle.
 - [ ] Pełny sprite sheet nie rozpoczyna produkcji przed ręcznym zatwierdzeniem tego kadru.
 
+## Comments
+
+- 2026-07-17: Kadr 01 zapisano jako osobny widok w `../assets-review.html`. Użytkownik zatwierdził kierunek assetów przed poleceniem implementacji: „ці ассети мені подобаються”. Dokładny dostarczony `A.webp` jest nakładany w runtime; przy błędzie dekodowania nie jest zastępowany przybliżonym znakiem.

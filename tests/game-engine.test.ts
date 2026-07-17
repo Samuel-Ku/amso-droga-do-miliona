@@ -435,7 +435,7 @@ describe("boss rendering", () => {
       themeIndex: -1,
       cutscene: null,
       activePowerUps: [],
-      powerUpPackageCopy: {
+      powerUpCopy: {
         gwarancja_48: ["TESTOWA", "ETYKIETA"]
       }
     });

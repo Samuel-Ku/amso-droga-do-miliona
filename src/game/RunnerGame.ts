@@ -48,8 +48,7 @@ import { calculateCanvasBuffer } from "./viewport";
 import { resolveCollision, START_PROTECTION_SECONDS } from "./mode-rules";
 import {
   ActivePowerUps,
-  ChallengePowerUpSchedule,
-  storyPowerUpsForEpoch
+  ChallengePowerUpSchedule
 } from "./power-ups";
 import {
   StoryTimeline,
@@ -176,7 +175,7 @@ export class RunnerGame implements RunnerGameApi {
   private readonly challenge: RunnerGameOptions["challenge"];
   private readonly bestChallengeOrdersAtStart: number;
   private readonly awardStoryCompletionBonus: boolean;
-  private readonly powerUpPackageCopy: NonNullable<RunnerGameOptions["powerUpPackageCopy"]>;
+  private readonly powerUpCopy: NonNullable<RunnerGameOptions["powerUpCopy"]>;
   private narrative: NarrativeConfig | null;
   private storyTimeline: StoryTimeline | null = null;
   private lastStorySignal = "";
@@ -262,7 +261,7 @@ export class RunnerGame implements RunnerGameApi {
       Math.floor(options.bestChallengeOrdersAtStart ?? 0)
     );
     this.awardStoryCompletionBonus = options.awardStoryCompletionBonus ?? true;
-    this.powerUpPackageCopy = options.powerUpPackageCopy ?? {};
+    this.powerUpCopy = options.powerUpCopy ?? {};
     this.logisticWaveDirector = new LogisticWaveDirector(
       this.challenge?.logisticWaveMinSeconds ?? 45,
       this.challenge?.logisticWaveMaxSeconds ?? 60
@@ -519,9 +518,7 @@ export class RunnerGame implements RunnerGameApi {
         this.story
           ? getStoryDifficulty(0, this.story.activeDurationSeconds, this.story).speed
           : epochSpeed(epoch, 0),
-        allowed,
-        true,
-        this.story ? storyPowerUpsForEpoch(this.currentEpoch) : undefined
+        allowed
       );
       this.speed = this.story
         ? getStoryDifficulty(0, this.story.activeDurationSeconds, this.story).speed
@@ -1069,6 +1066,9 @@ export class RunnerGame implements RunnerGameApi {
 
       if (resolution.consumeWarranty) {
         if (this.activePowerUps.consumeWarranty()) {
+          this.challengePowerUps.recordWarrantyConsumption(
+            Math.max(0, this.ordersCollected - this.challengeStartOrders)
+          );
           this.warrantySaves += 1;
           this.warrantyBreakSeconds = 0.18;
         }
@@ -1165,7 +1165,7 @@ export class RunnerGame implements RunnerGameApi {
       if (newPersonalRecord && safeToCelebrate && !this.reducedMotion) {
         this.recordEmphasisRemaining = 0.25;
       }
-      const celebrations = this.milestoneCelebrationDirector.recordPackages(
+      const celebrations = this.milestoneCelebrationDirector.recordOrders(
         this.ordersCollected,
         safeToCelebrate,
         newPersonalRecord ? "NOWY REKORD" : undefined
@@ -1199,7 +1199,7 @@ export class RunnerGame implements RunnerGameApi {
         this.storyObjectiveDirector.recordCurrentCombo(this.combo)
       );
       this.handleStoryObjectiveUpdate(this.storyObjectiveDirector.recordTrustCollection());
-      this.handleStoryObjectiveUpdate(this.storyObjectiveDirector.recordMillionPackage());
+      this.handleStoryObjectiveUpdate(this.storyObjectiveDirector.recordMillionOrder());
       if (parcel.storyOrder === true) {
         this.handleStoryObjectiveUpdate(
           this.storyObjectiveDirector.recordOrder(parcel.packageType)
@@ -1746,9 +1746,7 @@ export class RunnerGame implements RunnerGameApi {
             this.story
           ).speed
         : epochSpeed(epoch, 0),
-      allowed,
-      true,
-      this.story ? storyPowerUpsForEpoch(index) : undefined
+      allowed
     );
     if (this.story === null) {
       this.storyClimaxDirector.enterEpoch(
@@ -2042,7 +2040,7 @@ export class RunnerGame implements RunnerGameApi {
       },
       cutscene: this.cutscene,
       activePowerUps: this.activePowerUps.keys(),
-      powerUpPackageCopy: this.powerUpPackageCopy,
+      powerUpCopy: this.powerUpCopy,
       mode: this.mode,
       trustCorridor: this.storyTimeline?.snapshot.trustCorridor ?? false,
       combo: this.combo,

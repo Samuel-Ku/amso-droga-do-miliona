@@ -490,6 +490,26 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   display: none;
 }
 
+.amso-campaign__milestone-message[data-intensity="2"] {
+  font-size: clamp(1.32rem, 3.35vw, 2.45rem);
+}
+
+.amso-campaign__milestone-message[data-intensity="3"] {
+  font-size: clamp(1.38rem, 3.5vw, 2.55rem);
+}
+
+.amso-campaign__milestone-message[data-intensity="4"] {
+  font-size: clamp(1.44rem, 3.65vw, 2.65rem);
+}
+
+.amso-campaign__milestone-message[data-intensity="5"] {
+  font-size: clamp(1.5rem, 3.8vw, 2.75rem);
+}
+
+.amso-campaign__milestone-message[data-intensity="6"] {
+  font-size: clamp(1.56rem, 3.95vw, 2.85rem);
+}
+
 .amso-campaign__milestone-message[data-reduced-motion] {
   animation: none;
 }
@@ -2122,6 +2142,26 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   .amso-campaign__milestone-message {
     padding: 0.65rem 1rem;
     font-size: clamp(1.15rem, 6vw, 1.65rem);
+  }
+
+  .amso-campaign__milestone-message[data-intensity="2"] {
+    font-size: clamp(1.18rem, 6.15vw, 1.7rem);
+  }
+
+  .amso-campaign__milestone-message[data-intensity="3"] {
+    font-size: clamp(1.21rem, 6.3vw, 1.75rem);
+  }
+
+  .amso-campaign__milestone-message[data-intensity="4"] {
+    font-size: clamp(1.24rem, 6.45vw, 1.8rem);
+  }
+
+  .amso-campaign__milestone-message[data-intensity="5"] {
+    font-size: clamp(1.27rem, 6.6vw, 1.85rem);
+  }
+
+  .amso-campaign__milestone-message[data-intensity="6"] {
+    font-size: clamp(1.3rem, 6.75vw, 1.9rem);
   }
 
   .amso-campaign__screen--landing {

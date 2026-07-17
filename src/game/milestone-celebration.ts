@@ -32,7 +32,7 @@ function formatThreshold(value: number): string {
   return Math.floor(value).toString().replace(/\B(?=(\d{3})+(?!\d))/gu, " ");
 }
 
-export function nextPackageMilestone(current: number, sequenceIndex: number): number {
+export function nextOrderMilestone(current: number, sequenceIndex: number): number {
   return current * (sequenceIndex % 2 === 0 ? 5 : 2);
 }
 
@@ -64,7 +64,7 @@ export class MilestoneCelebrationDirector {
     return this.active === null ? null : { ...this.active };
   }
 
-  public recordPackages(
+  public recordOrders(
     total: number,
     safeToPresent = true,
     achievementText?: string
@@ -82,7 +82,7 @@ export class MilestoneCelebrationDirector {
           );
       emitted.push(celebration);
       this.enqueue(celebration, safeToPresent);
-      this.threshold = nextPackageMilestone(this.threshold, this.sequenceIndex);
+      this.threshold = nextOrderMilestone(this.threshold, this.sequenceIndex);
       this.sequenceIndex += 1;
     }
     return emitted;

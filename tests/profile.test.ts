@@ -79,6 +79,25 @@ describe("PlayerProfileStore", () => {
     });
   });
 
+  it("migrates the legacy challenge package record without emitting the old field", () => {
+    const storage = new MemoryStorage();
+    storage.setItem("amso_milion_runner_profile", JSON.stringify({
+      schemaVersion: 3,
+      storyCompleted: true,
+      bestChallengeScore: 41_000,
+      bestChallengePackages: 123,
+      challengeRuns: 4
+    }));
+
+    const restored = new PlayerProfileStore(storage);
+    expect(restored.snapshot.bestChallengeOrders).toBe(123);
+
+    restored.setSoundMuted(true);
+    const persisted = storage.getItem("amso_milion_runner_profile") ?? "";
+    expect(persisted).not.toContain("bestChallengePackages");
+    expect(JSON.parse(persisted)).toMatchObject({ bestChallengeOrders: 123 });
+  });
+
   it("unlocks challenge only when the full story is completed", () => {
     const storage = new MemoryStorage();
     const first = new PlayerProfileStore(storage);

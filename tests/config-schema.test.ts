@@ -112,6 +112,18 @@ describe("runner config v5 story validation", () => {
     expect(JSON.stringify(parsed)).not.toContain("drugie_zycie");
   });
 
+  it("accepts the legacy package target only as a canonical order-target alias", () => {
+    const legacy = validConfig();
+    const threshold = (legacy.story as Record<string, unknown>)
+      .millionThreshold as Record<string, unknown>;
+    threshold.packageTarget = threshold.orderTarget;
+    delete threshold.orderTarget;
+
+    const parsed = parseRunnerConfig(legacy);
+    expect(parsed?.story.millionThreshold.orderTarget).toBe(30);
+    expect(JSON.stringify(parsed)).not.toContain("packageTarget");
+  });
+
   it("requires the final handoff and physical million threshold contracts", () => {
     const withoutHandoff = validConfig();
     delete (withoutHandoff.story as Record<string, unknown>).modeHandoff;

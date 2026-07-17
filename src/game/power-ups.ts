@@ -9,16 +9,6 @@ export interface ActivePowerUpStatus {
   remainingSeconds: number | null;
 }
 
-const STORY_POWER_UP_ORDER: readonly PowerUpKind[] = [
-  "podwojny_wynik",
-  "gwarancja_48"
-];
-
-export function storyPowerUpsForEpoch(epochIndex: number): readonly PowerUpKind[] {
-  const unlockedCount = Math.max(0, Math.min(2, Math.floor(epochIndex)));
-  return STORY_POWER_UP_ORDER.slice(0, unlockedCount);
-}
-
 const DOUBLE_SCORE_INTERVALS = [40, 37, 46, 42, 49, 35] as const;
 
 /** Order-count schedule keeps challenge bonuses rare, deterministic and testable. */
@@ -37,6 +27,11 @@ export class ChallengePowerUpSchedule {
     this.doubleIndex = (this.doubleIndex + 1) % DOUBLE_SCORE_INTERVALS.length;
     this.nextDoubleAt += DOUBLE_SCORE_INTERVALS[this.doubleIndex]!;
     return "podwojny_wynik";
+  }
+
+  public recordWarrantyConsumption(orders: number): void {
+    const total = Math.max(0, Math.floor(orders));
+    this.nextWarrantyAt = Math.max(this.nextWarrantyAt, total + 90);
   }
 
   public reset(): void {

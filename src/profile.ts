@@ -54,6 +54,7 @@ export class PlayerProfileStore {
       const parsed = JSON.parse(raw) as Partial<PlayerProfile> & {
         bestScore?: unknown;
         bestPackages?: unknown;
+        bestChallengePackages?: unknown;
       };
       const storyCompleted = parsed.storyCompleted === true;
       const fullscreenPreference = parsed.fullscreenPreference === "fullscreen" ||
@@ -67,7 +68,9 @@ export class PlayerProfileStore {
           safeNonNegativeNumber(parsed.bestChallengeScore ?? parsed.bestScore)
         ),
         bestChallengeOrders: Math.round(
-          safeNonNegativeNumber(parsed.bestChallengeOrders ?? parsed.bestPackages)
+          safeNonNegativeNumber(
+            parsed.bestChallengeOrders ?? parsed.bestChallengePackages ?? parsed.bestPackages
+          )
         ),
         challengeRuns: Math.round(safeNonNegativeNumber(parsed.challengeRuns)),
         soundMuted: parsed.soundMuted === true,

@@ -319,60 +319,54 @@ export class CampaignAudio {
 
   /** Short order motif whose pitch communicates a sustained collection rhythm. */
   public playOrderPickup(streak: number): void {
-    if (this._muted || !this._started || this.destroyed || this.context === null ||
-        this.cueGain === null) return;
     const frequency = orderPickupFrequency(streak);
-    try {
+    this.withCueOutput((destination) => {
       this.playTone({
         frequency,
         frequencyEnd: frequency * 1.18,
         duration: 0.1,
         volume: 0.54,
         type: "sine",
-        destination: this.cueGain
+        destination
       });
-    } catch {
-      // Pickup audio is enhancement-only.
-    }
+    });
   }
 
   /** Distinct signatures let players identify the bonus before reading its label. */
   public playPowerUpCue(kind: PowerUpKind): void {
-    if (this._muted || !this._started || this.destroyed || this.context === null ||
-        this.cueGain === null) return;
-    try {
+    this.withCueOutput(() => {
       if (kind === "gwarancja_48") {
         this.playSequence([329.63, 392, 523.25, 659.25], 0.06, 0.14, 0.55, "sine");
       } else {
         this.playSequence([523.25, 783.99, 1046.5], 0.055, 0.12, 0.59, "triangle");
       }
-    } catch {
-      // Power-up audio is enhancement-only.
-    }
+    });
   }
 
   /** Plays the rotating achievement phrase; later cycles add a higher harmony. */
   public playMilestoneCue(kind: MilestoneCelebrationKind, intensity: number): void {
-    if (this._muted || !this._started || this.destroyed || this.context === null ||
-        this.cueGain === null) return;
-    const notes: number[] = [...MILESTONE_CELEBRATION_PRESENTATION[kind].audioNotes];
-    if (intensity >= 2) notes.push(notes.at(-1)! * 1.25);
-    if (intensity >= 3) notes.push(notes.at(-2)! * 1.5);
-    try {
+    this.withCueOutput(() => {
+      const notes: number[] = [...MILESTONE_CELEBRATION_PRESENTATION[kind].audioNotes];
+      if (intensity >= 2) notes.push(notes.at(-1)! * 1.25);
+      if (intensity >= 3) notes.push(notes.at(-2)! * 1.5);
       this.playSequence(notes, 0.055, 0.12, 0.55, "triangle");
-    } catch {
-      // Achievement audio is enhancement-only.
-    }
+    });
   }
 
   /** A short upper-register answer reserved for the first record break in a run. */
   public playRecordCue(): void {
+    this.withCueOutput(() => {
+      this.playSequence([659.25, 783.99, 1046.5, 1318.51], 0.045, 0.1, 0.48, "triangle");
+    });
+  }
+
+  private withCueOutput(play: (destination: GainNode) => void): void {
     if (this._muted || !this._started || this.destroyed || this.context === null ||
         this.cueGain === null) return;
     try {
-      this.playSequence([659.25, 783.99, 1046.5, 1318.51], 0.045, 0.1, 0.48, "triangle");
+      play(this.cueGain);
     } catch {
-      // Record audio is enhancement-only.
+      // Web Audio is enhancement-only and must always fail open.
     }
   }
 

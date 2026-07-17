@@ -6,7 +6,6 @@ import {
 } from "../src/game/collision";
 import { GROUND_Y, OVERHEAD, RUNNER_WIDTH, RUNNER_X } from "../src/game/constants";
 import { getChallengeDifficulty } from "../src/game/difficulty";
-import { POWER_UP_VALUES } from "../src/game/narrative";
 import { createRunnerModel } from "../src/game/physics";
 import { SeededRandom } from "../src/game/random";
 import {
@@ -97,8 +96,7 @@ describe("challenge spawning fairness", () => {
         const spawner = new FairSpawner(
           new SeededRandom(Math.round(speed) + (narrative ? 1 : 0)),
           speed,
-          undefined,
-          narrative
+          undefined
         );
         for (let index = 0; index < 36; index += 1) {
           const wave = spawner.advance(100_000, speed, difficulty, 390);
@@ -310,7 +308,7 @@ describe("challenge spawning fairness", () => {
     expect(collidesWithObstacle(runner, obstacle)).toBe(false);
   });
 
-  it("spawns only ordinary orders and the two canonical power-ups", () => {
+  it("keeps the generic challenge generator limited to ordinary orders", () => {
     const seen = new Set<PackageKind>();
 
     for (let seed = 0; seed < 24; seed += 1) {
@@ -335,13 +333,10 @@ describe("challenge spawning fairness", () => {
       }
     }
 
-    expect(seen.has("standard")).toBe(true);
-    expect(POWER_UP_VALUES.every((kind) => seen.has(kind))).toBe(true);
+    expect(seen).toEqual(new Set(["standard"]));
   });
 
   it("keeps 100 seeded challenge generators within time and geometry rules", () => {
-    const seenPowerUps = new Set<PackageKind>();
-
     for (let seed = 0; seed < 100; seed += 1) {
       const initial = getChallengeDifficulty(0, CHALLENGE_DIFFICULTY);
       const spawner = new FairSpawner(new SeededRandom(seed), initial.speed);
@@ -386,19 +381,13 @@ describe("challenge spawning fairness", () => {
           expect(collidesWithObstacle(runner, obstacle)).toBe(false);
         } else {
           expect(wave.y + wave.height).toBe(GROUND_Y);
-          for (const [index, parcel] of wave.packages.entries()) {
+          for (const parcel of wave.packages) {
             if (!isSpecial(parcel.kind)) continue;
-            seenPowerUps.add(parcel.kind);
-            expect(index).toBeGreaterThan(0);
-            expect(index).toBeLessThan(wave.packages.length - 1);
-            expect(parcel.y + PACKAGE_SIZE - PACKAGE_HITBOX_INSET).toBeLessThanOrEqual(
-              wave.y
-            );
+            throw new Error(`generic challenge wave emitted ${parcel.kind}`);
           }
         }
       }
     }
 
-    expect(POWER_UP_VALUES.every((kind) => seenPowerUps.has(kind))).toBe(true);
   });
 });

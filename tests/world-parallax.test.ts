@@ -111,7 +111,7 @@ describe("edge-to-edge gameplay background", () => {
     expect(qualityImage).toBeDefined();
     qualityImage!.dispatchEvent(new Event("load"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
-    layer.setParallaxDistance(240 + 960, true);
+    layer.setParallaxDistance(960, true);
 
     const panels = [...host.querySelectorAll<HTMLElement>("[data-world-panel]")];
     expect(panels[0]!.style.transform).toBe("translate3d(0%, 0, 0)");
@@ -137,15 +137,27 @@ describe("edge-to-edge gameplay background", () => {
     await vi.waitFor(() => expect(images).toHaveLength(3));
   });
 
-  it("commits a world selected by a story card without moving the parallax phase", async () => {
+  it("defers a world selected by a story card until gameplay resumes", async () => {
     vi.useFakeTimers();
     const { store, images } = imageHarness();
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host, store);
+    const drawImage = vi.fn();
+    host.querySelectorAll<HTMLCanvasElement>("[data-world-panel]").forEach((panel) => {
+      Object.defineProperty(panel, "getContext", {
+        value: () => ({ clearRect: vi.fn(), drawImage })
+      });
+    });
     layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "story" });
     images[0]!.dispatchEvent(new Event("load"));
     await Promise.resolve();
     await Promise.resolve();
+    layer.setParallaxDistance(240, false);
+    const panels = [...host.querySelectorAll<HTMLElement>("[data-world-panel]")];
+    expect(panels.map(({ style }) => style.transform)).toEqual([
+      "translate3d(-25%, 0, 0)",
+      "translate3d(75%, 0, 0)"
+    ]);
 
     layer.show({ worldId: "order-process", stateId: "epoch_1.challenge", phase: "story" });
     const orderImage = images.find(({ src }) => src.includes("world-02-order-process"));
@@ -158,6 +170,13 @@ describe("edge-to-edge gameplay background", () => {
 
     await vi.advanceTimersByTimeAsync(800);
     expect(host.style.getPropertyValue("--world-phase-px")).toBe(phaseBefore);
+    expect(panels.map(({ style }) => style.transform)).toEqual([
+      "translate3d(-25%, 0, 0)",
+      "translate3d(75%, 0, 0)"
+    ]);
+    expect(drawImage).toHaveBeenCalledTimes(2);
+    layer.setParallaxDistance(960, true);
+    expect(drawImage).toHaveBeenCalledTimes(5);
     expect(host.dataset.assetState).toBe("loaded");
     vi.useRealTimers();
   });

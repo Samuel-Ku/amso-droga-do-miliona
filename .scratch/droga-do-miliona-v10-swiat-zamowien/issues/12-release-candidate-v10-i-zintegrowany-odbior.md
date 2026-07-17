@@ -18,3 +18,6 @@
 - [ ] Manualny odbiór potwierdza etalonową jakość kuriera oraz że każdy wyższy milestone wygląda wyraźnie bardziej świątecznie od poprzedniego.
 - [ ] Raport RC zapisuje urządzenia, silniki, orientacje, wynik każdego kryterium, znane ograniczenia i nierozwiązane uwagi.
 
+## Comments
+
+- 2026-07-17: Zbudowano RC i zapisano wyniki automatyczne oraz jawnie nierozstrzygniętą matrycę urządzeń w `../rc-v10-report.md`. Pełny manual Safari/Edge/Android pozostaje odbiorem człowieka.

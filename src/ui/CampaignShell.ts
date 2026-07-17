@@ -183,14 +183,6 @@ function formatInteger(value: number): string {
   return integerFormatter.format(Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0);
 }
 
-export function campaignWorldCounterValue(
-  _mode: CampaignMode,
-  _visualStateId: string,
-  counterValue: number,
-): number {
-  return counterValue;
-}
-
 export function campaignVisualStateAtProgress(
   currentStateId: string,
   nextStateId: string,
@@ -1053,11 +1045,7 @@ export class CampaignShell {
       displayedVisualStateId,
       this.root.dataset.view === "story_scene" ? "story" : "game"
     );
-    this.worldVisualLayer.setCounterValue(campaignWorldCounterValue(
-      snapshot.mode,
-      displayedVisualStateId,
-      snapshot.millionCounterValue,
-    ));
+    this.worldVisualLayer.setCounterValue(snapshot.millionCounterValue);
     this.worldVisualLayer.setParallaxDistance(
       snapshot.backgroundTravelPixels ?? 0,
       this.root.dataset.view === "game" && !this.paused,

@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { existsSync } from "node:fs";
 import type { RenderScene, RunnerModel } from "../src/game/types";
 import {
   COURIER_SPRITE_FRAME_COUNT,
+  COURIER_BRAND_MARK_PATH,
+  ORDER_ASSET_PATHS,
   ORDER_VISUAL_TYPES,
-  courierSpriteFrame
+  PARCEL_CELEBRATION_FRAME_PATHS,
+  courierSpriteFrame,
+  parcelAnimationFrame
 } from "../src/game/runner-artwork";
 
 const runner: RunnerModel = {
@@ -43,9 +48,18 @@ function scene(overrides: Partial<RenderScene> = {}): RenderScene {
 describe("v10 production artwork contract", () => {
   it("has five equal ordinary order visuals", () => {
     expect(ORDER_VISUAL_TYPES).toEqual(["notebook", "telefon", "pc", "lcd", "parcel"]);
+    expect(Object.keys(ORDER_ASSET_PATHS)).toEqual(ORDER_VISUAL_TYPES);
+    for (const path of [...Object.values(ORDER_ASSET_PATHS), ...PARCEL_CELEBRATION_FRAME_PATHS]) {
+      expect(existsSync(new URL(`../public${path}`, import.meta.url))).toBe(true);
+    }
   });
 
   it("maps run, jump, crouch and celebration into one 14-frame sheet", () => {
+    expect(existsSync(new URL(
+      "../public/assets/milion-runner/courier/courier-reference.svg",
+      import.meta.url
+    ))).toBe(true);
+    expect(COURIER_BRAND_MARK_PATH.endsWith("/A.webp")).toBe(true);
     expect(COURIER_SPRITE_FRAME_COUNT).toBe(14);
     expect(courierSpriteFrame(runner, scene({ elapsedSeconds: 0 }))).toBe(0);
     expect(courierSpriteFrame(runner, scene({ elapsedSeconds: 0.25 }))).toBeGreaterThan(0);
@@ -62,5 +76,11 @@ describe("v10 production artwork contract", () => {
         progress: 0.4
       }
     }))).toBeGreaterThanOrEqual(11);
+  });
+
+  it("animates the parcel through four authored perspectives", () => {
+    expect([0, 0.2, 0.4, 0.6].map((time) => parcelAnimationFrame(time, 0, false)))
+      .toEqual([0, 1, 2, 3]);
+    expect(parcelAnimationFrame(2, 1, true)).toBe(0);
   });
 });

@@ -132,11 +132,11 @@ export interface RunnerGameOptions {
   story?: StoryConfig | null;
   awardStoryCompletionBonus?: boolean;
   challenge?: ChallengeConfig | null;
-  /** Personal package record frozen before this run starts. */
+  /** Personal challenge-order record frozen before this run starts. */
   bestChallengeOrdersAtStart?: number;
   narrative?: NarrativeConfig | null;
-  /** Configurable two-line labels rendered on procedural power-up parcels. */
-  powerUpPackageCopy?: Partial<Readonly<Record<PowerUpKind, readonly [string, string]>>>;
+  /** Configurable two-line labels used by procedural power-up collectibles. */
+  powerUpCopy?: Partial<Readonly<Record<PowerUpKind, readonly [string, string]>>>;
 }
 
 export interface RunnerGameApi {

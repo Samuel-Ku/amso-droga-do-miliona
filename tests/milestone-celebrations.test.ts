@@ -3,7 +3,7 @@ import {
   MILESTONE_CELEBRATION_KINDS,
   MILESTONE_CELEBRATION_PRESENTATION,
   MilestoneCelebrationDirector,
-  nextPackageMilestone
+  nextOrderMilestone
 } from "../src/game/milestone-celebration";
 import { createRunnerModel } from "../src/game/physics";
 import { WarehouseRenderer } from "../src/game/renderer";
@@ -80,7 +80,7 @@ describe("order milestone celebrations", () => {
   it("generates the open-ended 10, 50, 100, 500, 1 000 sequence", () => {
     const values = [10];
     for (let index = 0; index < 8; index += 1) {
-      values.push(nextPackageMilestone(values.at(-1)!, index));
+      values.push(nextOrderMilestone(values.at(-1)!, index));
     }
     expect(values).toEqual([10, 50, 100, 500, 1_000, 5_000, 10_000, 50_000, 100_000]);
   });
@@ -88,13 +88,13 @@ describe("order milestone celebrations", () => {
   it("emits every crossed threshold once and makes the same celebration family richer", () => {
     const director = new MilestoneCelebrationDirector();
     const events = [
-      ...director.recordPackages(10),
-      ...director.recordPackages(10),
-      ...director.recordPackages(50),
-      ...director.recordPackages(100),
-      ...director.recordPackages(500),
-      ...director.recordPackages(1_000),
-      ...director.recordPackages(5_000)
+      ...director.recordOrders(10),
+      ...director.recordOrders(10),
+      ...director.recordOrders(50),
+      ...director.recordOrders(100),
+      ...director.recordOrders(500),
+      ...director.recordOrders(1_000),
+      ...director.recordOrders(5_000)
     ];
 
     expect(events.map(({ threshold }) => threshold)).toEqual([10, 50, 100, 500, 1_000, 5_000]);
@@ -109,20 +109,20 @@ describe("order milestone celebrations", () => {
 
   it("keeps queued celebrations through one run and resets them for a new run", () => {
     const director = new MilestoneCelebrationDirector();
-    director.recordPackages(10);
+    director.recordOrders(10);
     director.advance(0.5);
     expect(director.snapshot?.threshold).toBe(10);
     director.advance(2);
     expect(director.snapshot).toBeNull();
 
     director.reset();
-    expect(director.recordPackages(10)[0]?.threshold).toBe(10);
+    expect(director.recordOrders(10)[0]?.threshold).toBe(10);
     expect(director.nextThreshold).toBe(50);
   });
 
   it("merges a new record with a simultaneous round threshold", () => {
     const director = new MilestoneCelebrationDirector();
-    const events = director.recordPackages(10, true, "NOWY REKORD");
+    const events = director.recordOrders(10, true, "NOWY REKORD");
 
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({

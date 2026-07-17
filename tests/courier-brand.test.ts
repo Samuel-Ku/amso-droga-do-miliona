@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import {
   COURIER_PALETTE,
   CourierBrandArtwork
@@ -92,5 +93,13 @@ describe("AMSO courier artwork", () => {
     renderer.render(context, 960, 540, scene);
 
     expect(fill.mock.calls.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("never substitutes the remembered vector mark for the approved raster A", () => {
+    const rendererSource = readFileSync(
+      new URL("../src/game/renderer.ts", import.meta.url),
+      "utf8"
+    );
+    expect(rendererSource).not.toContain("this.brandArtwork.drawMark");
   });
 });

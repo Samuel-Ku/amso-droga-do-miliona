@@ -791,7 +791,7 @@ const POWER_UP_COLORS: Readonly<Record<PowerUpKind, string>> = {
 
 // Fail-safe labels for direct RunnerGame embeds. Campaign builds pass the
 // marketing-owned equivalents from runner-config.json through RenderScene.
-const DEFAULT_POWER_UP_PACKAGE_COPY: Readonly<Record<PowerUpKind, readonly [string, string]>> = {
+const DEFAULT_POWER_UP_COPY: Readonly<Record<PowerUpKind, readonly [string, string]>> = {
   gwarancja_48: ["GWARANCJA", "48 M"],
   podwojny_wynik: ["2×", "PUNKTY"]
 };
@@ -822,18 +822,23 @@ function drawParcel(
     const visualX = x - (visualSize - size) / 2;
     const visualY = y - (visualSize - size) / 2;
     context.save();
-    if (parcel.orderVisualType === "parcel" && !scene.reducedMotion) {
-      context.translate(x + size / 2, y + size / 2);
-      context.rotate(Math.sin(scene.elapsedSeconds * 2.1 + parcel.phase) * 0.09);
-      context.translate(-(x + size / 2), -(y + size / 2));
-    }
-    const rendered = artwork.drawOrder(
-      context,
-      parcel.orderVisualType,
-      visualX,
-      visualY,
-      visualSize
-    );
+    const rendered = parcel.orderVisualType === "parcel"
+      ? artwork.drawParcelOrder(
+          context,
+          visualX,
+          visualY,
+          visualSize,
+          scene.elapsedSeconds,
+          parcel.phase,
+          scene.reducedMotion
+        )
+      : artwork.drawOrder(
+          context,
+          parcel.orderVisualType,
+          visualX,
+          visualY,
+          visualSize
+        );
     if (rendered && parcel.orderVisualType !== "parcel" && !scene.reducedMotion) {
       const glint = (scene.elapsedSeconds * 0.75 + parcel.phase / (Math.PI * 2)) % 1;
       if (glint < 0.16) {
@@ -884,7 +889,7 @@ function drawParcel(
   if (parcel.kind !== "standard") {
     const color = POWER_UP_COLORS[parcel.kind as PowerUpKind] ?? COLORS.red;
     const kind = parcel.kind as PowerUpKind;
-    const copy = scene.powerUpPackageCopy?.[kind] ?? DEFAULT_POWER_UP_PACKAGE_COPY[kind];
+    const copy = scene.powerUpCopy?.[kind] ?? DEFAULT_POWER_UP_COPY[kind];
     if (!copy) return;
     context.save();
     context.shadowColor = color;
@@ -1226,8 +1231,7 @@ function drawWarrantyShield(
 
 function drawCrouchingCourier(
   context: CanvasRenderingContext2D,
-  runner: Readonly<RunnerModel>,
-  brandArtwork: CourierBrandArtwork
+  runner: Readonly<RunnerModel>
 ): void {
   const x = runner.x;
   const y = runner.y + 14;
@@ -1269,7 +1273,6 @@ function drawCrouchingCourier(
   fillRoundedRectangle(context, x + 13, y + 32, 36, 30, 7, COURIER_PALETTE.capAndShirt);
   context.fillStyle = COURIER_PALETTE.belt;
   context.fillRect(x + 13, y + 50, 36, 7);
-  brandArtwork.drawMark(context, { x: x + 22, y: y + 37, width: 18, height: 13 });
 
   fillRoundedRectangle(context, x + 4, y + 34, 12, 24, 3, COURIER_PALETTE.scanner);
   context.fillStyle = COURIER_PALETTE.scannerScreen;
@@ -1295,11 +1298,10 @@ function drawCrouchingCourier(
 function drawCourier(
   context: CanvasRenderingContext2D,
   runner: Readonly<RunnerModel>,
-  scene: Readonly<RenderScene>,
-  brandArtwork: CourierBrandArtwork
+  scene: Readonly<RenderScene>
 ): void {
   if (runner.crouching) {
-    drawCrouchingCourier(context, runner, brandArtwork);
+    drawCrouchingCourier(context, runner);
     return;
   }
   const stride = runner.grounded && !scene.reducedMotion
@@ -1363,7 +1365,6 @@ function drawCourier(
   fillRoundedRectangle(context, x + 14, y + 27, 35, 36, 7, COURIER_PALETTE.capAndShirt);
   context.fillStyle = COURIER_PALETTE.belt;
   context.fillRect(x + 14, y + 49, 35, 8);
-  brandArtwork.drawMark(context, { x: x + 22, y: y + 33, width: 20, height: 15 });
 
   fillRoundedRectangle(context, x + 5, y + 30, 12, 27, 3, COURIER_PALETTE.scanner);
   context.fillStyle = COURIER_PALETTE.scannerScreen;
@@ -1481,7 +1482,15 @@ function drawMilestoneParticles(
     const x = side > 0 ? 68 + lane * 70 : WORLD_WIDTH - 122 - lane * 70;
     const y = 46 + lane * 34 + (scene.reducedMotion ? 0 : Math.sin(progress * Math.PI) * -18);
     const size = 54 + Math.min(10, celebration.intensity * 2);
-    if (!artwork.drawOrder(context, "parcel", x, y, size)) {
+    if (!artwork.drawParcelOrder(
+      context,
+      x,
+      y,
+      size,
+      progress * 0.8,
+      index,
+      scene.reducedMotion
+    )) {
       context.save();
       context.translate(x + size / 2, y + size / 2);
       if (!scene.reducedMotion) context.rotate(side * (0.08 + progress * 0.12));
@@ -1498,7 +1507,7 @@ function drawMilestoneParticles(
 
 export class WarehouseRenderer {
   public constructor(
-    private readonly brandArtwork: CourierBrandArtwork = DEFAULT_COURIER_BRAND_ARTWORK,
+    _brandArtwork: CourierBrandArtwork = DEFAULT_COURIER_BRAND_ARTWORK,
     private readonly artwork: RunnerArtwork = new RunnerArtwork()
   ) {}
 
@@ -1568,14 +1577,30 @@ export class WarehouseRenderer {
     drawWarrantyShield(context, scene.runner, scene);
     if (this.artwork.drawCourier(context, scene.runner, scene)) {
       const crouchOffset = scene.runner.crouching ? 11 : 0;
-      this.brandArtwork.drawMark(context, {
+      const mark = {
         x: scene.runner.x + 28,
         y: scene.runner.y + 24 + crouchOffset,
         width: 17,
-        height: 12
-      });
+        height: 11
+      };
+      fillRoundedRectangle(
+        context,
+        mark.x - 1,
+        mark.y - 1,
+        mark.width + 2,
+        mark.height + 2,
+        2,
+        COURIER_PALETTE.capAndShirt
+      );
+      this.artwork.drawCourierBrandMark(
+        context,
+        mark.x,
+        mark.y,
+        mark.width,
+        mark.height
+      );
     } else {
-      drawCourier(context, scene.runner, scene, this.brandArtwork);
+      drawCourier(context, scene.runner, scene);
     }
 
     if (scene.cutscene) {

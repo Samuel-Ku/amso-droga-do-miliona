@@ -2,8 +2,7 @@ import { describe, expect, it } from "vitest";
 import { resolveCollision } from "../src/game/mode-rules";
 import {
   ActivePowerUps,
-  ChallengePowerUpSchedule,
-  storyPowerUpsForEpoch
+  ChallengePowerUpSchedule
 } from "../src/game/power-ups";
 import {
   MAX_COMBO_MULTIPLIER,
@@ -26,6 +25,10 @@ describe("package collection and scoring rules", () => {
 
     const protectedSchedule = new ChallengePowerUpSchedule();
     expect(protectedSchedule.dueAt(70, true)).not.toBe("gwarancja_48");
+    protectedSchedule.recordWarrantyConsumption(159);
+    expect(protectedSchedule.dueAt(160, false)).not.toBe("gwarancja_48");
+    expect(protectedSchedule.dueAt(248, false)).not.toBe("gwarancja_48");
+    expect(protectedSchedule.dueAt(249, false)).toBe("gwarancja_48");
   });
 
   it("does not count power-ups as delivered packages", () => {
@@ -72,12 +75,5 @@ describe("power-up lifetime and pacing rules", () => {
     expect(powerUps.consumeWarranty()).toBe(true);
     expect(powerUps.has("gwarancja_48")).toBe(false);
     expect(powerUps.consumeWarranty()).toBe(false);
-  });
-
-  it("introduces only immediately legible story power-ups", () => {
-    expect(storyPowerUpsForEpoch(0)).toEqual([]);
-    expect(storyPowerUpsForEpoch(1)).toEqual(["podwojny_wynik"]);
-    expect(storyPowerUpsForEpoch(2)).toEqual(["podwojny_wynik", "gwarancja_48"]);
-    expect(storyPowerUpsForEpoch(3)).toEqual(["podwojny_wynik", "gwarancja_48"]);
   });
 });

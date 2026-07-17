@@ -14,7 +14,6 @@ import {
 import { StoryObjectiveDirector } from "../src/game/story-objectives";
 import {
   campaignVisualStateAtProgress,
-  campaignWorldCounterValue,
   isCampaignViewportTooNarrow
 } from "../src/ui/CampaignShell";
 
@@ -176,7 +175,7 @@ describe("player-paced story presentation", () => {
       .toBe("Szczyt Zamówień · Sortowanie · 1/3");
 
     director.enterSegment("epoch_5.million_threshold", 72);
-    for (let index = 0; index < 12; index += 1) director.recordMillionPackage();
+    for (let index = 0; index < 12; index += 1) director.recordMillionOrder();
     for (let index = 0; index < 3; index += 1) director.recordMillionCombination();
     expect(formatStoryObjectiveHud(director.snapshot, []))
       .toBe("Próg Miliona · ZAMÓWIENIA 12/30 · KOMBINACJE 3/12");
@@ -217,6 +216,14 @@ describe("player-paced story presentation", () => {
     expect(campaignShellSource).toContain("data-campaign-world-visual");
     expect(campaignShellSource).toContain("amso-campaign__story-final-lockup");
     expect(campaignShellSource).not.toContain("story-vignette");
+  });
+
+  it("grows milestone typography with its reward intensity", () => {
+    for (const intensity of [2, 3, 4, 5, 6]) {
+      expect(campaignCss).toContain(
+        `.amso-campaign__milestone-message[data-intensity="${intensity}"]`
+      );
+    }
   });
 
   it("keeps story art visible beside copy and uses a portrait bottom sheet", () => {
@@ -272,13 +279,6 @@ describe("player-paced story presentation", () => {
     expect(campaignShellSource).toContain("this.callbacks.onPause(\"layout_change\")");
     expect(campaignShellSource).toContain('activeView === "story_reframe"');
     expect(campaignShellSource).toContain("!this.tooNarrowActive");
-  });
-
-  it("keeps the completed counter in direct challenge worlds", () => {
-    expect(campaignWorldCounterValue("challenge", "epoch_5.wave", 999_970))
-      .toBe(999_970);
-    expect(campaignWorldCounterValue("story", "epoch_5.wave", 999_982))
-      .toBe(999_982);
   });
 
   it("reveals the next semantic state as a gameplay segment develops", () => {

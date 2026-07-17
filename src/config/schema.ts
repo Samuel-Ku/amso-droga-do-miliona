@@ -363,18 +363,23 @@ function parseModeHandoff(value: unknown): StoryModeHandoffConfig | null {
 }
 
 function parseMillionThreshold(value: unknown): StoryConfig["millionThreshold"] | null {
-  if (!isRecord(value) || !hasExactKeys(
-    value,
-    ["counterStart", "counterTarget", "orderTarget", "combinationTarget"],
-    ["counterStart", "counterTarget", "orderTarget", "combinationTarget"]
-  ) || value.counterTarget !== 1_000_000 || !Number.isInteger(value.orderTarget) ||
-      !finiteInRange(value.orderTarget, 30, 60) ||
-      value.counterStart !== 1_000_000 - value.orderTarget ||
+  if (!isRecord(value)) return null;
+  const usesCanonicalTarget = Object.hasOwn(value, "orderTarget");
+  const usesLegacyTarget = Object.hasOwn(value, "packageTarget");
+  if (usesCanonicalTarget === usesLegacyTarget) return null;
+  const acceptedKeys = usesCanonicalTarget
+    ? ["counterStart", "counterTarget", "orderTarget", "combinationTarget"]
+    : ["counterStart", "counterTarget", "packageTarget", "combinationTarget"];
+  const orderTarget = usesCanonicalTarget ? value.orderTarget : value.packageTarget;
+  if (!hasExactKeys(value, acceptedKeys, acceptedKeys) ||
+      value.counterTarget !== 1_000_000 || !Number.isInteger(orderTarget) ||
+      !finiteInRange(orderTarget, 30, 60) ||
+      value.counterStart !== 1_000_000 - (orderTarget as number) ||
       value.combinationTarget !== 12) return null;
   return {
     counterStart: value.counterStart as number,
     counterTarget: 1_000_000,
-    orderTarget: value.orderTarget as number,
+    orderTarget: orderTarget as number,
     combinationTarget: 12
   };
 }

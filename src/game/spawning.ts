@@ -8,7 +8,7 @@ import {
   RUNNER_X,
   WORLD_WIDTH
 } from "./constants";
-import { PACKAGE_TYPE_VALUES, POWER_UP_VALUES } from "./narrative";
+import { PACKAGE_TYPE_VALUES } from "./narrative";
 import type { Difficulty } from "./difficulty";
 import { SeededRandom } from "./random";
 import type {
@@ -18,7 +18,7 @@ import type {
   PackageKind,
   PackageModel
 } from "./types";
-import type { OrderVisualType, PackageType, PowerUpKind } from "../shared/types";
+import type { OrderVisualType, PackageType } from "../shared/types";
 import { ORDER_VISUAL_TYPES } from "./runner-artwork";
 import type { SemanticObstacleVariant } from "./semantic-obstacle";
 
@@ -364,53 +364,20 @@ function buildPackagePattern(
   obstacleX: number,
   random: SeededRandom,
   speed: number,
-  narrative: boolean,
-  narrativePowerUps: readonly PowerUpKind[],
   orderVisuals: WeightedOrderVisualDirector
 ): PackageSpawn[] {
   const packCount = heights.length;
-  const hasProtectedMiddle = packCount >= 3;
   const span = speed * JUMP_FLIGHT_SECONDS * PACKAGE_ARC_SPAN_FRACTION;
   const packageType = PACKAGE_TYPE_VALUES[random.integer(0, PACKAGE_TYPE_VALUES.length - 1)] ?? "notebook";
-  if (narrative) {
-    const powerUpIndex = hasProtectedMiddle && narrativePowerUps.length > 0 && random.next() < 0.18
-      ? random.integer(1, packCount - 2)
-      : -1;
-    return heights.map((height, index) => {
-      const centering = packCount > 1 ? index / (packCount - 1) - 0.5 : 0;
-      const offset = span * centering;
-      const isPowerUp = index === powerUpIndex;
-      const kind: PackageKind = isPowerUp
-        ? (narrativePowerUps[random.integer(0, narrativePowerUps.length - 1)] ?? "gwarancja_48")
-        : "standard";
-      return {
-        x: obstacleX + offset,
-        y: GROUND_Y - height - 15,
-        phase: random.range(0, Math.PI * 2),
-        kind,
-        scoreValue: isPowerUp ? 0 : GAMEPLAY.packageScore,
-        packageType,
-        orderVisualType: orderVisuals.next(),
-        weightKg: 0
-      };
-    });
-  }
-  const powerUpIndex = hasProtectedMiddle && random.next() < 0.12
-    ? random.integer(1, packCount - 2)
-    : -1;
-  const powerUpKind = powerUpIndex >= 0
-    ? (POWER_UP_VALUES[random.integer(0, POWER_UP_VALUES.length - 1)] ?? "gwarancja_48")
-    : null;
   return heights.map((height, index) => {
     const centering = packCount > 1 ? index / (packCount - 1) - 0.5 : 0;
     const offset = span * centering;
-    const isPowerUp = index === powerUpIndex && powerUpKind !== null;
     return {
       x: obstacleX + offset,
       y: GROUND_Y - height - 15,
       phase: random.range(0, Math.PI * 2),
-      kind: isPowerUp ? powerUpKind : "standard",
-      scoreValue: isPowerUp ? 0 : GAMEPLAY.packageScore,
+      kind: "standard",
+      scoreValue: GAMEPLAY.packageScore,
       packageType,
       orderVisualType: orderVisuals.next(),
       weightKg: 0
@@ -431,9 +398,7 @@ export class FairSpawner {
   constructor(
     private readonly random: SeededRandom,
     initialSpeed: number,
-    private readonly allowedKinds: readonly ObstacleKind[] = OBSTACLE_KINDS,
-    private readonly narrative = false,
-    private readonly narrativePowerUps: readonly PowerUpKind[] = POWER_UP_VALUES
+    private readonly allowedKinds: readonly ObstacleKind[] = OBSTACLE_KINDS
   ) {
     this.distanceUntilNext = Math.max(1, initialSpeed) * 3.7;
     const allowedPatterns = OBSTACLE_PATTERN_CATALOG.filter(({ kind }) =>
@@ -474,8 +439,6 @@ export class FairSpawner {
       spawnX,
       this.random,
       speed,
-      this.narrative,
-      this.narrativePowerUps,
       this.orderVisuals
     );
     const leftmost = Math.min(spawnX, ...packages.map(({ x }) => x));
