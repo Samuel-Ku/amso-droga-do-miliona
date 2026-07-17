@@ -32,6 +32,8 @@ const COURIER_SOURCE_GROUND_Y = 470;
 const COURIER_RENDER_SIZE = 170;
 const COURIER_RUN_FPS = 12;
 const COURIER_CROUCH_FPS = 16;
+const COURIER_CROUCH_REFERENCE_ANCHOR_X = 250;
+const COURIER_CROUCH_FRAME_ANCHOR_X = [250, 310, 310, 310, 310, 310, 310, 310] as const;
 const ATLAS_TILE_SIZE = 256;
 
 export function parcelAnimationFrame(
@@ -62,6 +64,14 @@ export function courierCrouchSpriteFrame(runner: Readonly<RunnerModel>): number 
     COURIER_CROUCH_SPRITE_FRAME_COUNT - 1,
     Math.floor(runner.crouchElapsedSeconds * COURIER_CROUCH_FPS)
   );
+}
+
+export function courierCrouchFrameOffsetX(frame: number): number {
+  const anchor = COURIER_CROUCH_FRAME_ANCHOR_X[
+    Math.max(0, Math.min(COURIER_CROUCH_SPRITE_FRAME_COUNT - 1, frame))
+  ] ?? COURIER_CROUCH_REFERENCE_ANCHOR_X;
+  return (COURIER_CROUCH_REFERENCE_ANCHOR_X - anchor) /
+    COURIER_SPRITE_CELL_SIZE * COURIER_RENDER_SIZE;
 }
 
 type ArtworkImageFactory = () => HTMLImageElement;
@@ -179,7 +189,8 @@ export class RunnerArtwork {
         ? 0
         : courierSpriteFrame(runner, scene);
     const feetY = runner.y + runner.height + 4;
-    const x = runner.x + runner.width / 2 - COURIER_RENDER_SIZE / 2;
+    const x = runner.x + runner.width / 2 - COURIER_RENDER_SIZE / 2 +
+      (useCrouchArtwork ? courierCrouchFrameOffsetX(frame) : 0);
     const y = feetY - COURIER_SOURCE_GROUND_Y / COURIER_SPRITE_CELL_SIZE *
       COURIER_RENDER_SIZE;
     context.drawImage(

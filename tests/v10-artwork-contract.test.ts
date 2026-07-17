@@ -11,6 +11,7 @@ import {
   PARCEL_CELEBRATION_FRAME_PATHS,
   courierSpriteFrame,
   courierCrouchSpriteFrame,
+  courierCrouchFrameOffsetX,
   parcelAnimationFrame
 } from "../src/game/runner-artwork";
 import { RunnerArtwork } from "../src/game/runner-artwork";
@@ -90,6 +91,8 @@ describe("v10 production artwork contract", () => {
       crouching: true,
       crouchElapsedSeconds: 0.5
     })).toBe(7);
+    expect(courierCrouchFrameOffsetX(0)).toBe(0);
+    expect(courierCrouchFrameOffsetX(7)).toBeCloseTo(-19.92, 1);
     expect(courierSpriteFrame(runner, scene({
       milestoneCelebration: {
         threshold: 500,
