@@ -22,6 +22,8 @@ export interface RunnerModel {
   velocityY: number;
   grounded: boolean;
   crouching: boolean;
+  /** Time spent in the current held crouch, used only for its entry animation. */
+  crouchElapsedSeconds: number;
   coyoteRemaining: number;
   jumpBufferRemaining: number;
 }

@@ -369,6 +369,7 @@ export class RunnerGame implements RunnerGameApi {
       this.timedTouchCrouch = controlMethod === "touch";
       this.crouchBufferRemaining = this.timedTouchCrouch ? CROUCH_BUFFER_SECONDS : 0;
       if (this.runner.grounded) {
+        if (!this.runner.crouching) this.runner.crouchElapsedSeconds = 0;
         this.crouchHeld = true;
         this.runner.crouching = true;
         this.crouchMinimumRemaining = this.timedTouchCrouch ? CROUCH_MINIMUM_SECONDS : 0;
@@ -378,6 +379,7 @@ export class RunnerGame implements RunnerGameApi {
       this.crouchBufferRemaining = 0;
       this.crouchMinimumRemaining = 0;
       this.runner.crouching = false;
+      this.runner.crouchElapsedSeconds = 0;
     }
   }
 
@@ -824,6 +826,9 @@ export class RunnerGame implements RunnerGameApi {
     }
     if (!this.crouchInputHeld && this.crouchMinimumRemaining <= 0) this.crouchHeld = false;
     this.runner.crouching = this.crouchHeld && this.runner.grounded;
+    this.runner.crouchElapsedSeconds = this.runner.crouching
+      ? this.runner.crouchElapsedSeconds + activeDeltaSeconds
+      : 0;
     this.tickPowerUps(activeDeltaSeconds);
     this.authoredBreathRemaining = Math.max(0, this.authoredBreathRemaining - activeDeltaSeconds);
     this.challengeSpawnCooldown = Math.max(0, this.challengeSpawnCooldown - activeDeltaSeconds);

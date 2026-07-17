@@ -24,6 +24,7 @@ export function createRunnerModel(): RunnerModel {
     velocityY: 0,
     grounded: true,
     crouching: false,
+    crouchElapsedSeconds: 0,
     coyoteRemaining: PHYSICS.coyoteSeconds,
     jumpBufferRemaining: 0
   };

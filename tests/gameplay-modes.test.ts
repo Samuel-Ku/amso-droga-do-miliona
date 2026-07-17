@@ -600,13 +600,18 @@ describe("direct slide control", () => {
 
   it("releases keyboard crouch immediately but keeps the short touch slide", () => {
     const harness = createGameHarness("challenge");
-    const runner = (harness.game as unknown as { runner: { crouching: boolean } }).runner;
+    const runner = (harness.game as unknown as {
+      runner: { crouching: boolean; crouchElapsedSeconds: number };
+    }).runner;
     harness.game.start("keyboard");
 
     harness.game.crouch(true, "keyboard");
     expect(runner.crouching).toBe(true);
+    harness.advance(0.1);
+    expect(runner.crouchElapsedSeconds).toBeGreaterThan(0);
     harness.game.crouch(false, "keyboard");
     expect(runner.crouching).toBe(false);
+    expect(runner.crouchElapsedSeconds).toBe(0);
 
     harness.game.crouch(true, "touch");
     harness.game.crouch(false, "touch");

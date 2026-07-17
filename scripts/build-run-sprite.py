@@ -14,10 +14,12 @@ from PIL import Image, ImageFilter
 
 
 FRAME_INDICES = (0, 5, 10, 16, 21, 26, 31, 37)
+CROUCH_FRAME_INDICES = (0, 6, 12, 18, 24, 30, 36, 45)
 CELL_SIZE = 512
 SOURCE_GROUND_Y = 925
 DESTINATION_GROUND_Y = 470
 UNIFORM_SCALE = 0.45
+CROUCH_UNIFORM_SCALE = 0.41
 
 # The backpack moves and tilts slightly through the authored run cycle.  Keep
 # the logo attached to the visible orange face instead of drawing one fixed
@@ -33,9 +35,24 @@ BACKPACK_MARK_TRANSFORMS = (
     (184, 205, 44, -12),
 )
 
+CROUCH_BACKPACK_MARK_TRANSFORMS = (
+    (184, 211, 40, -15),
+    (184, 211, 40, -15),
+    (185, 208, 40, -15),
+    (205, 198, 40, -18),
+    (220, 185, 38, -28),
+    (220, 181, 36, -37),
+    (250, 190, 34, -42),
+    (260, 202, 32, -8),
+)
 
-def extract_frames(video: Path, directory: Path) -> list[Path]:
-    selection = "+".join(f"eq(n,{index})" for index in FRAME_INDICES)
+
+def extract_frames(
+    video: Path,
+    directory: Path,
+    frame_indices: tuple[int, ...] = FRAME_INDICES,
+) -> list[Path]:
+    selection = "+".join(f"eq(n,{index})" for index in frame_indices)
     output = directory / "source-%02d.png"
     subprocess.run(
         [
@@ -55,8 +72,8 @@ def extract_frames(video: Path, directory: Path) -> list[Path]:
         check=True,
     )
     frames = sorted(directory.glob("source-*.png"))
-    if len(frames) != len(FRAME_INDICES):
-        raise RuntimeError(f"Expected {len(FRAME_INDICES)} frames, got {len(frames)}")
+    if len(frames) != len(frame_indices):
+        raise RuntimeError(f"Expected {len(frame_indices)} frames, got {len(frames)}")
     return frames
 
 
@@ -151,8 +168,33 @@ def place_on_cell(courier: Image.Image) -> Image.Image:
     return cell
 
 
-def brand_backpack(frame: Image.Image, mark: Image.Image, index: int) -> Image.Image:
-    center_x, center_y, width, angle = BACKPACK_MARK_TRANSFORMS[index]
+def place_crouch_on_cell(courier: Image.Image) -> Image.Image:
+    bounds = courier.getchannel("A").getbbox()
+    if bounds is None:
+        raise RuntimeError("Crouch frame contains no courier pixels")
+    cropped = courier.crop(bounds)
+    scaled = cropped.resize(
+        (
+            round(cropped.width * CROUCH_UNIFORM_SCALE),
+            round(cropped.height * CROUCH_UNIFORM_SCALE),
+        ),
+        Image.Resampling.LANCZOS,
+    )
+    cell = Image.new("RGBA", (CELL_SIZE, CELL_SIZE), (0, 0, 0, 0))
+    cell.alpha_composite(
+        scaled,
+        ((CELL_SIZE - scaled.width) // 2, DESTINATION_GROUND_Y - scaled.height),
+    )
+    return cell
+
+
+def brand_backpack(
+    frame: Image.Image,
+    mark: Image.Image,
+    index: int,
+    transforms: tuple[tuple[int, int, int, int], ...] = BACKPACK_MARK_TRANSFORMS,
+) -> Image.Image:
+    center_x, center_y, width, angle = transforms[index]
     height = round(mark.height * width / mark.width)
     transformed = mark.resize((width, height), Image.Resampling.LANCZOS).rotate(
         angle,
@@ -210,12 +252,51 @@ def build(video: Path, output_dir: Path) -> None:
     )
 
 
+def build_crouch(video: Path, output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    frames_dir = output_dir / "crouch-frames"
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    mark_path = output_dir / "A.webp"
+    if not mark_path.exists():
+        raise RuntimeError(f"Missing approved backpack mark: {mark_path}")
+    mark = Image.open(mark_path).convert("RGBA")
+
+    with tempfile.TemporaryDirectory(prefix="amso-crouch-") as temp:
+        sources = extract_frames(video, Path(temp), CROUCH_FRAME_INDICES)
+        frames: list[Image.Image] = []
+        for index, source_path in enumerate(sources):
+            frame = place_crouch_on_cell(isolate_courier(Image.open(source_path)))
+            frame = brand_backpack(
+                frame,
+                mark,
+                index,
+                CROUCH_BACKPACK_MARK_TRANSFORMS,
+            )
+            validate_frame(frame, index)
+            frame.save(frames_dir / f"crouch-{index:02d}.png", optimize=True)
+            frames.append(frame)
+
+    sheet = Image.new("RGBA", (CELL_SIZE * len(frames), CELL_SIZE), (0, 0, 0, 0))
+    for index, frame in enumerate(frames):
+        sheet.alpha_composite(frame, (index * CELL_SIZE, 0))
+    sheet.save(output_dir / "courier-crouch-sheet.png", optimize=True)
+    sheet.save(
+        output_dir / "courier-crouch-sheet.webp",
+        "WEBP",
+        lossless=False,
+        quality=88,
+        method=6,
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("video", type=Path)
     parser.add_argument("output_dir", type=Path)
+    parser.add_argument("--motion", choices=("run", "crouch"), default="run")
     args = parser.parse_args()
-    build(args.video.resolve(), args.output_dir.resolve())
+    builder = build_crouch if args.motion == "crouch" else build
+    builder(args.video.resolve(), args.output_dir.resolve())
 
 
 if __name__ == "__main__":

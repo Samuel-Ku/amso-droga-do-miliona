@@ -101,6 +101,7 @@
           { "id": "courier-animation", "type": "procedural", "source": "procedural:courier-animation", "critical": true },
           { "id": "courier-run-sheet", "type": "image", "source": "/assets/milion-runner/courier/courier-run-sheet.webp", "critical": true },
           { "id": "courier-amso-a", "type": "image", "source": "/assets/milion-runner/courier/A.webp", "critical": true },
+          { "id": "courier-crouch", "type": "image", "source": "/assets/milion-runner/courier/courier-crouch-sheet.webp", "critical": true },
           { "id": "base-ui", "type": "procedural", "source": "procedural:base-ui", "critical": true },
           { "id": "first-audio-cues", "type": "procedural", "source": "procedural:first-audio-cues", "critical": true },
           { "id": "mz-main-lockup-v1", "type": "image", "source": "/assets/milion-runner/brand/mz-main-lockup-v1.avif", "critical": false },

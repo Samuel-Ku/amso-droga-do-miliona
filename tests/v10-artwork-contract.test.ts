@@ -4,10 +4,13 @@ import type { RenderScene, RunnerModel } from "../src/game/types";
 import {
   COURIER_SPRITE_FRAME_COUNT,
   COURIER_SPRITE_PATH,
+  COURIER_CROUCH_SPRITE_FRAME_COUNT,
+  COURIER_CROUCH_SPRITE_PATH,
   ORDER_ASSET_PATHS,
   ORDER_VISUAL_TYPES,
   PARCEL_CELEBRATION_FRAME_PATHS,
   courierSpriteFrame,
+  courierCrouchSpriteFrame,
   parcelAnimationFrame
 } from "../src/game/runner-artwork";
 import { RunnerArtwork } from "../src/game/runner-artwork";
@@ -20,6 +23,7 @@ const runner: RunnerModel = {
   velocityY: 0,
   grounded: true,
   crouching: false,
+  crouchElapsedSeconds: 0,
   coyoteRemaining: 0,
   jumpBufferRemaining: 0
 };
@@ -61,15 +65,31 @@ describe("v10 production artwork contract", () => {
       import.meta.url
     ))).toBe(true);
     expect(COURIER_SPRITE_FRAME_COUNT).toBe(8);
+    expect(COURIER_CROUCH_SPRITE_FRAME_COUNT).toBe(8);
     expect(COURIER_SPRITE_PATH).toBe("/assets/milion-runner/courier/courier-run-sheet.webp");
+    expect(COURIER_CROUCH_SPRITE_PATH)
+      .toBe("/assets/milion-runner/courier/courier-crouch-sheet.webp");
     expect(existsSync(new URL(
       "../public/assets/milion-runner/courier/courier-run-sheet.webp",
+      import.meta.url
+    ))).toBe(true);
+    expect(existsSync(new URL(
+      "../public/assets/milion-runner/courier/courier-crouch-sheet.webp",
       import.meta.url
     ))).toBe(true);
     expect(courierSpriteFrame(runner, scene({ elapsedSeconds: 0 }))).toBe(0);
     expect(courierSpriteFrame(runner, scene({ elapsedSeconds: 0.25 }))).toBeGreaterThan(0);
     expect(courierSpriteFrame({ ...runner, grounded: false, velocityY: -100 }, scene())).toBe(3);
-    expect(courierSpriteFrame({ ...runner, crouching: true }, scene())).toBe(1);
+    expect(courierCrouchSpriteFrame({
+      ...runner,
+      crouching: true,
+      crouchElapsedSeconds: 0
+    })).toBe(0);
+    expect(courierCrouchSpriteFrame({
+      ...runner,
+      crouching: true,
+      crouchElapsedSeconds: 0.5
+    })).toBe(7);
     expect(courierSpriteFrame(runner, scene({
       milestoneCelebration: {
         threshold: 500,

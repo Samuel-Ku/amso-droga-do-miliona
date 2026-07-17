@@ -22,12 +22,16 @@ export const PARCEL_CELEBRATION_FRAME_PATHS = [
 export const ORDER_ATLAS_PATH = "/assets/milion-runner/orders/order-atlas.webp";
 export const POWER_UP_ATLAS_PATH = "/assets/milion-runner/powerups/powerup-atlas.webp";
 export const COURIER_SPRITE_PATH = "/assets/milion-runner/courier/courier-run-sheet.webp";
+export const COURIER_CROUCH_SPRITE_PATH =
+  "/assets/milion-runner/courier/courier-crouch-sheet.webp";
 export const COURIER_SPRITE_FRAME_COUNT = 8;
+export const COURIER_CROUCH_SPRITE_FRAME_COUNT = 8;
 
 const COURIER_SPRITE_CELL_SIZE = 512;
 const COURIER_SOURCE_GROUND_Y = 470;
 const COURIER_RENDER_SIZE = 170;
 const COURIER_RUN_FPS = 12;
+const COURIER_CROUCH_FPS = 16;
 const ATLAS_TILE_SIZE = 256;
 
 export function parcelAnimationFrame(
@@ -44,13 +48,20 @@ export function courierSpriteFrame(
   runner: Readonly<RunnerModel>,
   scene: Pick<RenderScene, "elapsedSeconds" | "milestoneCelebration">
 ): number {
-  if (runner.crouching) return 1;
   if (!runner.grounded) {
     if (runner.velocityY < -40) return 3;
     if (runner.velocityY > 40) return 7;
     return 4;
   }
   return Math.floor(scene.elapsedSeconds * COURIER_RUN_FPS) % COURIER_SPRITE_FRAME_COUNT;
+}
+
+export function courierCrouchSpriteFrame(runner: Readonly<RunnerModel>): number {
+  if (!runner.crouching) return 0;
+  return Math.min(
+    COURIER_CROUCH_SPRITE_FRAME_COUNT - 1,
+    Math.floor(runner.crouchElapsedSeconds * COURIER_CROUCH_FPS)
+  );
 }
 
 type ArtworkImageFactory = () => HTMLImageElement;
@@ -77,12 +88,14 @@ export class RunnerArtwork {
   private readonly orders: HTMLImageElement | null;
   private readonly powerUps: HTMLImageElement | null;
   private readonly courier: HTMLImageElement | null;
+  private readonly courierCrouch: HTMLImageElement | null;
   private readonly parcelFrames: readonly (HTMLImageElement | null)[];
 
   public constructor(factory?: ArtworkImageFactory) {
     this.orders = loadImage(ORDER_ATLAS_PATH, factory);
     this.powerUps = loadImage(POWER_UP_ATLAS_PATH, factory);
     this.courier = loadImage(COURIER_SPRITE_PATH, factory);
+    this.courierCrouch = loadImage(COURIER_CROUCH_SPRITE_PATH, factory);
     this.parcelFrames = PARCEL_CELEBRATION_FRAME_PATHS.map((path) => loadImage(path, factory));
   }
 
@@ -155,14 +168,22 @@ export class RunnerArtwork {
     runner: Readonly<RunnerModel>,
     scene: Readonly<RenderScene>
   ): boolean {
-    if (!drawable(this.courier)) return false;
-    const frame = scene.reducedMotion ? 0 : courierSpriteFrame(runner, scene);
+    const useCrouchArtwork = runner.crouching && drawable(this.courierCrouch);
+    const artwork = useCrouchArtwork ? this.courierCrouch : this.courier;
+    if (!drawable(artwork)) return false;
+    const frame = useCrouchArtwork
+      ? scene.reducedMotion
+        ? COURIER_CROUCH_SPRITE_FRAME_COUNT - 1
+        : courierCrouchSpriteFrame(runner)
+      : scene.reducedMotion
+        ? 0
+        : courierSpriteFrame(runner, scene);
     const feetY = runner.y + runner.height + 4;
     const x = runner.x + runner.width / 2 - COURIER_RENDER_SIZE / 2;
     const y = feetY - COURIER_SOURCE_GROUND_Y / COURIER_SPRITE_CELL_SIZE *
       COURIER_RENDER_SIZE;
     context.drawImage(
-      this.courier,
+      artwork,
       frame * COURIER_SPRITE_CELL_SIZE,
       0,
       COURIER_SPRITE_CELL_SIZE,

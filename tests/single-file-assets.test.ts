@@ -111,8 +111,8 @@ describe("single-file QA artwork", () => {
     const embeddedWebps = new Set(
       qaPreview.match(/data:image\/webp;base64,[A-Za-z0-9+/=]+/g) ?? []
     );
-    // Seven worlds, two atlases, Todd, four parcel frames and exact A.
-    expect(embeddedWebps.size).toBe(15);
+    // Seven worlds, two atlases, run + crouch couriers, four parcel frames and exact A.
+    expect(embeddedWebps.size).toBe(16);
     const embeddedSvgs = new Set(
       qaPreview.match(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+/g) ?? []
     );
