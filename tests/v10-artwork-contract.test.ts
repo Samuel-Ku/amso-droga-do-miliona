@@ -6,6 +6,7 @@ import {
   COURIER_SPRITE_PATH,
   COURIER_CROUCH_SPRITE_FRAME_COUNT,
   COURIER_CROUCH_SPRITE_PATH,
+  OBSTACLE_ASSET_PATHS,
   ORDER_ASSET_PATHS,
   ORDER_VISUAL_TYPES,
   PARCEL_CELEBRATION_FRAME_PATHS,
@@ -56,6 +57,18 @@ describe("v10 production artwork contract", () => {
     expect(ORDER_VISUAL_TYPES).toEqual(["notebook", "telefon", "pc", "lcd", "parcel"]);
     expect(Object.keys(ORDER_ASSET_PATHS)).toEqual(ORDER_VISUAL_TYPES);
     for (const path of [...Object.values(ORDER_ASSET_PATHS), ...PARCEL_CELEBRATION_FRAME_PATHS]) {
+      expect(existsSync(new URL(`../public${path}`, import.meta.url))).toBe(true);
+    }
+  });
+
+  it("ships one coherent raster asset for every obstacle kind", () => {
+    expect(Object.keys(OBSTACLE_ASSET_PATHS)).toEqual([
+      "box-stack",
+      "pallet",
+      "trolley",
+      "overhead"
+    ]);
+    for (const path of Object.values(OBSTACLE_ASSET_PATHS)) {
       expect(existsSync(new URL(`../public${path}`, import.meta.url))).toBe(true);
     }
   });

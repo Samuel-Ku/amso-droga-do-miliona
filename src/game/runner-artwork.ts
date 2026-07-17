@@ -1,5 +1,5 @@
 import type { OrderVisualType, PowerUpKind } from "../shared/types";
-import type { RenderScene, RunnerModel } from "./types";
+import type { ObstacleKind, ObstacleModel, RenderScene, RunnerModel } from "./types";
 
 export const ORDER_VISUAL_TYPES: readonly OrderVisualType[] =
   ["notebook", "telefon", "pc", "lcd", "parcel"] as const;
@@ -24,6 +24,12 @@ export const POWER_UP_ATLAS_PATH = "/assets/milion-runner/powerups/powerup-atlas
 export const COURIER_SPRITE_PATH = "/assets/milion-runner/courier/courier-run-sheet.webp";
 export const COURIER_CROUCH_SPRITE_PATH =
   "/assets/milion-runner/courier/courier-crouch-sheet.webp";
+export const OBSTACLE_ASSET_PATHS = {
+  "box-stack": "/assets/milion-runner/obstacles/box-stack.webp",
+  pallet: "/assets/milion-runner/obstacles/pallet.webp",
+  trolley: "/assets/milion-runner/obstacles/trolley.webp",
+  overhead: "/assets/milion-runner/obstacles/overhead.webp"
+} as const satisfies Readonly<Record<ObstacleKind, string>>;
 export const COURIER_SPRITE_FRAME_COUNT = 8;
 export const COURIER_CROUCH_SPRITE_FRAME_COUNT = 8;
 
@@ -99,6 +105,7 @@ export class RunnerArtwork {
   private readonly powerUps: HTMLImageElement | null;
   private readonly courier: HTMLImageElement | null;
   private readonly courierCrouch: HTMLImageElement | null;
+  private readonly obstacles: Readonly<Record<ObstacleKind, HTMLImageElement | null>>;
   private readonly parcelFrames: readonly (HTMLImageElement | null)[];
 
   public constructor(factory?: ArtworkImageFactory) {
@@ -106,7 +113,59 @@ export class RunnerArtwork {
     this.powerUps = loadImage(POWER_UP_ATLAS_PATH, factory);
     this.courier = loadImage(COURIER_SPRITE_PATH, factory);
     this.courierCrouch = loadImage(COURIER_CROUCH_SPRITE_PATH, factory);
+    this.obstacles = {
+      "box-stack": loadImage(OBSTACLE_ASSET_PATHS["box-stack"], factory),
+      pallet: loadImage(OBSTACLE_ASSET_PATHS.pallet, factory),
+      trolley: loadImage(OBSTACLE_ASSET_PATHS.trolley, factory),
+      overhead: loadImage(OBSTACLE_ASSET_PATHS.overhead, factory)
+    };
     this.parcelFrames = PARCEL_CELEBRATION_FRAME_PATHS.map((path) => loadImage(path, factory));
+  }
+
+  public drawObstacle(
+    context: CanvasRenderingContext2D,
+    obstacle: Readonly<ObstacleModel>
+  ): boolean {
+    if (!obstacle.active) return true;
+    const image = this.obstacles[obstacle.kind];
+    if (!drawable(image)) return false;
+
+    context.save();
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+
+    if (obstacle.kind === "overhead") {
+      // Only the scanner housing needs to occupy the crouch line. Continue
+      // its suspension rails to the ceiling so the obstacle never floats.
+      const drawWidth = obstacle.width + 18;
+      const drawHeight = drawWidth * image.naturalHeight / image.naturalWidth;
+      const drawX = obstacle.x - (drawWidth - obstacle.width) / 2;
+      const drawY = obstacle.y + obstacle.height - drawHeight;
+      const railInset = drawWidth * 0.095;
+      context.strokeStyle = "#2d343b";
+      context.lineWidth = 5;
+      context.beginPath();
+      context.moveTo(drawX + railInset, 0);
+      context.lineTo(drawX + railInset, drawY + drawHeight * 0.28);
+      context.moveTo(drawX + drawWidth - railInset, 0);
+      context.lineTo(drawX + drawWidth - railInset, drawY + drawHeight * 0.28);
+      context.stroke();
+      context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+      context.restore();
+      return true;
+    }
+
+    const scale = Math.min(
+      obstacle.width / image.naturalWidth,
+      obstacle.height / image.naturalHeight
+    );
+    const drawWidth = image.naturalWidth * scale;
+    const drawHeight = image.naturalHeight * scale;
+    const drawX = obstacle.x + (obstacle.width - drawWidth) / 2;
+    const drawY = obstacle.y + obstacle.height - drawHeight;
+    context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+    context.restore();
+    return true;
   }
 
   public drawOrder(

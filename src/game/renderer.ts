@@ -1527,7 +1527,9 @@ export class WarehouseRenderer {
     );
     for (const parcel of scene.packages) drawParcel(context, parcel, scene, this.artwork);
     for (const obstacle of scene.obstacles) {
-      drawObstacle(context, obstacle);
+      if (!this.artwork.drawObstacle(context, obstacle)) {
+        drawObstacle(context, obstacle);
+      }
     }
     for (const transformation of scene.obstacleTransformations ?? []) {
       drawTransformedObstacle(context, transformation, scene.reducedMotion);

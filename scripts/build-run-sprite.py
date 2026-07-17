@@ -47,18 +47,6 @@ BACKPACK_MARK_TRANSFORMS = (
     BackpackMarkTransform(184, 205, 44, -12),
 )
 
-CROUCH_BACKPACK_MARK_TRANSFORMS = (
-    BackpackMarkTransform(250, 190, 34, -42),
-    BackpackMarkTransform(310, 205, 34, -8),
-    BackpackMarkTransform(310, 210, 34, -5),
-    BackpackMarkTransform(310, 240, 34, -3),
-    BackpackMarkTransform(310, 260, 34, 0),
-    BackpackMarkTransform(310, 260, 34, 0),
-    BackpackMarkTransform(310, 260, 34, 0),
-    BackpackMarkTransform(310, 260, 34, 0),
-)
-
-
 def extract_frames(
     video: Path,
     directory: Path,
@@ -248,22 +236,25 @@ def build_motion(
     sheet_stem: str,
     temporary_prefix: str,
     place_frame: Callable[[Image.Image], Image.Image],
-    mark_transforms: tuple[BackpackMarkTransform, ...],
+    mark_transforms: tuple[BackpackMarkTransform, ...] | None,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     frames_dir = output_dir / frames_directory
     frames_dir.mkdir(parents=True, exist_ok=True)
-    mark_path = output_dir / "A.webp"
-    if not mark_path.exists():
-        raise RuntimeError(f"Missing approved backpack mark: {mark_path}")
-    mark = Image.open(mark_path).convert("RGBA")
+    mark: Image.Image | None = None
+    if mark_transforms is not None:
+        mark_path = output_dir / "A.webp"
+        if not mark_path.exists():
+            raise RuntimeError(f"Missing approved backpack mark: {mark_path}")
+        mark = Image.open(mark_path).convert("RGBA")
 
     with tempfile.TemporaryDirectory(prefix=temporary_prefix) as temp:
         sources = extract_frames(video, Path(temp), frame_indices)
         frames: list[Image.Image] = []
         for index, source_path in enumerate(sources):
             frame = place_frame(isolate_courier(Image.open(source_path)))
-            frame = brand_backpack(frame, mark, index, mark_transforms)
+            if mark is not None and mark_transforms is not None:
+                frame = brand_backpack(frame, mark, index, mark_transforms)
             validate_frame(frame, index)
             frame.save(frames_dir / f"{frame_prefix}-{index:02d}.png", optimize=True)
             frames.append(frame)
@@ -305,7 +296,10 @@ def build_crouch(video: Path, output_dir: Path) -> None:
         sheet_stem="courier-crouch-sheet",
         temporary_prefix="amso-crouch-",
         place_frame=place_crouch_on_cell,
-        mark_transforms=CROUCH_BACKPACK_MARK_TRANSFORMS,
+        # Keep the authored crouch frames unbranded. The mark needs manual
+        # occlusion/perspective work so it reads as print on the backpack,
+        # instead of floating above the courier's arm.
+        mark_transforms=None,
     )
 
 
