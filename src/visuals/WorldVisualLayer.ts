@@ -154,7 +154,6 @@ export class WorldVisualLayer {
 
     if (worldChanged) {
       this.loadWorldAsset(world.assetPath, selection.phase !== "game");
-      this.prepareNextWorld(selection.worldId);
     }
     if (worldChanged || stateChanged) {
       this.host.dataset.reveal = state.revealMotion;
@@ -234,6 +233,7 @@ export class WorldVisualLayer {
         this.pendingAsset = null;
         this.drawPanel(this.panels[0], decodedAsset);
         this.drawPanel(this.panels[1], decodedAsset);
+        this.prepareNextWorld(decodedAsset.path);
       } else {
         this.pendingAsset = decodedAsset;
         this.transitionStartDistance = this.lastDistance;
@@ -257,10 +257,11 @@ export class WorldVisualLayer {
     this.drawPanel(this.panels[1], this.currentAsset);
     this.connector.hidden = true;
     this.placePanels(0, false);
+    this.prepareNextWorld(this.currentAsset.path);
   }
 
-  private prepareNextWorld(worldId: CampaignWorldId): void {
-    const index = CAMPAIGN_WORLDS.findIndex(({ worldId: candidate }) => candidate === worldId);
+  private prepareNextWorld(assetPath: string): void {
+    const index = CAMPAIGN_WORLDS.findIndex(({ assetPath: candidate }) => candidate === assetPath);
     const next = CAMPAIGN_WORLDS[index + 1];
     if (next !== undefined) void this.assets.load(next.assetPath).catch(() => undefined);
   }

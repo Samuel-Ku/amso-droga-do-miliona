@@ -120,6 +120,24 @@ describe("edge-to-edge gameplay background", () => {
     expect(connector.hidden).toBe(true);
   });
 
+  it("preloads the following world only after the pending world is committed", async () => {
+    const { store, images } = imageHarness();
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+
+    layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "game" });
+    images[0]!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(images).toHaveLength(2));
+
+    layer.show({ worldId: "order-process", stateId: "epoch_1.challenge", phase: "game" });
+    images[1]!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+
+    expect(images).toHaveLength(2);
+    layer.setParallaxDistance(960 * 1.08, true);
+    await vi.waitFor(() => expect(images).toHaveLength(3));
+  });
+
   it("uses the connector before committing a world selected by a story card", async () => {
     vi.useFakeTimers();
     const { store, images } = imageHarness();
