@@ -106,6 +106,8 @@
           { "id": "obstacle-pallet", "type": "image", "source": "/assets/milion-runner/obstacles/pallet.webp", "critical": true },
           { "id": "obstacle-trolley", "type": "image", "source": "/assets/milion-runner/obstacles/trolley.webp", "critical": true },
           { "id": "obstacle-overhead", "type": "image", "source": "/assets/milion-runner/obstacles/overhead.webp", "critical": true },
+          { "id": "obstacle-overhead-door", "type": "image", "source": "/assets/milion-runner/obstacles/overhead-door.webp", "critical": true },
+          { "id": "obstacle-overhead-conveyor", "type": "image", "source": "/assets/milion-runner/obstacles/overhead-conveyor.webp", "critical": true },
           { "id": "base-ui", "type": "procedural", "source": "procedural:base-ui", "critical": true },
           { "id": "first-audio-cues", "type": "procedural", "source": "procedural:first-audio-cues", "critical": true },
           { "id": "mz-main-lockup-v1", "type": "image", "source": "/assets/milion-runner/brand/mz-main-lockup-v1.avif", "critical": false },

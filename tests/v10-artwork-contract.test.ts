@@ -7,6 +7,7 @@ import {
   COURIER_CROUCH_SPRITE_FRAME_COUNT,
   COURIER_CROUCH_SPRITE_PATH,
   OBSTACLE_ASSET_PATHS,
+  OVERHEAD_VARIANT_ASSET_PATHS,
   ORDER_ASSET_PATHS,
   ORDER_VISUAL_TYPES,
   PARCEL_CELEBRATION_FRAME_PATHS,
@@ -69,6 +70,10 @@ describe("v10 production artwork contract", () => {
       "overhead"
     ]);
     for (const path of Object.values(OBSTACLE_ASSET_PATHS)) {
+      expect(existsSync(new URL(`../public${path}`, import.meta.url))).toBe(true);
+    }
+    expect(OVERHEAD_VARIANT_ASSET_PATHS).toHaveLength(3);
+    for (const path of OVERHEAD_VARIANT_ASSET_PATHS) {
       expect(existsSync(new URL(`../public${path}`, import.meta.url))).toBe(true);
     }
   });

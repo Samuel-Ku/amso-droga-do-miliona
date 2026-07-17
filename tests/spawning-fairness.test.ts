@@ -265,6 +265,23 @@ describe("challenge spawning fairness", () => {
     expect(obstacles[0]?.semanticVariant).toBe("first-laptop");
   });
 
+  it("keeps overhead artwork varied and stable for each activated pattern", () => {
+    const variants = ["beam-single", "beam-pair", "beam-triple"].map(
+      (obstaclePattern) => {
+        const obstacles = createObstaclePool(1);
+        const packages = createPackagePool(8);
+        const wave = {
+          ...createBossAttackWave("overhead", 1_032),
+          obstaclePattern
+        };
+        expect(activateWave(wave, obstacles, packages)).toBe(true);
+        return obstacles[0]?.visualVariant;
+      }
+    );
+
+    expect(variants).toEqual([0, 1, 2]);
+  });
+
   it("moves a special package away from hazards and existing rewards before spawning", () => {
     const obstacle = obstacleFromWave(createBossAttackWave("box-stack", 810));
     const packages = [{

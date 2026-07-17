@@ -36,6 +36,8 @@ export interface ObstacleModel {
   y: number;
   width: number;
   height: number;
+  /** Stable authored look for mechanically identical overhead obstacles. */
+  visualVariant?: number;
   /** Prevents one cleared pattern from being credited more than once. */
   objectiveCredited?: boolean;
   authoredWaveId?: string;

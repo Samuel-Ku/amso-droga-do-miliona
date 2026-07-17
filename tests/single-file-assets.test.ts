@@ -112,8 +112,8 @@ describe("single-file QA artwork", () => {
       qaPreview.match(/data:image\/webp;base64,[A-Za-z0-9+/=]+/g) ?? []
     );
     // Seven worlds, two atlases, run + crouch couriers, four parcel frames,
-    // four obstacles and exact A.
-    expect(embeddedWebps.size).toBe(20);
+    // Four ground/primary obstacles, two extra overhead variants and exact A.
+    expect(embeddedWebps.size).toBe(22);
     const embeddedSvgs = new Set(
       qaPreview.match(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+/g) ?? []
     );

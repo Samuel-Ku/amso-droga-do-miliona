@@ -587,6 +587,16 @@ export function activateWave(
   obstacle.y = wave.y;
   obstacle.width = wave.width;
   obstacle.height = wave.height;
+  if (wave.kind === "overhead") {
+    let hash = 0;
+    const key = `${wave.obstaclePattern}:${Math.round(wave.x)}:${wave.authoredActionIndex ?? 0}`;
+    for (let index = 0; index < key.length; index += 1) {
+      hash = (hash * 31 + key.charCodeAt(index)) >>> 0;
+    }
+    obstacle.visualVariant = hash % 3;
+  } else {
+    delete obstacle.visualVariant;
+  }
   obstacle.objectiveCredited = false;
   if (wave.authoredWaveId) obstacle.authoredWaveId = wave.authoredWaveId;
   else delete obstacle.authoredWaveId;

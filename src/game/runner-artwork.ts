@@ -30,6 +30,11 @@ export const OBSTACLE_ASSET_PATHS = {
   trolley: "/assets/milion-runner/obstacles/trolley.webp",
   overhead: "/assets/milion-runner/obstacles/overhead.webp"
 } as const satisfies Readonly<Record<ObstacleKind, string>>;
+export const OVERHEAD_VARIANT_ASSET_PATHS = [
+  OBSTACLE_ASSET_PATHS.overhead,
+  "/assets/milion-runner/obstacles/overhead-door.webp",
+  "/assets/milion-runner/obstacles/overhead-conveyor.webp"
+] as const;
 export const COURIER_SPRITE_FRAME_COUNT = 8;
 export const COURIER_CROUCH_SPRITE_FRAME_COUNT = 8;
 
@@ -41,6 +46,7 @@ const COURIER_CROUCH_FPS = 16;
 const COURIER_CROUCH_REFERENCE_ANCHOR_X = 250;
 const COURIER_CROUCH_FRAME_ANCHOR_X = [250, 310, 310, 310, 310, 310, 310, 310] as const;
 const ATLAS_TILE_SIZE = 256;
+const OVERHEAD_VISUAL_LIFT = 72;
 
 export function parcelAnimationFrame(
   elapsedSeconds: number,
@@ -106,6 +112,7 @@ export class RunnerArtwork {
   private readonly courier: HTMLImageElement | null;
   private readonly courierCrouch: HTMLImageElement | null;
   private readonly obstacles: Readonly<Record<ObstacleKind, HTMLImageElement | null>>;
+  private readonly overheadVariants: readonly (HTMLImageElement | null)[];
   private readonly parcelFrames: readonly (HTMLImageElement | null)[];
 
   public constructor(factory?: ArtworkImageFactory) {
@@ -119,6 +126,10 @@ export class RunnerArtwork {
       trolley: loadImage(OBSTACLE_ASSET_PATHS.trolley, factory),
       overhead: loadImage(OBSTACLE_ASSET_PATHS.overhead, factory)
     };
+    this.overheadVariants = [
+      this.obstacles.overhead,
+      ...OVERHEAD_VARIANT_ASSET_PATHS.slice(1).map((path) => loadImage(path, factory))
+    ];
     this.parcelFrames = PARCEL_CELEBRATION_FRAME_PATHS.map((path) => loadImage(path, factory));
   }
 
@@ -127,7 +138,11 @@ export class RunnerArtwork {
     obstacle: Readonly<ObstacleModel>
   ): boolean {
     if (!obstacle.active) return true;
-    const image = this.obstacles[obstacle.kind];
+    const image = obstacle.kind === "overhead"
+      ? this.overheadVariants[
+        Math.abs(Math.floor(obstacle.visualVariant ?? 0)) % this.overheadVariants.length
+      ] ?? this.obstacles.overhead
+      : this.obstacles[obstacle.kind];
     if (!drawable(image)) return false;
 
     context.save();
@@ -140,7 +155,7 @@ export class RunnerArtwork {
       const drawWidth = obstacle.width + 18;
       const drawHeight = drawWidth * image.naturalHeight / image.naturalWidth;
       const drawX = obstacle.x - (drawWidth - obstacle.width) / 2;
-      const drawY = obstacle.y + obstacle.height - drawHeight;
+      const drawY = obstacle.y + obstacle.height - drawHeight - OVERHEAD_VISUAL_LIFT;
       const railInset = drawWidth * 0.095;
       context.strokeStyle = "#2d343b";
       context.lineWidth = 5;
