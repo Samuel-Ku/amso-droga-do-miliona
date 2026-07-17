@@ -94,8 +94,6 @@ export const STORY_POWER_UP_DEMO_SECONDS = 2.8;
 const OFFSCREEN_SPAWN_X = WORLD_WIDTH + GAMEPLAY.spawnPadding;
 const STORY_CLIMAX_SPAWN_X = OFFSCREEN_SPAWN_X;
 const STORY_ORDER_TYPES: readonly PackageType[] = ["pc", "notebook", "lcd", "telefon"];
-const CROUCH_MINIMUM_SECONDS = 0.3;
-const CROUCH_BUFFER_SECONDS = 0.11;
 const FINALE_POWER_UPS: readonly PowerUpKind[] = [
   "podwojny_wynik",
   "gwarancja_48"
@@ -219,9 +217,6 @@ export class RunnerGame implements RunnerGameApi {
   private factEngine: FactEngine | null = null;
   private crouchHeld = false;
   private crouchInputHeld = false;
-  private timedTouchCrouch = false;
-  private crouchMinimumRemaining = 0;
-  private crouchBufferRemaining = 0;
   private accumulator = 0;
   private lastFrameTime: number | null = null;
   private performanceFrameCount = 0;
@@ -312,7 +307,6 @@ export class RunnerGame implements RunnerGameApi {
     this.impactSeconds = 0;
     this.crouchHeld = false;
     this.crouchInputHeld = false;
-    this.timedTouchCrouch = false;
     this.setState("running");
     this.emitStorySignals(true);
     this.emitSnapshot();
@@ -346,7 +340,6 @@ export class RunnerGame implements RunnerGameApi {
     this.controlMethod = controlMethod;
     this.crouchHeld = false;
     this.crouchInputHeld = false;
-    this.timedTouchCrouch = false;
     this.runner.crouching = false;
     queueJump(this.runner);
   }
@@ -360,24 +353,18 @@ export class RunnerGame implements RunnerGameApi {
     if (this.storyTimeline?.snapshot.trustCorridor) {
       this.crouchHeld = false;
       this.crouchInputHeld = false;
-      this.timedTouchCrouch = false;
       return;
     }
     this.controlMethod = controlMethod;
     this.crouchInputHeld = active;
     if (active) {
-      this.timedTouchCrouch = controlMethod === "touch";
-      this.crouchBufferRemaining = this.timedTouchCrouch ? CROUCH_BUFFER_SECONDS : 0;
       if (this.runner.grounded) {
         if (!this.runner.crouching) this.runner.crouchElapsedSeconds = 0;
         this.crouchHeld = true;
         this.runner.crouching = true;
-        this.crouchMinimumRemaining = this.timedTouchCrouch ? CROUCH_MINIMUM_SECONDS : 0;
       }
-    } else if (controlMethod !== "touch" || this.crouchMinimumRemaining <= 0) {
+    } else {
       this.crouchHeld = false;
-      this.crouchBufferRemaining = 0;
-      this.crouchMinimumRemaining = 0;
       this.runner.crouching = false;
       this.runner.crouchElapsedSeconds = 0;
     }
@@ -463,9 +450,6 @@ export class RunnerGame implements RunnerGameApi {
     this.bossStarted = false;
     this.crouchHeld = false;
     this.crouchInputHeld = false;
-    this.timedTouchCrouch = false;
-    this.crouchMinimumRemaining = 0;
-    this.crouchBufferRemaining = 0;
     this.accumulator = 0;
     this.lastFrameTime = null;
     this.performanceFrameCount = 0;
@@ -756,7 +740,6 @@ export class RunnerGame implements RunnerGameApi {
     if (trustCorridor) {
       this.crouchHeld = false;
       this.crouchInputHeld = false;
-      this.timedTouchCrouch = false;
       this.runner.crouching = false;
       this.clearInteractiveWorld();
     }
@@ -810,21 +793,11 @@ export class RunnerGame implements RunnerGameApi {
       return;
     }
 
-    this.crouchBufferRemaining = Math.max(0, this.crouchBufferRemaining - activeDeltaSeconds);
-    this.crouchMinimumRemaining = Math.max(0, this.crouchMinimumRemaining - activeDeltaSeconds);
     stepRunnerPhysics(this.runner, activeDeltaSeconds);
-    if (this.runner.grounded && this.crouchInputHeld && !this.timedTouchCrouch) {
+    if (this.runner.grounded && this.crouchInputHeld) {
       this.crouchHeld = true;
     }
-    if (this.runner.grounded && this.crouchBufferRemaining > 0) {
-      this.crouchHeld = true;
-      this.crouchMinimumRemaining = Math.max(
-        this.crouchMinimumRemaining,
-        CROUCH_MINIMUM_SECONDS
-      );
-      this.crouchBufferRemaining = 0;
-    }
-    if (!this.crouchInputHeld && this.crouchMinimumRemaining <= 0) this.crouchHeld = false;
+    if (!this.crouchInputHeld) this.crouchHeld = false;
     this.runner.crouching = this.crouchHeld && this.runner.grounded;
     this.runner.crouchElapsedSeconds = this.runner.crouching
       ? this.runner.crouchElapsedSeconds + activeDeltaSeconds

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the production courier run cycle from the approved source video."""
+"""Build production courier run and crouch sprite sheets from approved videos."""
 
 from __future__ import annotations
 
@@ -7,6 +7,8 @@ import argparse
 import subprocess
 import tempfile
 from collections import deque
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -14,7 +16,7 @@ from PIL import Image, ImageFilter
 
 
 FRAME_INDICES = (0, 5, 10, 16, 21, 26, 31, 37)
-CROUCH_FRAME_INDICES = (0, 6, 12, 18, 24, 30, 36, 45)
+CROUCH_FRAME_INDICES = (36, 42, 48, 54, 60, 66, 72, 78)
 CELL_SIZE = 512
 SOURCE_GROUND_Y = 925
 DESTINATION_GROUND_Y = 470
@@ -24,26 +26,36 @@ CROUCH_UNIFORM_SCALE = 0.41
 # The backpack moves and tilts slightly through the authored run cycle.  Keep
 # the logo attached to the visible orange face instead of drawing one fixed
 # screen-space mark over the courier at runtime.
+
+
+@dataclass(frozen=True)
+class BackpackMarkTransform:
+    center_x: int
+    center_y: int
+    width: int
+    angle_degrees: int
+
+
 BACKPACK_MARK_TRANSFORMS = (
-    (176, 210, 46, -15),
-    (177, 211, 46, -14),
-    (181, 207, 46, -13),
-    (184, 205, 46, -12),
-    (177, 207, 46, -14),
-    (179, 208, 46, -14),
-    (184, 204, 44, -12),
-    (184, 205, 44, -12),
+    BackpackMarkTransform(176, 210, 46, -15),
+    BackpackMarkTransform(177, 211, 46, -14),
+    BackpackMarkTransform(181, 207, 46, -13),
+    BackpackMarkTransform(184, 205, 46, -12),
+    BackpackMarkTransform(177, 207, 46, -14),
+    BackpackMarkTransform(179, 208, 46, -14),
+    BackpackMarkTransform(184, 204, 44, -12),
+    BackpackMarkTransform(184, 205, 44, -12),
 )
 
 CROUCH_BACKPACK_MARK_TRANSFORMS = (
-    (184, 211, 40, -15),
-    (184, 211, 40, -15),
-    (185, 208, 40, -15),
-    (205, 198, 40, -18),
-    (220, 185, 38, -28),
-    (220, 181, 36, -37),
-    (250, 190, 34, -42),
-    (260, 202, 32, -8),
+    BackpackMarkTransform(250, 190, 34, -42),
+    BackpackMarkTransform(310, 205, 34, -8),
+    BackpackMarkTransform(310, 210, 34, -5),
+    BackpackMarkTransform(310, 240, 34, -3),
+    BackpackMarkTransform(310, 260, 34, 0),
+    BackpackMarkTransform(310, 260, 34, 0),
+    BackpackMarkTransform(310, 260, 34, 0),
+    BackpackMarkTransform(310, 260, 34, 0),
 )
 
 
@@ -158,7 +170,7 @@ def isolate_courier(source: Image.Image) -> Image.Image:
     return rgba
 
 
-def place_on_cell(courier: Image.Image) -> Image.Image:
+def place_run_on_cell(courier: Image.Image) -> Image.Image:
     scaled_size = tuple(round(dimension * UNIFORM_SCALE) for dimension in courier.size)
     scaled = courier.resize(scaled_size, Image.Resampling.LANCZOS)
     cell = Image.new("RGBA", (CELL_SIZE, CELL_SIZE), (0, 0, 0, 0))
@@ -192,19 +204,24 @@ def brand_backpack(
     frame: Image.Image,
     mark: Image.Image,
     index: int,
-    transforms: tuple[tuple[int, int, int, int], ...] = BACKPACK_MARK_TRANSFORMS,
+    transforms: tuple[BackpackMarkTransform, ...] = BACKPACK_MARK_TRANSFORMS,
 ) -> Image.Image:
-    center_x, center_y, width, angle = transforms[index]
-    height = round(mark.height * width / mark.width)
-    transformed = mark.resize((width, height), Image.Resampling.LANCZOS).rotate(
-        angle,
+    placement = transforms[index]
+    height = round(mark.height * placement.width / mark.width)
+    transformed = mark.resize(
+        (placement.width, height), Image.Resampling.LANCZOS
+    ).rotate(
+        placement.angle_degrees,
         resample=Image.Resampling.BICUBIC,
         expand=True,
     )
     branded = frame.copy()
     branded.alpha_composite(
         transformed,
-        (round(center_x - transformed.width / 2), round(center_y - transformed.height / 2)),
+        (
+            round(placement.center_x - transformed.width / 2),
+            round(placement.center_y - transformed.height / 2),
+        ),
     )
     return branded
 
@@ -221,30 +238,42 @@ def validate_frame(frame: Image.Image, index: int) -> None:
         raise RuntimeError(f"Frame {index} is clipped or misaligned: {bounds}")
 
 
-def build(video: Path, output_dir: Path) -> None:
+def build_motion(
+    video: Path,
+    output_dir: Path,
+    *,
+    frame_indices: tuple[int, ...],
+    frames_directory: str,
+    frame_prefix: str,
+    sheet_stem: str,
+    temporary_prefix: str,
+    place_frame: Callable[[Image.Image], Image.Image],
+    mark_transforms: tuple[BackpackMarkTransform, ...],
+) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
-    frames_dir = output_dir / "run-frames"
+    frames_dir = output_dir / frames_directory
     frames_dir.mkdir(parents=True, exist_ok=True)
     mark_path = output_dir / "A.webp"
     if not mark_path.exists():
         raise RuntimeError(f"Missing approved backpack mark: {mark_path}")
     mark = Image.open(mark_path).convert("RGBA")
-    with tempfile.TemporaryDirectory(prefix="amso-run-") as temp:
-        sources = extract_frames(video, Path(temp))
+
+    with tempfile.TemporaryDirectory(prefix=temporary_prefix) as temp:
+        sources = extract_frames(video, Path(temp), frame_indices)
         frames: list[Image.Image] = []
         for index, source_path in enumerate(sources):
-            frame = place_on_cell(isolate_courier(Image.open(source_path)))
-            frame = brand_backpack(frame, mark, index)
+            frame = place_frame(isolate_courier(Image.open(source_path)))
+            frame = brand_backpack(frame, mark, index, mark_transforms)
             validate_frame(frame, index)
-            frame.save(frames_dir / f"run-{index:02d}.png", optimize=True)
+            frame.save(frames_dir / f"{frame_prefix}-{index:02d}.png", optimize=True)
             frames.append(frame)
 
     sheet = Image.new("RGBA", (CELL_SIZE * len(frames), CELL_SIZE), (0, 0, 0, 0))
     for index, frame in enumerate(frames):
         sheet.alpha_composite(frame, (index * CELL_SIZE, 0))
-    sheet.save(output_dir / "courier-run-sheet.png", optimize=True)
+    sheet.save(output_dir / f"{sheet_stem}.png", optimize=True)
     sheet.save(
-        output_dir / "courier-run-sheet.webp",
+        output_dir / f"{sheet_stem}.webp",
         "WEBP",
         lossless=False,
         quality=88,
@@ -252,40 +281,31 @@ def build(video: Path, output_dir: Path) -> None:
     )
 
 
+def build_run(video: Path, output_dir: Path) -> None:
+    build_motion(
+        video,
+        output_dir,
+        frame_indices=FRAME_INDICES,
+        frames_directory="run-frames",
+        frame_prefix="run",
+        sheet_stem="courier-run-sheet",
+        temporary_prefix="amso-run-",
+        place_frame=place_run_on_cell,
+        mark_transforms=BACKPACK_MARK_TRANSFORMS,
+    )
+
+
 def build_crouch(video: Path, output_dir: Path) -> None:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    frames_dir = output_dir / "crouch-frames"
-    frames_dir.mkdir(parents=True, exist_ok=True)
-    mark_path = output_dir / "A.webp"
-    if not mark_path.exists():
-        raise RuntimeError(f"Missing approved backpack mark: {mark_path}")
-    mark = Image.open(mark_path).convert("RGBA")
-
-    with tempfile.TemporaryDirectory(prefix="amso-crouch-") as temp:
-        sources = extract_frames(video, Path(temp), CROUCH_FRAME_INDICES)
-        frames: list[Image.Image] = []
-        for index, source_path in enumerate(sources):
-            frame = place_crouch_on_cell(isolate_courier(Image.open(source_path)))
-            frame = brand_backpack(
-                frame,
-                mark,
-                index,
-                CROUCH_BACKPACK_MARK_TRANSFORMS,
-            )
-            validate_frame(frame, index)
-            frame.save(frames_dir / f"crouch-{index:02d}.png", optimize=True)
-            frames.append(frame)
-
-    sheet = Image.new("RGBA", (CELL_SIZE * len(frames), CELL_SIZE), (0, 0, 0, 0))
-    for index, frame in enumerate(frames):
-        sheet.alpha_composite(frame, (index * CELL_SIZE, 0))
-    sheet.save(output_dir / "courier-crouch-sheet.png", optimize=True)
-    sheet.save(
-        output_dir / "courier-crouch-sheet.webp",
-        "WEBP",
-        lossless=False,
-        quality=88,
-        method=6,
+    build_motion(
+        video,
+        output_dir,
+        frame_indices=CROUCH_FRAME_INDICES,
+        frames_directory="crouch-frames",
+        frame_prefix="crouch",
+        sheet_stem="courier-crouch-sheet",
+        temporary_prefix="amso-crouch-",
+        place_frame=place_crouch_on_cell,
+        mark_transforms=CROUCH_BACKPACK_MARK_TRANSFORMS,
     )
 
 
@@ -295,7 +315,7 @@ def main() -> None:
     parser.add_argument("output_dir", type=Path)
     parser.add_argument("--motion", choices=("run", "crouch"), default="run")
     args = parser.parse_args()
-    builder = build_crouch if args.motion == "crouch" else build
+    builder = build_crouch if args.motion == "crouch" else build_run
     builder(args.video.resolve(), args.output_dir.resolve())
 
 
