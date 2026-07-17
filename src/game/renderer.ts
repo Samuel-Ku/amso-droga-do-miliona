@@ -1430,6 +1430,19 @@ function drawMilestoneParticles(
     gradient.addColorStop(offset, color);
   }
 
+  if (celebration.kind === "confetti-burst" || celebration.kind === "confetti-finale") {
+    const flash = Math.sin(Math.min(1, progress * 2.2) * Math.PI) *
+      (celebration.kind === "confetti-finale" ? 0.42 : 0.28);
+    context.save();
+    context.globalAlpha = flash;
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, WORLD_WIDTH, 18);
+    context.fillRect(0, WORLD_HEIGHT - 22, WORLD_WIDTH, 22);
+    context.fillRect(0, 0, 18, WORLD_HEIGHT);
+    context.fillRect(WORLD_WIDTH - 18, 0, 18, WORLD_HEIGHT);
+    context.restore();
+  }
+
   if (celebration.kind === "confetti-streamers" || celebration.kind === "confetti-finale") {
     context.strokeStyle = gradient;
     context.lineWidth = 5;

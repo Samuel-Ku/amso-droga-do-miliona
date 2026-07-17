@@ -164,6 +164,7 @@ export class RunnerGame implements RunnerGameApi {
   private challengeStartScore = 0;
   private challengeStartPackages = 0;
   private personalRecordCelebrated = false;
+  private recordEmphasisRemaining = 0;
   private bossesDefeated = 0;
   private speed = getDifficulty(0).speed;
   private difficultyLevel = 1;
@@ -216,6 +217,7 @@ export class RunnerGame implements RunnerGameApi {
   private factEngine: FactEngine | null = null;
   private crouchHeld = false;
   private crouchInputHeld = false;
+  private timedTouchCrouch = false;
   private crouchMinimumRemaining = 0;
   private crouchBufferRemaining = 0;
   private accumulator = 0;
@@ -308,6 +310,7 @@ export class RunnerGame implements RunnerGameApi {
     this.impactSeconds = 0;
     this.crouchHeld = false;
     this.crouchInputHeld = false;
+    this.timedTouchCrouch = false;
     this.setState("running");
     this.emitStorySignals(true);
     this.emitSnapshot();
@@ -338,6 +341,7 @@ export class RunnerGame implements RunnerGameApi {
     this.controlMethod = controlMethod;
     this.crouchHeld = false;
     this.crouchInputHeld = false;
+    this.timedTouchCrouch = false;
     this.runner.crouching = false;
     queueJump(this.runner);
   }
@@ -351,18 +355,24 @@ export class RunnerGame implements RunnerGameApi {
     if (this.storyTimeline?.snapshot.trustCorridor || this.powerUpDemoRemaining > 0) {
       this.crouchHeld = false;
       this.crouchInputHeld = false;
+      this.timedTouchCrouch = false;
       return;
     }
     this.controlMethod = controlMethod;
     this.crouchInputHeld = active;
     if (active) {
-      this.crouchBufferRemaining = CROUCH_BUFFER_SECONDS;
+      this.timedTouchCrouch = controlMethod === "touch";
+      this.crouchBufferRemaining = this.timedTouchCrouch ? CROUCH_BUFFER_SECONDS : 0;
       if (this.runner.grounded) {
         this.crouchHeld = true;
-        this.crouchMinimumRemaining = CROUCH_MINIMUM_SECONDS;
+        this.runner.crouching = true;
+        this.crouchMinimumRemaining = this.timedTouchCrouch ? CROUCH_MINIMUM_SECONDS : 0;
       }
-    } else if (this.crouchMinimumRemaining <= 0) {
+    } else if (controlMethod !== "touch" || this.crouchMinimumRemaining <= 0) {
       this.crouchHeld = false;
+      this.crouchBufferRemaining = 0;
+      this.crouchMinimumRemaining = 0;
+      this.runner.crouching = false;
     }
   }
 
@@ -426,6 +436,7 @@ export class RunnerGame implements RunnerGameApi {
     this.challengeStartScore = 0;
     this.challengeStartPackages = 0;
     this.personalRecordCelebrated = false;
+    this.recordEmphasisRemaining = 0;
     this.bossesDefeated = 0;
     this.bossDirector.reset();
     this.storyClimaxDirector.reset();
@@ -445,6 +456,7 @@ export class RunnerGame implements RunnerGameApi {
     this.bossStarted = false;
     this.crouchHeld = false;
     this.crouchInputHeld = false;
+    this.timedTouchCrouch = false;
     this.crouchMinimumRemaining = 0;
     this.crouchBufferRemaining = 0;
     this.accumulator = 0;
@@ -668,6 +680,11 @@ export class RunnerGame implements RunnerGameApi {
       storyCompletedThisStep = nextStory.completed;
     }
 
+    if (this.recordEmphasisRemaining > 0) {
+      this.recordEmphasisRemaining = Math.max(0, this.recordEmphasisRemaining - deltaSeconds);
+      activeDeltaSeconds *= 0.72;
+    }
+
     if (this.storyTimeline === null && this.cutsceneRemaining > 0) {
       this.cutsceneRemaining -= deltaSeconds;
       if (this.cutsceneRemaining <= 0) {
@@ -682,6 +699,7 @@ export class RunnerGame implements RunnerGameApi {
       this.powerUpDemoRemaining = Math.max(0, this.powerUpDemoRemaining - deltaSeconds);
       this.crouchHeld = false;
       this.crouchInputHeld = false;
+      this.timedTouchCrouch = false;
       this.runner.crouching = false;
       this.clearInteractiveWorld();
       this.emitSnapshot();
@@ -739,6 +757,8 @@ export class RunnerGame implements RunnerGameApi {
     this.lastTrustCorridor = trustCorridor;
     if (trustCorridor) {
       this.crouchHeld = false;
+      this.crouchInputHeld = false;
+      this.timedTouchCrouch = false;
       this.runner.crouching = false;
       this.clearInteractiveWorld();
     }
@@ -795,6 +815,9 @@ export class RunnerGame implements RunnerGameApi {
     this.crouchBufferRemaining = Math.max(0, this.crouchBufferRemaining - activeDeltaSeconds);
     this.crouchMinimumRemaining = Math.max(0, this.crouchMinimumRemaining - activeDeltaSeconds);
     stepRunnerPhysics(this.runner, activeDeltaSeconds);
+    if (this.runner.grounded && this.crouchInputHeld && !this.timedTouchCrouch) {
+      this.crouchHeld = true;
+    }
     if (this.runner.grounded && this.crouchBufferRemaining > 0) {
       this.crouchHeld = true;
       this.crouchMinimumRemaining = Math.max(
@@ -1123,6 +1146,9 @@ export class RunnerGame implements RunnerGameApi {
       const safeToCelebrate = !this.obstacles.some(({ active, x }) =>
         active && x >= this.runner.x
       );
+      if (newPersonalRecord && safeToCelebrate && !this.reducedMotion) {
+        this.recordEmphasisRemaining = 0.25;
+      }
       const celebrations = this.milestoneCelebrationDirector.recordPackages(
         this.packagesCollected,
         safeToCelebrate,

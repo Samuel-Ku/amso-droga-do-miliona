@@ -28,6 +28,7 @@ export interface MilestoneCelebrationEvent {
   readonly intensity: number;
   readonly durationSeconds: number;
   readonly text: string;
+  readonly achievement?: "record";
 }
 
 export interface MilestoneCelebrationSnapshot extends MilestoneCelebrationEvent {
@@ -80,16 +81,14 @@ export class MilestoneCelebrationDirector {
       const base = createCelebration(this.threshold, this.sequenceIndex);
       const celebration = achievementText === undefined
         ? base
-        : {
-            ...base,
-            kind: "confetti-finale" as const,
-            intensity: Math.max(2, base.intensity),
-            durationSeconds: MILESTONE_CELEBRATION_PRESENTATION["confetti-finale"].durationSeconds,
-            text: `${achievementText} · ${base.text}`
-          };
+        : this.finaleEvent(
+            base.threshold,
+            `${achievementText} · ${base.text}`,
+            base.intensity,
+            "record"
+          );
       emitted.push(celebration);
-      if (this.active === null && safeToPresent) this.activate(celebration);
-      else this.queue.push(celebration);
+      this.enqueue(celebration, safeToPresent);
       this.threshold = nextPackageMilestone(this.threshold, this.sequenceIndex);
       this.sequenceIndex += 1;
     }
@@ -101,16 +100,30 @@ export class MilestoneCelebrationDirector {
     text: string,
     safeToPresent = true
   ): MilestoneCelebrationEvent {
-    const event: MilestoneCelebrationEvent = {
-      threshold: Math.max(0, Math.floor(total)),
+    const event = this.finaleEvent(Math.max(0, Math.floor(total)), text, 2, "record");
+    this.enqueue(event, safeToPresent);
+    return event;
+  }
+
+  private finaleEvent(
+    threshold: number,
+    text: string,
+    intensity: number,
+    achievement?: "record"
+  ): MilestoneCelebrationEvent {
+    return {
+      threshold,
       kind: "confetti-finale",
-      intensity: 2,
+      intensity: Math.max(2, intensity),
       durationSeconds: MILESTONE_CELEBRATION_PRESENTATION["confetti-finale"].durationSeconds,
-      text
+      text,
+      ...(achievement === undefined ? {} : { achievement })
     };
+  }
+
+  private enqueue(event: MilestoneCelebrationEvent, safeToPresent: boolean): void {
     if (this.active === null && safeToPresent) this.activate(event);
     else this.queue.push(event);
-    return event;
   }
 
   public advance(deltaSeconds: number, safeToPresent = true): void {

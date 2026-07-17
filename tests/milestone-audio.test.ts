@@ -45,12 +45,18 @@ describe("milestone audio", () => {
     const tierOneNotes = harness.oscillatorCount() - afterMusic;
     audio.playMilestoneCue("confetti-pop", 3);
     const tierThreeNotes = harness.oscillatorCount() - afterMusic - tierOneNotes;
+    audio.playRecordCue();
+    const recordNotes = harness.oscillatorCount() - afterMusic - tierOneNotes - tierThreeNotes;
     audio.setMuted(true);
     audio.playMilestoneCue("confetti-pop", 3);
+    audio.playRecordCue();
 
     expect(tierOneNotes).toBe(3);
     expect(tierThreeNotes).toBe(5);
-    expect(harness.oscillatorCount()).toBe(afterMusic + tierOneNotes + tierThreeNotes);
+    expect(recordNotes).toBe(4);
+    expect(harness.oscillatorCount()).toBe(
+      afterMusic + tierOneNotes + tierThreeNotes + recordNotes
+    );
     await audio.destroy();
   });
 

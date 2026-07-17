@@ -56,11 +56,11 @@ describe("mobile campaign shell", () => {
 
     expect(button.textContent).toContain("Tryb gry");
     button.click();
-    await vi.waitFor(() => expect(root.dataset.focusMode).toBe("true"));
+    await vi.waitFor(() => expect(root.dataset.cssGameMode).toBe("true"));
     expect(button.getAttribute("aria-pressed")).toBe("true");
 
     button.click();
-    await vi.waitFor(() => expect(root.dataset.focusMode).toBeUndefined());
+    await vi.waitFor(() => expect(root.dataset.cssGameMode).toBeUndefined());
     expect(button.getAttribute("aria-pressed")).toBe("false");
     shell.destroy();
   });
@@ -80,7 +80,7 @@ describe("mobile campaign shell", () => {
     const button = document.querySelector<HTMLButtonElement>("[data-campaign-fullscreen]")!;
 
     button.click();
-    await vi.waitFor(() => expect(root.dataset.focusMode).toBe("true"));
+    await vi.waitFor(() => expect(root.dataset.cssGameMode).toBe("true"));
     expect(button.textContent).toContain("Wyjdź z trybu gry");
     expect(button.getAttribute("aria-pressed")).toBe("true");
     expect(onFullscreenPreferenceChange).not.toHaveBeenCalledWith("fullscreen");

@@ -307,6 +307,7 @@ export class CampaignController {
       },
       onMilestoneCelebration: (celebration) => {
         this.audio.playMilestoneCue(celebration.kind, celebration.intensity);
+        if (celebration.achievement === "record") this.audio.playRecordCue();
         this.shell.announce(celebration.text);
       },
       onModeChange: (mode) => {

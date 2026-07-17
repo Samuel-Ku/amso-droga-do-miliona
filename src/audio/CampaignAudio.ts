@@ -324,6 +324,17 @@ export class CampaignAudio {
     }
   }
 
+  /** A short upper-register answer reserved for the first record break in a run. */
+  public playRecordCue(): void {
+    if (this._muted || !this._started || this.destroyed || this.context === null ||
+        this.cueGain === null) return;
+    try {
+      this.playSequence([659.25, 783.99, 1046.5, 1318.51], 0.045, 0.1, 0.48, "triangle");
+    } catch {
+      // Record audio is enhancement-only.
+    }
+  }
+
   public async destroy(): Promise<void> {
     if (this.destroyed) return;
     this.destroyed = true;

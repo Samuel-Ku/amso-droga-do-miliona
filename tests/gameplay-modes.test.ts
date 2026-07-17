@@ -565,6 +565,26 @@ describe("campaign collision contract", () => {
   });
 });
 
+describe("direct slide control", () => {
+  it("releases keyboard crouch immediately but keeps the short touch slide", () => {
+    const harness = createGameHarness("challenge");
+    const runner = (harness.game as unknown as { runner: { crouching: boolean } }).runner;
+    harness.game.start("keyboard");
+
+    harness.game.crouch(true, "keyboard");
+    expect(runner.crouching).toBe(true);
+    harness.game.crouch(false, "keyboard");
+    expect(runner.crouching).toBe(false);
+
+    harness.game.crouch(true, "touch");
+    harness.game.crouch(false, "touch");
+    expect(runner.crouching).toBe(true);
+    harness.advance(0.35);
+    expect(runner.crouching).toBe(false);
+    harness.game.destroy();
+  });
+});
+
 describe("story lifecycle pauses", () => {
   it("ignores blur and visibility while a story scene or countdown owns focus", () => {
     const harness = createGameHarness("story");

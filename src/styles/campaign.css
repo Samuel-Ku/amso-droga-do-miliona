@@ -220,7 +220,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   overscroll-behavior: contain;
 }
 
-.amso-campaign[data-focus-mode="true"] {
+.amso-campaign[data-css-game-mode="true"] {
   position: fixed;
   z-index: 2147483000;
   inset: 0;
@@ -229,17 +229,17 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   height: 100dvh;
 }
 
-.amso-campaign[data-focus-mode="true"] .amso-campaign__header,
-.amso-campaign[data-focus-mode="true"] .amso-campaign__footer {
+.amso-campaign[data-css-game-mode="true"] .amso-campaign__header,
+.amso-campaign[data-css-game-mode="true"] .amso-campaign__footer {
   display: none;
 }
 
-.amso-campaign[data-focus-mode="true"] .amso-campaign__main {
+.amso-campaign[data-css-game-mode="true"] .amso-campaign__main {
   width: 100%;
   padding: 0;
 }
 
-.amso-campaign[data-focus-mode="true"] .amso-campaign__stage {
+.amso-campaign[data-css-game-mode="true"] .amso-campaign__stage {
   border: 0;
   border-radius: 0;
 }
@@ -1691,6 +1691,11 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 
 .amso-campaign__world-visual[data-phase="game"] .amso-world-visual__panel {
   opacity: 0.6;
+}
+
+.amso-campaign__world-visual[data-motion-state="recentering"] .amso-world-visual__panel,
+.amso-campaign__world-visual[data-motion-state="recentering"] .amso-world-visual__connector {
+  transition: transform 720ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 .amso-world-visual__connector {

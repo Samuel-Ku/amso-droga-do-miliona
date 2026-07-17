@@ -43,22 +43,28 @@ export class WorldAssetStore {
     const image = this.imageFactory();
     let attempts = 0;
     const promise = new Promise<string>((resolve, reject) => {
+      const failAttempt = (): void => {
+        if (attempts < 2) {
+          queueMicrotask(startAttempt);
+          return;
+        }
+        image.onload = null;
+        image.onerror = null;
+        reject(new Error("world_asset_decode_failed"));
+      };
       const startAttempt = (): void => {
         attempts += 1;
-        image.onload = () => {
+        image.onload = async () => {
           image.onload = null;
           image.onerror = null;
-          resolve(path);
-        };
-        image.onerror = () => {
-          if (attempts < 2) {
-            queueMicrotask(startAttempt);
-            return;
+          try {
+            await image.decode?.();
+            resolve(path);
+          } catch {
+            failAttempt();
           }
-          image.onload = null;
-          image.onerror = null;
-          reject(new Error("world_asset_decode_failed"));
         };
+        image.onerror = failAttempt;
         image.src = path;
         if (image.complete && image.naturalWidth > 0) image.onload?.(new Event("load"));
       };
@@ -162,8 +168,7 @@ export class WorldVisualLayer {
   public setParallaxDistance(
     distancePixels: number,
     active: boolean,
-    reducedMotion = false,
-    _gameplaySpeed = 280
+    reducedMotion = false
   ): void {
     if (!Number.isFinite(distancePixels)) return;
     const distance = reducedMotion
@@ -171,6 +176,7 @@ export class WorldVisualLayer {
       : Math.max(0, distancePixels);
     this.lastDistance = distance;
     this.host.style.setProperty("--world-phase-px", `${distance}px`);
+    this.host.dataset.motionState = active ? "moving" : "recentering";
 
     if (!active) {
       if (this.pendingAssetPath !== "") this.commitPendingAsset();

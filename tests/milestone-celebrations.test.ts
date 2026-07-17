@@ -127,6 +127,7 @@ describe("package milestone celebrations", () => {
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
       kind: "confetti-finale",
+      achievement: "record",
       text: "NOWY REKORD · 10 PACZEK!"
     });
     expect(director.snapshot?.text).toBe("NOWY REKORD · 10 PACZEK!");
@@ -137,6 +138,7 @@ describe("package milestone celebrations", () => {
     expect(director.recordAchievement(7, "NOWY REKORD")).toMatchObject({
       threshold: 7,
       kind: "confetti-finale",
+      achievement: "record",
       text: "NOWY REKORD"
     });
     expect(director.snapshot?.text).toBe("NOWY REKORD");

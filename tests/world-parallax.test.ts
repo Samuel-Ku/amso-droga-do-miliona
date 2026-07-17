@@ -18,6 +18,7 @@ function imageHarness(): {
     public src = "";
     public complete = false;
     public naturalWidth = 0;
+    public decode = vi.fn(async () => undefined);
 
     public override dispatchEvent(event: Event): boolean {
       if (event.type === "load") this.onload?.(event);
@@ -45,6 +46,7 @@ describe("mobile-safe world assets", () => {
 
     await expect(first).resolves.toBe("data:image/webp;base64,AAA");
     await expect(second).resolves.toBe("data:image/webp;base64,AAA");
+    expect(images[0]!.decode).toHaveBeenCalledOnce();
   });
 
   it("retries one decode failure and then exposes a local fallback", async () => {

@@ -63,8 +63,8 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   soundOff: "Włącz dźwięk",
   fullscreenEnter: "Pełny ekran",
   fullscreenExit: "Wyjdź z pełnego",
-  focusModeEnter: "Tryb gry",
-  focusModeExit: "Wyjdź z trybu gry",
+  cssGameModeEnter: "Tryb gry",
+  cssGameModeExit: "Wyjdź z trybu gry",
   hudPackages: "Paczki",
   hudScore: "Wynik",
   pauseAction: "Pauza",
@@ -1065,8 +1065,7 @@ export class CampaignShell {
     this.worldVisualLayer.setParallaxDistance(
       snapshot.backgroundTravelPixels ?? 0,
       this.root.dataset.view === "game" && !this.paused,
-      snapshot.reducedMotion === true,
-      snapshot.speed
+      snapshot.reducedMotion === true
     );
     this.showMilestoneCelebration(
       snapshot.milestoneCelebration ?? null,
@@ -1307,23 +1306,23 @@ export class CampaignShell {
       typeof this.root.requestFullscreen === "function";
   }
 
-  private setFocusMode(active: boolean): void {
-    this.root.toggleAttribute("data-focus-mode", active);
-    if (active) this.root.dataset.focusMode = "true";
+  private setCssGameMode(active: boolean): void {
+    this.root.toggleAttribute("data-css-game-mode", active);
+    if (active) this.root.dataset.cssGameMode = "true";
     this.updateFullscreenControl();
   }
 
   private updateFullscreenControl(): void {
     const fullscreen = document.fullscreenElement === this.root;
-    const focusMode = this.root.dataset.focusMode === "true";
-    this.fullscreenButton.setAttribute("aria-pressed", String(fullscreen || focusMode));
+    const cssGameMode = this.root.dataset.cssGameMode === "true";
+    this.fullscreenButton.setAttribute("aria-pressed", String(fullscreen || cssGameMode));
     requiredElement(this.fullscreenButton, ".amso-campaign__tool-label").textContent = fullscreen
       ? this.copy.fullscreenExit
-      : focusMode
-        ? this.copy.focusModeExit
+      : cssGameMode
+        ? this.copy.cssGameModeExit
         : this.fullscreenApiAvailable()
           ? this.copy.fullscreenEnter
-          : this.copy.focusModeEnter;
+          : this.copy.cssGameModeEnter;
     const orientationAction = requiredElement<HTMLElement>(
       this.orientationScreen,
       "[data-campaign-enter-fullscreen]"
@@ -1335,7 +1334,7 @@ export class CampaignShell {
 
   private async enterFullscreen(): Promise<void> {
     if (!this.fullscreenApiAvailable()) {
-      this.setFocusMode(true);
+      this.setCssGameMode(true);
       return;
     }
     try {
@@ -1343,7 +1342,7 @@ export class CampaignShell {
         await this.root.requestFullscreen({ navigationUI: "hide" });
       }
     } catch {
-      this.setFocusMode(true);
+      this.setCssGameMode(true);
     }
     this.updateFullscreenControl();
   }
@@ -1352,8 +1351,8 @@ export class CampaignShell {
     void (async () => {
       if (document.fullscreenElement != null) {
         await document.exitFullscreen?.().catch(() => undefined);
-      } else if (this.root.dataset.focusMode === "true") {
-        this.setFocusMode(false);
+      } else if (this.root.dataset.cssGameMode === "true") {
+        this.setCssGameMode(false);
       } else {
         await this.enterFullscreen();
       }
@@ -1643,7 +1642,7 @@ export class CampaignShell {
 
   private readonly handleFullscreenChange = (): void => {
     const fullscreen = document.fullscreenElement === this.root;
-    if (fullscreen) this.setFocusMode(false);
+    if (fullscreen) this.setCssGameMode(false);
     this.updateFullscreenControl();
     this.rememberFullscreenPreference(
       fullscreenPreferenceFromElement(document.fullscreenElement, this.root)
