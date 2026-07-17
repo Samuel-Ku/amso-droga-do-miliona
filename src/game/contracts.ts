@@ -38,9 +38,9 @@ export interface GameSnapshot {
   visualWorldIndex: number;
   visualTransitionPending: boolean;
   score: number;
-  packagesCollected: number;
+  ordersCollected: number;
   challengeScore: number;
-  challengePackagesCollected: number;
+  challengeOrdersCollected: number;
   collisions: number;
   recoverySeconds: number;
   startProtectionSeconds: number;
@@ -133,7 +133,7 @@ export interface RunnerGameOptions {
   awardStoryCompletionBonus?: boolean;
   challenge?: ChallengeConfig | null;
   /** Personal package record frozen before this run starts. */
-  bestChallengePackagesAtStart?: number;
+  bestChallengeOrdersAtStart?: number;
   narrative?: NarrativeConfig | null;
   /** Configurable two-line labels rendered on procedural power-up parcels. */
   powerUpPackageCopy?: Partial<Readonly<Record<PowerUpKind, readonly [string, string]>>>;

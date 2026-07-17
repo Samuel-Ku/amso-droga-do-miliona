@@ -173,10 +173,10 @@ function createGameHarness(
     avoidObstacles,
     collectPackagesUntil(total: number): void {
       const internals = game as unknown as {
-        packagesCollected: number;
+        ordersCollected: number;
         collectPackage(parcel: PackageModel): void;
       };
-      while (internals.packagesCollected < total) {
+      while (internals.ordersCollected < total) {
         internals.collectPackage({
           active: true,
           kind: "standard",
@@ -186,6 +186,7 @@ function createGameHarness(
           size: 30,
           phase: 0,
           packageType: "notebook",
+          orderVisualType: "notebook",
           weightKg: 1
         });
       }
@@ -389,9 +390,9 @@ describe("campaign collision contract", () => {
     expect(harness.milestoneCelebrations.length).toBeGreaterThan(0);
     expect(harness.milestoneCelebrations[0]).toMatchObject({
       threshold: 10,
-      kind: "confetti-pop",
+      kind: "order-confetti",
       intensity: 1,
-      text: "10 PACZEK!"
+      text: "10 ZAMÓWIEŃ!"
     });
     expect(new Set(harness.milestoneCelebrations.map(({ threshold }) => threshold)).size)
       .toBe(harness.milestoneCelebrations.length);
@@ -417,7 +418,7 @@ describe("campaign collision contract", () => {
     expect(challengeSnapshot?.durationSeconds).toBeGreaterThanOrEqual(190);
     expect(challengeSnapshot?.score).toBeGreaterThanOrEqual(config.story.firstCompletionBonusScore);
     expect(challengeSnapshot?.challengeScore).toBe(0);
-    expect(challengeSnapshot?.challengePackagesCollected).toBe(0);
+    expect(challengeSnapshot?.challengeOrdersCollected).toBe(0);
     expect(harness.snapshots.some(({ authoredWave }) =>
       authoredWave?.microlevelId === "million-threshold" && authoredWave.completed
     )).toBe(true);

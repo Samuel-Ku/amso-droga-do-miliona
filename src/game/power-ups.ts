@@ -10,13 +10,40 @@ export interface ActivePowerUpStatus {
 }
 
 const STORY_POWER_UP_ORDER: readonly PowerUpKind[] = [
-  "drugie_zycie",
+  "podwojny_wynik",
   "gwarancja_48"
 ];
 
 export function storyPowerUpsForEpoch(epochIndex: number): readonly PowerUpKind[] {
   const unlockedCount = Math.max(0, Math.min(2, Math.floor(epochIndex)));
   return STORY_POWER_UP_ORDER.slice(0, unlockedCount);
+}
+
+const DOUBLE_SCORE_INTERVALS = [40, 37, 46, 42, 49, 35] as const;
+
+/** Order-count schedule keeps challenge bonuses rare, deterministic and testable. */
+export class ChallengePowerUpSchedule {
+  private doubleIndex = 0;
+  private nextDoubleAt = DOUBLE_SCORE_INTERVALS[0];
+  private nextWarrantyAt = 70;
+
+  public dueAt(orders: number, warrantyActive: boolean): PowerUpKind | null {
+    const total = Math.max(0, Math.floor(orders));
+    if (total >= this.nextWarrantyAt) {
+      this.nextWarrantyAt += 90;
+      if (!warrantyActive) return "gwarancja_48";
+    }
+    if (total < this.nextDoubleAt) return null;
+    this.doubleIndex = (this.doubleIndex + 1) % DOUBLE_SCORE_INTERVALS.length;
+    this.nextDoubleAt += DOUBLE_SCORE_INTERVALS[this.doubleIndex]!;
+    return "podwojny_wynik";
+  }
+
+  public reset(): void {
+    this.doubleIndex = 0;
+    this.nextDoubleAt = DOUBLE_SCORE_INTERVALS[0];
+    this.nextWarrantyAt = 70;
+  }
 }
 
 /** Active effects with warranty represented as one persistent charge. */

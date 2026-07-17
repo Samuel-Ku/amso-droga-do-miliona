@@ -37,7 +37,7 @@ describe("PlayerProfileStore", () => {
       schemaVersion: 4,
       storyCompleted: false,
       bestChallengeScore: 0,
-      bestChallengePackages: 0,
+      bestChallengeOrders: 0,
       challengeRuns: 0,
       soundMuted: false,
       fullscreenPreference: null
@@ -53,7 +53,7 @@ describe("PlayerProfileStore", () => {
       storyCheckpoint: "epoch_5",
       storyCompleted: false,
       bestChallengeScore: 900,
-      bestChallengePackages: 7,
+      bestChallengeOrders: 7,
       challengeRuns: 0,
       soundMuted: false,
       fullscreenPromptSeen: false,
@@ -72,7 +72,7 @@ describe("PlayerProfileStore", () => {
       schemaVersion: 4,
       storyCompleted: false,
       bestChallengeScore: 900,
-      bestChallengePackages: 7,
+      bestChallengeOrders: 7,
       challengeRuns: 0,
       soundMuted: true,
       fullscreenPreference: null
@@ -100,7 +100,7 @@ describe("PlayerProfileStore", () => {
 
     const restored = new PlayerProfileStore(storage);
     expect(restored.snapshot.bestChallengeScore).toBe(12_450);
-    expect(restored.snapshot.bestChallengePackages).toBe(102);
+    expect(restored.snapshot.bestChallengeOrders).toBe(102);
     expect(restored.snapshot.challengeRuns).toBe(2);
     expect(restored.snapshot.soundMuted).toBe(true);
     expect(restored.snapshot.fullscreenPreference).toBe("fullscreen");

@@ -80,7 +80,7 @@ describe("edge-to-edge gameplay background", () => {
     expect(panels).toHaveLength(2);
     expect(panels.every((panel) => panel.style.opacity === "")).toBe(true);
     expect(panels.every((panel) => !panel.style.transform.includes("scaleX"))).toBe(true);
-    expect(host.querySelector("[data-world-connector]")).not.toBeNull();
+    expect(host.querySelector("[data-world-connector]")).toBeNull();
     expect(host.style.getPropertyValue("--world-overlap")).toBe("0px");
   });
 
@@ -97,7 +97,7 @@ describe("edge-to-edge gameplay background", () => {
     expect(host.style.getPropertyValue("--world-phase-px")).toBe(before);
   });
 
-  it("places the neutral connector between panels and closes it without a gap", async () => {
+  it("commits adjacent world panels without a connector or a gap", async () => {
     const { store, images } = imageHarness();
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host, store);
@@ -111,13 +111,12 @@ describe("edge-to-edge gameplay background", () => {
     expect(qualityImage).toBeDefined();
     qualityImage!.dispatchEvent(new Event("load"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
-    layer.setParallaxDistance(240 + 960 * 1.08, true);
+    layer.setParallaxDistance(240 + 960, true);
 
     const panels = [...host.querySelectorAll<HTMLElement>("[data-world-panel]")];
-    const connector = host.querySelector<HTMLElement>("[data-world-connector]")!;
     expect(panels[0]!.style.transform).toBe("translate3d(0%, 0, 0)");
     expect(panels[1]!.style.transform).toBe("translate3d(100%, 0, 0)");
-    expect(connector.hidden).toBe(true);
+    expect(host.querySelector("[data-world-connector]")).toBeNull();
   });
 
   it("preloads the following world only after the pending world is committed", async () => {
@@ -134,11 +133,11 @@ describe("edge-to-edge gameplay background", () => {
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
 
     expect(images).toHaveLength(2);
-    layer.setParallaxDistance(960 * 1.08, true);
+    layer.setParallaxDistance(960, true);
     await vi.waitFor(() => expect(images).toHaveLength(3));
   });
 
-  it("uses the connector before committing a world selected by a story card", async () => {
+  it("commits a world selected by a story card without moving the parallax phase", async () => {
     vi.useFakeTimers();
     const { store, images } = imageHarness();
     const host = document.createElement("div");
@@ -154,11 +153,12 @@ describe("edge-to-edge gameplay background", () => {
     orderImage!.dispatchEvent(new Event("load"));
     await Promise.resolve();
     await Promise.resolve();
-    const connector = host.querySelector<HTMLElement>("[data-world-connector]")!;
-    expect(connector.hidden).toBe(false);
+    const phaseBefore = host.style.getPropertyValue("--world-phase-px");
+    expect(host.querySelector("[data-world-connector]")).toBeNull();
 
     await vi.advanceTimersByTimeAsync(800);
-    expect(connector.hidden).toBe(true);
+    expect(host.style.getPropertyValue("--world-phase-px")).toBe(phaseBefore);
+    expect(host.dataset.assetState).toBe("loaded");
     vi.useRealTimers();
   });
 

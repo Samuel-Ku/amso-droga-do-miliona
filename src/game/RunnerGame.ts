@@ -48,6 +48,7 @@ import { calculateCanvasBuffer } from "./viewport";
 import { resolveCollision, START_PROTECTION_SECONDS } from "./mode-rules";
 import {
   ActivePowerUps,
+  ChallengePowerUpSchedule,
   storyPowerUpsForEpoch
 } from "./power-ups";
 import {
@@ -97,7 +98,7 @@ const STORY_ORDER_TYPES: readonly PackageType[] = ["pc", "notebook", "lcd", "tel
 const CROUCH_MINIMUM_SECONDS = 0.3;
 const CROUCH_BUFFER_SECONDS = 0.11;
 const FINALE_POWER_UPS: readonly PowerUpKind[] = [
-  "drugie_zycie",
+  "podwojny_wynik",
   "gwarancja_48"
 ];
 const STORY_CLIMAX_SEGMENTS = new Map<string, number>([
@@ -145,6 +146,7 @@ export class RunnerGame implements RunnerGameApi {
   private authoredFinaleCelebrated = false;
   private challengePatternIndex = 0;
   private challengeSpawnCooldown = 0;
+  private challengeOnboardingPending = false;
   private readonly challengeWaves = new Map<string, { available: number; collected: number }>();
   private challengeSequenceRemaining = 0;
   private challengeSequencePackagesAvailable = 0;
@@ -159,10 +161,10 @@ export class RunnerGame implements RunnerGameApi {
   private challengeElapsedSeconds = 0;
   private distancePixels = 0;
   private visualDistancePixels = 0;
-  private packagesCollected = 0;
+  private ordersCollected = 0;
   private bonusScore = 0;
   private challengeStartScore = 0;
-  private challengeStartPackages = 0;
+  private challengeStartOrders = 0;
   private personalRecordCelebrated = false;
   private recordEmphasisRemaining = 0;
   private bossesDefeated = 0;
@@ -172,7 +174,7 @@ export class RunnerGame implements RunnerGameApi {
   private mode: GameMode;
   private readonly story: StoryConfig | null;
   private readonly challenge: RunnerGameOptions["challenge"];
-  private readonly bestChallengePackagesAtStart: number;
+  private readonly bestChallengeOrdersAtStart: number;
   private readonly awardStoryCompletionBonus: boolean;
   private readonly powerUpPackageCopy: NonNullable<RunnerGameOptions["powerUpPackageCopy"]>;
   private narrative: NarrativeConfig | null;
@@ -203,6 +205,7 @@ export class RunnerGame implements RunnerGameApi {
   };
   private totalWeightKg = 0;
   private readonly activePowerUps = new ActivePowerUps();
+  private readonly challengePowerUps = new ChallengePowerUpSchedule();
   private readonly seenPowerUpDemos = new Set<PowerUpKind>();
   private powerUpDemoRemaining = 0;
   private pendingPowerUpReward: PowerUpKind | null = null;
@@ -254,9 +257,9 @@ export class RunnerGame implements RunnerGameApi {
     this.mode = options.mode ?? (options.story || options.narrative ? "story" : "challenge");
     this.story = this.mode === "story" ? options.story ?? null : null;
     this.challenge = options.challenge ?? null;
-    this.bestChallengePackagesAtStart = Math.max(
+    this.bestChallengeOrdersAtStart = Math.max(
       0,
-      Math.floor(options.bestChallengePackagesAtStart ?? 0)
+      Math.floor(options.bestChallengeOrdersAtStart ?? 0)
     );
     this.awardStoryCompletionBonus = options.awardStoryCompletionBonus ?? true;
     this.powerUpPackageCopy = options.powerUpPackageCopy ?? {};
@@ -431,10 +434,10 @@ export class RunnerGame implements RunnerGameApi {
     this.challengeWorldDirector.reset("direct");
     this.distancePixels = 0;
     this.visualDistancePixels = 0;
-    this.packagesCollected = 0;
+    this.ordersCollected = 0;
     this.bonusScore = 0;
     this.challengeStartScore = 0;
-    this.challengeStartPackages = 0;
+    this.challengeStartOrders = 0;
     this.personalRecordCelebrated = false;
     this.recordEmphasisRemaining = 0;
     this.bossesDefeated = 0;
@@ -855,6 +858,12 @@ export class RunnerGame implements RunnerGameApi {
       parcel.x -= travelledPixels;
       if (parcel.x + parcel.size < -40) parcel.active = false;
     }
+    if (this.challengeOnboardingPending && !this.packages.some(({ active, authoredWaveId }) =>
+      active && authoredWaveId === "challenge-onboarding"
+    )) {
+      this.challengeOnboardingPending = false;
+      this.challengeSpawnCooldown = Math.max(this.challengeSpawnCooldown, 1.35);
+    }
 
     this.advanceAuthoredWaveIfClear();
     this.resolveChallengeWaveIfClear();
@@ -928,6 +937,7 @@ export class RunnerGame implements RunnerGameApi {
 
 
     if (this.pendingPowerUpReward && routeClear && this.recoverySeconds <= 0 &&
+        this.milestoneCelebrationDirector.snapshot === null &&
         !this.hasPendingPowerUpParcel()) {
       this.spawnPendingPowerUpReward();
     } else if (authoredProgramActive && !this.pendingPowerUpReward && routeClear &&
@@ -962,7 +972,7 @@ export class RunnerGame implements RunnerGameApi {
         active && authoredWaveId?.startsWith("challenge-")
       ).length;
       const startingSequence = this.challengeSequenceRemaining === 0 &&
-        this.challengeWaves.size === 0 && routeClear;
+        this.challengeWaves.size === 0 && routeClear && !this.challengeOnboardingPending;
       const continuingSequence = this.challengeSequenceRemaining > 0 &&
         activeChallengeObstacles < 3;
       if (this.recoverySeconds <= 0 && this.challengeSpawnCooldown <= 0 &&
@@ -1004,8 +1014,8 @@ export class RunnerGame implements RunnerGameApi {
     }
 
     const finaleNeedsPackages = millionThresholdActive && !authoredProgramActive && this.bossesDefeated > 0 &&
-      this.storyObjectiveDirector.snapshot.epoch5.millionThreshold.packagesCollected <
-        this.storyObjectiveDirector.snapshot.epoch5.millionThreshold.packageTarget;
+      this.storyObjectiveDirector.snapshot.epoch5.millionThreshold.ordersCollected <
+        this.storyObjectiveDirector.snapshot.epoch5.millionThreshold.orderTarget;
     if (finaleNeedsPackages && routeClear && !this.bossDirector.blocksRegularSpawns) {
       this.spawnScriptedObjectivePattern(true, "epoch_5.million_threshold");
     }
@@ -1127,7 +1137,7 @@ export class RunnerGame implements RunnerGameApi {
       parcel.kind,
       parcel.scoreValue,
       this.combo,
-      this.activePowerUps.has("drugie_zycie")
+      this.activePowerUps.has("podwojny_wynik")
     );
     if (collection.countsAsPackage) {
       if (parcel.authoredWaveId &&
@@ -1137,11 +1147,17 @@ export class RunnerGame implements RunnerGameApi {
         const challengeWave = this.challengeWaves.get(parcel.authoredWaveId);
         if (challengeWave !== undefined) challengeWave.collected += 1;
       }
-      this.packagesCollected += 1;
-      const challengePackages = Math.max(0, this.packagesCollected - this.challengeStartPackages);
+      this.ordersCollected += 1;
+      const challengeOrders = Math.max(0, this.ordersCollected - this.challengeStartOrders);
+      if (this.mode === "challenge" && this.pendingPowerUpReward === null) {
+        this.pendingPowerUpReward = this.challengePowerUps.dueAt(
+          challengeOrders,
+          this.activePowerUps.has("gwarancja_48")
+        );
+      }
       const newPersonalRecord = this.mode === "challenge" &&
         !this.personalRecordCelebrated &&
-        challengePackages > this.bestChallengePackagesAtStart;
+        challengeOrders > this.bestChallengeOrdersAtStart;
       if (newPersonalRecord) this.personalRecordCelebrated = true;
       const safeToCelebrate = !this.obstacles.some(({ active, x }) =>
         active && x >= this.runner.x
@@ -1150,13 +1166,13 @@ export class RunnerGame implements RunnerGameApi {
         this.recordEmphasisRemaining = 0.25;
       }
       const celebrations = this.milestoneCelebrationDirector.recordPackages(
-        this.packagesCollected,
+        this.ordersCollected,
         safeToCelebrate,
         newPersonalRecord ? "NOWY REKORD" : undefined
       );
       if (newPersonalRecord && celebrations.length === 0) {
         celebrations.push(this.milestoneCelebrationDirector.recordAchievement(
-          challengePackages,
+          challengeOrders,
           "NOWY REKORD",
           safeToCelebrate
         ));
@@ -1189,8 +1205,7 @@ export class RunnerGame implements RunnerGameApi {
           this.storyObjectiveDirector.recordOrder(parcel.packageType)
         );
       }
-      if (parcel.kind === "golden") this.callbacks.onSpecialPickup?.("golden");
-    } else if (parcel.kind !== "standard" && parcel.kind !== "golden") {
+    } else if (parcel.kind !== "standard") {
       if (parcel.authoredWaveId === "safe-power-up") this.pendingPowerUpReward = null;
       if (this.activatePowerUp(parcel.kind)) this.callbacks.onSpecialPickup?.(parcel.kind);
     }
@@ -1202,7 +1217,6 @@ export class RunnerGame implements RunnerGameApi {
     const orderType = STORY_ORDER_TYPES[
       this.storyOrderPatternIndex % STORY_ORDER_TYPES.length
     ] ?? "pc";
-    const isBonus = this.storyObjectiveDirector.snapshot.epoch4.orders.completed;
     const wave = createAuthoredRewardWave({
       action: this.storyOrderPatternIndex % 2 === 0 ? "jump" : "slide",
       spawnX: authoredRewardSpawnX(
@@ -1213,7 +1227,7 @@ export class RunnerGame implements RunnerGameApi {
       patternIndex: this.storyOrderPatternIndex,
       source: "story-reward",
       rewards: [{
-        kind: isBonus ? "golden" : "standard",
+        kind: "standard",
         packageType: orderType,
         storyOrder: true
       }]
@@ -1335,7 +1349,7 @@ export class RunnerGame implements RunnerGameApi {
     }
     if (result.passed && wave.reward) {
       const powerUp: PowerUpKind | undefined = wave.reward === "double-score"
-          ? "drugie_zycie"
+          ? "podwojny_wynik"
           : wave.reward === "warranty"
             ? "gwarancja_48"
             : undefined;
@@ -1379,6 +1393,7 @@ export class RunnerGame implements RunnerGameApi {
     parcel.y = GROUND_Y - parcel.size - 12;
     parcel.phase = 0;
     parcel.packageType = "notebook";
+    parcel.orderVisualType = "parcel";
     parcel.weightKg = 0;
     parcel.storyRewardPattern = true;
     parcel.authoredWaveId = "safe-power-up";
@@ -1388,6 +1403,8 @@ export class RunnerGame implements RunnerGameApi {
     this.challengeElapsedSeconds = 0;
     this.challengePatternIndex = 0;
     this.challengeSpawnCooldown = 0;
+    this.challengePowerUps.reset();
+    this.challengeOnboardingPending = this.mode === "challenge";
     this.challengeWaves.clear();
     this.resetChallengeSequence();
   }
@@ -1576,7 +1593,7 @@ export class RunnerGame implements RunnerGameApi {
       const runtimeDefinition = definition?.id === "million-threshold" && this.story
         ? {
             ...definition,
-            finalePackageTarget: this.story.millionThreshold.packageTarget,
+            finaleOrderTarget: this.story.millionThreshold.orderTarget,
             repeatWavesUntil: this.story.millionThreshold.combinationTarget
           }
         : definition;
@@ -1655,10 +1672,10 @@ export class RunnerGame implements RunnerGameApi {
     const previousMode = this.mode;
     this.challengeStartScore = calculateScore(
       this.distancePixels,
-      this.packagesCollected,
+      this.ordersCollected,
       this.bonusScore
     );
-    this.challengeStartPackages = this.packagesCollected;
+    this.challengeStartOrders = this.ordersCollected;
     this.mode = "challenge";
     this.storyTimeline = null;
     this.storyObjectiveDirector.enterSegment(null);
@@ -1820,7 +1837,7 @@ export class RunnerGame implements RunnerGameApi {
       )
       .map(({ packageType }) => packageType);
     const visual = this.currentWorldVisual();
-    const score = calculateScore(this.distancePixels, this.packagesCollected, this.bonusScore);
+    const score = calculateScore(this.distancePixels, this.ordersCollected, this.bonusScore);
     return {
       mode: this.mode,
       visualWorldId: visual.worldId,
@@ -1830,12 +1847,12 @@ export class RunnerGame implements RunnerGameApi {
       visualWorldIndex: visual.worldIndex,
       visualTransitionPending: visual.transitionPending,
       score,
-      packagesCollected: this.packagesCollected,
+      ordersCollected: this.ordersCollected,
       challengeScore: this.mode === "challenge"
         ? Math.max(0, score - this.challengeStartScore)
         : 0,
-      challengePackagesCollected: this.mode === "challenge"
-        ? Math.max(0, this.packagesCollected - this.challengeStartPackages)
+      challengeOrdersCollected: this.mode === "challenge"
+        ? Math.max(0, this.ordersCollected - this.challengeStartOrders)
         : 0,
       collisions: this.collisions,
       recoverySeconds: round(this.recoverySeconds, 2),
@@ -1903,13 +1920,15 @@ export class RunnerGame implements RunnerGameApi {
   }
 
   private millionCounterValue(): number {
-    if (this.mode === "challenge") return 1_000_000;
+    if (this.mode === "challenge") {
+      return 1_000_000 + Math.max(0, this.ordersCollected - this.challengeStartOrders);
+    }
     const authored = this.authoredWaveDirector;
     if (authored?.definition.id !== "million-threshold") {
       return this.storyObjectiveDirector.snapshot.epoch5.millionThreshold.counterValue;
     }
-    const target = authored.snapshot.totalPackageTarget ?? 50;
-    return 1_000_000 - target + Math.min(target, authored.snapshot.totalPackagesCollected);
+    const target = authored.snapshot.totalOrderTarget ?? 30;
+    return 1_000_000 - target + Math.min(target, authored.snapshot.totalOrdersCollected);
   }
 
   private currentWorldVisual(): {

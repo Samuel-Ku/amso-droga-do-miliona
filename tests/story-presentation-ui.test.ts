@@ -90,10 +90,10 @@ describe("player-paced story presentation", () => {
 
   it("formats carried powers compactly for the persistent HUD", () => {
     expect(formatPowerUpHud([])).toBe("");
-    expect(formatPowerUpHud(["drugie_zycie", "gwarancja_48"]))
+    expect(formatPowerUpHud(["podwojny_wynik", "gwarancja_48"]))
       .toBe("×2 WYNIK · GWARANCJA 48 M ×1");
-    expect(formatPowerUpHud(["drugie_zycie"], [{
-      kind: "drugie_zycie",
+    expect(formatPowerUpHud(["podwojny_wynik"], [{
+      kind: "podwojny_wynik",
       remainingSeconds: 6.2
     }])).toBe("×2 WYNIK 7 s");
   });
@@ -105,10 +105,10 @@ describe("player-paced story presentation", () => {
       waveTarget: 8,
       currentWaveId: "wave",
       attemptsOnCurrentWave: 1,
-      packagesCollectedOnCurrentWave: 2,
+      ordersCollectedOnCurrentWave: 2,
       packagesAvailableOnCurrentWave: 3,
-      totalPackagesCollected: 3,
-      totalPackageTarget: null,
+      totalOrdersCollected: 3,
+      totalOrderTarget: null,
       elapsedSeconds: 20,
       minimumDurationSeconds: 45,
       completed: false,
@@ -122,8 +122,8 @@ describe("player-paced story presentation", () => {
     expect(formatAuthoredWaveHud({
       ...base,
       microlevelId: "million-threshold",
-      totalPackagesCollected: 12,
-      totalPackageTarget: 50
+      totalOrdersCollected: 12,
+      totalOrderTarget: 50
     })).toBe("999 962");
   });
 
@@ -179,7 +179,7 @@ describe("player-paced story presentation", () => {
     for (let index = 0; index < 12; index += 1) director.recordMillionPackage();
     for (let index = 0; index < 3; index += 1) director.recordMillionCombination();
     expect(formatStoryObjectiveHud(director.snapshot, []))
-      .toBe("Próg Miliona · PACZKI 12/50 · KOMBINACJE 3/12");
+      .toBe("Próg Miliona · ZAMÓWIENIA 12/30 · KOMBINACJE 3/12");
   });
 
   it("wraps keyboard focus inside the two-control story dialog", () => {
@@ -276,7 +276,7 @@ describe("player-paced story presentation", () => {
 
   it("keeps the completed counter in direct challenge worlds", () => {
     expect(campaignWorldCounterValue("challenge", "epoch_5.wave", 999_970))
-      .toBe(999_999);
+      .toBe(999_970);
     expect(campaignWorldCounterValue("story", "epoch_5.wave", 999_982))
       .toBe(999_982);
   });

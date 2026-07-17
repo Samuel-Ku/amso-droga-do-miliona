@@ -68,11 +68,11 @@ describe("game random and spawning", () => {
     expect(collect()).toHaveLength(6);
   });
 
-  it("mixes package layouts and occasionally places a golden parcel", () => {
+  it("mixes package layouts and all five ordinary order visuals without golden parcels", () => {
     const difficulty = getDifficulty(35);
     const spawner = new FairSpawner(new SeededRandom(44), difficulty.speed);
     const patterns = new Set<string>();
-    let goldenPackages = 0;
+    const orderVisuals = new Set<string>();
     let waves = 0;
 
     for (let index = 0; index < 20_000 && waves < 80; index += 1) {
@@ -80,12 +80,13 @@ describe("game random and spawning", () => {
       if (!wave) continue;
       waves += 1;
       patterns.add(wave.pattern);
-      goldenPackages += wave.packages.filter((parcel) => parcel.kind === "golden").length;
+      wave.packages.filter(({ kind }) => kind === "standard")
+        .forEach(({ orderVisualType }) => orderVisuals.add(orderVisualType));
     }
 
     expect(waves).toBe(80);
     expect(patterns.size).toBe(14);
-    expect(goldenPackages).toBeGreaterThan(0);
+    expect(orderVisuals).toEqual(new Set(["notebook", "telefon", "pc", "lcd", "parcel"]));
   });
 
   it("does not partially activate a wave when the package pool is exhausted", () => {
@@ -279,6 +280,7 @@ describe("collision and scoring", () => {
       size: 30,
       phase: 0,
       packageType: "notebook",
+      orderVisualType: "notebook",
       weightKg: 0
     };
     expect(collectsPackage(runner, parcel)).toBe(true);
@@ -291,7 +293,7 @@ describe("collision and scoring", () => {
     expect(calculateScore(349, 3)).toBe(309);
     expect(calculateScore(349, 3, 250)).toBe(559);
     expect(packageBonusScore(GAMEPLAY.packageScore)).toBe(0);
-    expect(packageBonusScore(GAMEPLAY.goldenPackageScore)).toBe(250);
+    expect(packageBonusScore(GAMEPLAY.packageScore + 250)).toBe(250);
     expect(calculateScore(0, 0, BOSS.scoreBonus)).toBe(BOSS.scoreBonus);
   });
 });
@@ -442,7 +444,7 @@ describe("boss rendering", () => {
     expect(drawnText).not.toContain("GWARANCJA");
   });
 
-  it("renders warning, attack and reward states with a golden parcel", () => {
+  it("renders warning, attack and reward states with an ordinary order", () => {
     const contextTarget: Record<PropertyKey, unknown> = {
       createLinearGradient: () => ({ addColorStop(): void {} })
     };
@@ -457,13 +459,13 @@ describe("boss rendering", () => {
       }
     }) as unknown as CanvasRenderingContext2D;
     const packages = createPackagePool();
-    const golden = packages[0];
-    if (!golden) throw new Error("package pool is empty");
-    golden.active = true;
-    golden.kind = "golden";
-    golden.scoreValue = GAMEPLAY.goldenPackageScore;
-    golden.x = 560;
-    golden.y = 350;
+    const order = packages[0];
+    if (!order) throw new Error("package pool is empty");
+    order.active = true;
+    order.kind = "standard";
+    order.scoreValue = GAMEPLAY.packageScore;
+    order.x = 560;
+    order.y = 350;
     const renderer = new WarehouseRenderer();
 
     for (const phase of ["warning", "attacking", "reward"] as const) {

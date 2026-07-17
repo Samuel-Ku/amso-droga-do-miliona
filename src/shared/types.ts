@@ -10,7 +10,9 @@ export interface RunnerFact {
 }
 
 export type PackageType = "notebook" | "telefon" | "pc" | "lcd";
-export type PowerUpKind = "gwarancja_48" | "drugie_zycie";
+/** Visual form of one ordinary order. Physical facts still use PackageType. */
+export type OrderVisualType = PackageType | "parcel";
+export type PowerUpKind = "gwarancja_48" | "podwojny_wynik";
 export type CampaignMode = "story" | "challenge";
 export type StoryBeatKind = "title" | "dialogue" | "copy" | "stat" | "challenge";
 export type StoryPerspective = "amso" | "client" | "challenge";
@@ -154,7 +156,7 @@ export interface StoryModeHandoffConfig {
 export interface MillionThresholdConfig {
   counterStart: number;
   counterTarget: 1_000_000;
-  packageTarget: number;
+  orderTarget: number;
   combinationTarget: 12;
 }
 

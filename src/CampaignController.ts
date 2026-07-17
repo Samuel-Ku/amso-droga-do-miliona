@@ -239,7 +239,7 @@ export class CampaignController {
         mode: safeRequest.mode,
         story: safeRequest.mode === "story" ? this.config.story : null,
         challenge: this.config.challenge,
-        bestChallengePackagesAtStart: this.profile.snapshot.bestChallengePackages,
+        bestChallengeOrdersAtStart: this.profile.snapshot.bestChallengeOrders,
         awardStoryCompletionBonus: safeRequest.mode === "story" &&
           !this.profile.snapshot.storyCompleted,
         powerUpPackageCopy: {
@@ -247,7 +247,7 @@ export class CampaignController {
             this.uiCopy("parcelWarrantyLine1", "GWARANCJA"),
             this.uiCopy("parcelWarrantyLine2", "48 M")
           ],
-          drugie_zycie: [
+          podwojny_wynik: [
             this.uiCopy("parcelSecondLifeLine1", "2×"),
             this.uiCopy("parcelSecondLifeLine2", "PUNKTY")
           ]
@@ -296,8 +296,7 @@ export class CampaignController {
         if (this.shownPowerUpHints.has(kind)) return;
         this.shownPowerUpHints.add(kind);
         const copy = {
-          golden: "BONUS — +350 pkt.",
-          drugie_zycie: "2× PUNKTY — każda zebrana paczka liczy się podwójnie.",
+          podwojny_wynik: "2× WYNIK — punkty za każde zamówienie liczą się podwójnie.",
           gwarancja_48: this.uiCopy(
             "powerupWarranty",
             "GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania."
@@ -315,7 +314,7 @@ export class CampaignController {
         this.shell.showGame(mode);
         if (mode === "challenge") {
           this.shell.announce(
-            "Tryb Wyzwania. Wynik i paczki zostały zachowane. Tempo rośnie, a pierwsze niezabezpieczone zderzenie kończy bieg."
+            "Tryb Wyzwania. Wynik i zamówienia zostały zachowane. Tempo rośnie, a pierwsze niezabezpieczone zderzenie kończy bieg."
           );
         }
         this.tracker.track("game_started", { mode });
@@ -335,8 +334,8 @@ export class CampaignController {
     this.warmWorldAssetWindow(snapshot.visualWorldId);
     const previous = this.lastSnapshot;
     if (previous !== null) {
-      if (snapshot.packagesCollected > previous.packagesCollected) {
-        this.audio.playCue("package");
+      if (snapshot.ordersCollected > previous.ordersCollected) {
+        this.audio.playOrderPickup(snapshot.combo);
       }
       if (snapshot.collisions > previous.collisions) {
         this.audio.playCue("collision");
@@ -347,8 +346,11 @@ export class CampaignController {
           "GWARANCJA 48 M zadziałała — próba trwa dalej."
         ));
       }
-      if (snapshot.activePowerUps.some((kind) => !previous.activePowerUps.includes(kind))) {
-        this.audio.playCue("power-up");
+      const activatedPowerUp = snapshot.activePowerUps.find(
+        (kind) => !previous.activePowerUps.includes(kind)
+      );
+      if (activatedPowerUp !== undefined) {
+        this.audio.playPowerUpCue(activatedPowerUp);
       }
     }
     this.lastSnapshot = snapshot;
@@ -360,7 +362,7 @@ export class CampaignController {
       } else if (snapshot.logisticWavePhase === "reward") {
         this.shell.announce(this.uiCopy(
           "logisticReward",
-          "Fala opanowana — złote paczki są Twoje."
+          "Fala opanowana — droga jest czysta."
         ));
       }
     }
@@ -431,7 +433,7 @@ export class CampaignController {
     this.audio.stop();
     if (result.mode === "story") {
       this.shell.showStoryResult({
-        packages: result.packagesCollected,
+        orders: result.ordersCollected,
         score: result.score,
         bestCombo: result.bestCombo
       });
@@ -441,10 +443,10 @@ export class CampaignController {
     const firstChallengeResult = this.profile.snapshot.challengeRuns === 0;
     this.profile.recordChallengeResult(
       result.challengeScore,
-      result.challengePackagesCollected
+      result.challengeOrdersCollected
     );
     this.shell.showChallengeResult({
-      packages: result.packagesCollected,
+      orders: result.ordersCollected,
       totalScore: result.score,
       challengeScore: result.challengeScore,
       bestScore: this.profile.snapshot.bestChallengeScore,

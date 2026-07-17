@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1792" height="160" viewBox="0 0 1792 160">
+  <defs>
+    <linearGradient id="shirt" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff7b19"/><stop offset="1" stop-color="#ee5d00"/></linearGradient>
+    <filter id="soft" x="-30%" y="-20%" width="160%" height="150%"><feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="#071a31" flood-opacity=".22"/></filter>
+    <g id="body">
+      <path d="M29 59c0-11 8-20 19-20h24c12 0 23 10 23 22v48H31z" fill="url(#shirt)" stroke="#c84c08" stroke-width="3"/>
+      <path d="M35 57 22 73v29" fill="none" stroke="#f2b17f" stroke-width="9" stroke-linecap="round"/>
+      <rect x="14" y="81" width="16" height="31" rx="5" fill="#343a45" stroke="#071a31" stroke-width="3"/>
+      <rect x="18" y="86" width="8" height="16" rx="2" fill="#51d163"/>
+      <path d="M88 59 103 76 99 99" fill="none" stroke="#f2b17f" stroke-width="9" stroke-linecap="round"/>
+      <path d="M31 64c-9 3-15 12-16 28V58c0-18 10-30 26-33" fill="#253146" stroke="#071a31" stroke-width="3"/>
+      <path d="M38 43c4-13 16-19 29-16 15 3 23 16 20 30-3 13-15 20-29 18-14-2-23-18-20-32z" fill="#f2b17f" stroke="#c47b51" stroke-width="2"/>
+      <path d="M78 46c9 0 15 5 16 10-6 1-11 0-16-2z" fill="#f2b17f"/>
+      <circle cx="76" cy="47" r="2.5" fill="#071a31"/>
+      <path d="M39 36c8-17 37-19 48 2-15-7-32-4-48-2z" fill="#182235"/>
+      <path d="M33 34c6-13 31-20 49-8l8 10H39z" fill="#ef4a35" stroke="#bc3426" stroke-width="3"/>
+      <path d="M79 35h24c-5 7-13 9-24 8z" fill="#ef4a35"/>
+      <rect x="48" y="67" width="29" height="27" rx="7" fill="#fff" opacity=".12"/>
+    </g>
+    <g id="legs-a" fill="none" stroke="#202838" stroke-width="13" stroke-linecap="round"><path d="M49 105 38 139"/><path d="M77 105 88 139"/></g>
+    <g id="legs-b" fill="none" stroke="#202838" stroke-width="13" stroke-linecap="round"><path d="M49 105 57 139"/><path d="M77 105 68 139"/></g>
+    <g id="feet-a" fill="none" stroke="#f04f45" stroke-width="7" stroke-linecap="round"><path d="m31 143 18 1"/><path d="m82 143 18 1"/></g>
+    <g id="feet-b" fill="none" stroke="#f04f45" stroke-width="7" stroke-linecap="round"><path d="m49 143 18 1"/><path d="m57 143 18 1"/></g>
+    <g id="run-a"><use xlink:href="#legs-a"/><use xlink:href="#feet-a"/><use xlink:href="#body"/></g>
+    <g id="run-b"><use xlink:href="#legs-b"/><use xlink:href="#feet-b"/><use xlink:href="#body"/></g>
+    <g id="jump"><path d="m48 108-15 22 21 9M76 108l19 16-16 13" fill="none" stroke="#202838" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/><path d="m39 136 18 5m20-1 17-10" fill="none" stroke="#f04f45" stroke-width="7" stroke-linecap="round"/><use xlink:href="#body"/></g>
+    <g id="crouch"><path d="M41 113 24 137h28m28-24 17 24H70" fill="none" stroke="#202838" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/><g transform="translate(12 24) scale(.92 .82)"><use xlink:href="#body"/></g><path d="M18 143h31m29 0h27" stroke="#f04f45" stroke-width="7" stroke-linecap="round"/></g>
+    <g id="celebrate"><use xlink:href="#legs-b"/><use xlink:href="#feet-b"/><use xlink:href="#body"/><path d="M39 61 22 43 15 23m72 39 17-20 7-20" fill="none" stroke="#f2b17f" stroke-width="9" stroke-linecap="round"/><circle cx="14" cy="18" r="6" fill="#f2b17f"/><circle cx="112" cy="17" r="6" fill="#f2b17f"/></g>
+  </defs>
+  <rect width="1792" height="160" fill="none"/>
+  <g filter="url(#soft)">
+    <g transform="translate(0 5)"><use xlink:href="#run-a"/></g>
+    <g transform="translate(128 3)"><use xlink:href="#run-b"/></g>
+    <g transform="translate(256 5)"><use xlink:href="#run-a"/></g>
+    <g transform="translate(384 2)"><use xlink:href="#run-b"/></g>
+    <g transform="translate(512 5)"><use xlink:href="#run-a"/></g>
+    <g transform="translate(640 3)"><use xlink:href="#run-b"/></g>
+    <g transform="translate(768 14)"><use xlink:href="#jump"/></g>
+    <g transform="translate(896 2)"><use xlink:href="#jump"/></g>
+    <g transform="translate(1024 12)"><use xlink:href="#jump"/></g>
+    <g transform="translate(1152 0)"><use xlink:href="#crouch"/></g>
+    <g transform="translate(1280 2)"><use xlink:href="#crouch"/></g>
+    <g transform="translate(1408 4)"><use xlink:href="#celebrate"/></g>
+    <g transform="translate(1536 1)"><use xlink:href="#celebrate"/></g>
+    <g transform="translate(1664 4)"><use xlink:href="#celebrate"/></g>
+  </g>
+</svg>

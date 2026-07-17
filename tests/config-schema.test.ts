@@ -64,9 +64,9 @@ describe("runner config v5 story validation", () => {
       resumeCountdownSeconds: 3
     };
     story.millionThreshold = {
-      counterStart: 999_950,
+      counterStart: 999_970,
       counterTarget: 1_000_000,
-      packageTarget: 50,
+      orderTarget: 30,
       combinationTarget: 12
     };
 
@@ -91,11 +91,25 @@ describe("runner config v5 story validation", () => {
       resumeCountdownSeconds: 3
     });
     expect(parsed?.story.millionThreshold).toEqual({
-      counterStart: 999_950,
+      counterStart: 999_970,
       counterTarget: 1_000_000,
-      packageTarget: 50,
+      orderTarget: 30,
       combinationTarget: 12
     });
+  });
+
+  it("accepts the legacy second-life input only as a canonical double-score alias", () => {
+    const legacy = validConfig();
+    const story = legacy.story as Record<string, unknown>;
+    const epochs = story.epochs as Array<Record<string, unknown>>;
+    const debut = epochs.find((epoch) => epoch.powerUpDebut === "podwojny_wynik")!;
+    debut.powerUpDebut = "drugie_zycie";
+
+    const parsed = parseRunnerConfig(legacy);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.story.epochs.find((epoch) => epoch.id === debut.id)?.powerUpDebut)
+      .toBe("podwojny_wynik");
+    expect(JSON.stringify(parsed)).not.toContain("drugie_zycie");
   });
 
   it("requires the final handoff and physical million threshold contracts", () => {

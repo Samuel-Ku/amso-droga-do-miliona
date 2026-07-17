@@ -36,7 +36,14 @@ const IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9_.-]{0,63}$/;
 const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$/;
 const ASSET_PATH_PATTERN = /^\/[A-Za-z0-9._/-]+$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const POWER_UPS: readonly PowerUpKind[] = ["gwarancja_48", "drugie_zycie"];
+const POWER_UPS: readonly PowerUpKind[] = ["gwarancja_48", "podwojny_wynik"];
+
+function normalizePowerUpKind(value: unknown): PowerUpKind | null {
+  if (value === "drugie_zycie") return "podwojny_wynik";
+  return typeof value === "string" && (POWER_UPS as readonly string[]).includes(value)
+    ? value as PowerUpKind
+    : null;
+}
 const OBSTACLE_KINDS = ["box-stack", "pallet", "trolley", "overhead"] as const;
 const STORY_CHAPTERS: readonly StoryChapterId[] = [
   "prologue", "epoch_1", "epoch_2", "epoch_3", "epoch_4", "epoch_5", "finale"
@@ -358,16 +365,16 @@ function parseModeHandoff(value: unknown): StoryModeHandoffConfig | null {
 function parseMillionThreshold(value: unknown): StoryConfig["millionThreshold"] | null {
   if (!isRecord(value) || !hasExactKeys(
     value,
-    ["counterStart", "counterTarget", "packageTarget", "combinationTarget"],
-    ["counterStart", "counterTarget", "packageTarget", "combinationTarget"]
-  ) || value.counterTarget !== 1_000_000 || !Number.isInteger(value.packageTarget) ||
-      !finiteInRange(value.packageTarget, 40, 60) ||
-      value.counterStart !== 1_000_000 - value.packageTarget ||
+    ["counterStart", "counterTarget", "orderTarget", "combinationTarget"],
+    ["counterStart", "counterTarget", "orderTarget", "combinationTarget"]
+  ) || value.counterTarget !== 1_000_000 || !Number.isInteger(value.orderTarget) ||
+      !finiteInRange(value.orderTarget, 30, 60) ||
+      value.counterStart !== 1_000_000 - value.orderTarget ||
       value.combinationTarget !== 12) return null;
   return {
     counterStart: value.counterStart as number,
     counterTarget: 1_000_000,
-    packageTarget: value.packageTarget as number,
+    orderTarget: value.orderTarget as number,
     combinationTarget: 12
   };
 }
@@ -392,9 +399,11 @@ function parseEpoch(value: unknown): StoryEpochConfig | null {
       !finiteInRange(value.difficultyStart, 0.5, 2) ||
       !finiteInRange(value.difficultyEnd, value.difficultyStart, 2) ||
       !isSafeText(value.challengeName, 80)) return null;
-  if (value.powerUpDebut !== undefined &&
-      (typeof value.powerUpDebut !== "string" || !(POWER_UPS as readonly string[]).includes(value.powerUpDebut))) {
-    return null;
+  let powerUpDebut: PowerUpKind | undefined;
+  if (value.powerUpDebut !== undefined) {
+    const normalized = normalizePowerUpKind(value.powerUpDebut);
+    if (normalized === null) return null;
+    powerUpDebut = normalized;
   }
   return {
     index: value.index as number,
@@ -407,7 +416,7 @@ function parseEpoch(value: unknown): StoryEpochConfig | null {
     difficultyStart: value.difficultyStart,
     difficultyEnd: value.difficultyEnd,
     challengeName: value.challengeName,
-    ...(typeof value.powerUpDebut === "string" ? { powerUpDebut: value.powerUpDebut as PowerUpKind } : {}),
+    ...(powerUpDebut === undefined ? {} : { powerUpDebut }),
     ...(value.index === 4 ? { bossClimax: true } : {})
   };
 }

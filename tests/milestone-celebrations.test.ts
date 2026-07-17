@@ -11,12 +11,12 @@ import type { RenderScene } from "../src/game/types";
 
 function renderingHarness(reducedMotion: boolean): {
   context: CanvasRenderingContext2D;
-  bezierCurveTo: ReturnType<typeof vi.fn>;
+  rotate: ReturnType<typeof vi.fn>;
   scene: RenderScene;
 } {
-  const bezierCurveTo = vi.fn();
+  const rotate = vi.fn();
   const target: Record<PropertyKey, unknown> = {
-    bezierCurveTo,
+    rotate,
     createLinearGradient: () => ({ addColorStop(): void {} })
   };
   const context = new Proxy(target, {
@@ -56,21 +56,21 @@ function renderingHarness(reducedMotion: boolean): {
     activePowerUps: [],
     milestoneCelebration: {
       threshold: 100,
-      kind: "confetti-streamers",
+      kind: "order-confetti",
       intensity: 1,
       durationSeconds: 1.35,
       remainingSeconds: 0.8,
       progress: 0.4,
-      text: "100 PACZEK!"
+      text: "100 ZAMÓWIEŃ!"
     }
   };
-  return { context, bezierCurveTo, scene };
+  return { context, rotate, scene };
 }
 
-describe("package milestone celebrations", () => {
-  it("defines duration and audio presentation for every rotating variant", () => {
+describe("order milestone celebrations", () => {
+  it("uses one recognizable celebration family with a proper fanfare", () => {
     expect(Object.keys(MILESTONE_CELEBRATION_PRESENTATION)).toEqual(MILESTONE_CELEBRATION_KINDS);
-    expect(MILESTONE_CELEBRATION_KINDS.every((kind) => kind.startsWith("confetti-"))).toBe(true);
+    expect(MILESTONE_CELEBRATION_KINDS).toEqual(["order-confetti"]);
     expect(Object.values(MILESTONE_CELEBRATION_PRESENTATION).every(
       ({ durationSeconds, audioNotes }) =>
         durationSeconds >= 1.2 && durationSeconds <= 1.5 && audioNotes.length >= 3
@@ -85,7 +85,7 @@ describe("package milestone celebrations", () => {
     expect(values).toEqual([10, 50, 100, 500, 1_000, 5_000, 10_000, 50_000, 100_000]);
   });
 
-  it("emits every crossed threshold exactly once with rotating confetti compositions", () => {
+  it("emits every crossed threshold once and makes the same celebration family richer", () => {
     const director = new MilestoneCelebrationDirector();
     const events = [
       ...director.recordPackages(10),
@@ -98,12 +98,12 @@ describe("package milestone celebrations", () => {
     ];
 
     expect(events.map(({ threshold }) => threshold)).toEqual([10, 50, 100, 500, 1_000, 5_000]);
-    expect(events.slice(0, 5).map(({ kind }) => kind)).toEqual(MILESTONE_CELEBRATION_KINDS);
+    expect(new Set(events.map(({ kind }) => kind))).toEqual(new Set(MILESTONE_CELEBRATION_KINDS));
     expect(events[0]!.intensity).toBe(1);
-    expect(events[4]!.intensity).toBe(1);
-    expect(events[5]!.intensity).toBe(2);
-    expect(events[4]!.text).toBe("1 000 PACZEK!");
-    expect(events.every(({ durationSeconds }) => durationSeconds >= 1.2 && durationSeconds <= 1.5))
+    expect(events[4]!.intensity).toBeGreaterThan(events[0]!.intensity);
+    expect(events[5]!.intensity).toBeGreaterThanOrEqual(events[4]!.intensity);
+    expect(events[4]!.text).toBe("1 000 ZAMÓWIEŃ!");
+    expect(events.every(({ durationSeconds }) => durationSeconds >= 1.2 && durationSeconds <= 1.8))
       .toBe(true);
   });
 
@@ -126,18 +126,18 @@ describe("package milestone celebrations", () => {
 
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
-      kind: "confetti-finale",
+      kind: "order-confetti",
       achievement: "record",
-      text: "NOWY REKORD · 10 PACZEK!"
+      text: "NOWY REKORD · 10 ZAMÓWIEŃ!"
     });
-    expect(director.snapshot?.text).toBe("NOWY REKORD · 10 PACZEK!");
+    expect(director.snapshot?.text).toBe("NOWY REKORD · 10 ZAMÓWIEŃ!");
   });
 
   it("presents a new record once even when no round threshold is crossed", () => {
     const director = new MilestoneCelebrationDirector();
     expect(director.recordAchievement(7, "NOWY REKORD")).toMatchObject({
       threshold: 7,
-      kind: "confetti-finale",
+      kind: "order-confetti",
       achievement: "record",
       text: "NOWY REKORD"
     });
@@ -152,7 +152,7 @@ describe("package milestone celebrations", () => {
     renderer.render(animated.context, 960, 540, animated.scene);
     renderer.render(reduced.context, 960, 540, reduced.scene);
 
-    expect(animated.bezierCurveTo).toHaveBeenCalled();
-    expect(reduced.bezierCurveTo).not.toHaveBeenCalled();
+    expect(animated.rotate).toHaveBeenCalled();
+    expect(reduced.rotate).not.toHaveBeenCalled();
   });
 });

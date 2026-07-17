@@ -107,7 +107,7 @@ export class StoryContinuationGate {
 }
 
 const POWER_UP_HUD_LABELS: Readonly<Record<PowerUpKind, string>> = {
-  drugie_zycie: "×2 WYNIK",
+  podwojny_wynik: "×2 WYNIK",
   gwarancja_48: "GWARANCJA 48 M ×1"
 };
 
@@ -149,7 +149,7 @@ export function formatAuthoredWaveHud(
   if (progress === null) return null;
   const completed = Math.min(progress.wavesCompleted, progress.waveTarget);
   const actionCue = progress.currentObstacleVariant === "parcel-arc"
-    ? "ZBIERZ PACZKI"
+    ? "ZBIERZ ZAMÓWIENIA"
     : (progress.currentActions ?? [])
       .map((action) => action === "jump" ? "↑ SKOK" : "↓ ŚLIZG")
       .join(" + ");
@@ -174,8 +174,8 @@ export function formatAuthoredWaveHud(
       return `${SCALE_ZONE_SYMBOLS[zoneIndex]} ${SCALE_ZONE_LABELS[zoneIndex]} ${step}/3`;
     }
     case "million-threshold": {
-      const target = progress.totalPackageTarget ?? 50;
-      const counter = 1_000_000 - target + Math.min(target, progress.totalPackagesCollected);
+      const target = progress.totalOrderTarget ?? 30;
+      const counter = 1_000_000 - target + Math.min(target, progress.totalOrdersCollected);
       return new Intl.NumberFormat("pl-PL").format(counter);
     }
   }
@@ -242,8 +242,8 @@ export function formatStoryObjectiveHud(
     }
     case "epoch_5.million_threshold": {
       const finale = objectives.epoch5.millionThreshold;
-      return `${prefix("epoch_5.million_threshold")}Próg Miliona · PACZKI ` +
-        `${finale.packagesCollected}/${finale.packageTarget} · KOMBINACJE ` +
+      return `${prefix("epoch_5.million_threshold")}Próg Miliona · ZAMÓWIENIA ` +
+        `${finale.ordersCollected}/${finale.orderTarget} · KOMBINACJE ` +
         `${finale.combinationsCompleted}/${finale.combinationTarget}`;
     }
     default:

@@ -1,9 +1,5 @@
 export const MILESTONE_CELEBRATION_KINDS = [
-  "confetti-pop",
-  "confetti-sides",
-  "confetti-streamers",
-  "confetti-burst",
-  "confetti-finale"
+  "order-confetti"
 ] as const;
 
 export type MilestoneCelebrationKind = (typeof MILESTONE_CELEBRATION_KINDS)[number];
@@ -13,13 +9,9 @@ export interface MilestoneCelebrationPresentation {
   readonly audioNotes: readonly number[];
 }
 
-/** Shared non-visual presentation tokens for every celebration variant. */
+/** One recognizable reward language; later thresholds enrich the same celebration. */
 export const MILESTONE_CELEBRATION_PRESENTATION = {
-  "confetti-pop": { durationSeconds: 1.2, audioNotes: [523.25, 659.25, 783.99] },
-  "confetti-sides": { durationSeconds: 1.3, audioNotes: [523.25, 659.25, 783.99, 1046.5] },
-  "confetti-streamers": { durationSeconds: 1.35, audioNotes: [440, 554.37, 659.25, 880] },
-  "confetti-burst": { durationSeconds: 1.45, audioNotes: [392, 523.25, 659.25, 987.77] },
-  "confetti-finale": { durationSeconds: 1.5, audioNotes: [261.63, 392, 523.25, 659.25, 783.99] }
+  "order-confetti": { durationSeconds: 1.2, audioNotes: [523.25, 659.25, 783.99] }
 } as const satisfies Record<MilestoneCelebrationKind, MilestoneCelebrationPresentation>;
 
 export interface MilestoneCelebrationEvent {
@@ -45,14 +37,15 @@ export function nextPackageMilestone(current: number, sequenceIndex: number): nu
 }
 
 function createCelebration(threshold: number, sequenceIndex: number): MilestoneCelebrationEvent {
-  const variantIndex = sequenceIndex % MILESTONE_CELEBRATION_KINDS.length;
-  const kind = MILESTONE_CELEBRATION_KINDS[variantIndex]!;
+  const kind = MILESTONE_CELEBRATION_KINDS[0];
+  const intensity = Math.min(6, sequenceIndex + 1);
   return {
     threshold,
     kind,
-    intensity: Math.floor(sequenceIndex / MILESTONE_CELEBRATION_KINDS.length) + 1,
-    durationSeconds: MILESTONE_CELEBRATION_PRESENTATION[kind].durationSeconds,
-    text: `${formatThreshold(threshold)} PACZEK!`
+    intensity,
+    durationSeconds: Math.min(1.8, MILESTONE_CELEBRATION_PRESENTATION[kind].durationSeconds +
+      sequenceIndex * 0.12),
+    text: `${formatThreshold(threshold)} ZAMÓWIEŃ!`
   };
 }
 
@@ -113,9 +106,9 @@ export class MilestoneCelebrationDirector {
   ): MilestoneCelebrationEvent {
     return {
       threshold,
-      kind: "confetti-finale",
+      kind: "order-confetti",
       intensity: Math.max(2, intensity),
-      durationSeconds: MILESTONE_CELEBRATION_PRESENTATION["confetti-finale"].durationSeconds,
+      durationSeconds: 1.5,
       text,
       ...(achievement === undefined ? {} : { achievement })
     };

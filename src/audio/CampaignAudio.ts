@@ -2,6 +2,7 @@ import {
   MILESTONE_CELEBRATION_PRESENTATION,
   type MilestoneCelebrationKind
 } from "../game/milestone-celebration";
+import type { PowerUpKind } from "../shared/types";
 
 export const CAMPAIGN_AUDIO_CUES = [
   "jump",
@@ -57,6 +58,12 @@ interface ToneOptions {
 
 const MUSIC_PHRASE_SECONDS = 2.4;
 const MIN_GAIN = 0.0001;
+
+/** Five-note pickup ladder; longer combos deliberately stop climbing. */
+export function orderPickupFrequency(streak: number): number {
+  const step = Math.max(0, Math.min(4, Math.floor(streak) - 1));
+  return 622.25 * 2 ** (step / 12);
+}
 
 function clampUnit(value: number | undefined, fallback: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
@@ -307,6 +314,40 @@ export class CampaignAudio {
       }
     } catch {
       // Web Audio is enhancement-only and must always fail open.
+    }
+  }
+
+  /** Short order motif whose pitch communicates a sustained collection rhythm. */
+  public playOrderPickup(streak: number): void {
+    if (this._muted || !this._started || this.destroyed || this.context === null ||
+        this.cueGain === null) return;
+    const frequency = orderPickupFrequency(streak);
+    try {
+      this.playTone({
+        frequency,
+        frequencyEnd: frequency * 1.18,
+        duration: 0.1,
+        volume: 0.54,
+        type: "sine",
+        destination: this.cueGain
+      });
+    } catch {
+      // Pickup audio is enhancement-only.
+    }
+  }
+
+  /** Distinct signatures let players identify the bonus before reading its label. */
+  public playPowerUpCue(kind: PowerUpKind): void {
+    if (this._muted || !this._started || this.destroyed || this.context === null ||
+        this.cueGain === null) return;
+    try {
+      if (kind === "gwarancja_48") {
+        this.playSequence([329.63, 392, 523.25, 659.25], 0.06, 0.14, 0.55, "sine");
+      } else {
+        this.playSequence([523.25, 783.99, 1046.5], 0.055, 0.12, 0.59, "triangle");
+      }
+    } catch {
+      // Power-up audio is enhancement-only.
     }
   }
 

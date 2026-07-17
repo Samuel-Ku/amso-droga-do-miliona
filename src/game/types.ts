@@ -1,6 +1,6 @@
 import type { GameState } from "./contracts";
 import type { StoryPhase } from "./story-timeline";
-import type { CampaignMode, PackageType, PowerUpKind } from "../shared/types";
+import type { CampaignMode, OrderVisualType, PackageType, PowerUpKind } from "../shared/types";
 import type { StoryClimaxModel } from "./story-climax";
 import type { StoryObstacleTransformation } from "./story-effects";
 import type { StoryObjectivesSnapshot } from "./story-objectives";
@@ -11,7 +11,7 @@ import type { SemanticObstacleVariant } from "./semantic-obstacle";
 
 export type ObstacleKind = "box-stack" | "pallet" | "trolley" | "overhead";
 export type ObstacleSource = "normal" | "boss" | "story-climax" | "story-reward";
-export type PackageKind = "standard" | "golden" | PowerUpKind;
+export type PackageKind = "standard" | PowerUpKind;
 export type BossPhase = "inactive" | "pending" | "warning" | "attacking" | "reward";
 
 export interface RunnerModel {
@@ -52,6 +52,8 @@ export interface PackageModel {
   phase: number;
   /** Product category used by fact triggers (typed collectibles). */
   packageType: PackageType;
+  /** Player-facing form of this ordinary order. */
+  orderVisualType: OrderVisualType;
   /** Shipping weight in kilograms, accumulated for the collect_weight trigger. */
   weightKg: number;
   /** Keeps regular spawning reserved until the authored reward pattern leaves. */

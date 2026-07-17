@@ -19,7 +19,7 @@ describe("v7 authored story waves", () => {
   it("supports 40, 50, and 60 package finale targets with package-only recovery", () => {
     const finale = STORY_MICROLEVELS.find(({ id }) => id === "million-threshold")!;
     for (const target of [40, 50, 60]) {
-      const director = new AuthoredWaveDirector({ ...finale, finalePackageTarget: target });
+      const director = new AuthoredWaveDirector({ ...finale, finaleOrderTarget: target });
       for (const item of finale.waves) {
         for (let count = 0; count < availablePackages(item); count += 1) director.recordPackage();
         director.resolve(true);
@@ -33,7 +33,7 @@ describe("v7 authored story waves", () => {
         }
       }
       director.advance(finale.minimumDurationSeconds);
-      expect(director.snapshot.totalPackageTarget).toBe(target);
+      expect(director.snapshot.totalOrderTarget).toBe(target);
       expect(director.completed).toBe(true);
     }
   });
@@ -148,8 +148,8 @@ describe("v7 authored story waves", () => {
     const finale = STORY_MICROLEVELS.at(-1)!;
     expect(finale.waves).toHaveLength(12);
     expect(new Set(finale.waves.map(({ id }) => id)).size).toBe(12);
-    expect(finale.finalePackageTarget).toBe(50);
-    expect(1_000_000 - finale.finalePackageTarget!).toBe(999_950);
+    expect(finale.finaleOrderTarget).toBe(30);
+    expect(1_000_000 - finale.finaleOrderTarget!).toBe(999_970);
   });
 
   it("follows the approved story and challenge speed points", () => {

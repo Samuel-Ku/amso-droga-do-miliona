@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { resolveCollision } from "../src/game/mode-rules";
 import {
   ActivePowerUps,
+  ChallengePowerUpSchedule,
   storyPowerUpsForEpoch
 } from "../src/game/power-ups";
 import {
@@ -10,8 +11,25 @@ import {
 } from "../src/game/scoring";
 
 describe("package collection and scoring rules", () => {
+  it("schedules 2× WYNIK every 35–50 orders and never repeats active warranty", () => {
+    const schedule = new ChallengePowerUpSchedule();
+    const doubleAt: number[] = [];
+    for (let orders = 0; orders <= 240; orders += 1) {
+      const due = schedule.dueAt(orders, false);
+      if (due === "podwojny_wynik") doubleAt.push(orders);
+    }
+    expect(doubleAt.length).toBeGreaterThanOrEqual(5);
+    for (let index = 1; index < doubleAt.length; index += 1) {
+      expect(doubleAt[index]! - doubleAt[index - 1]!).toBeGreaterThanOrEqual(35);
+      expect(doubleAt[index]! - doubleAt[index - 1]!).toBeLessThanOrEqual(50);
+    }
+
+    const protectedSchedule = new ChallengePowerUpSchedule();
+    expect(protectedSchedule.dueAt(70, true)).not.toBe("gwarancja_48");
+  });
+
   it("does not count power-ups as delivered packages", () => {
-    for (const kind of ["gwarancja_48", "drugie_zycie"] as const) {
+    for (const kind of ["gwarancja_48", "podwojny_wynik"] as const) {
       expect(resolvePackageCollection(kind, 0, 3, false)).toEqual({
         countsAsPackage: false,
         pointsAwarded: 0,
@@ -21,7 +39,7 @@ describe("package collection and scoring rules", () => {
     }
   });
 
-  it("keeps BONUS at 350 points while ordinary parcels use SERIA and 2× PUNKTY", () => {
+  it("uses one ordinary order value with SERIA and 2× WYNIK", () => {
     expect(resolvePackageCollection("standard", 100, 1, false)).toMatchObject({
       countsAsPackage: true,
       pointsAwarded: 100,
@@ -29,8 +47,6 @@ describe("package collection and scoring rules", () => {
       nextCombo: 2
     });
     expect(resolvePackageCollection("standard", 100, 1, true).pointsAwarded).toBe(200);
-    expect(resolvePackageCollection("golden", 350, 2, false).pointsAwarded).toBe(350);
-    expect(resolvePackageCollection("golden", 350, 2, true).pointsAwarded).toBe(700);
   });
 
   it("grows combo to a cap and resets only on an unprotected collision", () => {
@@ -60,8 +76,8 @@ describe("power-up lifetime and pacing rules", () => {
 
   it("introduces only immediately legible story power-ups", () => {
     expect(storyPowerUpsForEpoch(0)).toEqual([]);
-    expect(storyPowerUpsForEpoch(1)).toEqual(["drugie_zycie"]);
-    expect(storyPowerUpsForEpoch(2)).toEqual(["drugie_zycie", "gwarancja_48"]);
-    expect(storyPowerUpsForEpoch(3)).toEqual(["drugie_zycie", "gwarancja_48"]);
+    expect(storyPowerUpsForEpoch(1)).toEqual(["podwojny_wynik"]);
+    expect(storyPowerUpsForEpoch(2)).toEqual(["podwojny_wynik", "gwarancja_48"]);
+    expect(storyPowerUpsForEpoch(3)).toEqual(["podwojny_wynik", "gwarancja_48"]);
   });
 });

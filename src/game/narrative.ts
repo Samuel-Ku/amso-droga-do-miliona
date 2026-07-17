@@ -28,13 +28,13 @@ export const PACKAGE_TYPE_VALUES: readonly PackageType[] = ["notebook", "telefon
 
 export const POWER_UP_VALUES: readonly PowerUpKind[] = [
   "gwarancja_48",
-  "drugie_zycie"
+  "podwojny_wynik"
 ];
 
 /** Timed effects expire; warranty is a persistent one-use charge. */
 export const POWER_UP_DURATION: Readonly<Record<PowerUpKind, number>> = {
   gwarancja_48: Number.POSITIVE_INFINITY,
-  drugie_zycie: 7
+  podwojny_wynik: 7
 };
 
 export const POWER_UP_SCORE_MULTIPLIER = 2;

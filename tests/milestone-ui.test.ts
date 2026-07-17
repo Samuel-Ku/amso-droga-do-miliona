@@ -64,19 +64,19 @@ describe("responsive milestone message", () => {
     const shell = createShell();
     shell.showMilestoneCelebration({
       threshold: 1_000,
-      kind: "confetti-finale",
+      kind: "order-confetti",
       intensity: 1,
       durationSeconds: 1.45,
       remainingSeconds: 1,
       progress: 0.3,
-      text: "1 000 PACZEK!"
+      text: "1 000 ZAMÓWIEŃ!"
     });
     const message = document.querySelector<HTMLElement>("[data-campaign-milestone-message]")!;
 
     expect(message.hidden).toBe(false);
-    expect(message.textContent).toBe("1 000 PACZEK!");
+    expect(message.textContent).toBe("1 000 ZAMÓWIEŃ!");
     expect(message.textContent).not.toContain("Następny próg");
-    expect(message.dataset.kind).toBe("confetti-finale");
+    expect(message.dataset.kind).toBe("order-confetti");
     shell.destroy();
   });
 
@@ -84,12 +84,12 @@ describe("responsive milestone message", () => {
     const shell = createShell();
     const celebration = {
       threshold: 50,
-      kind: "confetti-burst" as const,
+      kind: "order-confetti" as const,
       intensity: 1,
       durationSeconds: 1.3,
       remainingSeconds: 1,
       progress: 0.2,
-      text: "50 PACZEK!"
+      text: "50 ZAMÓWIEŃ!"
     };
     shell.showMilestoneCelebration(celebration, true);
     const message = document.querySelector<HTMLElement>("[data-campaign-milestone-message]")!;

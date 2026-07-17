@@ -9,8 +9,6 @@ import { WORLD_ROUTE_SVG } from "./world-route";
 import { WORLD_WIDTH } from "../game/constants";
 import { reducedMotionBackgroundTravelPixels } from "./background-parallax";
 
-const WORLD_CONNECTOR_FRACTION = 0.08;
-
 export type WorldVisualPhase = "landing" | "story" | "game" | "result";
 
 export interface WorldVisualSelection {
@@ -92,10 +90,9 @@ function requiredElement<T extends Element>(root: ParentNode, selector: string):
   return element;
 }
 
-/** Adjacent world panels and a neutral connector share one absolute parallax phase. */
+/** Two adjacent world panels share one absolute parallax phase. */
 export class WorldVisualLayer {
   private readonly panels: readonly [HTMLCanvasElement, HTMLCanvasElement];
-  private readonly connector: HTMLElement;
   private currentWorldId: CampaignWorldId | null = null;
   private currentStateId = "";
   private requestedAssetPath: string | null = null;
@@ -103,7 +100,6 @@ export class WorldVisualLayer {
   private pendingAsset: DecodedWorldAsset | null = null;
   private transitionStartDistance = 0;
   private lastDistance = 0;
-  private stationaryTransitionTimer: ReturnType<typeof setTimeout> | null = null;
   private stationaryCommitTimer: ReturnType<typeof setTimeout> | null = null;
 
   public constructor(
@@ -113,19 +109,17 @@ export class WorldVisualLayer {
     host.innerHTML = `
       <div class="amso-world-visual__image-stack" aria-hidden="true">
         <canvas class="amso-world-visual__panel" data-world-panel="current" width="1672" height="941"></canvas>
-        <div class="amso-world-visual__connector" data-world-connector></div>
         <canvas class="amso-world-visual__panel" data-world-panel="next" width="1672" height="941"></canvas>
       </div>
       ${WORLD_ROUTE_SVG}
       <div class="amso-world-visual__counter" aria-hidden="true">
-        <span data-world-counter>999 950</span>
+        <span data-world-counter>999 970</span>
       </div>
     `;
     this.panels = [
       requiredElement<HTMLCanvasElement>(host, '[data-world-panel="current"]'),
       requiredElement<HTMLCanvasElement>(host, '[data-world-panel="next"]')
     ];
-    this.connector = requiredElement(host, "[data-world-connector]");
     this.host.style.setProperty("--world-overlap", "0px");
   }
 
@@ -186,39 +180,36 @@ export class WorldVisualLayer {
       : Math.max(0, distancePixels);
     this.lastDistance = distance;
     this.host.style.setProperty("--world-phase-px", `${distance}px`);
-    this.host.dataset.motionState = active ? "moving" : "recentering";
+    this.host.dataset.motionState = active ? "moving" : "reading";
 
     if (!active) {
       if (this.pendingAsset !== null) this.startStationaryTransition();
-      else this.placePanels(0, false);
       return;
     }
 
-    if (this.stationaryTransitionTimer !== null || this.stationaryCommitTimer !== null) {
+    if (this.stationaryCommitTimer !== null) {
       this.cancelStationaryTransition();
       this.transitionStartDistance = distance;
     }
     if (this.pendingAsset !== null) {
-      const transitionDistance = WORLD_WIDTH * (1 + WORLD_CONNECTOR_FRACTION);
-      const transition = Math.max(0, (distance - this.transitionStartDistance) / transitionDistance);
-      this.placePanels(Math.min(1, transition), true);
-      if (transition >= 1) this.commitPendingAsset();
+      const transition = Math.max(0, (distance - this.transitionStartDistance) / WORLD_WIDTH);
+      if (transition >= 1 - Number.EPSILON * 8) {
+        this.commitPendingAsset();
+      } else {
+        this.placePanels(Math.min(1, transition));
+      }
       return;
     }
     const progress = (distance % WORLD_WIDTH) / WORLD_WIDTH;
-    this.placePanels(progress, false);
+    this.placePanels(progress);
   }
 
-  private placePanels(progress: number, transitioning: boolean): void {
-    const travel = transitioning
-      ? progress * (100 + WORLD_CONNECTOR_FRACTION * 100)
-      : progress * 100;
+  private placePanels(progress: number): void {
+    const travel = progress * 100;
     const currentX = -travel;
-    const nextX = (transitioning ? 108 : 100) - travel;
+    const nextX = 100 - travel;
     this.panels[0].style.transform = `translate3d(${currentX}%, 0, 0)`;
     this.panels[1].style.transform = `translate3d(${nextX}%, 0, 0)`;
-    this.connector.hidden = !transitioning;
-    this.connector.style.transform = `translate3d(${(100 - travel) * 12.5}%, 0, 0)`;
   }
 
   private loadWorldAsset(assetPath: string, commitImmediately: boolean): void {
@@ -255,8 +246,7 @@ export class WorldVisualLayer {
     this.pendingAsset = null;
     this.drawPanel(this.panels[0], this.currentAsset);
     this.drawPanel(this.panels[1], this.currentAsset);
-    this.connector.hidden = true;
-    this.placePanels(0, false);
+    this.placePanels(0);
     this.prepareNextWorld(this.currentAsset.path);
   }
 
@@ -267,25 +257,16 @@ export class WorldVisualLayer {
   }
 
   private startStationaryTransition(): void {
-    if (this.pendingAsset === null || this.stationaryTransitionTimer !== null ||
-        this.stationaryCommitTimer !== null) return;
-    this.host.dataset.motionState = "recentering";
-    this.placePanels(0, true);
-    this.stationaryTransitionTimer = setTimeout(() => {
-      this.stationaryTransitionTimer = null;
-      this.placePanels(1, true);
-    }, 16);
+    if (this.pendingAsset === null || this.stationaryCommitTimer !== null) return;
+    this.host.dataset.motionState = "reading";
     this.stationaryCommitTimer = setTimeout(() => {
       this.stationaryCommitTimer = null;
-      this.host.dataset.motionState = "moving";
       this.commitPendingAsset();
-    }, 760);
+    }, 720);
   }
 
   private cancelStationaryTransition(): void {
-    if (this.stationaryTransitionTimer !== null) clearTimeout(this.stationaryTransitionTimer);
     if (this.stationaryCommitTimer !== null) clearTimeout(this.stationaryCommitTimer);
-    this.stationaryTransitionTimer = null;
     this.stationaryCommitTimer = null;
   }
 

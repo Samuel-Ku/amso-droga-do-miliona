@@ -27,16 +27,16 @@ describe("StoryObjectiveDirector", () => {
     expect(director.snapshot.activeSegmentId).toBe("epoch_2.quality_series");
   });
 
-  it("models the million threshold as 50 packages and 12 combinations without symbols", () => {
+  it("models the million threshold as 30 orders and 12 combinations without symbols", () => {
     const director = new StoryObjectiveDirector();
     director.enterSegment("epoch_5.million_threshold");
     expect(director.snapshot.epoch5.millionThreshold).toMatchObject({
-      counterValue: 999_950, packageTarget: 50, combinationTarget: 12, completed: false
+      counterValue: 999_970, orderTarget: 30, combinationTarget: 12, completed: false
     });
     for (let index = 0; index < 50; index += 1) director.recordMillionPackage();
     for (let index = 0; index < 12; index += 1) director.recordMillionCombination();
     expect(director.snapshot.epoch5.millionThreshold).toMatchObject({
-      packagesCollected: 50, combinationsCompleted: 12, counterValue: 1_000_000, completed: true
+      ordersCollected: 30, combinationsCompleted: 12, counterValue: 1_000_000, completed: true
     });
     expect(director.snapshot.completedObjectiveIds).toContain("epoch_5.million_threshold");
   });
@@ -174,7 +174,7 @@ describe("StoryObjectiveDirector", () => {
     director.enterSegment("epoch_5.million_threshold");
     for (let index = 0; index < 51; index += 1) director.recordMillionPackage();
     expect(director.snapshot.epoch5.millionThreshold).toMatchObject({
-      packagesCollected: 50,
+      ordersCollected: 30,
       combinationsCompleted: 0,
       counterValue: 1_000_000,
       completed: false

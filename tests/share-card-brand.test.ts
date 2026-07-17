@@ -76,7 +76,7 @@ describe("campaign result share card brand", () => {
     const harness = installShareCardHarness(true);
 
     const card = await createCampaignShareCard(
-      { score: 1_234_567, packages: 42 },
+      { score: 1_234_567, orders: 42 },
       { canonicalUrl: "https://example.com/gra" },
     );
 
@@ -92,7 +92,7 @@ describe("campaign result share card brand", () => {
     const harness = installShareCardHarness(false);
 
     await createCampaignShareCard(
-      { score: 999_999, packages: 28 },
+      { score: 999_999, orders: 28 },
       { canonicalUrl: "https://example.com/gra" },
     );
 

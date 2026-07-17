@@ -17,7 +17,7 @@
     "soundOff": "Włącz dźwięk",
     "fullscreenEnter": "Pełny ekran",
     "fullscreenExit": "Wyjdź z pełnego",
-    "hudPackages": "Paczki",
+    "hudPackages": "Zamówienia",
     "hudScore": "Wynik",
     "pauseAction": "Pauza",
     "storyMode": "Droga do Miliona",
@@ -49,7 +49,7 @@
     "corridorEyebrow": "Bezpieczny odcinek — historia biegnie dalej",
     "storyResultEyebrow": "Dziękujemy za wspólną drogę",
     "storyResultTitle": "Twoja Droga do Miliona",
-    "resultPackages": "Dostarczone paczki",
+    "resultPackages": "Zrealizowane zamówienia",
     "resultScore": "Wynik",
     "resultCombo": "Najlepsza seria",
     "storyResultIntro": "Biegnij do pierwszego niezabezpieczonego zderzenia i ustanów rekord.",
@@ -88,10 +88,10 @@
     "parcelSecondLifeLine1": "2×",
     "parcelSecondLifeLine2": "PUNKTY",
     "corridorResume": "Biegniemy dalej.",
-    "powerupSecondLife": "2× PUNKTY — każda paczka liczy się podwójnie.",
+    "powerupSecondLife": "2× WYNIK — punkty za każde zamówienie liczą się podwójnie.",
     "powerupWarranty": "GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania.",
     "logisticWarning": "Uwaga: fala logistyczna",
-    "logisticReward": "Fala opanowana — złote paczki są Twoje."
+    "logisticReward": "Fala opanowana — zamówienia są zrealizowane."
   },
   "assets": {
     "bundles": [
@@ -183,7 +183,7 @@
         "body": ["Pierwsze zamówienie przygotowaliśmy własnymi rękami. Tak rozpoczęła się droga AMSO."],
         "vignette": "first-package", "continueLabel": "Dalej", "perspective": "amso",
         "steps": [
-          { "id": "game-purpose", "title": "To gra o drodze AMSO.", "body": ["Bieg łączy etapy rozwoju firmy z bezpiecznymi kartami historii. Skacz klawiszem W, ↑, Spacją lub dotykiem; ślizgaj się klawiszem S, ↓ lub gestem w dół i zbieraj paczki aż do miliona."], "continueLabel": "Poznaj początek", "safe": true, "fact": "Gra opowiada prawdziwą drogę AMSO od pierwszej paczki do miliona zamówień.", "action": "Pierwsza paczka rusza przez podgląd kolejnych miejsc: magazynu, stanowiska jakości i licznika.", "finalFrame": "Pierwsza paczka stoi na początku trasy prowadzącej do czytelnego znaku 1 000 000." },
+          { "id": "game-purpose", "title": "To gra o drodze AMSO.", "body": ["Bieg łączy etapy rozwoju firmy z bezpiecznymi kartami historii. Skacz klawiszem W, ↑, Spacją lub dotykiem; ślizgaj się klawiszem S, ↓ lub gestem w dół i realizuj zamówienia aż do miliona."], "continueLabel": "Poznaj początek", "safe": true, "fact": "Gra opowiada prawdziwą drogę AMSO od pierwszej paczki do miliona zamówień.", "action": "Pierwsza paczka rusza przez podgląd kolejnych miejsc: magazynu, stanowiska jakości i licznika.", "finalFrame": "Pierwsza paczka stoi na początku trasy prowadzącej do czytelnego znaku 1 000 000." },
           { "id": "first-hand-packed", "title": "Pierwszą paczkę przygotowaliśmy sami.", "body": ["Z małego sklepu i magazynu wielkości kawalerki własnymi rękami wysłaliśmy pierwsze zamówienie. Ty poprowadzisz tę drogę aż do miliona."], "continueLabel": "Rozpocznij drogę", "safe": true, "fact": "Pierwsze zamówienie AMSO zostało przygotowane własnymi rękami w małym sklepie i magazynie.", "action": "Pracownik składa karton, wkłada urządzenie, zamyka paczkę i nakleja etykietę.", "finalFrame": "Gotowa pierwsza paczka stoi przy wyjściu z małego magazynu, a zespół AMSO jest obok." }
         ]
       },
@@ -234,16 +234,16 @@
       },
       {
         "id": "story.million_approach", "chapter": "epoch_5", "eyebrow": "Nasza historia", "title": "Ostatnia droga do miliona.",
-        "body": ["Licznik zaczyna od 999 950 i rośnie wraz z każdą zebraną paczką."], "vignette": "million-counter", "continueLabel": "Rozpocznij finał", "perspective": "amso",
+        "body": ["Licznik zaczyna od 999 970 i rośnie wraz z każdym zrealizowanym zamówieniem."], "vignette": "million-counter", "continueLabel": "Rozpocznij finał", "perspective": "amso",
         "steps": [
-          { "id": "counter-source", "title": "Do miliona zostało 50 zamówień.", "body": ["Licznik zaczyna od 999 950. Każda zebrana paczka doda dokładnie jedno zamówienie, a dwanaście kombinacji przypomni umiejętności z całej drogi."], "continueLabel": "Poznaj zasady finału", "safe": true, "fact": "Finał rozpoczyna się od 999 950 zamówień i wymaga zebrania 50 paczek.", "action": "Licznik zatrzymuje się na 999 950, a pięćdziesiąt paczek ustawia się przed trasą.", "finalFrame": "Czytelny licznik 999 950 stoi nad trasą, a pierwsza z pięćdziesięciu paczek czeka po prawej." }
+          { "id": "counter-source", "title": "Do miliona zostało 30 zamówień.", "body": ["Licznik zaczyna od 999 970. Każde zebrane urządzenie lub paczka realizuje dokładnie jedno zamówienie, a dwanaście kombinacji przypomni umiejętności z całej drogi."], "continueLabel": "Poznaj zasady finału", "safe": true, "fact": "Finał rozpoczyna się od 999 970 zamówień i wymaga zrealizowania kolejnych 30.", "action": "Licznik zatrzymuje się na 999 970, a różne zamówienia ustawiają się przed trasą.", "finalFrame": "Czytelny licznik 999 970 stoi nad trasą, a pierwsze z trzydziestu zamówień czeka po prawej." }
         ]
       },
       {
         "id": "challenge.million_wave", "chapter": "epoch_5", "eyebrow": "Wyzwanie", "title": "Próg Miliona sprawdza całą drogę.",
-        "body": ["Zbierz 50 paczek i ukończ dwanaście różnych kombinacji."], "vignette": "million-wave", "continueLabel": "Podejmij wyzwanie", "perspective": "challenge",
+        "body": ["Zrealizuj 30 zamówień i ukończ dwanaście różnych kombinacji."], "vignette": "million-wave", "continueLabel": "Podejmij wyzwanie", "perspective": "challenge",
         "steps": [
-          { "id": "two-goals", "title": "Dwanaście prób prowadzi do miliona.", "body": ["Zbierz 50 paczek w dwunastu kombinacjach skoku oraz ślizgu. W fabule nie ma game over: pominięte paczki wracają bez przeszkód."], "continueLabel": "Rozpocznij finał", "safe": true, "fact": "Próg Miliona wymaga 50 paczek i dwunastu kombinacji bez game over w fabule.", "action": "HUD pokazuje jeden licznik zamówień rosnący z każdą zebraną paczką.", "finalFrame": "Licznik zamówień jest widoczny nad bezpiecznym początkiem finałowej trasy." }
+          { "id": "two-goals", "title": "Dwanaście prób prowadzi do miliona.", "body": ["Zrealizuj 30 zamówień w dwunastu kombinacjach skoku oraz ślizgu. W fabule nie ma game over: pominięte zamówienia wracają bez przeszkód."], "continueLabel": "Rozpocznij finał", "safe": true, "fact": "Próg Miliona wymaga 30 zamówień i dwunastu kombinacji bez game over w fabule.", "action": "HUD pokazuje jeden licznik zamówień rosnący z każdym zebranym urządzeniem lub paczką.", "finalFrame": "Licznik zamówień jest widoczny nad bezpiecznym początkiem finałowej trasy." }
         ]
       },
       {
@@ -257,7 +257,7 @@
         "id": "story.challenge_handoff", "chapter": "finale", "eyebrow": "TRYB WYZWANIA", "title": "Wynik zostaje. Zasady się zmieniają.",
         "body": ["Płynnie przechodzisz z historii do Trybu Wyzwania."], "vignette": "thank-you", "continueLabel": "Podejmuję wyzwanie", "perspective": "challenge",
         "steps": [
-          { "id": "rules-change", "title": "Wynik zostaje. Zasady się zmieniają.", "body": ["Zachowujesz punkty, paczki i aktywne bonusy. Teraz tempo rośnie, a pierwsze niezabezpieczone zderzenie kończy bieg. Gwarancja 48 M może uratować próbę raz."], "continueLabel": "Podejmuję wyzwanie", "safe": true, "fact": "Po fabule wynik pozostaje, a challenge kończy pierwsze niezabezpieczone zderzenie.", "action": "Panel zachowanego wyniku przesuwa się obok znaku TRYB WYZWANIA i tarczy Gwarancji 48 M.", "finalFrame": "Zachowany wynik, nowe zasady i aktywna Gwarancja 48 M są opisane przed odliczaniem 3–2–1." }
+          { "id": "rules-change", "title": "Wynik zostaje. Zasady się zmieniają.", "body": ["Zachowujesz punkty, zamówienia i aktywne bonusy. Teraz tempo rośnie, a pierwsze niezabezpieczone zderzenie kończy bieg. Gwarancja 48 M może uratować próbę raz."], "continueLabel": "Podejmuję wyzwanie", "safe": true, "fact": "Po fabule wynik pozostaje, a challenge kończy pierwsze niezabezpieczone zderzenie.", "action": "Panel zachowanego wyniku przesuwa się obok znaku TRYB WYZWANIA i tarczy Gwarancji 48 M.", "finalFrame": "Zachowany wynik, nowe zasady i aktywna Gwarancja 48 M są opisane przed odliczaniem 3–2–1." }
         ]
       }
     ],
@@ -282,10 +282,10 @@
     ],
     "epochs": [
       { "index": 0, "id": "poczatek", "name": "Początek i zator", "year": "Pierwsza paczka", "themeIndex": 0, "durationSeconds": 75, "obstaclePool": ["box-stack", "pallet", "overhead"], "difficultyStart": 0.95, "difficultyEnd": 1.35, "challengeName": "Zator Zamówień" },
-      { "index": 1, "id": "drugie_zycie", "name": "Proces i Jakość", "year": "Jakość i zaufanie", "themeIndex": 1, "durationSeconds": 45, "obstaclePool": ["box-stack", "pallet", "overhead"], "difficultyStart": 1.22, "difficultyEnd": 1.48, "challengeName": "Proces i Jakość", "powerUpDebut": "drugie_zycie" },
-      { "index": 2, "id": "historie_klientow", "name": "Firma rośnie razem ze sprzętem", "year": "Jedna prawdziwa historia", "themeIndex": 2, "durationSeconds": 40, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.34, "difficultyEnd": 1.58, "challengeName": "Rozwój Firmy", "powerUpDebut": "drugie_zycie" },
+      { "index": 1, "id": "podwojny_wynik", "name": "Proces i Jakość", "year": "Jakość i zaufanie", "themeIndex": 1, "durationSeconds": 45, "obstaclePool": ["box-stack", "pallet", "overhead"], "difficultyStart": 1.22, "difficultyEnd": 1.48, "challengeName": "Proces i Jakość", "powerUpDebut": "podwojny_wynik" },
+      { "index": 2, "id": "historie_klientow", "name": "Firma rośnie razem ze sprzętem", "year": "Jedna prawdziwa historia", "themeIndex": 2, "durationSeconds": 40, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.34, "difficultyEnd": 1.58, "challengeName": "Rozwój Firmy", "powerUpDebut": "podwojny_wynik" },
       { "index": 3, "id": "skala", "name": "Skala Zamówień", "year": "Roczna skala", "themeIndex": 3, "durationSeconds": 50, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.45, "difficultyEnd": 1.7, "challengeName": "Skala Zamówień", "powerUpDebut": "gwarancja_48" },
-      { "index": 4, "id": "droga_do_miliona", "name": "Droga do Miliona", "year": "999 950 → 1 000 000", "themeIndex": 4, "durationSeconds": 75, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.55, "difficultyEnd": 1.85, "challengeName": "Próg Miliona" }
+      { "index": 4, "id": "droga_do_miliona", "name": "Droga do Miliona", "year": "999 970 → 1 000 000", "themeIndex": 4, "durationSeconds": 75, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.55, "difficultyEnd": 1.85, "challengeName": "Próg Miliona" }
     ],
     "modeHandoff": {
       "id": "story.challenge_handoff",
@@ -296,9 +296,9 @@
       "resumeCountdownSeconds": 3
     },
     "millionThreshold": {
-      "counterStart": 999950,
+      "counterStart": 999970,
       "counterTarget": 1000000,
-      "packageTarget": 50,
+      "orderTarget": 30,
       "combinationTarget": 12
     }
   },

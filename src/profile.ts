@@ -4,7 +4,7 @@ export interface PlayerProfile {
   schemaVersion: 4;
   storyCompleted: boolean;
   bestChallengeScore: number;
-  bestChallengePackages: number;
+  bestChallengeOrders: number;
   challengeRuns: number;
   soundMuted: boolean;
   fullscreenPreference: "fullscreen" | "portrait" | null;
@@ -17,7 +17,7 @@ function emptyProfile(): PlayerProfile {
     schemaVersion: 4,
     storyCompleted: false,
     bestChallengeScore: 0,
-    bestChallengePackages: 0,
+    bestChallengeOrders: 0,
     challengeRuns: 0,
     soundMuted: false,
     fullscreenPreference: null
@@ -66,8 +66,8 @@ export class PlayerProfileStore {
         bestChallengeScore: Math.round(
           safeNonNegativeNumber(parsed.bestChallengeScore ?? parsed.bestScore)
         ),
-        bestChallengePackages: Math.round(
-          safeNonNegativeNumber(parsed.bestChallengePackages ?? parsed.bestPackages)
+        bestChallengeOrders: Math.round(
+          safeNonNegativeNumber(parsed.bestChallengeOrders ?? parsed.bestPackages)
         ),
         challengeRuns: Math.round(safeNonNegativeNumber(parsed.challengeRuns)),
         soundMuted: parsed.soundMuted === true,
@@ -100,14 +100,14 @@ export class PlayerProfileStore {
     this.write();
   }
 
-  public recordChallengeResult(score: number, packages: number): void {
+  public recordChallengeResult(score: number, orders: number): void {
     this.profile.bestChallengeScore = Math.max(
       this.profile.bestChallengeScore,
       Math.round(safeNonNegativeNumber(score))
     );
-    this.profile.bestChallengePackages = Math.max(
-      this.profile.bestChallengePackages,
-      Math.round(safeNonNegativeNumber(packages))
+    this.profile.bestChallengeOrders = Math.max(
+      this.profile.bestChallengeOrders,
+      Math.round(safeNonNegativeNumber(orders))
     );
     this.profile.challengeRuns += 1;
     this.write();

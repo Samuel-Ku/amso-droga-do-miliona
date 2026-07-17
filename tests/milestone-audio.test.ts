@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CampaignAudio } from "../src/audio/CampaignAudio";
+import { CampaignAudio, orderPickupFrequency } from "../src/audio/CampaignAudio";
 
 function audioHarness(): { context: AudioContext; oscillatorCount: () => number } {
   let oscillators = 0;
@@ -34,6 +34,30 @@ function audioHarness(): { context: AudioContext; oscillatorCount: () => number 
 afterEach(() => vi.useRealTimers());
 
 describe("milestone audio", () => {
+  it("raises the order motif through exactly five steps and then caps it", () => {
+    const frequencies = [1, 2, 3, 4, 5, 6, 20].map(orderPickupFrequency);
+    expect(new Set(frequencies.slice(0, 5))).toHaveLength(5);
+    expect(frequencies[5]).toBe(frequencies[4]);
+    expect(frequencies[6]).toBe(frequencies[4]);
+  });
+
+  it("uses separate recognizable cues for both power-ups", async () => {
+    vi.useFakeTimers();
+    const harness = audioHarness();
+    const audio = new CampaignAudio({ contextFactory: () => harness.context });
+    await audio.start();
+    const afterMusic = harness.oscillatorCount();
+
+    audio.playPowerUpCue("gwarancja_48");
+    const warrantyNotes = harness.oscillatorCount() - afterMusic;
+    audio.playPowerUpCue("podwojny_wynik");
+    const doubleScoreNotes = harness.oscillatorCount() - afterMusic - warrantyNotes;
+
+    expect(warrantyNotes).toBe(4);
+    expect(doubleScoreNotes).toBe(3);
+    await audio.destroy();
+  });
+
   it("adds notes for higher tiers and produces no cue while muted", async () => {
     vi.useFakeTimers();
     const harness = audioHarness();
@@ -41,14 +65,14 @@ describe("milestone audio", () => {
     await audio.start();
     const afterMusic = harness.oscillatorCount();
 
-    audio.playMilestoneCue("confetti-pop", 1);
+    audio.playMilestoneCue("order-confetti", 1);
     const tierOneNotes = harness.oscillatorCount() - afterMusic;
-    audio.playMilestoneCue("confetti-pop", 3);
+    audio.playMilestoneCue("order-confetti", 3);
     const tierThreeNotes = harness.oscillatorCount() - afterMusic - tierOneNotes;
     audio.playRecordCue();
     const recordNotes = harness.oscillatorCount() - afterMusic - tierOneNotes - tierThreeNotes;
     audio.setMuted(true);
-    audio.playMilestoneCue("confetti-pop", 3);
+    audio.playMilestoneCue("order-confetti", 3);
     audio.playRecordCue();
 
     expect(tierOneNotes).toBe(3);

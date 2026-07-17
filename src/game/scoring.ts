@@ -40,7 +40,7 @@ export function resolvePackageCollection(
   doublePoints: boolean
 ): PackageCollectionResolution {
   const currentCombo = normalizedCombo(combo);
-  if (kind !== "standard" && kind !== "golden") {
+  if (kind !== "standard") {
     return {
       countsAsPackage: false,
       pointsAwarded: 0,
@@ -50,12 +50,11 @@ export function resolvePackageCollection(
   }
 
   const basePoints = Math.max(0, Math.floor(scoreValue));
-  const comboMultiplier = kind === "golden" ? 1 : currentCombo;
-  const pointsAwarded = basePoints * comboMultiplier * (doublePoints ? 2 : 1);
+  const pointsAwarded = basePoints * currentCombo * (doublePoints ? 2 : 1);
   return {
     countsAsPackage: true,
     pointsAwarded,
-    // calculateScore supplies the ordinary 100 points through packagesCollected.
+    // calculateScore supplies the ordinary 100 points through ordersCollected.
     bonusScoreAwarded: Math.max(0, pointsAwarded - GAMEPLAY.packageScore),
     nextCombo: Math.min(MAX_COMBO_MULTIPLIER, currentCombo + 1)
   };
@@ -71,12 +70,12 @@ export function packageBonusScore(scoreValue: number): number {
 
 export function calculateScore(
   distancePixels: number,
-  packagesCollected: number,
+  ordersCollected: number,
   bonusScore = 0
 ): number {
   return (
     distanceInMeters(distancePixels) +
-    Math.max(0, Math.floor(packagesCollected)) * GAMEPLAY.packageScore +
+    Math.max(0, Math.floor(ordersCollected)) * GAMEPLAY.packageScore +
     Math.max(0, Math.floor(bonusScore))
   );
 }

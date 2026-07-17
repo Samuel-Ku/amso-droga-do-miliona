@@ -35,7 +35,7 @@ export interface StoryMicrolevelDefinition {
   speedEndMultiplier: number;
   waves: readonly AuthoredWaveDefinition[];
   repeatWavesUntil?: number;
-  finalePackageTarget?: number;
+  finaleOrderTarget?: number;
 }
 
 export type AuthoredWaveValidationCode =
@@ -61,8 +61,8 @@ export interface AuthoredWaveValidationIssue {
 export interface AuthoredWaveResult {
   waveId: string;
   attempts: number;
-  packagesCollected: number;
-  packageTarget: number;
+  ordersCollected: number;
+  orderTarget: number;
   collectionRatio: number;
   actionSucceeded: boolean;
   passed: boolean;
@@ -78,10 +78,10 @@ export interface AuthoredWaveProgressSnapshot {
   currentActions?: readonly AuthoredWaveAction[];
   currentObstacleVariant?: SemanticObstacleVariant;
   attemptsOnCurrentWave: number;
-  packagesCollectedOnCurrentWave: number;
+  ordersCollectedOnCurrentWave: number;
   packagesAvailableOnCurrentWave: number;
-  totalPackagesCollected: number;
-  totalPackageTarget: number | null;
+  totalOrdersCollected: number;
+  totalOrderTarget: number | null;
   elapsedSeconds: number;
   minimumDurationSeconds: number;
   completed: boolean;
@@ -130,12 +130,12 @@ export function validateStoryMicrolevel(
       message: `${definition.id}: program must contain at least one authored wave.`
     });
   }
-  if (definition.finalePackageTarget !== undefined &&
-      (definition.finalePackageTarget < 40 || definition.finalePackageTarget > 60)) {
+  if (definition.finaleOrderTarget !== undefined &&
+      (definition.finaleOrderTarget < 30 || definition.finaleOrderTarget > 60)) {
     issues.push({
       code: "finale_target_out_of_range",
       microlevelId: definition.id,
-      message: `${definition.id}: finale package target must stay between 40 and 60.`
+      message: `${definition.id}: finale order target must stay between 30 and 60.`
     });
   }
   for (const wave of definition.waves) {
@@ -235,8 +235,8 @@ export class AuthoredWaveDirector {
   private waveIndex = 0;
   private wavesCompleted = 0;
   private attempts = 1;
-  private packagesCollected = 0;
-  private totalPackagesCollected = 0;
+  private ordersCollected = 0;
+  private totalOrdersCollected = 0;
   private elapsedSeconds = 0;
   private lastResult: AuthoredWaveResult | null = null;
 
@@ -253,9 +253,9 @@ export class AuthoredWaveDirector {
     const wave = this.currentWave;
     if (!wave) return;
     const available = availablePackages(wave);
-    if (this.packagesCollected >= available) return;
-    this.packagesCollected += 1;
-    this.totalPackagesCollected += 1;
+    if (this.ordersCollected >= available) return;
+    this.ordersCollected += 1;
+    this.totalOrdersCollected += 1;
   }
 
   public resolve(actionSucceeded: boolean): AuthoredWaveResult {
@@ -264,17 +264,17 @@ export class AuthoredWaveDirector {
       throw new Error(`${this.definition.id}: no active authored wave to resolve.`);
     }
     const available = availablePackages(wave);
-    const ratio = available <= 0 ? 0 : this.packagesCollected / available;
-    const passed = actionSucceeded && this.packagesCollected >= requiredPackages(available);
+    const ratio = available <= 0 ? 0 : this.ordersCollected / available;
+    const passed = actionSucceeded && this.ordersCollected >= requiredPackages(available);
     const result: AuthoredWaveResult = {
       waveId: wave.id,
       attempts: this.attempts,
-      packagesCollected: this.packagesCollected,
-      packageTarget: available,
+      ordersCollected: this.ordersCollected,
+      orderTarget: available,
       collectionRatio: ratio,
       actionSucceeded,
       passed,
-      perfect: passed && this.packagesCollected === available
+      perfect: passed && this.ordersCollected === available
     };
     this.lastResult = result;
     if (passed) {
@@ -288,7 +288,7 @@ export class AuthoredWaveDirector {
       }
       this.attempts += 1;
     }
-    this.packagesCollected = 0;
+    this.ordersCollected = 0;
     return result;
   }
 
@@ -303,9 +303,9 @@ export class AuthoredWaveDirector {
 
   public get targetsCompleted(): boolean {
     const waveTarget = this.definition.repeatWavesUntil ?? this.definition.waves.length;
-    const packageTarget = this.definition.finalePackageTarget ?? 0;
-    return this.wavesCompleted >= waveTarget && this.totalPackagesCollected >= packageTarget &&
-      this.packagesCollected === 0;
+    const orderTarget = this.definition.finaleOrderTarget ?? 0;
+    return this.wavesCompleted >= waveTarget && this.totalOrdersCollected >= orderTarget &&
+      this.ordersCollected === 0;
   }
 
   public get completed(): boolean {
@@ -323,10 +323,10 @@ export class AuthoredWaveDirector {
       currentActions: wave?.actions ?? [],
       ...(wave ? { currentObstacleVariant: wave.obstacleVariant } : {}),
       attemptsOnCurrentWave: this.attempts,
-      packagesCollectedOnCurrentWave: this.packagesCollected,
+      ordersCollectedOnCurrentWave: this.ordersCollected,
       packagesAvailableOnCurrentWave: wave ? availablePackages(wave) : 0,
-      totalPackagesCollected: this.totalPackagesCollected,
-      totalPackageTarget: this.definition.finalePackageTarget ?? null,
+      totalOrdersCollected: this.totalOrdersCollected,
+      totalOrderTarget: this.definition.finaleOrderTarget ?? null,
       elapsedSeconds: this.elapsedSeconds,
       minimumDurationSeconds: this.definition.minimumDurationSeconds,
       completed: this.completed,
@@ -486,7 +486,7 @@ export const STORY_MICROLEVELS: readonly StoryMicrolevelDefinition[] = Object.fr
     speedStartMultiplier: 1.55,
     speedEndMultiplier: 1.85,
     repeatWavesUntil: 12,
-    finalePackageTarget: 50,
+    finaleOrderTarget: 30,
     waves: [
       wave("million-single-jump", "jump", "pallet", 2, 1.55, "single"),
       wave("million-single-slide", "slide", "overhead", 2, 1.58, "single"),

@@ -8,7 +8,7 @@ describe("local QA session report", () => {
     const snapshot = {
       mode: "story",
       durationSeconds: 25,
-      packagesCollected: 7,
+      ordersCollected: 7,
       collisions: 1,
       bestCombo: 3,
       speed: 322,
@@ -59,7 +59,7 @@ describe("local QA session report", () => {
       mode: "challenge",
       durationSeconds: 74.2,
       challengeScore: 8_200,
-      challengePackagesCollected: 19,
+      challengeOrdersCollected: 19,
       speed: 672,
       collisionType: "overhead",
       controlMethod: "keyboard",
@@ -72,7 +72,7 @@ describe("local QA session report", () => {
       speed: 672,
       reason: "overhead",
       challengeScore: 8_200,
-      packagesCollected: 19
+      ordersCollected: 19
     });
     expect(collector.text()).not.toMatch(/name|email|userId/i);
   });

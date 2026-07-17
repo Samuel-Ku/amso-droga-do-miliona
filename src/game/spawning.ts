@@ -18,7 +18,8 @@ import type {
   PackageKind,
   PackageModel
 } from "./types";
-import type { PackageType, PowerUpKind } from "../shared/types";
+import type { OrderVisualType, PackageType, PowerUpKind } from "../shared/types";
+import { ORDER_VISUAL_TYPES } from "./runner-artwork";
 import type { SemanticObstacleVariant } from "./semantic-obstacle";
 
 export interface ObstacleSpec {
@@ -33,6 +34,7 @@ export interface PackageSpawn {
   kind: PackageKind;
   scoreValue: number;
   packageType: PackageType;
+  orderVisualType: OrderVisualType;
   weightKg: number;
   storyRewardPattern?: boolean;
   storyOrder?: boolean;
@@ -92,6 +94,46 @@ export interface AuthoredRewardWaveOptions {
 
 export const MIN_AUTHORED_REACTION_SECONDS = 1.6;
 const PACKAGE_MODEL_SIZE = 30;
+
+/** Soft weighted random: natural short runs, no four-of-a-kind, stale types gain weight. */
+export class WeightedOrderVisualDirector {
+  private readonly unseen = new Map<OrderVisualType, number>(
+    ORDER_VISUAL_TYPES.map((type) => [type, 0])
+  );
+  private readonly recent: OrderVisualType[] = [];
+
+  public constructor(private readonly random: SeededRandom) {}
+
+  public next(forced?: OrderVisualType): OrderVisualType {
+    const selected = forced ?? this.pickWeighted();
+    for (const type of ORDER_VISUAL_TYPES) {
+      this.unseen.set(type, type === selected ? 0 : (this.unseen.get(type) ?? 0) + 1);
+    }
+    this.recent.push(selected);
+    if (this.recent.length > 3) this.recent.shift();
+    return selected;
+  }
+
+  private pickWeighted(): OrderVisualType {
+    const blocked = this.recent.length === 3 && this.recent.every((type) => type === this.recent[0])
+      ? this.recent[0]
+      : null;
+    const entries = ORDER_VISUAL_TYPES.map((type) => {
+      const unseenFor = this.unseen.get(type) ?? 0;
+      return {
+        type,
+        weight: type === blocked ? 0 : 1 + Math.max(0, unseenFor - 11) * 0.42
+      };
+    });
+    const total = entries.reduce((sum, entry) => sum + entry.weight, 0);
+    let roll = this.random.next() * total;
+    for (const entry of entries) {
+      roll -= entry.weight;
+      if (roll <= 0 && entry.weight > 0) return entry.type;
+    }
+    return entries.find(({ weight }) => weight > 0)?.type ?? "parcel";
+  }
+}
 
 /** Keeps authored reward patterns reachable as challenge speed increases. */
 export function authoredRewardSpawnX(
@@ -233,6 +275,7 @@ export function createPackagePool(size: number = GAMEPLAY.packagePoolSize): Pack
     size: PACKAGE_MODEL_SIZE,
     phase: 0,
     packageType: "notebook" as PackageType,
+    orderVisualType: "notebook" as OrderVisualType,
     weightKg: 0
   }));
 }
@@ -322,7 +365,8 @@ function buildPackagePattern(
   random: SeededRandom,
   speed: number,
   narrative: boolean,
-  narrativePowerUps: readonly PowerUpKind[]
+  narrativePowerUps: readonly PowerUpKind[],
+  orderVisuals: WeightedOrderVisualDirector
 ): PackageSpawn[] {
   const packCount = heights.length;
   const hasProtectedMiddle = packCount >= 3;
@@ -346,15 +390,12 @@ function buildPackagePattern(
         kind,
         scoreValue: isPowerUp ? 0 : GAMEPLAY.packageScore,
         packageType,
+        orderVisualType: orderVisuals.next(),
         weightKg: 0
       };
     });
   }
-  const specialRoll = random.next();
-  const powerUpIndex = hasProtectedMiddle && specialRoll < 0.18
-    ? random.integer(1, packCount - 2)
-    : -1;
-  const goldenIndex = hasProtectedMiddle && powerUpIndex < 0 && specialRoll < 0.34
+  const powerUpIndex = hasProtectedMiddle && random.next() < 0.12
     ? random.integer(1, packCount - 2)
     : -1;
   const powerUpKind = powerUpIndex >= 0
@@ -368,13 +409,10 @@ function buildPackagePattern(
       x: obstacleX + offset,
       y: GROUND_Y - height - 15,
       phase: random.range(0, Math.PI * 2),
-      kind: isPowerUp ? powerUpKind : index === goldenIndex ? "golden" : "standard",
-      scoreValue: isPowerUp
-        ? 0
-        : index === goldenIndex
-          ? GAMEPLAY.goldenPackageScore
-          : GAMEPLAY.packageScore,
+      kind: isPowerUp ? powerUpKind : "standard",
+      scoreValue: isPowerUp ? 0 : GAMEPLAY.packageScore,
       packageType,
+      orderVisualType: orderVisuals.next(),
       weightKg: 0
     };
   });
@@ -388,6 +426,7 @@ export class FairSpawner {
   private distanceUntilNext: number;
   private readonly obstaclePatterns: readonly ObstaclePatternDefinition[];
   private readonly patternBag: ShuffleBag<ObstaclePatternDefinition>;
+  private readonly orderVisuals: WeightedOrderVisualDirector;
 
   constructor(
     private readonly random: SeededRandom,
@@ -404,6 +443,7 @@ export class FairSpawner {
       ? allowedPatterns
       : OBSTACLE_PATTERN_CATALOG;
     this.patternBag = new ShuffleBag(this.obstaclePatterns, this.random);
+    this.orderVisuals = new WeightedOrderVisualDirector(this.random);
   }
 
   advance(
@@ -435,7 +475,8 @@ export class FairSpawner {
       this.random,
       speed,
       this.narrative,
-      this.narrativePowerUps
+      this.narrativePowerUps,
+      this.orderVisuals
     );
     const leftmost = Math.min(spawnX, ...packages.map(({ x }) => x));
     const shift = Math.max(0, spawnX - leftmost);
@@ -470,7 +511,7 @@ export function createAuthoredRewardWave(
       options.rewards.length < 1 || options.rewards.length > 2) return null;
   if (options.rewards.some(({ kind, packageType, storyOrder }) =>
     (storyOrder === true &&
-      (packageType === undefined || (kind !== "standard" && kind !== "golden")))
+      (packageType === undefined || kind !== "standard"))
   )) return null;
 
   const patternIndex = Math.max(0, Math.floor(options.patternIndex ?? 0));
@@ -511,13 +552,12 @@ export function createAuthoredRewardWave(
       y: kind === "overhead" ? GROUND_Y - height : GROUND_Y - height - 15,
       phase: (patternIndex + index) * 0.73,
       kind: packageKind,
-      scoreValue: packageKind === "golden"
-        ? GAMEPLAY.goldenPackageScore
-        : packageKind === "standard"
+      scoreValue: packageKind === "standard"
           ? GAMEPLAY.packageScore
           : 0,
       packageType: reward?.packageType ??
         packageTypes[(patternIndex + index) % packageTypes.length] ?? "notebook",
+      orderVisualType: ORDER_VISUAL_TYPES[(patternIndex + index) % ORDER_VISUAL_TYPES.length] ?? "parcel",
       weightKg: 0,
       storyRewardPattern: true,
       ...(options.authoredWaveId ? { authoredWaveId: options.authoredWaveId } : {}),
@@ -548,7 +588,7 @@ export function createAuthoredRewardWave(
 
 export function activateTutorialPackages(packages: PackageModel[]): void {
   const firstX = WORLD_WIDTH + GAMEPLAY.spawnPadding;
-  const positions = [firstX, firstX + 80, firstX + 160, firstX + 240];
+  const positions = [firstX, firstX + 80, firstX + 160, firstX + 240, firstX + 320];
   for (let index = 0; index < positions.length; index += 1) {
     const parcel = packages[index];
     const x = positions[index];
@@ -560,8 +600,10 @@ export function activateTutorialPackages(packages: PackageModel[]): void {
     parcel.y = GROUND_Y - parcel.size - 17;
     parcel.phase = index * 0.9;
     parcel.packageType = "notebook";
+    parcel.orderVisualType = ORDER_VISUAL_TYPES[index] ?? "parcel";
     parcel.weightKg = 0;
     parcel.storyRewardPattern = false;
+    parcel.authoredWaveId = "challenge-onboarding";
     delete parcel.storyOrder;
   }
 }
@@ -601,6 +643,7 @@ export function activateWave(
     parcel.y = spawn.y;
     parcel.phase = spawn.phase;
     parcel.packageType = spawn.packageType;
+    parcel.orderVisualType = spawn.orderVisualType;
     parcel.weightKg = spawn.weightKg;
     parcel.storyRewardPattern = spawn.storyRewardPattern === true;
     if (wave.authoredWaveId) parcel.authoredWaveId = wave.authoredWaveId;

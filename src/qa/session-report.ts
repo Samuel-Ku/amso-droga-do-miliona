@@ -26,14 +26,14 @@ export interface QaChallengeDeathRecord {
   speed: number;
   reason: string;
   challengeScore: number;
-  packagesCollected: number;
+  ordersCollected: number;
 }
 
 export interface QaSessionSnapshot {
   schema: "amso-runner-qa-v1";
   durationSeconds: number;
   mode: GameSnapshot["mode"];
-  packagesCollected: number;
+  ordersCollected: number;
   collisions: number;
   bestCombo: number;
   speed: number;
@@ -100,7 +100,7 @@ export class QaSessionReportCollector {
       speed: result.speed,
       reason: result.collisionType,
       challengeScore: result.challengeScore,
-      packagesCollected: result.challengePackagesCollected
+      ordersCollected: result.challengeOrdersCollected
     };
   }
 
@@ -135,7 +135,7 @@ export class QaSessionReportCollector {
       schema: "amso-runner-qa-v1",
       durationSeconds: latest?.durationSeconds ?? 0,
       mode: latest?.mode ?? "story",
-      packagesCollected: latest?.packagesCollected ?? 0,
+      ordersCollected: latest?.ordersCollected ?? 0,
       collisions: latest?.collisions ?? 0,
       bestCombo: latest?.bestCombo ?? 1,
       speed: latest?.speed ?? 0,

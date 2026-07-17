@@ -110,7 +110,7 @@ describe("single-file QA artwork", () => {
     const embeddedWebps = new Set(
       qaPreview.match(/data:image\/webp;base64,[A-Za-z0-9+/=]+/g) ?? []
     );
-    expect(embeddedWebps.size).toBe(7);
+    expect(embeddedWebps.size).toBe(10);
     const embeddedSvgs = new Set(
       qaPreview.match(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+/g) ?? []
     );

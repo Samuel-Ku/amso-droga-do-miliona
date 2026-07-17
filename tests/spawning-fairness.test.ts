@@ -22,6 +22,7 @@ import {
   OBSTACLE_PATTERN_CATALOG,
   PACKAGE_PATTERN_HEIGHTS,
   PACKAGE_PATTERN_IDS,
+  WeightedOrderVisualDirector,
   type SpawnWave
 } from "../src/game/spawning";
 import type { ObstacleModel, PackageKind } from "../src/game/types";
@@ -51,6 +52,16 @@ function isSpecial(kind: PackageKind): boolean {
 }
 
 describe("challenge spawning fairness", () => {
+  it("varies five order visuals without four identical pickups in a row", () => {
+    const director = new WeightedOrderVisualDirector(new SeededRandom(90210));
+    const sequence = Array.from({ length: 100 }, () => director.next());
+
+    expect(new Set(sequence)).toEqual(new Set(["notebook", "telefon", "pc", "lcd", "parcel"]));
+    for (let index = 3; index < sequence.length; index += 1) {
+      expect(new Set(sequence.slice(index - 3, index + 1)).size).toBeGreaterThan(1);
+    }
+  });
+
   it("publishes fourteen parcel patterns from one to seven parcels", () => {
     expect(PACKAGE_PATTERN_IDS).toHaveLength(14);
     const counts = new Set(PACKAGE_PATTERN_IDS.map((id) => PACKAGE_PATTERN_HEIGHTS[id].length));
@@ -116,7 +127,7 @@ describe("challenge spawning fairness", () => {
         speed,
         patternIndex: action === "jump" ? 2 : 3,
         source: "story-reward",
-        rewards: [{ kind: "golden" }, { kind: "gwarancja_48" }]
+        rewards: [{ kind: "podwojny_wynik" }, { kind: "gwarancja_48" }]
       });
       expect(wave).not.toBeNull();
       if (!wave) return;
@@ -125,7 +136,7 @@ describe("challenge spawning fairness", () => {
         .toBeGreaterThanOrEqual(MIN_AUTHORED_REACTION_SECONDS);
       expect(wave.kind === "overhead").toBe(action === "slide");
       expect(wave.source).toBe("story-reward");
-      expect(wave.packages.filter(({ kind }) => kind === "golden"))
+      expect(wave.packages.filter(({ kind }) => kind === "podwojny_wynik"))
         .toMatchObject([{ storyRewardPattern: true }]);
       expect(wave.packages.every(({ storyRewardPattern }) => storyRewardPattern)).toBe(true);
 
@@ -147,7 +158,7 @@ describe("challenge spawning fairness", () => {
       action: "jump",
       spawnX: RUNNER_X + RUNNER_WIDTH + 20,
       speed: 280 * 1.15,
-      rewards: [{ kind: "golden" }]
+      rewards: [{ kind: "podwojny_wynik" }]
     })).toBeNull();
   });
 
@@ -158,7 +169,7 @@ describe("challenge spawning fairness", () => {
       action: "jump",
       spawnX,
       speed,
-      rewards: [{ kind: "golden" }]
+      rewards: [{ kind: "podwojny_wynik" }]
     });
 
     expect(spawnX).toBeGreaterThan(SPAWN_X);
@@ -187,12 +198,12 @@ describe("challenge spawning fairness", () => {
         action,
         spawnX: SPAWN_X,
         speed: 280 * 1.15,
-        rewards: [{ kind: "golden" }]
+        rewards: [{ kind: "podwojny_wynik" }]
       });
       if (!wave) throw new Error("authored wave should be safe");
       const runner = createRunnerModel();
       const obstacle = obstacleFromWave(wave, runner.x);
-      const target = wave.packages.find(({ kind }) => kind === "golden");
+      const target = wave.packages.find(({ kind }) => kind === "podwojny_wynik");
       if (!target) throw new Error("target should exist");
       const parcel = {
         ...target,
@@ -219,7 +230,7 @@ describe("challenge spawning fairness", () => {
         spawnX: SPAWN_X,
         speed,
         patternIndex: variant,
-        rewards: [{ kind: "golden" }]
+        rewards: [{ kind: "podwojny_wynik" }]
       });
       expect(wave).not.toBeNull();
       if (!wave) continue;
@@ -260,13 +271,14 @@ describe("challenge spawning fairness", () => {
     const obstacle = obstacleFromWave(createBossAttackWave("box-stack", 810));
     const packages = [{
       active: true,
-      kind: "golden" as const,
+      kind: "standard" as const,
       scoreValue: 250,
       x: 750,
       y: GROUND_Y - 47,
       size: 30,
       phase: 0,
-      packageType: "notebook" as const,
+        packageType: "notebook" as const,
+        orderVisualType: "notebook" as const,
       weightKg: 0
     }];
 
@@ -298,7 +310,7 @@ describe("challenge spawning fairness", () => {
     expect(collidesWithObstacle(runner, obstacle)).toBe(false);
   });
 
-  it("can spawn golden parcels and every v3 power-up in deterministic challenge waves", () => {
+  it("spawns only ordinary orders and the two canonical power-ups", () => {
     const seen = new Set<PackageKind>();
 
     for (let seed = 0; seed < 24; seed += 1) {
@@ -323,7 +335,7 @@ describe("challenge spawning fairness", () => {
       }
     }
 
-    expect(seen.has("golden")).toBe(true);
+    expect(seen.has("standard")).toBe(true);
     expect(POWER_UP_VALUES.every((kind) => seen.has(kind))).toBe(true);
   });
 

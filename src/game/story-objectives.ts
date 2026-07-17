@@ -82,8 +82,8 @@ export interface StoryObjectivesSnapshot {
   };
   epoch5: {
     millionThreshold: {
-      packagesCollected: number;
-      packageTarget: number;
+      ordersCollected: number;
+      orderTarget: number;
       combinationsCompleted: number;
       combinationTarget: number;
       counterStart: number;
@@ -105,7 +105,7 @@ export const STORY_OBJECTIVE_TARGETS = {
   trustClean: 12,
   requiredOrders: 6,
   orderPeakSeconds: 60,
-  millionPackages: 50,
+  millionPackages: 30,
   millionCombinations: 12
 } as const;
 
@@ -393,8 +393,8 @@ export class StoryObjectiveDirector {
       },
       epoch5: {
         millionThreshold: {
-          packagesCollected: this.thresholdPackages,
-          packageTarget: TARGETS.millionPackages,
+          ordersCollected: this.thresholdPackages,
+          orderTarget: TARGETS.millionPackages,
           combinationsCompleted: this.thresholdCombinations,
           combinationTarget: TARGETS.millionCombinations,
           counterStart: 1_000_000 - TARGETS.millionPackages,

@@ -39,13 +39,13 @@ export type CampaignStoryCountdownValue = 3 | 2 | 1;
 export type CampaignPauseReason = "user" | "layout_change" | "visibility";
 
 export interface CampaignStoryResult {
-  packages: number;
+  orders: number;
   score: number;
   bestCombo: number;
 }
 
 export interface CampaignChallengeResult {
-  packages: number;
+  orders: number;
   totalScore: number;
   challengeScore: number;
   bestScore: number;
@@ -65,7 +65,7 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   fullscreenExit: "Wyjdź z pełnego",
   cssGameModeEnter: "Tryb gry",
   cssGameModeExit: "Wyjdź z trybu gry",
-  hudPackages: "Paczki",
+  hudPackages: "Zamówienia",
   hudScore: "Wynik",
   pauseAction: "Pauza",
   storyMode: "Droga do Miliona",
@@ -100,7 +100,7 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   storyCountdownLabel: "Wracamy do gry",
   storyResultEyebrow: "Dziękujemy za wspólną drogę",
   storyResultTitle: "Twoja Droga do Miliona",
-  resultPackages: "Dostarczone paczki",
+  resultPackages: "Zrealizowane zamówienia",
   resultScore: "Wynik",
   resultCombo: "Najlepsza seria",
   storyResultIntro: "Biegnij do pierwszego niezabezpieczonego zderzenia i ustanów rekord.",
@@ -165,14 +165,14 @@ export interface CampaignShareCardOptions {
   canonicalUrl: string;
   title?: string;
   scoreLabel?: string;
-  packagesLabel?: string;
+  ordersLabel?: string;
   callToAction?: string;
   publicationText?: string;
 }
 
 export interface CampaignShareRequest extends CampaignShareCardOptions {
   platform: CampaignSharePlatform;
-  result: { score: number; packages: number };
+  result: { score: number; orders: number };
 }
 
 type CampaignShareResult = CampaignShareRequest["result"];
@@ -184,15 +184,11 @@ function formatInteger(value: number): string {
 }
 
 export function campaignWorldCounterValue(
-  mode: CampaignMode,
-  visualStateId: string,
-  storyCounterValue: number,
+  _mode: CampaignMode,
+  _visualStateId: string,
+  counterValue: number,
 ): number {
-  if (mode === "challenge" &&
-      (visualStateId === "epoch_5.wave" || visualStateId === "challenge.million_wave")) {
-    return 999_999;
-  }
-  return storyCounterValue;
+  return counterValue;
 }
 
 export function campaignVisualStateAtProgress(
@@ -345,10 +341,10 @@ function drawShareCard(
   context.fill();
   context.fillStyle = "#d8d2c8";
   context.font = "800 28px system-ui, sans-serif";
-  context.fillText(options.packagesLabel ?? "DOSTARCZONE PACZKI", 120, 705);
+  context.fillText(options.ordersLabel ?? "ZREALIZOWANE ZAMÓWIENIA", 120, 705);
   context.fillStyle = "#faf7f0";
   context.font = "950 78px system-ui, sans-serif";
-  context.fillText(formatInteger(result.packages), 120, 797, 560);
+  context.fillText(formatInteger(result.orders), 120, 797, 560);
 
   context.fillStyle = brandGradient;
   context.beginPath();
@@ -595,7 +591,7 @@ export class CampaignShell {
               <span class="amso-campaign__hud-notice" data-campaign-hud-notice hidden role="status"></span>
             </div>
             <div class="amso-campaign__hud-stats">
-              <span><small data-campaign-copy="hudPackages">Paczki</small> <strong data-campaign-hud-packages>0</strong></span>
+              <span><small data-campaign-copy="hudPackages">Zamówienia</small> <strong data-campaign-hud-packages>0</strong></span>
               <span><small data-campaign-copy="hudScore">Wynik</small> <strong data-campaign-hud-score>0</strong></span>
               <span><small>SERIA</small> <strong data-campaign-hud-combo>×1</strong></span>
             </div>
@@ -613,7 +609,7 @@ export class CampaignShell {
                 <div>
                   <p><strong>Historia i bieg przeplatają się.</strong> Gdy pojawia się karta historii, trasa jest bezpieczna i niczego nie musisz omijać ani zbierać.</p>
                   <p><strong>Skacz</strong> dotykiem lub Spacją. <strong>Ślizg</strong> wykonaj gestem w dół albo klawiszem ↓.</p>
-                  <p><strong>Paczki zwiększają wynik i licznik.</strong> Specjalna paczka zawsze pokazuje swoją nazwę i działanie, a kolejne czyste akcje budują <strong>SERIĘ ×N</strong>.</p>
+                  <p><strong>Urządzenia i paczki realizują zamówienia.</strong> Bonus zawsze pokazuje swoje działanie, a kolejne czyste akcje budują <strong>SERIĘ ×N</strong>.</p>
                 </div>
               </details>
               <div class="amso-campaign__landing-actions" data-campaign-landing-actions></div>
@@ -677,7 +673,7 @@ export class CampaignShell {
               <p data-campaign-copy="pauseBody">Twój postęp jest bezpieczny.</p>
               <div class="amso-campaign__pause-bonuses" aria-label="Bonusy">
                 <strong>Bonusy</strong>
-                <span><b>×2 WYNIK</b> — przez 7 s podwaja punkty za paczki.</span>
+                <span><b>×2 WYNIK</b> — przez 7 s podwaja punkty za zamówienia.</span>
                 <span data-campaign-copy="powerupWarranty">GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania.</span>
               </div>
               <div class="amso-campaign__actions">
@@ -693,7 +689,7 @@ export class CampaignShell {
               <p class="amso-campaign__eyebrow" data-campaign-copy="storyResultEyebrow">Dziękujemy za wspólną drogę</p>
               <h2 data-campaign-copy="storyResultTitle">Twoja Droga do Miliona</h2>
               <div class="amso-campaign__result-grid">
-                <span><small data-campaign-copy="resultPackages">Dostarczone paczki</small> <strong data-campaign-story-packages>0</strong></span>
+                <span><small data-campaign-copy="resultPackages">Zrealizowane zamówienia</small> <strong data-campaign-story-packages>0</strong></span>
                 <span><small data-campaign-copy="resultScore">Wynik</small> <strong data-campaign-story-score>0</strong></span>
                 <span><small data-campaign-copy="resultCombo">Najlepsza seria</small> <strong data-campaign-story-combo>×1</strong></span>
               </div>
@@ -712,7 +708,7 @@ export class CampaignShell {
               <p class="amso-campaign__eyebrow" data-campaign-copy="challengeResultEyebrow">Próba Miliona</p>
               <h2 data-campaign-copy="challengeResultTitle">Koniec próby</h2>
               <div class="amso-campaign__result-grid amso-campaign__result-grid--challenge">
-                <span><small data-campaign-copy="resultPackages">Dostarczone paczki</small> <strong data-campaign-challenge-packages>0</strong></span>
+                <span><small data-campaign-copy="resultPackages">Zrealizowane zamówienia</small> <strong data-campaign-challenge-packages>0</strong></span>
                 <span><small>Wynik łączny</small> <strong data-campaign-challenge-total>0</strong></span>
                 <span><small>Wynik wyzwania</small> <strong data-campaign-challenge-score>0</strong></span>
                 <span><small data-campaign-challenge-best-label>Twój rekord wyzwania</small> <strong data-campaign-challenge-best>0</strong></span>
@@ -1084,7 +1080,7 @@ export class CampaignShell {
             : "POWTÓRZ FALĘ");
       }
     }
-    this.hudPackages.textContent = formatInteger(snapshot.packagesCollected);
+    this.hudPackages.textContent = formatInteger(snapshot.ordersCollected);
     this.hudScore.textContent = formatInteger(snapshot.score);
     this.hudCombo.textContent = `×${formatInteger(snapshot.combo)}`;
     const activePowerUps = formatPowerUpHud(
@@ -1156,13 +1152,13 @@ export class CampaignShell {
     if (this.destroyed) return;
     this.activeMode = "story";
     this.applyWorldVisual("million-finale", "story.million_finale", "result");
-    requiredElement(this.storyResultScreen, "[data-campaign-story-packages]").textContent = formatInteger(result.packages);
+    requiredElement(this.storyResultScreen, "[data-campaign-story-packages]").textContent = formatInteger(result.orders);
     requiredElement(this.storyResultScreen, "[data-campaign-story-score]").textContent = formatInteger(result.score);
     requiredElement(this.storyResultScreen, "[data-campaign-story-combo]").textContent = `×${formatInteger(result.bestCombo)}`;
     this.setView("story_result", this.storyResultScreen);
     requiredElement<HTMLButtonElement>(this.storyResultScreen, "[data-campaign-start-challenge]").focus({ preventScroll: true });
     this.announce(
-      `${this.copy.storyResultTitle}. ${this.copy.resultPackages}: ${formatInteger(result.packages)}. ` +
+      `${this.copy.storyResultTitle}. ${this.copy.resultPackages}: ${formatInteger(result.orders)}. ` +
       `${this.copy.resultScore}: ${formatInteger(result.score)}.`
     );
   }
@@ -1172,7 +1168,7 @@ export class CampaignShell {
     this.activeMode = "challenge";
     this.applyWorldVisual("million-finale", "story.million_finale", "result");
     this.challengeResult = result;
-    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-packages]").textContent = formatInteger(result.packages);
+    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-packages]").textContent = formatInteger(result.orders);
     requiredElement(this.challengeResultScreen, "[data-campaign-challenge-total]").textContent = formatInteger(result.totalScore);
     requiredElement(this.challengeResultScreen, "[data-campaign-challenge-score]").textContent = formatInteger(result.challengeScore);
     requiredElement(this.challengeResultScreen, "[data-campaign-challenge-best]").textContent = formatInteger(result.bestScore);
@@ -1188,7 +1184,7 @@ export class CampaignShell {
     this.announce(
       `${this.copy.challengeResultTitle}. Wynik łączny: ${formatInteger(result.totalScore)}. ` +
       `Wynik wyzwania: ${formatInteger(result.challengeScore)}. ` +
-      `${this.copy.resultPackages}: ${formatInteger(result.packages)}.`
+      `${this.copy.resultPackages}: ${formatInteger(result.orders)}.`
     );
   }
 
@@ -1516,11 +1512,11 @@ export class CampaignShell {
         platform,
         result: {
           score: this.challengeResult.totalScore,
-          packages: this.challengeResult.packages
+          orders: this.challengeResult.orders
         },
         canonicalUrl: this.canonicalUrl,
         scoreLabel: this.copy.shareScoreLabel.toLocaleUpperCase("pl-PL"),
-        packagesLabel: this.copy.resultPackages.toLocaleUpperCase("pl-PL"),
+        ordersLabel: this.copy.resultPackages.toLocaleUpperCase("pl-PL"),
         callToAction: this.copy.shareTurn,
         publicationText: this.copy.sharePublication,
       });

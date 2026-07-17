@@ -44,9 +44,9 @@ export const DEFAULT_DISABLED_RUNNER_CONFIG: Readonly<RunnerConfig> = Object.fre
       resumeCountdownSeconds: 3
     }),
     millionThreshold: Object.freeze({
-      counterStart: 999_950,
+      counterStart: 999_970,
       counterTarget: 1_000_000,
-      packageTarget: 50,
+      orderTarget: 30,
       combinationTarget: 12
     })
   }),
