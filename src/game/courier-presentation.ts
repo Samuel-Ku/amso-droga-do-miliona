@@ -1,5 +1,5 @@
 import type { RunnerModel } from "./types";
-import { GROUND_Y, RUNNER_HEIGHT, RUNNER_WIDTH } from "./constants";
+import { RUNNER_HEIGHT, RUNNER_WIDTH } from "./constants";
 
 const MIN_STRIDE_CYCLES_PER_SECOND = 2;
 const MAX_STRIDE_CYCLES_PER_SECOND = 4;
@@ -32,10 +32,10 @@ export function courierProtectionPresentation(
   state: CourierProtectionState | null
 ): CourierProtectionPresentation | null {
   if (state === null) return null;
-  const radius = Math.max(RUNNER_WIDTH / 2 + 18, RUNNER_HEIGHT / 2 + 7);
+  const radius = Math.max(RUNNER_WIDTH / 2 + 50, RUNNER_HEIGHT / 2 + 38);
   return {
     centerX: runner.x + RUNNER_WIDTH / 2,
-    centerY: GROUND_Y - RUNNER_HEIGHT / 2,
+    centerY: runner.y + runner.height / 2,
     radiusX: radius,
     radiusY: radius,
     color: "#f47100",

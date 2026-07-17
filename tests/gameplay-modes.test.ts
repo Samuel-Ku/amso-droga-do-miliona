@@ -567,6 +567,37 @@ describe("campaign collision contract", () => {
 });
 
 describe("direct slide control", () => {
+  it("starts grounded without treating the start input as a jump", () => {
+    const harness = createGameHarness("challenge");
+    const runner = (harness.game as unknown as {
+      runner: { grounded: boolean; jumpBufferRemaining: number; velocityY: number };
+    }).runner;
+
+    harness.game.jump("keyboard");
+
+    expect(harness.game.state).toBe("running");
+    expect(runner).toMatchObject({ grounded: true, jumpBufferRemaining: 0, velocityY: 0 });
+    harness.game.destroy();
+  });
+
+  it("keeps jump and crouch responsive while a collected power-up is being presented", () => {
+    const harness = createGameHarness("challenge");
+    const internals = harness.game as unknown as {
+      powerUpDemoRemaining: number;
+      runner: { grounded: boolean; jumpBufferRemaining: number; crouching: boolean };
+    };
+    harness.game.start("keyboard");
+    internals.powerUpDemoRemaining = 1;
+
+    harness.game.jump("keyboard");
+    expect(internals.runner.jumpBufferRemaining).toBeGreaterThan(0);
+
+    internals.runner.jumpBufferRemaining = 0;
+    harness.game.crouch(true, "keyboard");
+    expect(internals.runner.crouching).toBe(true);
+    harness.game.destroy();
+  });
+
   it("releases keyboard crouch immediately but keeps the short touch slide", () => {
     const harness = createGameHarness("challenge");
     const runner = (harness.game as unknown as { runner: { crouching: boolean } }).runner;

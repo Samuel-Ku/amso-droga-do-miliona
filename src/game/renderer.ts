@@ -675,47 +675,6 @@ function drawNarrativeVignette(
   }
 }
 
-function drawTrustCorridor(
-  context: CanvasRenderingContext2D,
-  scene: Readonly<RenderScene>,
-  theme: Readonly<BackgroundTheme>
-): void {
-  if (scene.trustCorridor !== true) return;
-  const centerX = scene.runner.x + scene.runner.width / 2;
-  const centerY = scene.runner.y + scene.runner.height / 2;
-  const pulse = scene.reducedMotion ? 0 : Math.sin(scene.elapsedSeconds * 2.4) * 6;
-
-  context.save();
-  for (let layer = 3; layer >= 1; layer -= 1) {
-    context.globalAlpha = 0.035 + layer * 0.022;
-    context.fillStyle = layer % 2 === 0 ? COLORS.orange : "#fff4c2";
-    context.beginPath();
-    context.arc(centerX, centerY, 70 + layer * 18 + pulse, 0, Math.PI * 2);
-    context.fill();
-  }
-  context.globalAlpha = 0.72;
-  context.strokeStyle = COLORS.orange;
-  context.lineWidth = 4;
-  context.beginPath();
-  context.arc(centerX, centerY, 106 + pulse, 0, Math.PI * 2);
-  context.stroke();
-
-  context.globalAlpha = 0.6;
-  context.fillStyle = COLORS.ink;
-  context.fillRect(224, GROUND_Y - 46, WORLD_WIDTH - 224, 8);
-  context.fillStyle = theme.accentCool;
-  context.fillRect(224, GROUND_Y - 34, WORLD_WIDTH - 224, 5);
-  for (let index = 0; index < 4; index += 1) {
-    const x = 312 + index * 176;
-    context.fillStyle = "rgba(255,255,255,0.9)";
-    context.beginPath();
-    context.arc(x, GROUND_Y - 39 + (index % 2) * 12, 15, 0, Math.PI * 2);
-    context.fill();
-    drawCheckMark(context, x - 8, GROUND_Y - 47 + (index % 2) * 12, 16);
-  }
-  context.restore();
-}
-
 function drawTransformedObstacle(
   context: CanvasRenderingContext2D,
   transformation: Readonly<StoryObstacleTransformation>,
@@ -1559,7 +1518,6 @@ export class WarehouseRenderer {
     } else {
       drawGameplayRoute(context);
     }
-    drawTrustCorridor(context, scene, theme);
     drawMilestoneParticles(context, scene, this.artwork);
     drawForkliftBoss(
       context,
@@ -1575,31 +1533,7 @@ export class WarehouseRenderer {
       drawTransformedObstacle(context, transformation, scene.reducedMotion);
     }
     drawWarrantyShield(context, scene.runner, scene);
-    if (this.artwork.drawCourier(context, scene.runner, scene)) {
-      const crouchOffset = scene.runner.crouching ? 11 : 0;
-      const mark = {
-        x: scene.runner.x + 28,
-        y: scene.runner.y + 24 + crouchOffset,
-        width: 17,
-        height: 11
-      };
-      fillRoundedRectangle(
-        context,
-        mark.x - 1,
-        mark.y - 1,
-        mark.width + 2,
-        mark.height + 2,
-        2,
-        COURIER_PALETTE.capAndShirt
-      );
-      this.artwork.drawCourierBrandMark(
-        context,
-        mark.x,
-        mark.y,
-        mark.width,
-        mark.height
-      );
-    } else {
+    if (!this.artwork.drawCourier(context, scene.runner, scene)) {
       drawCourier(context, scene.runner, scene);
     }
 

@@ -203,6 +203,14 @@ describe("runner config v5 story validation", () => {
       "finale",
       "challenge"
     ]);
+    const commonBundle = result.data.assets.bundles.find(({ id }) => id === "common");
+    expect(commonBundle?.resources).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: "courier-run-sheet",
+        source: "/assets/milion-runner/courier/courier-run-sheet.webp",
+        critical: true
+      })
+    ]));
     expect(result.data.assets.bundles.flatMap(({ resources }) => resources))
       .toSatisfy((resources: Array<{ source: string }>) =>
         resources.every(({ source }) =>

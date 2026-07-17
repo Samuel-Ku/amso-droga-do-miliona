@@ -25,7 +25,8 @@ describe("world visual continuity", () => {
     );
     const renderer = readFileSync(new URL("../src/game/renderer.ts", import.meta.url), "utf8");
 
-    expect(css).toContain("background-size: cover");
+    expect(css).toContain("object-fit: contain");
+    expect(css).not.toContain("object-fit: cover");
     expect(css).toContain("--world-position-portrait");
     expect(css).toContain("--world-position-landscape");
     expect(css).not.toContain("--world-tile-blend-width");

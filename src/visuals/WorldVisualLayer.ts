@@ -101,6 +101,7 @@ export class WorldVisualLayer {
   private pendingPanelPrepared = false;
   private transitionStartDistance = 0;
   private lastDistance = 0;
+  private lastParallaxCycle: number | null = null;
 
   public constructor(
     private readonly host: HTMLElement,
@@ -183,9 +184,15 @@ export class WorldVisualLayer {
     this.host.dataset.motionState = active ? "moving" : "reading";
 
     if (!active) {
+      this.setPanelMotion(false);
       this.placePanels((distance % WORLD_WIDTH) / WORLD_WIDTH);
       return;
     }
+
+    const cycle = Math.floor(distance / WORLD_WIDTH);
+    const wrapped = this.lastParallaxCycle !== null && cycle !== this.lastParallaxCycle;
+    this.setPanelMotion(this.lastParallaxCycle !== null && !wrapped);
+    this.lastParallaxCycle = cycle;
 
     if (this.pendingAsset !== null) {
       if (!this.pendingPanelPrepared) {
@@ -210,6 +217,12 @@ export class WorldVisualLayer {
     const nextX = 100 - travel;
     this.panels[0].style.transform = `translate3d(${currentX}%, 0, 0)`;
     this.panels[1].style.transform = `translate3d(${nextX}%, 0, 0)`;
+  }
+
+  private setPanelMotion(smooth: boolean): void {
+    for (const panel of this.panels) {
+      panel.style.transition = smooth ? "transform 140ms linear" : "none";
+    }
   }
 
   private loadWorldAsset(assetPath: string): void {

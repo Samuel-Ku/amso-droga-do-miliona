@@ -21,12 +21,14 @@ export const PARCEL_CELEBRATION_FRAME_PATHS = [
 
 export const ORDER_ATLAS_PATH = "/assets/milion-runner/orders/order-atlas.webp";
 export const POWER_UP_ATLAS_PATH = "/assets/milion-runner/powerups/powerup-atlas.webp";
-export const COURIER_SPRITE_PATH = "/assets/milion-runner/courier/courier-sprite-sheet.webp";
+export const COURIER_SPRITE_PATH = "/assets/milion-runner/courier/courier-run-sheet.webp";
 export const COURIER_BRAND_MARK_PATH = "/assets/milion-runner/courier/A.webp";
-export const COURIER_SPRITE_FRAME_COUNT = 14;
+export const COURIER_SPRITE_FRAME_COUNT = 8;
 
-const COURIER_FRAME_WIDTH = 128;
-const COURIER_FRAME_HEIGHT = 160;
+const COURIER_SPRITE_CELL_SIZE = 512;
+const COURIER_SOURCE_GROUND_Y = 470;
+const COURIER_RENDER_SIZE = 170;
+const COURIER_RUN_FPS = 12;
 const ATLAS_TILE_SIZE = 256;
 
 export function parcelAnimationFrame(
@@ -43,17 +45,13 @@ export function courierSpriteFrame(
   runner: Readonly<RunnerModel>,
   scene: Pick<RenderScene, "elapsedSeconds" | "milestoneCelebration">
 ): number {
-  const celebration = scene.milestoneCelebration;
-  if (celebration !== null && celebration !== undefined && celebration.threshold >= 500) {
-    return 11 + Math.min(2, Math.floor(celebration.progress * 3));
-  }
-  if (runner.crouching) return 9 + Math.floor(scene.elapsedSeconds * 4) % 2;
+  if (runner.crouching) return 1;
   if (!runner.grounded) {
-    if (runner.velocityY < -40) return 6;
-    if (runner.velocityY > 40) return 8;
-    return 7;
+    if (runner.velocityY < -40) return 3;
+    if (runner.velocityY > 40) return 7;
+    return 4;
   }
-  return Math.floor(scene.elapsedSeconds * 7) % 6;
+  return Math.floor(scene.elapsedSeconds * COURIER_RUN_FPS) % COURIER_SPRITE_FRAME_COUNT;
 }
 
 type ArtworkImageFactory = () => HTMLImageElement;
@@ -161,21 +159,31 @@ export class RunnerArtwork {
     scene: Readonly<RenderScene>
   ): boolean {
     if (!drawable(this.courier)) return false;
-    const frame = courierSpriteFrame(runner, scene);
-    const height = runner.crouching ? 86 : 108;
-    const width = height * (COURIER_FRAME_WIDTH / COURIER_FRAME_HEIGHT);
+    const frame = scene.reducedMotion ? 0 : courierSpriteFrame(runner, scene);
     const feetY = runner.y + runner.height + 4;
+    const x = runner.x + runner.width / 2 - COURIER_RENDER_SIZE / 2;
+    const y = feetY - COURIER_SOURCE_GROUND_Y / COURIER_SPRITE_CELL_SIZE *
+      COURIER_RENDER_SIZE;
     context.drawImage(
       this.courier,
-      frame * COURIER_FRAME_WIDTH,
+      frame * COURIER_SPRITE_CELL_SIZE,
       0,
-      COURIER_FRAME_WIDTH,
-      COURIER_FRAME_HEIGHT,
-      runner.x - 3,
-      feetY - height,
-      width,
-      height
+      COURIER_SPRITE_CELL_SIZE,
+      COURIER_SPRITE_CELL_SIZE,
+      x,
+      y,
+      COURIER_RENDER_SIZE,
+      COURIER_RENDER_SIZE
     );
+    if (drawable(this.courierBrandMark)) {
+      context.drawImage(
+        this.courierBrandMark,
+        runner.x + runner.width / 2 - 7,
+        feetY - 92,
+        14,
+        9
+      );
+    }
     return true;
   }
 

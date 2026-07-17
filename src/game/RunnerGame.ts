@@ -337,9 +337,12 @@ export class RunnerGame implements RunnerGameApi {
     if (this._state === "destroyed" || this._state === "paused" || this._state === "game_over") {
       return;
     }
-    if (this._state === "ready") this.start(controlMethod);
+    if (this._state === "ready") {
+      this.start(controlMethod);
+      return;
+    }
     if (this._state !== "running") return;
-    if (this.storyTimeline?.snapshot.trustCorridor || this.powerUpDemoRemaining > 0) return;
+    if (this.storyTimeline?.snapshot.trustCorridor) return;
     this.controlMethod = controlMethod;
     this.crouchHeld = false;
     this.crouchInputHeld = false;
@@ -354,7 +357,7 @@ export class RunnerGame implements RunnerGameApi {
     }
     if (this._state === "ready") this.start(controlMethod);
     if (this._state !== "running") return;
-    if (this.storyTimeline?.snapshot.trustCorridor || this.powerUpDemoRemaining > 0) {
+    if (this.storyTimeline?.snapshot.trustCorridor) {
       this.crouchHeld = false;
       this.crouchInputHeld = false;
       this.timedTouchCrouch = false;
@@ -641,7 +644,7 @@ export class RunnerGame implements RunnerGameApi {
         0,
         nextStory.totalActiveElapsedSeconds - previousStory.totalActiveElapsedSeconds
       );
-      activeDeltaSeconds = presentingMillion || presentingPowerUp
+      activeDeltaSeconds = presentingMillion
         ? 0
         : waitingForGameplayResolution &&
           nextStory.sectionElapsedSeconds >= nextStory.sectionDurationSeconds
@@ -697,13 +700,6 @@ export class RunnerGame implements RunnerGameApi {
     this.visualElapsedSeconds += deltaSeconds;
     if (this.powerUpDemoRemaining > 0) {
       this.powerUpDemoRemaining = Math.max(0, this.powerUpDemoRemaining - deltaSeconds);
-      this.crouchHeld = false;
-      this.crouchInputHeld = false;
-      this.timedTouchCrouch = false;
-      this.runner.crouching = false;
-      this.clearInteractiveWorld();
-      this.emitSnapshot();
-      return;
     }
     this.elapsedSeconds += activeDeltaSeconds;
     const milestoneSafe = !this.obstacles.some(({ active, x }) =>
@@ -1509,7 +1505,6 @@ export class RunnerGame implements RunnerGameApi {
         !this.seenPowerUpDemos.has(kind)) {
       this.seenPowerUpDemos.add(kind);
       this.powerUpDemoRemaining = STORY_POWER_UP_DEMO_SECONDS;
-      this.clearInteractiveWorld();
     }
     return activated;
   }

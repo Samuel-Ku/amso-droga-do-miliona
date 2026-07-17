@@ -18,6 +18,7 @@ const campaignStyles = readFileSync(
 const campaignImagePaths = [
   "/assets/milion-runner/brand/mz-main-lockup-v1.avif",
   "/assets/milion-runner/brand/mz-compact-lockup-v1.avif",
+  "/assets/milion-runner/courier/courier-run-sheet.webp",
   "/assets/milion-runner/worlds/world-01-first-mile-v2.webp",
   "/assets/milion-runner/worlds/world-02-order-process-v2.webp",
   "/assets/milion-runner/worlds/world-03-quality-service-v2.webp",
@@ -110,7 +111,7 @@ describe("single-file QA artwork", () => {
     const embeddedWebps = new Set(
       qaPreview.match(/data:image\/webp;base64,[A-Za-z0-9+/=]+/g) ?? []
     );
-    // Seven worlds, two atlases, courier sheet, four parcel frames and exact A.
+    // Seven worlds, two atlases, Todd, four parcel frames and exact A.
     expect(embeddedWebps.size).toBe(15);
     const embeddedSvgs = new Set(
       qaPreview.match(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+/g) ?? []

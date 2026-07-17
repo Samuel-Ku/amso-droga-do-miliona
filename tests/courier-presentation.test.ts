@@ -4,6 +4,7 @@ import {
   runnerStrideCyclesPerSecond
 } from "../src/game/courier-presentation";
 import { createRunnerModel } from "../src/game/physics";
+import { readFileSync } from "node:fs";
 
 describe("courier presentation", () => {
   it("keeps the running gait between two and four cycles per second", () => {
@@ -25,7 +26,7 @@ describe("courier presentation", () => {
 
   it("keeps the same large circle while sliding and marks an absorbed impact", () => {
     const standing = courierProtectionPresentation(createRunnerModel(), "warranty")!;
-    const runner = { ...createRunnerModel(), crouching: true, height: 52, y: 380 };
+    const runner = { ...createRunnerModel(), crouching: true };
     const presentation = courierProtectionPresentation(runner, "breaking")!;
 
     expect(presentation).toMatchObject({ breaking: true });
@@ -33,6 +34,20 @@ describe("courier presentation", () => {
     expect(presentation.radiusX).toBe(standing.radiusX);
     expect(presentation.centerX).toBe(standing.centerX);
     expect(presentation.centerY).toBe(standing.centerY);
+  });
+
+  it("moves the protection circle with the courier during a jump", () => {
+    const standing = courierProtectionPresentation(createRunnerModel(), "warranty")!;
+    const airborneRunner = { ...createRunnerModel(), grounded: false, y: 250, velocityY: -200 };
+    const airborne = courierProtectionPresentation(airborneRunner, "warranty")!;
+
+    expect(airborne.centerY).toBeLessThan(standing.centerY);
+    expect(airborne.centerY).toBe(airborneRunner.y + airborneRunner.height / 2);
+  });
+
+  it("does not draw the obsolete trust-corridor circle and check-line abstraction", () => {
+    const renderer = readFileSync(new URL("../src/game/renderer.ts", import.meta.url), "utf8");
+    expect(renderer).not.toContain("drawTrustCorridor(context, scene, theme)");
   });
 
   it("does not turn ordinary post-collision recovery into a warranty shield", () => {

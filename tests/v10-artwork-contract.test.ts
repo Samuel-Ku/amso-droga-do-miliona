@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { existsSync } from "node:fs";
 import type { RenderScene, RunnerModel } from "../src/game/types";
 import {
   COURIER_SPRITE_FRAME_COUNT,
+  COURIER_SPRITE_PATH,
   COURIER_BRAND_MARK_PATH,
   ORDER_ASSET_PATHS,
   ORDER_VISUAL_TYPES,
@@ -10,6 +11,7 @@ import {
   courierSpriteFrame,
   parcelAnimationFrame
 } from "../src/game/runner-artwork";
+import { RunnerArtwork } from "../src/game/runner-artwork";
 
 const runner: RunnerModel = {
   x: 110,
@@ -54,17 +56,22 @@ describe("v10 production artwork contract", () => {
     }
   });
 
-  it("maps run, jump, crouch and celebration into one 14-frame sheet", () => {
+  it("ships the selected Todd courier and preserves pose-state timing", () => {
     expect(existsSync(new URL(
       "../public/assets/milion-runner/courier/courier-reference.svg",
       import.meta.url
     ))).toBe(true);
     expect(COURIER_BRAND_MARK_PATH.endsWith("/A.webp")).toBe(true);
-    expect(COURIER_SPRITE_FRAME_COUNT).toBe(14);
+    expect(COURIER_SPRITE_FRAME_COUNT).toBe(8);
+    expect(COURIER_SPRITE_PATH).toBe("/assets/milion-runner/courier/courier-run-sheet.webp");
+    expect(existsSync(new URL(
+      "../public/assets/milion-runner/courier/courier-run-sheet.webp",
+      import.meta.url
+    ))).toBe(true);
     expect(courierSpriteFrame(runner, scene({ elapsedSeconds: 0 }))).toBe(0);
     expect(courierSpriteFrame(runner, scene({ elapsedSeconds: 0.25 }))).toBeGreaterThan(0);
-    expect(courierSpriteFrame({ ...runner, grounded: false, velocityY: -100 }, scene())).toBe(6);
-    expect(courierSpriteFrame({ ...runner, crouching: true }, scene())).toBe(9);
+    expect(courierSpriteFrame({ ...runner, grounded: false, velocityY: -100 }, scene())).toBe(3);
+    expect(courierSpriteFrame({ ...runner, crouching: true }, scene())).toBe(1);
     expect(courierSpriteFrame(runner, scene({
       milestoneCelebration: {
         threshold: 500,
@@ -75,7 +82,37 @@ describe("v10 production artwork contract", () => {
         remainingSeconds: 1,
         progress: 0.4
       }
-    }))).toBeGreaterThanOrEqual(11);
+    }))).toBeGreaterThanOrEqual(0);
+  });
+
+  it("keeps the courier at one visual size while changing to a crouch pose", () => {
+    const drawImage = vi.fn();
+    const context = {
+      drawImage,
+      save: vi.fn(),
+      restore: vi.fn(),
+      translate: vi.fn(),
+      rotate: vi.fn()
+    } as unknown as CanvasRenderingContext2D;
+    const factory = () => ({
+      complete: true,
+      naturalWidth: 4096,
+      naturalHeight: 512,
+      decoding: "async",
+      src: ""
+    }) as unknown as HTMLImageElement;
+    const artwork = new RunnerArtwork(factory);
+
+    artwork.drawCourier(context, runner, scene());
+    artwork.drawCourier(context, { ...runner, crouching: true }, scene());
+
+    const courierDraws = drawImage.mock.calls.filter((call) => call.length === 9);
+    expect(courierDraws).toHaveLength(2);
+    const standingWidth = courierDraws[0]?.[7] as number;
+    const standingHeight = courierDraws[0]?.[8] as number;
+    expect(standingHeight / standingWidth).toBe(1);
+    expect(courierDraws[0]?.[8]).toBe(courierDraws[1]?.[8]);
+    expect(courierDraws[0]?.[7]).toBe(courierDraws[1]?.[7]);
   });
 
   it("animates the parcel through four authored perspectives", () => {

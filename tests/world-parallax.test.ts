@@ -84,6 +84,21 @@ describe("edge-to-edge gameplay background", () => {
     expect(host.style.getPropertyValue("--world-overlap")).toBe("0px");
   });
 
+  it("interpolates ordinary movement but disables interpolation at a cycle wrap", () => {
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host);
+    const panels = [...host.querySelectorAll<HTMLElement>("[data-world-panel]")];
+
+    layer.setParallaxDistance(240, true);
+    layer.setParallaxDistance(260, true);
+    expect(panels.every((panel) => panel.style.transition === "transform 140ms linear"))
+      .toBe(true);
+
+    layer.setParallaxDistance(959, true);
+    layer.setParallaxDistance(961, true);
+    expect(panels.every((panel) => panel.style.transition === "none")).toBe(true);
+  });
+
   it("preserves absolute phase across world, story and challenge changes", () => {
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host);

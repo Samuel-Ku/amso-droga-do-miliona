@@ -571,8 +571,6 @@ export class CampaignShell {
             aria-label="Pole gry. W lub strzałka w górę oraz Spacja lub tapnięcie wykonują skok. S lub strzałka w dół oraz przesunięcie w dół wykonują ślizg."
           ></canvas>
           <div class="amso-campaign__milestone-message" data-campaign-milestone-message hidden aria-hidden="true"></div>
-          <div class="amso-campaign__trust-sphere" aria-hidden="true"></div>
-
           <section class="amso-campaign__hud" data-campaign-hud hidden aria-label="Wynik biegu">
             <div class="amso-campaign__hud-context">
               <strong data-campaign-hud-mode></strong>
