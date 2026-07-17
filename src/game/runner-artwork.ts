@@ -22,7 +22,6 @@ export const PARCEL_CELEBRATION_FRAME_PATHS = [
 export const ORDER_ATLAS_PATH = "/assets/milion-runner/orders/order-atlas.webp";
 export const POWER_UP_ATLAS_PATH = "/assets/milion-runner/powerups/powerup-atlas.webp";
 export const COURIER_SPRITE_PATH = "/assets/milion-runner/courier/courier-run-sheet.webp";
-export const COURIER_BRAND_MARK_PATH = "/assets/milion-runner/courier/A.webp";
 export const COURIER_SPRITE_FRAME_COUNT = 8;
 
 const COURIER_SPRITE_CELL_SIZE = 512;
@@ -78,14 +77,12 @@ export class RunnerArtwork {
   private readonly orders: HTMLImageElement | null;
   private readonly powerUps: HTMLImageElement | null;
   private readonly courier: HTMLImageElement | null;
-  private readonly courierBrandMark: HTMLImageElement | null;
   private readonly parcelFrames: readonly (HTMLImageElement | null)[];
 
   public constructor(factory?: ArtworkImageFactory) {
     this.orders = loadImage(ORDER_ATLAS_PATH, factory);
     this.powerUps = loadImage(POWER_UP_ATLAS_PATH, factory);
     this.courier = loadImage(COURIER_SPRITE_PATH, factory);
-    this.courierBrandMark = loadImage(COURIER_BRAND_MARK_PATH, factory);
     this.parcelFrames = PARCEL_CELEBRATION_FRAME_PATHS.map((path) => loadImage(path, factory));
   }
 
@@ -175,27 +172,6 @@ export class RunnerArtwork {
       COURIER_RENDER_SIZE,
       COURIER_RENDER_SIZE
     );
-    if (drawable(this.courierBrandMark)) {
-      context.drawImage(
-        this.courierBrandMark,
-        runner.x + runner.width / 2 - 7,
-        feetY - 92,
-        14,
-        9
-      );
-    }
-    return true;
-  }
-
-  public drawCourierBrandMark(
-    context: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    width: number,
-    height: number
-  ): boolean {
-    if (!drawable(this.courierBrandMark)) return false;
-    context.drawImage(this.courierBrandMark, x, y, width, height);
     return true;
   }
 }

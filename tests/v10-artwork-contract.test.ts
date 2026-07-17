@@ -4,7 +4,6 @@ import type { RenderScene, RunnerModel } from "../src/game/types";
 import {
   COURIER_SPRITE_FRAME_COUNT,
   COURIER_SPRITE_PATH,
-  COURIER_BRAND_MARK_PATH,
   ORDER_ASSET_PATHS,
   ORDER_VISUAL_TYPES,
   PARCEL_CELEBRATION_FRAME_PATHS,
@@ -61,7 +60,6 @@ describe("v10 production artwork contract", () => {
       "../public/assets/milion-runner/courier/courier-reference.svg",
       import.meta.url
     ))).toBe(true);
-    expect(COURIER_BRAND_MARK_PATH.endsWith("/A.webp")).toBe(true);
     expect(COURIER_SPRITE_FRAME_COUNT).toBe(8);
     expect(COURIER_SPRITE_PATH).toBe("/assets/milion-runner/courier/courier-run-sheet.webp");
     expect(existsSync(new URL(
@@ -108,6 +106,7 @@ describe("v10 production artwork contract", () => {
 
     const courierDraws = drawImage.mock.calls.filter((call) => call.length === 9);
     expect(courierDraws).toHaveLength(2);
+    expect(drawImage).toHaveBeenCalledTimes(2);
     const standingWidth = courierDraws[0]?.[7] as number;
     const standingHeight = courierDraws[0]?.[8] as number;
     expect(standingHeight / standingWidth).toBe(1);

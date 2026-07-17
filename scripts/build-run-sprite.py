@@ -19,6 +19,20 @@ SOURCE_GROUND_Y = 925
 DESTINATION_GROUND_Y = 470
 UNIFORM_SCALE = 0.45
 
+# The backpack moves and tilts slightly through the authored run cycle.  Keep
+# the logo attached to the visible orange face instead of drawing one fixed
+# screen-space mark over the courier at runtime.
+BACKPACK_MARK_TRANSFORMS = (
+    (176, 210, 46, -15),
+    (177, 211, 46, -14),
+    (181, 207, 46, -13),
+    (184, 205, 46, -12),
+    (177, 207, 46, -14),
+    (179, 208, 46, -14),
+    (184, 204, 44, -12),
+    (184, 205, 44, -12),
+)
+
 
 def extract_frames(video: Path, directory: Path) -> list[Path]:
     selection = "+".join(f"eq(n,{index})" for index in FRAME_INDICES)
@@ -137,6 +151,22 @@ def place_on_cell(courier: Image.Image) -> Image.Image:
     return cell
 
 
+def brand_backpack(frame: Image.Image, mark: Image.Image, index: int) -> Image.Image:
+    center_x, center_y, width, angle = BACKPACK_MARK_TRANSFORMS[index]
+    height = round(mark.height * width / mark.width)
+    transformed = mark.resize((width, height), Image.Resampling.LANCZOS).rotate(
+        angle,
+        resample=Image.Resampling.BICUBIC,
+        expand=True,
+    )
+    branded = frame.copy()
+    branded.alpha_composite(
+        transformed,
+        (round(center_x - transformed.width / 2), round(center_y - transformed.height / 2)),
+    )
+    return branded
+
+
 def validate_frame(frame: Image.Image, index: int) -> None:
     alpha = np.asarray(frame.getchannel("A"))
     if alpha[0, 0] != 0 or alpha[-1, -1] != 0:
@@ -153,11 +183,16 @@ def build(video: Path, output_dir: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     frames_dir = output_dir / "run-frames"
     frames_dir.mkdir(parents=True, exist_ok=True)
+    mark_path = output_dir / "A.webp"
+    if not mark_path.exists():
+        raise RuntimeError(f"Missing approved backpack mark: {mark_path}")
+    mark = Image.open(mark_path).convert("RGBA")
     with tempfile.TemporaryDirectory(prefix="amso-run-") as temp:
         sources = extract_frames(video, Path(temp))
         frames: list[Image.Image] = []
         for index, source_path in enumerate(sources):
             frame = place_on_cell(isolate_courier(Image.open(source_path)))
+            frame = brand_backpack(frame, mark, index)
             validate_frame(frame, index)
             frame.save(frames_dir / f"run-{index:02d}.png", optimize=True)
             frames.append(frame)
