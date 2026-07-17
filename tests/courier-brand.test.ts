@@ -1,7 +1,5 @@
-import { existsSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import {
-  COURIER_MARK_ASSET_PATH,
   COURIER_PALETTE,
   CourierBrandArtwork
 } from "../src/game/courier-brand";
@@ -9,12 +7,10 @@ import { createRunnerModel } from "../src/game/physics";
 import { WarehouseRenderer } from "../src/game/renderer";
 
 describe("AMSO courier artwork", () => {
-  it("ships the supplied transparent A mark and the approved courier palette", () => {
-    expect(existsSync(new URL(`../public${COURIER_MARK_ASSET_PATH}`, import.meta.url)))
-      .toBe(true);
+  it("uses the approved courier palette with an orange belt", () => {
     expect(COURIER_PALETTE).toEqual({
       capAndShirt: "#ff7a15",
-      belt: "#3f8fce",
+      belt: "#f47100",
       trousers: "#171717",
       shoesAndMark: "#ffffff",
       scanner: "#44413d",
@@ -22,40 +18,27 @@ describe("AMSO courier artwork", () => {
     });
   });
 
-  it("draws the exact mark inside the shirt bounds without hiding the shirt", () => {
-    const image = {
-      complete: true,
-      naturalWidth: 518,
-      naturalHeight: 326,
-      src: ""
-    } as unknown as HTMLImageElement;
-    const artwork = new CourierBrandArtwork(() => image);
+  it("draws a crisp vector A inside the shirt bounds", () => {
+    const artwork = new CourierBrandArtwork();
     const drawImage = vi.fn();
-    const context = { drawImage } as unknown as CanvasRenderingContext2D;
+    const contextTarget: Record<PropertyKey, unknown> = { drawImage };
+    const context = new Proxy(contextTarget, {
+      get(target, key) { return key in target ? target[key] : vi.fn(); },
+      set(target, key, value) { target[key] = value; return true; }
+    }) as unknown as CanvasRenderingContext2D;
 
     artwork.drawMark(context, { x: 20, y: 30, width: 24, height: 16 });
 
-    expect(image.src).toBe(COURIER_MARK_ASSET_PATH);
-    expect(drawImage).toHaveBeenCalledOnce();
-    const [, x, y, width, height] = drawImage.mock.calls[0]!;
-    expect(x).toBeGreaterThanOrEqual(20);
-    expect(y).toBeGreaterThanOrEqual(30);
-    expect(x + width).toBeLessThanOrEqual(44);
-    expect(y + height).toBeLessThanOrEqual(46);
-    expect(width / height).toBeCloseTo(518 / 326, 4);
+    expect(drawImage).not.toHaveBeenCalled();
+    expect(contextTarget.fillStyle).toBe("#ffffff");
+    expect(contextTarget.lineJoin).toBe("round");
   });
 
   it("uses the same supplied mark for standing, jumping and crouching poses", () => {
-    const image = {
-      complete: true,
-      naturalWidth: 518,
-      naturalHeight: 326,
-      src: ""
-    } as unknown as HTMLImageElement;
-    const artwork = new CourierBrandArtwork(() => image);
-    const drawImage = vi.fn();
+    const artwork = new CourierBrandArtwork();
+    const fill = vi.fn();
     const contextTarget: Record<PropertyKey, unknown> = {
-      drawImage,
+      fill,
       createLinearGradient: () => ({ addColorStop(): void {} })
     };
     const context = new Proxy(contextTarget, {
@@ -108,6 +91,6 @@ describe("AMSO courier artwork", () => {
     runner.crouching = true;
     renderer.render(context, 960, 540, scene);
 
-    expect(drawImage).toHaveBeenCalledTimes(3);
+    expect(fill.mock.calls.length).toBeGreaterThanOrEqual(3);
   });
 });

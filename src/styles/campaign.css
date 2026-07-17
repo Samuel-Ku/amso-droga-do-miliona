@@ -220,6 +220,30 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   overscroll-behavior: contain;
 }
 
+.amso-campaign[data-focus-mode="true"] {
+  position: fixed;
+  z-index: 2147483000;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.amso-campaign[data-focus-mode="true"] .amso-campaign__header,
+.amso-campaign[data-focus-mode="true"] .amso-campaign__footer {
+  display: none;
+}
+
+.amso-campaign[data-focus-mode="true"] .amso-campaign__main {
+  width: 100%;
+  padding: 0;
+}
+
+.amso-campaign[data-focus-mode="true"] .amso-campaign__stage {
+  border: 0;
+  border-radius: 0;
+}
+
 .amso-campaign__backdrop {
   position: absolute;
   z-index: -2;
@@ -464,22 +488,6 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 
 .amso-campaign__milestone-message[hidden] {
   display: none;
-}
-
-.amso-campaign__milestone-message[data-kind="pulse"] {
-  animation-name: amso-milestone-pulse;
-}
-
-.amso-campaign__milestone-message[data-kind="ribbons"] {
-  animation-name: amso-milestone-rise;
-}
-
-.amso-campaign__milestone-message[data-kind="package-rain"] {
-  animation-name: amso-milestone-drop;
-}
-
-.amso-campaign__milestone-message[data-kind="route-wave"] {
-  animation-name: amso-milestone-wave;
 }
 
 .amso-campaign__milestone-message[data-reduced-motion] {
@@ -1069,7 +1077,10 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 }
 
 .amso-campaign__result-grid > span {
+  display: grid;
   min-width: 0;
+  grid-template-rows: minmax(2.5em, auto) auto;
+  align-content: start;
   padding: clamp(12px, 2vw, 18px);
   border: 1px solid rgb(7 26 49 / 10%);
   border-radius: 14px;
@@ -1084,6 +1095,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 
 .amso-campaign__result-grid small {
   display: block;
+  min-height: 2.5em;
   font: inherit;
 }
 
@@ -1097,6 +1109,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.03em;
   white-space: nowrap;
+  align-self: end;
 }
 
 .amso-campaign__result-grid i {
@@ -1651,7 +1664,6 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 
 .amso-world-visual__image-stack,
 .amso-world-visual__panel,
-.amso-world-visual__image,
 .amso-world-visual__route {
   position: absolute;
   inset: 0;
@@ -1668,47 +1680,36 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 }
 
 .amso-world-visual__panel {
-  opacity: 0;
-  transform: scale(var(--world-reading-zoom, 1));
-  transform-origin:
-    var(--world-reading-origin-x, 50%)
-    var(--world-reading-origin-y, 50%);
-  transition:
-    opacity var(--world-transition-ms, 720ms) ease,
-    transform var(--world-transition-ms, 720ms) cubic-bezier(0.2, 0.7, 0.2, 1),
-    filter 320ms ease;
-}
-
-.amso-world-visual__panel.is-active {
   opacity: 0.8;
-  transform: scale(var(--world-reading-zoom, 1));
-}
-
-.amso-world-visual__panel.is-leaving {
-  opacity: 0;
-  transform: scale(var(--world-reading-zoom, 1));
-}
-
-.amso-world-visual__image {
-  display: block;
-  max-width: none;
-  object-fit: cover;
-  object-position: 50% 50%;
+  background-color: var(--campaign-paper);
+  background-image:
+    linear-gradient(110deg, rgb(244 113 0 / 20%), rgb(240 79 69 / 10%) 48%, rgb(235 50 164 / 18%));
+  background-position: var(--world-position-desktop, 50% 50%);
+  background-size: cover;
   will-change: transform;
 }
 
-.amso-world-visual__image[data-world-tile="1"] {
-  mask-image: linear-gradient(to right, transparent 0, #000 var(--world-tile-blend-width));
-  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--world-tile-blend-width));
-}
-
 .amso-campaign__world-visual[data-phase="game"] .amso-world-visual__panel {
-  filter: none;
-  transform-origin: 50% 50%;
+  opacity: 0.6;
 }
 
-.amso-campaign__world-visual[data-phase="game"] .amso-world-visual__panel.is-active {
-  opacity: 0.6;
+.amso-world-visual__connector {
+  position: absolute;
+  z-index: 1;
+  inset-block: 0;
+  left: 0;
+  width: 8%;
+  background:
+    linear-gradient(90deg, rgb(244 113 0 / 16%), rgb(240 79 69 / 12%), rgb(235 50 164 / 16%)),
+    var(--campaign-paper);
+  will-change: transform;
+}
+
+.amso-campaign__world-visual[data-asset-state="fallback"] .amso-world-visual__panel {
+  background-image:
+    radial-gradient(circle at 20% 35%, rgb(244 113 0 / 22%), transparent 24%),
+    radial-gradient(circle at 78% 42%, rgb(235 50 164 / 18%), transparent 26%),
+    linear-gradient(180deg, #fff 0 70%, #f3ece2 70% 100%);
 }
 
 .amso-world-visual__route {
@@ -2098,6 +2099,10 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 }
 
 @media (max-width: 756px) {
+  .amso-world-visual__panel {
+    background-position: var(--world-position-portrait, 50% 50%);
+  }
+
   .amso-campaign__main {
     padding-inline:
       max(15px, env(safe-area-inset-left))
@@ -2310,6 +2315,12 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   .amso-campaign__result-card > .amso-campaign__eyebrow,
   .amso-campaign__result-card > h2 {
     padding-left: 5rem;
+  }
+}
+
+@media (max-width: 756px) and (orientation: landscape) {
+  .amso-world-visual__panel {
+    background-position: var(--world-position-landscape, 50% 50%);
   }
 }
 

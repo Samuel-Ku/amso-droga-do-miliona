@@ -10,7 +10,7 @@ export interface RunnerFact {
 }
 
 export type PackageType = "notebook" | "telefon" | "pc" | "lcd";
-export type PowerUpKind = "gwarancja_48" | "audyt_jakosci" | "drugie_zycie";
+export type PowerUpKind = "gwarancja_48" | "drugie_zycie";
 export type CampaignMode = "story" | "challenge";
 export type StoryBeatKind = "title" | "dialogue" | "copy" | "stat" | "challenge";
 export type StoryPerspective = "amso" | "client" | "challenge";

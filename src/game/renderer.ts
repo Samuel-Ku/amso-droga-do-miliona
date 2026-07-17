@@ -25,6 +25,7 @@ import {
   WORLD_ROUTE_GRADIENT_STOPS,
   WORLD_ROUTE_Y
 } from "../visuals/world-route";
+import { MILESTONE_CELEBRATION_KINDS } from "./milestone-celebration";
 
 const COLORS = {
   ink: "#171717",
@@ -785,7 +786,6 @@ function drawTransformedObstacle(
 
 const POWER_UP_COLORS: Readonly<Record<PowerUpKind, string>> = {
   gwarancja_48: "#eb32a4",
-  audyt_jakosci: "#f04f45",
   drugie_zycie: "#f47100"
 };
 
@@ -793,7 +793,6 @@ const POWER_UP_COLORS: Readonly<Record<PowerUpKind, string>> = {
 // marketing-owned equivalents from runner-config.json through RenderScene.
 const DEFAULT_POWER_UP_PACKAGE_COPY: Readonly<Record<PowerUpKind, readonly [string, string]>> = {
   gwarancja_48: ["GWARANCJA", "48 M"],
-  audyt_jakosci: ["AUDYT", "TRASY"],
   drugie_zycie: ["2×", "PUNKTY"]
 };
 
@@ -1168,11 +1167,15 @@ function drawWarrantyShield(
           : null
   );
   if (presentation === null) return;
-  const pulse = scene.reducedMotion ? 0 : Math.sin(scene.elapsedSeconds * 4.2) * 2;
+  const pulse = scene.reducedMotion
+    ? 0
+    : Math.sin(scene.elapsedSeconds * (Math.PI * 2 / 1.9)) * 1.5;
   context.save();
   context.globalAlpha = presentation.breaking ? 0.72 : 0.94;
   context.strokeStyle = presentation.color;
   context.lineWidth = 4;
+  context.shadowColor = "rgba(244,113,0,0.42)";
+  context.shadowBlur = scene.reducedMotion ? 4 : 7 + pulse;
   context.setLineDash([]);
   context.beginPath();
   context.ellipse(
@@ -1229,10 +1232,10 @@ function drawCrouchingCourier(
   context.strokeStyle = COLORS.white;
   context.lineWidth = 4;
   context.beginPath();
-  context.moveTo(x + 11, y + 80);
-  context.lineTo(x + 22, y + 80);
-  context.moveTo(x + 40, y + 80);
-  context.lineTo(x + 52, y + 80);
+  context.moveTo(x + 11, y + 83);
+  context.lineTo(x + 22, y + 83);
+  context.moveTo(x + 40, y + 83);
+  context.lineTo(x + 52, y + 83);
   context.stroke();
 
   context.strokeStyle = COURIER_PALETTE.capAndShirt;
@@ -1247,7 +1250,7 @@ function drawCrouchingCourier(
   fillRoundedRectangle(context, x + 13, y + 32, 36, 30, 7, COURIER_PALETTE.capAndShirt);
   context.fillStyle = COURIER_PALETTE.belt;
   context.fillRect(x + 13, y + 50, 36, 7);
-  brandArtwork.drawMark(context, { x: x + 23, y: y + 38, width: 16, height: 11 });
+  brandArtwork.drawMark(context, { x: x + 22, y: y + 37, width: 18, height: 13 });
 
   fillRoundedRectangle(context, x + 4, y + 34, 12, 24, 3, COURIER_PALETTE.scanner);
   context.fillStyle = COURIER_PALETTE.scannerScreen;
@@ -1323,10 +1326,10 @@ function drawCourier(
   context.strokeStyle = COLORS.white;
   context.lineWidth = 4;
   context.beginPath();
-  context.moveTo(x + 13 - stride * 8, y + 80);
-  context.lineTo(x + 25 - stride * 8, y + 80);
-  context.moveTo(x + 37 + stride * 8, y + 80);
-  context.lineTo(x + 52 + stride * 8, y + 80);
+  context.moveTo(x + 13 - stride * 8, y + 83);
+  context.lineTo(x + 25 - stride * 8, y + 83);
+  context.moveTo(x + 37 + stride * 8, y + 83);
+  context.lineTo(x + 52 + stride * 8, y + 83);
   context.stroke();
 
   context.strokeStyle = COURIER_PALETTE.capAndShirt;
@@ -1341,7 +1344,7 @@ function drawCourier(
   fillRoundedRectangle(context, x + 14, y + 27, 35, 36, 7, COURIER_PALETTE.capAndShirt);
   context.fillStyle = COURIER_PALETTE.belt;
   context.fillRect(x + 14, y + 49, 35, 8);
-  brandArtwork.drawMark(context, { x: x + 23, y: y + 34, width: 18, height: 13 });
+  brandArtwork.drawMark(context, { x: x + 22, y: y + 33, width: 20, height: 15 });
 
   fillRoundedRectangle(context, x + 5, y + 30, 12, 27, 3, COURIER_PALETTE.scanner);
   context.fillStyle = COURIER_PALETTE.scannerScreen;
@@ -1415,7 +1418,11 @@ function drawMilestoneParticles(
   const progress = Math.max(0, Math.min(1, celebration.progress));
   const motion = progress * (1 + Math.min(3, celebration.intensity) * 0.12);
   const alpha = Math.sin(progress * Math.PI) * 0.72;
-  const particleCount = Math.min(42, 10 + celebration.intensity * 5);
+  const variant = Math.max(0, MILESTONE_CELEBRATION_KINDS.indexOf(celebration.kind));
+  const fullParticleCount = Math.min(54, 12 + variant * 6 + celebration.intensity * 5);
+  const particleCount = scene.decorationQuality === "reduced"
+    ? Math.ceil(fullParticleCount * 0.52)
+    : fullParticleCount;
   context.save();
   context.globalAlpha = alpha;
   const gradient = context.createLinearGradient(0, 0, WORLD_WIDTH, 0);
@@ -1423,33 +1430,13 @@ function drawMilestoneParticles(
     gradient.addColorStop(offset, color);
   }
 
-  if (celebration.kind === "confetti") {
-    for (let index = 0; index < particleCount; index += 1) {
-      const x = positiveModulo(index * 137 + celebration.threshold, WORLD_WIDTH);
-      const y = positiveModulo(index * 71 + motion * 440, WORLD_HEIGHT - 90);
-      context.fillStyle = index % 3 === 0 ? COLORS.orange : index % 3 === 1 ? COLORS.red : COLORS.redDark;
-      context.save();
-      context.translate(x, y);
-      context.rotate(motion * 5 + index);
-      context.fillRect(-5, -2, 10, 4);
-      context.restore();
-    }
-  } else if (celebration.kind === "pulse") {
+  if (celebration.kind === "confetti-streamers" || celebration.kind === "confetti-finale") {
     context.strokeStyle = gradient;
-    for (let ring = 0; ring < Math.min(5, celebration.intensity + 2); ring += 1) {
-      context.globalAlpha = alpha * (1 - ring * 0.12);
-      context.lineWidth = 7 - ring;
-      context.beginPath();
-      context.arc(WORLD_WIDTH / 2, 245, 55 + (motion + ring * 0.25) * 105, 0, Math.PI * 2);
-      context.stroke();
-    }
-  } else if (celebration.kind === "ribbons") {
-    context.strokeStyle = gradient;
-    context.lineWidth = 8;
-    for (let ribbon = 0; ribbon < Math.min(7, celebration.intensity + 3); ribbon += 1) {
+    context.lineWidth = 5;
+    for (let ribbon = 0; ribbon < 3 + variant; ribbon += 1) {
       const offset = ribbon * 36;
       context.beginPath();
-      context.moveTo(-40, 100 + offset);
+      context.moveTo(ribbon % 2 === 0 ? -40 : WORLD_WIDTH + 40, 100 + offset);
       context.bezierCurveTo(
         190 + motion * 80,
         20 + offset,
@@ -1460,25 +1447,30 @@ function drawMilestoneParticles(
       );
       context.stroke();
     }
-  } else if (celebration.kind === "package-rain") {
-    for (let index = 0; index < particleCount; index += 1) {
-      const x = positiveModulo(index * 113 + celebration.threshold, WORLD_WIDTH);
-      const y = positiveModulo(index * 83 + motion * 520, WORLD_HEIGHT + 70) - 70;
-      context.fillStyle = COLORS.cardboard;
-      context.fillRect(x, y, 18, 15);
-      context.fillStyle = index % 2 === 0 ? COLORS.orange : COLORS.redDark;
-      context.fillRect(x + 7, y, 4, 15);
-    }
-  } else {
-    context.strokeStyle = gradient;
-    context.lineWidth = 10 + Math.min(8, celebration.intensity * 2);
-    context.beginPath();
-    context.moveTo(-20, WORLD_ROUTE_Y);
-    for (let x = 0; x <= WORLD_WIDTH + 20; x += 24) {
-      const wave = Math.sin(x / 62 - motion * Math.PI * 4) * (10 + celebration.intensity * 3);
-      context.lineTo(x, WORLD_ROUTE_Y + wave);
-    }
-    context.stroke();
+  }
+  for (let index = 0; index < particleCount; index += 1) {
+    const sideLaunch = celebration.kind === "confetti-sides" || celebration.kind === "confetti-finale";
+    const sourceX = sideLaunch
+      ? (index % 2 === 0 ? 42 : WORLD_WIDTH - 42)
+      : positiveModulo(index * 137 + celebration.threshold, WORLD_WIDTH);
+    const spread = sideLaunch
+      ? (index % 2 === 0 ? 1 : -1) * motion * (90 + (index % 7) * 14)
+      : 0;
+    const x = sourceX + spread;
+    const y = 28 + positiveModulo(
+      index * 71 + motion * (360 + variant * 35),
+      WORLD_HEIGHT - 145
+    );
+    context.fillStyle = index % 3 === 0
+      ? COLORS.orange
+      : index % 3 === 1
+        ? COLORS.red
+        : COLORS.redDark;
+    context.save();
+    context.translate(x, y);
+    context.rotate(motion * (4 + variant * 0.4) + index);
+    context.fillRect(-5, -2, 10 + variant, 4);
+    context.restore();
   }
   context.restore();
 }

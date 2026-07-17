@@ -1,101 +1,130 @@
 // @vitest-environment happy-dom
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   BACKGROUND_PARALLAX_SPEED_RATIO,
   backgroundTravelPixels
 } from "../src/visuals/background-parallax";
-import { WorldVisualLayer } from "../src/visuals/WorldVisualLayer";
+import { WorldAssetStore, WorldVisualLayer } from "../src/visuals/WorldVisualLayer";
 
-describe("cyclic gameplay background", () => {
-  it("keeps the outgoing world above the incoming world on every crossfade", () => {
-    const host = document.createElement("div");
-    const layer = new WorldVisualLayer(host);
-    const panels = [...host.querySelectorAll<HTMLElement>("[data-world-panel]")];
+function imageHarness(): {
+  store: WorldAssetStore;
+  images: HTMLImageElement[];
+} {
+  const images: HTMLImageElement[] = [];
+  class ControlledImage extends EventTarget {
+    public onload: ((event: Event) => unknown) | null = null;
+    public onerror: ((event: Event) => unknown) | null = null;
+    public src = "";
+    public complete = false;
+    public naturalWidth = 0;
 
-    layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "story" });
-    expect(panels[0]!.style.zIndex).toBe("2");
-    expect(panels[1]!.style.zIndex).toBe("1");
-    host.querySelector<HTMLImageElement>('[data-world-image="1"]')!
-      .dispatchEvent(new Event("load"));
+    public override dispatchEvent(event: Event): boolean {
+      if (event.type === "load") this.onload?.(event);
+      if (event.type === "error") this.onerror?.(event);
+      return super.dispatchEvent(event);
+    }
+  }
+  return {
+    images,
+    store: new WorldAssetStore(() => {
+      const image = new ControlledImage() as unknown as HTMLImageElement;
+      images.push(image);
+      return image;
+    })
+  };
+}
 
-    layer.show({ worldId: "quality-service", stateId: "epoch_2.resolve", phase: "story" });
-    expect(panels[1]!.style.zIndex).toBe("2");
-    expect(panels[0]!.style.zIndex).toBe("1");
+describe("mobile-safe world assets", () => {
+  it("decodes one resource per world and reuses it", async () => {
+    const { store, images } = imageHarness();
+    const first = store.load("data:image/webp;base64,AAA");
+    const second = store.load("data:image/webp;base64,AAA");
+    expect(images).toHaveLength(1);
+    images[0]!.dispatchEvent(new Event("load"));
+
+    await expect(first).resolves.toBe("data:image/webp;base64,AAA");
+    await expect(second).resolves.toBe("data:image/webp;base64,AAA");
   });
 
-  it("publishes one blend-width token for the CSS seam mask", () => {
-    const host = document.createElement("div");
-    new WorldVisualLayer(host);
+  it("retries one decode failure and then exposes a local fallback", async () => {
+    const { store, images } = imageHarness();
+    const loading = store.load("data:image/webp;base64,BBB");
+    images[0]!.dispatchEvent(new Event("error"));
+    await Promise.resolve();
+    images[0]!.dispatchEvent(new Event("load"));
+    await expect(loading).resolves.toBe("data:image/webp;base64,BBB");
 
-    expect(host.style.getPropertyValue("--world-tile-blend-width")).toBe("32px");
+    const failed = store.load("data:image/webp;base64,CCC");
+    images[1]!.dispatchEvent(new Event("error"));
+    await Promise.resolve();
+    images[1]!.dispatchEvent(new Event("error"));
+    await expect(failed).rejects.toThrow("world_asset_decode_failed");
   });
+});
 
+describe("edge-to-edge gameplay background", () => {
   it("moves at exactly ten percent of gameplay travel", () => {
     expect(BACKGROUND_PARALLAX_SPEED_RATIO).toBe(0.1);
     expect(backgroundTravelPixels(2_400)).toBe(240);
   });
 
-  it("ties world-entry duration to gameplay speed", () => {
+  it("uses adjacent, equally oriented panels without overlap or crossfade", () => {
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host);
-    layer.setParallaxDistance(100, true, false, 280);
-    const slow = host.style.getPropertyValue("--world-transition-ms");
-    layer.setParallaxDistance(200, true, false, 700);
-    const fast = host.style.getPropertyValue("--world-transition-ms");
-    expect(Number.parseInt(fast)).toBeLessThan(Number.parseInt(slow));
-  });
-
-  it("uses two equally oriented blended tiles and preserves the phase across worlds", () => {
-    const host = document.createElement("div");
-    const layer = new WorldVisualLayer(host);
-
     layer.setParallaxDistance(480, true);
-    const firstTiles = [...host.querySelectorAll<HTMLElement>('[data-world-panel="0"] [data-world-tile]')];
-    expect(firstTiles).toHaveLength(2);
-    expect(firstTiles[0]!.style.transform).toMatch(/^translateX\(calc\(-/u);
-    expect(firstTiles[1]!.style.transform).toMatch(/^translateX\(calc\([^-]/u);
-    expect(firstTiles.every(({ style }) => !style.transform.includes("scaleX"))).toBe(true);
 
-    layer.show({ worldId: "quality-service", stateId: "epoch_2.resolve", phase: "game" });
-    const secondTiles = [...host.querySelectorAll<HTMLElement>('[data-world-panel="1"] [data-world-tile]')];
-    expect(secondTiles[0]!.style.transform).toBe(firstTiles[0]!.style.transform);
-    expect(secondTiles[1]!.style.transform).toBe(firstTiles[1]!.style.transform);
+    const panels = [...host.querySelectorAll<HTMLElement>("[data-world-panel]")];
+    expect(panels).toHaveLength(2);
+    expect(panels.every((panel) => panel.style.opacity === "")).toBe(true);
+    expect(panels.every((panel) => !panel.style.transform.includes("scaleX"))).toBe(true);
+    expect(host.querySelector("[data-world-connector]")).not.toBeNull();
+    expect(host.style.getPropertyValue("--world-overlap")).toBe("0px");
   });
 
-  it("recenters in story and pause while reduced motion keeps slow linear travel", () => {
+  it("preserves absolute phase across world, story and challenge changes", () => {
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host);
-    const tile = host.querySelector<HTMLElement>('[data-world-tile="0"]')!;
-
-    layer.setParallaxDistance(200, true);
-    const activeTransform = tile.style.transform;
-    layer.setParallaxDistance(220, true);
-    expect(tile.style.transition).toBe("transform 140ms linear");
-    layer.setParallaxDistance(400, false);
-    expect(tile.style.transform).not.toBe(activeTransform);
-    expect(tile.style.transform).toBe("translateX(0px)");
-    const centeredTransform = tile.style.transform;
-    expect(tile.style.transition).toContain("720ms");
-    layer.setParallaxDistance(600, true, true);
-    expect(tile.style.transform).not.toBe(centeredTransform);
-    expect(tile.style.transition).toBe("transform 280ms linear");
-  });
-
-  it("moves to a whole centered frame when a story card is opened", () => {
-    const host = document.createElement("div");
-    const layer = new WorldVisualLayer(host);
-    const tiles = [...host.querySelectorAll<HTMLElement>('[data-world-panel="0"] [data-world-tile]')];
     layer.setParallaxDistance(480, true);
+    const before = host.style.getPropertyValue("--world-phase-px");
     layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "story" });
-    layer.setParallaxDistance(600, false);
-    expect(tiles.map(({ style }) => style.transform)).toEqual([
-      "translateX(0px)",
-      "translateX(calc(100% - 35px))"
-    ]);
-    expect(tiles.every(({ style }) => style.transition.includes("720ms"))).toBe(true);
-
+    layer.setParallaxDistance(480, false);
+    layer.show({ worldId: "quality-service", stateId: "epoch_2.resolve", phase: "game" });
     layer.setParallaxDistance(480, true);
-    expect(tiles[0]!.style.transform).not.toBe("translateX(0px)");
+
+    expect(host.style.getPropertyValue("--world-phase-px")).toBe(before);
+  });
+
+  it("places the neutral connector between panels and closes it without a gap", async () => {
+    const { store, images } = imageHarness();
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+    layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "game" });
+    images[0]!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+
+    layer.setParallaxDistance(240, true);
+    layer.show({ worldId: "quality-service", stateId: "epoch_2.resolve", phase: "game" });
+    images[1]!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    layer.setParallaxDistance(240 + 960 * 1.08, true);
+
+    const panels = [...host.querySelectorAll<HTMLElement>("[data-world-panel]")];
+    const connector = host.querySelector<HTMLElement>("[data-world-connector]")!;
+    expect(panels[0]!.style.transform).toBe("translate3d(0%, 0, 0)");
+    expect(panels[1]!.style.transform).toBe("translate3d(100%, 0, 0)");
+    expect(connector.hidden).toBe(true);
+  });
+
+  it("keeps a bright branded fallback instead of a black or global error screen", async () => {
+    const { store, images } = imageHarness();
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+    layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "game" });
+    images[0]!.dispatchEvent(new Event("error"));
+    await Promise.resolve();
+    images[0]!.dispatchEvent(new Event("error"));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("fallback"));
+    expect(host.dataset.worldId).toBe("first-mile");
   });
 });

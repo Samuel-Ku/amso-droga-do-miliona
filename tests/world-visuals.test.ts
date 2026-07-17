@@ -25,9 +25,12 @@ describe("world visual continuity", () => {
     );
     const renderer = readFileSync(new URL("../src/game/renderer.ts", import.meta.url), "utf8");
 
-    expect(css).toContain("object-fit: cover");
-    expect(css).toContain("linear-gradient(to right, transparent 0, #000 var(--world-tile-blend-width))");
-    expect(css).not.toMatch(/\.amso-world-visual__panel\.is-leaving\s*\{[^}]*translateX/su);
+    expect(css).toContain("background-size: cover");
+    expect(css).toContain("--world-position-portrait");
+    expect(css).toContain("--world-position-landscape");
+    expect(css).not.toContain("--world-tile-blend-width");
+    expect(css).not.toMatch(/\.amso-world-visual__panel\.is-leaving\s*\{/u);
+    expect(worldLayer).toContain('this.host.style.setProperty("--world-overlap", "0px")');
     expect(worldLayer).toContain("WORLD_ROUTE_SVG");
     expect(renderer).toContain("drawGameplayRoute(context)");
     expect(WORLD_ROUTE_Y).toBe(GROUND_Y);

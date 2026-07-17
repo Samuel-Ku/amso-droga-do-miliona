@@ -48,7 +48,6 @@ import { calculateCanvasBuffer } from "./viewport";
 import { resolveCollision, START_PROTECTION_SECONDS } from "./mode-rules";
 import {
   ActivePowerUps,
-  spawnTravelDistance,
   storyPowerUpsForEpoch
 } from "./power-ups";
 import {
@@ -86,6 +85,7 @@ import {
   challengePatternTuning,
   challengePressureAt
 } from "./challenge-pressure";
+import { AdaptiveDecorationQuality } from "./adaptive-decoration-quality";
 
 const CUTSCENE_SECONDS = 2.6;
 export const STORY_FINALE_CELEBRATION_SECONDS = 3.5;
@@ -97,7 +97,6 @@ const STORY_ORDER_TYPES: readonly PackageType[] = ["pc", "notebook", "lcd", "tel
 const CROUCH_MINIMUM_SECONDS = 0.3;
 const CROUCH_BUFFER_SECONDS = 0.11;
 const FINALE_POWER_UPS: readonly PowerUpKind[] = [
-  "audyt_jakosci",
   "drugie_zycie",
   "gwarancja_48"
 ];
@@ -136,6 +135,7 @@ export class RunnerGame implements RunnerGameApi {
   private readonly storyClimaxDirector = new StoryClimaxDirector();
   private readonly storyObstacleTransformer = new StoryObstacleTransformer();
   private readonly milestoneCelebrationDirector = new MilestoneCelebrationDirector();
+  private readonly decorationQuality = new AdaptiveDecorationQuality();
   private storyObjectiveDirector = new StoryObjectiveDirector();
   private authoredWaveDirector: AuthoredWaveDirector | null = null;
   private authoredActionIndex = 0;
@@ -145,9 +145,7 @@ export class RunnerGame implements RunnerGameApi {
   private authoredFinaleCelebrated = false;
   private challengePatternIndex = 0;
   private challengeSpawnCooldown = 0;
-  private challengeWaveId: string | null = null;
-  private challengeWavePackagesAvailable = 0;
-  private challengeWavePackagesCollected = 0;
+  private readonly challengeWaves = new Map<string, { available: number; collected: number }>();
   private challengeSequenceRemaining = 0;
   private challengeSequencePackagesAvailable = 0;
   private challengeSequencePackagesCollected = 0;
@@ -165,6 +163,7 @@ export class RunnerGame implements RunnerGameApi {
   private bonusScore = 0;
   private challengeStartScore = 0;
   private challengeStartPackages = 0;
+  private personalRecordCelebrated = false;
   private bossesDefeated = 0;
   private speed = getDifficulty(0).speed;
   private difficultyLevel = 1;
@@ -172,6 +171,7 @@ export class RunnerGame implements RunnerGameApi {
   private mode: GameMode;
   private readonly story: StoryConfig | null;
   private readonly challenge: RunnerGameOptions["challenge"];
+  private readonly bestChallengePackagesAtStart: number;
   private readonly awardStoryCompletionBonus: boolean;
   private readonly powerUpPackageCopy: NonNullable<RunnerGameOptions["powerUpPackageCopy"]>;
   private narrative: NarrativeConfig | null;
@@ -252,6 +252,10 @@ export class RunnerGame implements RunnerGameApi {
     this.mode = options.mode ?? (options.story || options.narrative ? "story" : "challenge");
     this.story = this.mode === "story" ? options.story ?? null : null;
     this.challenge = options.challenge ?? null;
+    this.bestChallengePackagesAtStart = Math.max(
+      0,
+      Math.floor(options.bestChallengePackagesAtStart ?? 0)
+    );
     this.awardStoryCompletionBonus = options.awardStoryCompletionBonus ?? true;
     this.powerUpPackageCopy = options.powerUpPackageCopy ?? {};
     this.logisticWaveDirector = new LogisticWaveDirector(
@@ -298,6 +302,7 @@ export class RunnerGame implements RunnerGameApi {
     this.performanceSampleSeconds = 0;
     this.estimatedFrameRate = 0;
     this.droppedFrames = 0;
+    this.decorationQuality.reset();
     this.lastCollisionType = null;
     this.impact = false;
     this.impactSeconds = 0;
@@ -420,6 +425,7 @@ export class RunnerGame implements RunnerGameApi {
     this.bonusScore = 0;
     this.challengeStartScore = 0;
     this.challengeStartPackages = 0;
+    this.personalRecordCelebrated = false;
     this.bossesDefeated = 0;
     this.bossDirector.reset();
     this.storyClimaxDirector.reset();
@@ -572,6 +578,7 @@ export class RunnerGame implements RunnerGameApi {
 
   private observeFramePerformance(deltaSeconds: number): void {
     if (deltaSeconds <= 0) return;
+    this.decorationQuality.observe(deltaSeconds);
     this.performanceFrameCount += 1;
     this.performanceSampleSeconds += deltaSeconds;
     const frameBudgetSeconds = 1 / 60;
@@ -928,8 +935,15 @@ export class RunnerGame implements RunnerGameApi {
     if (this.mode === "challenge") {
       const visualRouteClear = routeClear && this.bossDirector.model.phase === "inactive";
       this.challengeWorldDirector.advance(activeDeltaSeconds, visualRouteClear);
-      if (routeClear && this.recoverySeconds <= 0 && this.challengeSpawnCooldown <= 0 &&
-          this.challengeWaveId === null) {
+      const activeChallengeObstacles = this.obstacles.filter(({ active, authoredWaveId }) =>
+        active && authoredWaveId?.startsWith("challenge-")
+      ).length;
+      const startingSequence = this.challengeSequenceRemaining === 0 &&
+        this.challengeWaves.size === 0 && routeClear;
+      const continuingSequence = this.challengeSequenceRemaining > 0 &&
+        activeChallengeObstacles < 3;
+      if (this.recoverySeconds <= 0 && this.challengeSpawnCooldown <= 0 &&
+          (startingSequence || continuingSequence)) {
         this.spawnChallengePattern();
       }
     }
@@ -984,7 +998,7 @@ export class RunnerGame implements RunnerGameApi {
         !millionThresholdActive &&
         this.mode !== "challenge") {
       const wave = this.spawner.advance(
-        spawnTravelDistance(travelledPixels, this.activePowerUps.has("audyt_jakosci")),
+        travelledPixels,
         this.speed,
         difficulty,
         WORLD_WIDTH + GAMEPLAY.spawnPadding
@@ -1042,13 +1056,8 @@ export class RunnerGame implements RunnerGameApi {
       if (obstacle.authoredWaveId && this.authoredWaveDirector?.currentWave?.id === obstacle.authoredWaveId) {
         this.resolveCurrentAuthoredWave(false);
       }
-      if (obstacle.authoredWaveId && obstacle.authoredWaveId === this.challengeWaveId) {
-        for (const parcel of this.packages) {
-          if (parcel.authoredWaveId === this.challengeWaveId) parcel.active = false;
-        }
-        this.challengeWaveId = null;
-        this.challengeWavePackagesAvailable = 0;
-        this.challengeWavePackagesCollected = 0;
+      if (obstacle.authoredWaveId && this.challengeWaves.has(obstacle.authoredWaveId)) {
+        this.challengeWaves.clear();
         this.resetChallengeSequence();
         this.challengeSpawnCooldown = Math.max(this.challengeSpawnCooldown, 1.1);
       }
@@ -1101,14 +1110,32 @@ export class RunnerGame implements RunnerGameApi {
       if (parcel.authoredWaveId &&
           this.authoredWaveDirector?.currentWave?.id === parcel.authoredWaveId) {
         this.authoredWaveDirector.recordPackage();
-      } else if (parcel.authoredWaveId && parcel.authoredWaveId === this.challengeWaveId) {
-        this.challengeWavePackagesCollected += 1;
+      } else if (parcel.authoredWaveId) {
+        const challengeWave = this.challengeWaves.get(parcel.authoredWaveId);
+        if (challengeWave !== undefined) challengeWave.collected += 1;
       }
       this.packagesCollected += 1;
-      for (const celebration of this.milestoneCelebrationDirector.recordPackages(
+      const challengePackages = Math.max(0, this.packagesCollected - this.challengeStartPackages);
+      const newPersonalRecord = this.mode === "challenge" &&
+        !this.personalRecordCelebrated &&
+        challengePackages > this.bestChallengePackagesAtStart;
+      if (newPersonalRecord) this.personalRecordCelebrated = true;
+      const safeToCelebrate = !this.obstacles.some(({ active, x }) =>
+        active && x >= this.runner.x
+      );
+      const celebrations = this.milestoneCelebrationDirector.recordPackages(
         this.packagesCollected,
-        !this.obstacles.some(({ active, x }) => active && x >= this.runner.x)
-      )) {
+        safeToCelebrate,
+        newPersonalRecord ? "NOWY REKORD" : undefined
+      );
+      if (newPersonalRecord && celebrations.length === 0) {
+        celebrations.push(this.milestoneCelebrationDirector.recordAchievement(
+          challengePackages,
+          "NOWY REKORD",
+          safeToCelebrate
+        ));
+      }
+      for (const celebration of celebrations) {
         try {
           this.callbacks.onMilestoneCelebration?.(celebration);
         } catch {
@@ -1281,9 +1308,7 @@ export class RunnerGame implements RunnerGameApi {
       this.bonusScore += combo.perfectBonus;
     }
     if (result.passed && wave.reward) {
-      const powerUp: PowerUpKind | undefined = wave.reward === "audit"
-        ? "audyt_jakosci"
-        : wave.reward === "double-score"
+      const powerUp: PowerUpKind | undefined = wave.reward === "double-score"
           ? "drugie_zycie"
           : wave.reward === "warranty"
             ? "gwarancja_48"
@@ -1337,9 +1362,7 @@ export class RunnerGame implements RunnerGameApi {
     this.challengeElapsedSeconds = 0;
     this.challengePatternIndex = 0;
     this.challengeSpawnCooldown = 0;
-    this.challengeWaveId = null;
-    this.challengeWavePackagesAvailable = 0;
-    this.challengeWavePackagesCollected = 0;
+    this.challengeWaves.clear();
     this.resetChallengeSequence();
   }
 
@@ -1381,31 +1404,29 @@ export class RunnerGame implements RunnerGameApi {
       rewards: [{ kind: "standard" }]
     });
     if (!wave || !activateWave(wave, this.obstacles, this.packages)) return;
-    this.challengeWaveId = waveId;
-    this.challengeWavePackagesAvailable = tuning.packageCount;
-    this.challengeWavePackagesCollected = 0;
+    this.challengeWaves.set(waveId, { available: tuning.packageCount, collected: 0 });
+    this.challengeSequenceRemaining = Math.max(0, this.challengeSequenceRemaining - 1);
+    if (this.challengeSequenceRemaining > 0) {
+      this.challengeSpawnCooldown = tuning.sequenceGapSeconds;
+    }
     this.challengePatternIndex += 1;
   }
 
   private resolveChallengeWaveIfClear(): void {
-    const waveId = this.challengeWaveId;
-    if (this.mode !== "challenge" || waveId === null) return;
-    const active = this.obstacles.some(({ active, authoredWaveId }) =>
-      active && authoredWaveId === waveId
-    ) || this.packages.some(({ active, authoredWaveId }) =>
-      active && authoredWaveId === waveId
-    );
-    if (active) return;
-    this.challengeSequencePackagesAvailable += this.challengeWavePackagesAvailable;
-    this.challengeSequencePackagesCollected += this.challengeWavePackagesCollected;
-    this.challengeSequenceRemaining = Math.max(0, this.challengeSequenceRemaining - 1);
-    this.challengeWaveId = null;
-    this.challengeWavePackagesAvailable = 0;
-    this.challengeWavePackagesCollected = 0;
-    if (this.challengeSequenceRemaining > 0) {
-      this.challengeSpawnCooldown = 0.18;
-      return;
+    if (this.mode !== "challenge") return;
+    for (const [waveId, result] of this.challengeWaves) {
+      const active = this.obstacles.some(({ active, authoredWaveId }) =>
+        active && authoredWaveId === waveId
+      ) || this.packages.some(({ active, authoredWaveId }) =>
+        active && authoredWaveId === waveId
+      );
+      if (active) continue;
+      this.challengeSequencePackagesAvailable += result.available;
+      this.challengeSequencePackagesCollected += result.collected;
+      this.challengeWaves.delete(waveId);
     }
+    if (this.challengeSequenceRemaining > 0 || this.challengeWaves.size > 0 ||
+        this.challengeSequencePackagesAvailable === 0) return;
     const passed = this.challengeSequencePackagesCollected >=
       Math.ceil(this.challengeSequencePackagesAvailable * STORY_WAVE_COLLECTION_RATIO);
     const perfect = passed &&
@@ -1826,6 +1847,7 @@ export class RunnerGame implements RunnerGameApi {
       distanceM,
       backgroundTravelPixels: backgroundTravelPixels(this.distancePixels),
       reducedMotion: this.reducedMotion,
+      decorationQuality: this.decorationQuality.level,
       durationSeconds: round(this.elapsedSeconds, 2),
       frameRate: round(this.estimatedFrameRate, 1),
       droppedFrames: this.droppedFrames,
@@ -1961,6 +1983,7 @@ export class RunnerGame implements RunnerGameApi {
       distancePixels: this.visualDistancePixels,
       speed: this.speed,
       reducedMotion: this.reducedMotion,
+      decorationQuality: this.decorationQuality.level,
       impact: this.impact,
       epochIndex: this.currentEpoch,
       epochName: this.narrative?.epochs[this.currentEpoch]?.name ?? "",

@@ -107,7 +107,6 @@ export class StoryContinuationGate {
 }
 
 const POWER_UP_HUD_LABELS: Readonly<Record<PowerUpKind, string>> = {
-  audyt_jakosci: "AUDYT",
   drugie_zycie: "×2 WYNIK",
   gwarancja_48: "GWARANCJA 48 M ×1"
 };

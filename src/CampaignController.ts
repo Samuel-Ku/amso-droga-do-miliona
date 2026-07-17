@@ -239,16 +239,13 @@ export class CampaignController {
         mode: safeRequest.mode,
         story: safeRequest.mode === "story" ? this.config.story : null,
         challenge: this.config.challenge,
+        bestChallengePackagesAtStart: this.profile.snapshot.bestChallengePackages,
         awardStoryCompletionBonus: safeRequest.mode === "story" &&
           !this.profile.snapshot.storyCompleted,
         powerUpPackageCopy: {
           gwarancja_48: [
             this.uiCopy("parcelWarrantyLine1", "GWARANCJA"),
             this.uiCopy("parcelWarrantyLine2", "48 M")
-          ],
-          audyt_jakosci: [
-            this.uiCopy("parcelAuditLine1", "AUDYT"),
-            this.uiCopy("parcelAuditLine2", "TRASY")
           ],
           drugie_zycie: [
             this.uiCopy("parcelSecondLifeLine1", "2×"),
@@ -300,7 +297,6 @@ export class CampaignController {
         this.shownPowerUpHints.add(kind);
         const copy = {
           golden: "BONUS — +350 pkt.",
-          audyt_jakosci: "AUDYT — więcej czasu na ocenę następnej przeszkody.",
           drugie_zycie: "2× PUNKTY — każda zebrana paczka liczy się podwójnie.",
           gwarancja_48: this.uiCopy(
             "powerupWarranty",

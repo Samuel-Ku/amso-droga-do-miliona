@@ -1,4 +1,5 @@
 import type { RunnerModel } from "./types";
+import { GROUND_Y, RUNNER_HEIGHT, RUNNER_WIDTH } from "./constants";
 
 const MIN_STRIDE_CYCLES_PER_SECOND = 2;
 const MAX_STRIDE_CYCLES_PER_SECOND = 4;
@@ -31,16 +32,12 @@ export function courierProtectionPresentation(
   state: CourierProtectionState | null
 ): CourierProtectionPresentation | null {
   if (state === null) return null;
-  const crouching = runner.crouching;
-  const radiusX = crouching
-    ? runner.width / 2 + 14
-    : Math.max(runner.width / 2 + 18, runner.height / 2 + 7);
-  const radiusY = crouching ? Math.max(24, runner.height * 0.34 + 8) : radiusX;
+  const radius = Math.max(RUNNER_WIDTH / 2 + 18, RUNNER_HEIGHT / 2 + 7);
   return {
-    centerX: runner.x + radiusX - 2,
-    centerY: runner.y + runner.height / 2 + (crouching ? 10 : 0),
-    radiusX,
-    radiusY,
+    centerX: runner.x + RUNNER_WIDTH / 2,
+    centerY: GROUND_Y - RUNNER_HEIGHT / 2,
+    radiusX: radius,
+    radiusY: radius,
     color: "#f47100",
     breaking: state === "breaking"
   };

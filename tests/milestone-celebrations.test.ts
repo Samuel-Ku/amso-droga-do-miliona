@@ -56,7 +56,7 @@ function renderingHarness(reducedMotion: boolean): {
     activePowerUps: [],
     milestoneCelebration: {
       threshold: 100,
-      kind: "ribbons",
+      kind: "confetti-streamers",
       intensity: 1,
       durationSeconds: 1.35,
       remainingSeconds: 0.8,
@@ -70,6 +70,7 @@ function renderingHarness(reducedMotion: boolean): {
 describe("package milestone celebrations", () => {
   it("defines duration and audio presentation for every rotating variant", () => {
     expect(Object.keys(MILESTONE_CELEBRATION_PRESENTATION)).toEqual(MILESTONE_CELEBRATION_KINDS);
+    expect(MILESTONE_CELEBRATION_KINDS.every((kind) => kind.startsWith("confetti-"))).toBe(true);
     expect(Object.values(MILESTONE_CELEBRATION_PRESENTATION).every(
       ({ durationSeconds, audioNotes }) =>
         durationSeconds >= 1.2 && durationSeconds <= 1.5 && audioNotes.length >= 3
@@ -84,7 +85,7 @@ describe("package milestone celebrations", () => {
     expect(values).toEqual([10, 50, 100, 500, 1_000, 5_000, 10_000, 50_000, 100_000]);
   });
 
-  it("emits every crossed threshold exactly once with rotating variants", () => {
+  it("emits every crossed threshold exactly once with rotating confetti compositions", () => {
     const director = new MilestoneCelebrationDirector();
     const events = [
       ...director.recordPackages(10),
@@ -117,6 +118,28 @@ describe("package milestone celebrations", () => {
     director.reset();
     expect(director.recordPackages(10)[0]?.threshold).toBe(10);
     expect(director.nextThreshold).toBe(50);
+  });
+
+  it("merges a new record with a simultaneous round threshold", () => {
+    const director = new MilestoneCelebrationDirector();
+    const events = director.recordPackages(10, true, "NOWY REKORD");
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      kind: "confetti-finale",
+      text: "NOWY REKORD · 10 PACZEK!"
+    });
+    expect(director.snapshot?.text).toBe("NOWY REKORD · 10 PACZEK!");
+  });
+
+  it("presents a new record once even when no round threshold is crossed", () => {
+    const director = new MilestoneCelebrationDirector();
+    expect(director.recordAchievement(7, "NOWY REKORD")).toMatchObject({
+      threshold: 7,
+      kind: "confetti-finale",
+      text: "NOWY REKORD"
+    });
+    expect(director.snapshot?.text).toBe("NOWY REKORD");
   });
 
   it("removes moving particles for reduced motion", () => {

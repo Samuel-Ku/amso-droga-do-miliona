@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import { resolveCollision } from "../src/game/mode-rules";
 import {
   ActivePowerUps,
-  AUDIT_SPAWN_RATE,
-  spawnTravelDistance,
   storyPowerUpsForEpoch
 } from "../src/game/power-ups";
 import {
@@ -13,7 +11,7 @@ import {
 
 describe("package collection and scoring rules", () => {
   it("does not count power-ups as delivered packages", () => {
-    for (const kind of ["gwarancja_48", "audyt_jakosci", "drugie_zycie"] as const) {
+    for (const kind of ["gwarancja_48", "drugie_zycie"] as const) {
       expect(resolvePackageCollection(kind, 0, 3, false)).toEqual({
         countsAsPackage: false,
         pointsAwarded: 0,
@@ -60,20 +58,10 @@ describe("power-up lifetime and pacing rules", () => {
     expect(powerUps.consumeWarranty()).toBe(false);
   });
 
-  it("slows only distance fed to the spawner during Audyt jakości", () => {
-    const worldTravel = 340 / 60;
-    expect(spawnTravelDistance(worldTravel, false)).toBe(worldTravel);
-    expect(spawnTravelDistance(worldTravel, true)).toBeCloseTo(worldTravel * AUDIT_SPAWN_RATE);
-  });
-
-  it("introduces story power-ups only in their approved epochs", () => {
+  it("introduces only immediately legible story power-ups", () => {
     expect(storyPowerUpsForEpoch(0)).toEqual([]);
-    expect(storyPowerUpsForEpoch(1)).toEqual(["audyt_jakosci"]);
-    expect(storyPowerUpsForEpoch(2)).toEqual(["audyt_jakosci", "drugie_zycie"]);
-    expect(storyPowerUpsForEpoch(3)).toEqual([
-      "audyt_jakosci",
-      "drugie_zycie",
-      "gwarancja_48"
-    ]);
+    expect(storyPowerUpsForEpoch(1)).toEqual(["drugie_zycie"]);
+    expect(storyPowerUpsForEpoch(2)).toEqual(["drugie_zycie", "gwarancja_48"]);
+    expect(storyPowerUpsForEpoch(3)).toEqual(["drugie_zycie", "gwarancja_48"]);
   });
 });

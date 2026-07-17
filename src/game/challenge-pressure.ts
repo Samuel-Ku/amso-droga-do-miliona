@@ -27,6 +27,7 @@ export interface ChallengePatternTuning {
   reactionSeconds: number;
   breathSeconds: number;
   sequenceLength: number;
+  sequenceGapSeconds: number;
 }
 
 const AXES: readonly ChallengePressureAxis[] = [
@@ -87,6 +88,9 @@ export function challengePatternTuning(
   const pressure = challengePressureAt(elapsedSeconds);
   const baseBreath = challengeBreathSeconds(patternIndex, elapsedSeconds);
   const burstBreak = baseBreath >= 1;
+  const sequenceGapSeconds = [0.62, 0.74, 0.57, 0.68][
+    Math.max(0, Math.floor(patternIndex)) % 4
+  ]!;
   switch (pressure.axis) {
     case "density":
       return {
@@ -94,7 +98,8 @@ export function challengePatternTuning(
         packageCount: Math.min(5, basePackageCount + 1),
         reactionSeconds: 1.2,
         breathSeconds: burstBreak ? baseBreath : baseBreath * 0.72,
-        sequenceLength: 1
+        sequenceLength: 1,
+        sequenceGapSeconds
       };
     case "complexity":
       return {
@@ -102,7 +107,8 @@ export function challengePatternTuning(
         packageCount: basePackageCount,
         reactionSeconds: 1.2,
         breathSeconds: burstBreak ? baseBreath : 0.38,
-        sequenceLength: 2
+        sequenceLength: 2,
+        sequenceGapSeconds
       };
     case "precision":
       return {
@@ -110,7 +116,8 @@ export function challengePatternTuning(
         packageCount: 2,
         reactionSeconds: 1.2,
         breathSeconds: baseBreath,
-        sequenceLength: 1
+        sequenceLength: 1,
+        sequenceGapSeconds
       };
     case "pressure":
       return {
@@ -118,7 +125,8 @@ export function challengePatternTuning(
         packageCount: Math.max(3, basePackageCount),
         reactionSeconds: 1.2,
         breathSeconds: burstBreak ? baseBreath : 0.24,
-        sequenceLength: 3
+        sequenceLength: 3,
+        sequenceGapSeconds
       };
     case "speed":
       return {
@@ -126,7 +134,8 @@ export function challengePatternTuning(
         packageCount: basePackageCount,
         reactionSeconds: 1.2,
         breathSeconds: baseBreath,
-        sequenceLength: 1
+        sequenceLength: 1,
+        sequenceGapSeconds
       };
   }
 }

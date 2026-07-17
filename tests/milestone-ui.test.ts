@@ -64,7 +64,7 @@ describe("responsive milestone message", () => {
     const shell = createShell();
     shell.showMilestoneCelebration({
       threshold: 1_000,
-      kind: "package-rain",
+      kind: "confetti-finale",
       intensity: 1,
       durationSeconds: 1.45,
       remainingSeconds: 1,
@@ -76,7 +76,7 @@ describe("responsive milestone message", () => {
     expect(message.hidden).toBe(false);
     expect(message.textContent).toBe("1 000 PACZEK!");
     expect(message.textContent).not.toContain("Następny próg");
-    expect(message.dataset.kind).toBe("package-rain");
+    expect(message.dataset.kind).toBe("confetti-finale");
     shell.destroy();
   });
 
@@ -84,7 +84,7 @@ describe("responsive milestone message", () => {
     const shell = createShell();
     const celebration = {
       threshold: 50,
-      kind: "pulse" as const,
+      kind: "confetti-burst" as const,
       intensity: 1,
       durationSeconds: 1.3,
       remainingSeconds: 1,

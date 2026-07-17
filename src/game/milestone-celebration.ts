@@ -1,9 +1,9 @@
 export const MILESTONE_CELEBRATION_KINDS = [
-  "confetti",
-  "pulse",
-  "ribbons",
-  "package-rain",
-  "route-wave"
+  "confetti-pop",
+  "confetti-sides",
+  "confetti-streamers",
+  "confetti-burst",
+  "confetti-finale"
 ] as const;
 
 export type MilestoneCelebrationKind = (typeof MILESTONE_CELEBRATION_KINDS)[number];
@@ -15,11 +15,11 @@ export interface MilestoneCelebrationPresentation {
 
 /** Shared non-visual presentation tokens for every celebration variant. */
 export const MILESTONE_CELEBRATION_PRESENTATION = {
-  confetti: { durationSeconds: 1.25, audioNotes: [523.25, 659.25, 783.99] },
-  pulse: { durationSeconds: 1.3, audioNotes: [392, 587.33, 783.99] },
-  ribbons: { durationSeconds: 1.35, audioNotes: [440, 554.37, 659.25, 880] },
-  "package-rain": { durationSeconds: 1.45, audioNotes: [329.63, 493.88, 659.25, 987.77] },
-  "route-wave": { durationSeconds: 1.5, audioNotes: [261.63, 392, 523.25, 783.99] }
+  "confetti-pop": { durationSeconds: 1.2, audioNotes: [523.25, 659.25, 783.99] },
+  "confetti-sides": { durationSeconds: 1.3, audioNotes: [523.25, 659.25, 783.99, 1046.5] },
+  "confetti-streamers": { durationSeconds: 1.35, audioNotes: [440, 554.37, 659.25, 880] },
+  "confetti-burst": { durationSeconds: 1.45, audioNotes: [392, 523.25, 659.25, 987.77] },
+  "confetti-finale": { durationSeconds: 1.5, audioNotes: [261.63, 392, 523.25, 659.25, 783.99] }
 } as const satisfies Record<MilestoneCelebrationKind, MilestoneCelebrationPresentation>;
 
 export interface MilestoneCelebrationEvent {
@@ -70,10 +70,23 @@ export class MilestoneCelebrationDirector {
     return this.active === null ? null : { ...this.active };
   }
 
-  public recordPackages(total: number, safeToPresent = true): MilestoneCelebrationEvent[] {
+  public recordPackages(
+    total: number,
+    safeToPresent = true,
+    achievementText?: string
+  ): MilestoneCelebrationEvent[] {
     const emitted: MilestoneCelebrationEvent[] = [];
     while (total >= this.threshold) {
-      const celebration = createCelebration(this.threshold, this.sequenceIndex);
+      const base = createCelebration(this.threshold, this.sequenceIndex);
+      const celebration = achievementText === undefined
+        ? base
+        : {
+            ...base,
+            kind: "confetti-finale" as const,
+            intensity: Math.max(2, base.intensity),
+            durationSeconds: MILESTONE_CELEBRATION_PRESENTATION["confetti-finale"].durationSeconds,
+            text: `${achievementText} · ${base.text}`
+          };
       emitted.push(celebration);
       if (this.active === null && safeToPresent) this.activate(celebration);
       else this.queue.push(celebration);
@@ -81,6 +94,23 @@ export class MilestoneCelebrationDirector {
       this.sequenceIndex += 1;
     }
     return emitted;
+  }
+
+  public recordAchievement(
+    total: number,
+    text: string,
+    safeToPresent = true
+  ): MilestoneCelebrationEvent {
+    const event: MilestoneCelebrationEvent = {
+      threshold: Math.max(0, Math.floor(total)),
+      kind: "confetti-finale",
+      intensity: 2,
+      durationSeconds: MILESTONE_CELEBRATION_PRESENTATION["confetti-finale"].durationSeconds,
+      text
+    };
+    if (this.active === null && safeToPresent) this.activate(event);
+    else this.queue.push(event);
+    return event;
   }
 
   public advance(deltaSeconds: number, safeToPresent = true): void {

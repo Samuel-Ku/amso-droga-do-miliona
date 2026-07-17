@@ -23,7 +23,7 @@ export interface AuthoredWaveDefinition {
   telegraphSeconds: number;
   breathSeconds: number;
   speedMultiplier: number;
-  reward?: "audit" | "double-score" | "warranty" | "million";
+  reward?: "double-score" | "warranty" | "million";
 }
 
 export interface StoryMicrolevelDefinition {
@@ -424,7 +424,7 @@ export const STORY_MICROLEVELS: readonly StoryMicrolevelDefinition[] = Object.fr
     waves: [
       wave("quality-start", "jump", "pallet", 3, 1.22, "device-pallet"),
       wave("quality-scan", "slide", "overhead", 4, 1.3, "scanner-gate"),
-      sequence("quality-seal", ["jump", "slide", "jump"], ["box-stack", "overhead", "trolley"], 5, 1.48, "checked-device", "audit")
+      sequence("quality-seal", ["jump", "slide", "jump"], ["box-stack", "overhead", "trolley"], 5, 1.48, "checked-device", "double-score")
     ]
   },
   {

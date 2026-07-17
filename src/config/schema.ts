@@ -36,7 +36,7 @@ const IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9_.-]{0,63}$/;
 const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$/;
 const ASSET_PATH_PATTERN = /^\/[A-Za-z0-9._/-]+$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const POWER_UPS: readonly PowerUpKind[] = ["gwarancja_48", "audyt_jakosci", "drugie_zycie"];
+const POWER_UPS: readonly PowerUpKind[] = ["gwarancja_48", "drugie_zycie"];
 const OBSTACLE_KINDS = ["box-stack", "pallet", "trolley", "overhead"] as const;
 const STORY_CHAPTERS: readonly StoryChapterId[] = [
   "prologue", "epoch_1", "epoch_2", "epoch_3", "epoch_4", "epoch_5", "finale"

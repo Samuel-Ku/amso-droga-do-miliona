@@ -1,7 +1,6 @@
 import type { PowerUpKind } from "../shared/types";
 import { POWER_UP_DURATION } from "./narrative";
 
-export const AUDIT_SPAWN_RATE = 0.72;
 export const MAX_ACTIVE_POWER_UPS = 2;
 
 export interface ActivePowerUpStatus {
@@ -11,23 +10,13 @@ export interface ActivePowerUpStatus {
 }
 
 const STORY_POWER_UP_ORDER: readonly PowerUpKind[] = [
-  "audyt_jakosci",
   "drugie_zycie",
   "gwarancja_48"
 ];
 
 export function storyPowerUpsForEpoch(epochIndex: number): readonly PowerUpKind[] {
-  const unlockedCount = Math.max(0, Math.min(3, Math.floor(epochIndex)));
+  const unlockedCount = Math.max(0, Math.min(2, Math.floor(epochIndex)));
   return STORY_POWER_UP_ORDER.slice(0, unlockedCount);
-}
-
-/**
- * Audyt jakości affects only how quickly the spawner consumes its distance
- * budget. World travel and runner physics continue to use the unmodified value.
- */
-export function spawnTravelDistance(travelledPixels: number, auditActive: boolean): number {
-  const travelled = Math.max(0, travelledPixels);
-  return auditActive ? travelled * AUDIT_SPAWN_RATE : travelled;
 }
 
 /** Active effects with warranty represented as one persistent charge. */

@@ -50,6 +50,8 @@ describe("v7 challenge pressure", () => {
     expect(precision.packageCount).toBe(2);
     expect(pressure.breathSeconds).toBeLessThan(speed.breathSeconds);
     expect(pressure.sequenceLength).toBe(3);
+    expect(pressure.sequenceGapSeconds).toBeGreaterThanOrEqual(0.55);
+    expect(pressure.sequenceGapSeconds).toBeLessThanOrEqual(0.75);
     expect(new Set([speed.axis, density.axis, complexity.axis, precision.axis, pressure.axis]).size)
       .toBe(5);
   });

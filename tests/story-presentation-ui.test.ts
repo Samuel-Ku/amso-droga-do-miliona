@@ -90,12 +90,12 @@ describe("player-paced story presentation", () => {
 
   it("formats carried powers compactly for the persistent HUD", () => {
     expect(formatPowerUpHud([])).toBe("");
-    expect(formatPowerUpHud(["audyt_jakosci", "drugie_zycie", "gwarancja_48"]))
-      .toBe("AUDYT · ×2 WYNIK · GWARANCJA 48 M ×1");
-    expect(formatPowerUpHud(["audyt_jakosci"], [{
-      kind: "audyt_jakosci",
+    expect(formatPowerUpHud(["drugie_zycie", "gwarancja_48"]))
+      .toBe("×2 WYNIK · GWARANCJA 48 M ×1");
+    expect(formatPowerUpHud(["drugie_zycie"], [{
+      kind: "drugie_zycie",
       remainingSeconds: 6.2
-    }])).toBe("AUDYT 7 s");
+    }])).toBe("×2 WYNIK 7 s");
   });
 
   it("uses one semantic objective slot for every authored microlevel", () => {
@@ -264,11 +264,11 @@ describe("player-paced story presentation", () => {
     expect(campaignCss).toContain('[data-phase="story"] .amso-world-visual__image-stack');
   });
 
-  it("enforces the approved 390 px minimum viewport", () => {
+  it("enforces 390 px portrait width and a separate landscape minimum", () => {
     expect(isCampaignViewportTooNarrow(389, 844)).toBe(true);
     expect(isCampaignViewportTooNarrow(390, 844)).toBe(false);
-    expect(isCampaignViewportTooNarrow(844, 389)).toBe(true);
-    expect(isCampaignViewportTooNarrow(844, 390)).toBe(false);
+    expect(isCampaignViewportTooNarrow(844, 315)).toBe(false);
+    expect(isCampaignViewportTooNarrow(844, 279)).toBe(true);
     expect(campaignShellSource).toContain("this.callbacks.onPause(\"layout_change\")");
     expect(campaignShellSource).toContain('activeView === "story_reframe"');
     expect(campaignShellSource).toContain("!this.tooNarrowActive");

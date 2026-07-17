@@ -1,8 +1,6 @@
-export const COURIER_MARK_ASSET_PATH = "/assets/milion-runner/courier-amso-a.webp";
-
 export const COURIER_PALETTE = {
   capAndShirt: "#ff7a15",
-  belt: "#3f8fce",
+  belt: "#f47100",
   trousers: "#171717",
   shoesAndMark: "#ffffff",
   scanner: "#44413d",
@@ -16,37 +14,39 @@ export interface CourierMarkBounds {
   readonly height: number;
 }
 
-type CourierImageFactory = () => HTMLImageElement | null;
-
-function createCourierImage(): HTMLImageElement | null {
-  if (typeof Image !== "function") return null;
-  return new Image();
-}
-
-/** Loads and places the supplied AMSO mark while preserving its source ratio. */
+/**
+ * Draws the approved AMSO A as vector geometry. Keeping the mark in the same
+ * canvas plane as the courier avoids a second raster decode and jagged edges
+ * when the character is scaled on high-DPR screens.
+ */
 export class CourierBrandArtwork {
-  private readonly image: HTMLImageElement | null;
+  public drawMark(context: CanvasRenderingContext2D, bounds: CourierMarkBounds): void {
+    const { x, y, width, height } = bounds;
+    context.save();
+    context.translate(x, y);
+    context.scale(width, height);
+    context.fillStyle = COURIER_PALETTE.shoesAndMark;
+    context.lineJoin = "round";
 
-  public constructor(imageFactory: CourierImageFactory = createCourierImage) {
-    this.image = imageFactory();
-    if (this.image !== null) this.image.src = COURIER_MARK_ASSET_PATH;
-  }
+    context.beginPath();
+    context.moveTo(0.02, 0.96);
+    context.lineTo(0.39, 0.05);
+    context.quadraticCurveTo(0.44, -0.02, 0.5, 0.05);
+    context.lineTo(0.94, 0.96);
+    context.lineTo(0.69, 0.96);
+    context.lineTo(0.47, 0.42);
+    context.lineTo(0.26, 0.96);
+    context.closePath();
+    context.fill();
 
-  public drawMark(
-    context: CanvasRenderingContext2D,
-    bounds: CourierMarkBounds
-  ): void {
-    const image = this.image;
-    if (image === null || !image.complete || image.naturalWidth <= 0 || image.naturalHeight <= 0) {
-      return;
-    }
-    const sourceRatio = image.naturalWidth / image.naturalHeight;
-    const boundsRatio = bounds.width / bounds.height;
-    const width = boundsRatio > sourceRatio ? bounds.height * sourceRatio : bounds.width;
-    const height = boundsRatio > sourceRatio ? bounds.height : bounds.width / sourceRatio;
-    const x = bounds.x + (bounds.width - width) / 2;
-    const y = bounds.y + (bounds.height - height) / 2;
-    context.drawImage(image, x, y, width, height);
+    context.beginPath();
+    context.moveTo(0.3, 0.67);
+    context.lineTo(0.68, 0.67);
+    context.lineTo(0.75, 0.82);
+    context.lineTo(0.24, 0.82);
+    context.closePath();
+    context.fill();
+    context.restore();
   }
 }
 

@@ -63,6 +63,8 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   soundOff: "Włącz dźwięk",
   fullscreenEnter: "Pełny ekran",
   fullscreenExit: "Wyjdź z pełnego",
+  focusModeEnter: "Tryb gry",
+  focusModeExit: "Wyjdź z trybu gry",
   hudPackages: "Paczki",
   hudScore: "Wynik",
   pauseAction: "Pauza",
@@ -80,6 +82,7 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   orientationTitle: "Chcesz zobaczyć więcej historii?",
   orientationBody: "Obróć telefon i włącz pełny ekran. Możesz też grać pionowo.",
   orientationFullscreen: "Włącz pełny ekran",
+  orientationFocus: "Włącz tryb gry",
   orientationPortrait: "Zostań w pionie",
   loading: "Przygotowujemy pierwszą paczkę…",
   errorEyebrow: "Trasa chwilowo niedostępna",
@@ -209,7 +212,8 @@ export function campaignVisualStateAtProgress(
 
 export function isCampaignViewportTooNarrow(width: number, height: number): boolean {
   const landscape = width > height;
-  return width < 390 || (landscape && height < 390);
+  if (landscape) return width < 640 || height < 280;
+  return width < 390;
 }
 
 function requiredElement<T extends Element>(root: ParentNode, selector: string): T {
@@ -673,7 +677,6 @@ export class CampaignShell {
               <p data-campaign-copy="pauseBody">Twój postęp jest bezpieczny.</p>
               <div class="amso-campaign__pause-bonuses" aria-label="Bonusy">
                 <strong>Bonusy</strong>
-                <span><b>AUDYT</b> — przez 7 s zwiększa odstępy bez zwalniania kuriera.</span>
                 <span><b>×2 WYNIK</b> — przez 7 s podwaja punkty za paczki.</span>
                 <span data-campaign-copy="powerupWarranty">GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania.</span>
               </div>
@@ -829,6 +832,7 @@ export class CampaignShell {
     this.orientationQuery = window.matchMedia?.("(orientation: landscape)") ?? null;
 
     this.applyCopy();
+    this.updateFullscreenControl();
 
     this.root.querySelectorAll<HTMLAnchorElement>("[data-campaign-link]").forEach((anchor) => {
       anchor.href = this.campaignUrl;
@@ -1298,26 +1302,67 @@ export class CampaignShell {
     if (changed) this.callbacks.onFullscreenPreferenceChange(choice);
   }
 
+  private fullscreenApiAvailable(): boolean {
+    return document.fullscreenEnabled !== false &&
+      typeof this.root.requestFullscreen === "function";
+  }
+
+  private setFocusMode(active: boolean): void {
+    this.root.toggleAttribute("data-focus-mode", active);
+    if (active) this.root.dataset.focusMode = "true";
+    this.updateFullscreenControl();
+  }
+
+  private updateFullscreenControl(): void {
+    const fullscreen = document.fullscreenElement === this.root;
+    const focusMode = this.root.dataset.focusMode === "true";
+    this.fullscreenButton.setAttribute("aria-pressed", String(fullscreen || focusMode));
+    requiredElement(this.fullscreenButton, ".amso-campaign__tool-label").textContent = fullscreen
+      ? this.copy.fullscreenExit
+      : focusMode
+        ? this.copy.focusModeExit
+        : this.fullscreenApiAvailable()
+          ? this.copy.fullscreenEnter
+          : this.copy.focusModeEnter;
+    const orientationAction = requiredElement<HTMLElement>(
+      this.orientationScreen,
+      "[data-campaign-enter-fullscreen]"
+    );
+    orientationAction.textContent = this.fullscreenApiAvailable()
+      ? this.copy.orientationFullscreen
+      : this.copy.orientationFocus;
+  }
+
   private async enterFullscreen(): Promise<void> {
+    if (!this.fullscreenApiAvailable()) {
+      this.setFocusMode(true);
+      return;
+    }
     try {
-      if (document.fullscreenElement === null && typeof this.root.requestFullscreen === "function") {
+      if (document.fullscreenElement == null) {
         await this.root.requestFullscreen({ navigationUI: "hide" });
       }
     } catch {
-      // Fullscreen is optional; the page remains a viewport-filling fallback.
+      this.setFocusMode(true);
     }
+    this.updateFullscreenControl();
   }
 
   private toggleFullscreen(): void {
     void (async () => {
-      if (document.fullscreenElement !== null) {
-        await document.exitFullscreen().catch(() => undefined);
+      if (document.fullscreenElement != null) {
+        await document.exitFullscreen?.().catch(() => undefined);
+      } else if (this.root.dataset.focusMode === "true") {
+        this.setFocusMode(false);
       } else {
         await this.enterFullscreen();
       }
-      this.rememberFullscreenPreference(
-        fullscreenPreferenceFromElement(document.fullscreenElement, this.root)
-      );
+      if (document.fullscreenElement != null || this.fullscreenApiAvailable()) {
+        this.rememberFullscreenPreference(
+          fullscreenPreferenceFromElement(document.fullscreenElement, this.root)
+        );
+      }
+      this.updateFullscreenControl();
     })();
   }
 
@@ -1598,8 +1643,8 @@ export class CampaignShell {
 
   private readonly handleFullscreenChange = (): void => {
     const fullscreen = document.fullscreenElement === this.root;
-    this.fullscreenButton.setAttribute("aria-pressed", String(fullscreen));
-    requiredElement(this.fullscreenButton, ".amso-campaign__tool-label").textContent = fullscreen ? this.copy.fullscreenExit : this.copy.fullscreenEnter;
+    if (fullscreen) this.setFocusMode(false);
+    this.updateFullscreenControl();
     this.rememberFullscreenPreference(
       fullscreenPreferenceFromElement(document.fullscreenElement, this.root)
     );

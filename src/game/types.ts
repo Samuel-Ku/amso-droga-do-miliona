@@ -90,6 +90,7 @@ export interface RenderScene {
   distancePixels: number;
   speed: number;
   reducedMotion: boolean;
+  decorationQuality?: "full" | "reduced";
   impact: boolean;
   epochIndex: number;
   epochName: string;

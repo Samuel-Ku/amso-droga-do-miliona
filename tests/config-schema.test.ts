@@ -33,8 +33,6 @@ describe("runner config v5 story validation", () => {
     expect(productionConfig.ui?.warrantyConsumed).toContain("GWARANCJA 48 M");
     expect(productionConfig.ui?.parcelWarrantyLine1).toBe("GWARANCJA");
     expect(productionConfig.ui?.parcelWarrantyLine2).toBe("48 M");
-    expect(productionConfig.ui?.parcelAuditLine1).toBe("AUDYT");
-    expect(productionConfig.ui?.parcelAuditLine2).toBe("TRASY");
     expect(productionConfig.ui?.parcelSecondLifeLine1).toBe("2×");
     expect(productionConfig.ui?.parcelSecondLifeLine2).toBe("PUNKTY");
   });

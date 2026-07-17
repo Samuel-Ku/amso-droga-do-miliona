@@ -389,7 +389,7 @@ describe("campaign collision contract", () => {
     expect(harness.milestoneCelebrations.length).toBeGreaterThan(0);
     expect(harness.milestoneCelebrations[0]).toMatchObject({
       threshold: 10,
-      kind: "confetti",
+      kind: "confetti-pop",
       intensity: 1,
       text: "10 PACZEK!"
     });
@@ -443,7 +443,9 @@ describe("campaign collision contract", () => {
       .toBeGreaterThanOrEqual(finalStorySnapshot?.backgroundTravelPixels ?? 0);
 
     harness.collectPackagesUntil(1_000);
-    expect(harness.milestoneCelebrations.map(({ threshold }) => threshold))
+    expect(harness.milestoneCelebrations
+      .filter(({ text }) => text !== "NOWY REKORD")
+      .map(({ threshold }) => threshold))
       .toEqual([10, 50, 100, 500, 1_000]);
     expect(harness.milestoneModes).toContain("story");
     expect(harness.milestoneModes).toContain("challenge");
@@ -452,7 +454,9 @@ describe("campaign collision contract", () => {
     harness.game.reset();
     harness.game.start("keyboard");
     harness.collectPackagesUntil(10);
-    expect(harness.milestoneCelebrations.slice(eventsBeforeReset).map(({ threshold }) => threshold))
+    expect(harness.milestoneCelebrations.slice(eventsBeforeReset)
+      .filter(({ text }) => text !== "NOWY REKORD")
+      .map(({ threshold }) => threshold))
       .toEqual([10]);
     harness.game.destroy();
   });

@@ -71,6 +71,8 @@ export interface GameSnapshot {
   /** Absolute 10% parallax travel for the cyclic gameplay background. */
   backgroundTravelPixels?: number;
   reducedMotion?: boolean;
+  /** Rendering-only quality tier; simulation and movement stay unchanged. */
+  decorationQuality?: "full" | "reduced";
   durationSeconds: number;
   /** Rolling browser-frame estimate used only by the local, PII-free QA report. */
   frameRate?: number;
@@ -130,6 +132,8 @@ export interface RunnerGameOptions {
   story?: StoryConfig | null;
   awardStoryCompletionBonus?: boolean;
   challenge?: ChallengeConfig | null;
+  /** Personal package record frozen before this run starts. */
+  bestChallengePackagesAtStart?: number;
   narrative?: NarrativeConfig | null;
   /** Configurable two-line labels rendered on procedural power-up parcels. */
   powerUpPackageCopy?: Partial<Readonly<Record<PowerUpKind, readonly [string, string]>>>;

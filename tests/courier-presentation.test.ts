@@ -23,13 +23,16 @@ describe("courier presentation", () => {
     expect(start).toMatchObject({ color: "#f47100", breaking: false });
   });
 
-  it("follows the courier into a lower oval while sliding and marks an absorbed impact", () => {
-    const runner = { ...createRunnerModel(), crouching: true, height: 52 };
-    const presentation = courierProtectionPresentation(runner, "breaking");
+  it("keeps the same large circle while sliding and marks an absorbed impact", () => {
+    const standing = courierProtectionPresentation(createRunnerModel(), "warranty")!;
+    const runner = { ...createRunnerModel(), crouching: true, height: 52, y: 380 };
+    const presentation = courierProtectionPresentation(runner, "breaking")!;
 
     expect(presentation).toMatchObject({ breaking: true });
-    expect(presentation!.radiusY).toBeLessThan(presentation!.radiusX);
-    expect(presentation!.centerX - presentation!.radiusX).toBeGreaterThanOrEqual(runner.x - 3);
+    expect(presentation.radiusY).toBe(presentation.radiusX);
+    expect(presentation.radiusX).toBe(standing.radiusX);
+    expect(presentation.centerX).toBe(standing.centerX);
+    expect(presentation.centerY).toBe(standing.centerY);
   });
 
   it("does not turn ordinary post-collision recovery into a warranty shield", () => {
