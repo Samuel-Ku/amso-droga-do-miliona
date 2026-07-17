@@ -1680,12 +1680,15 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 }
 
 .amso-world-visual__panel {
+  display: block;
   opacity: 0.8;
   background-color: var(--campaign-paper);
   background-image:
     linear-gradient(110deg, rgb(244 113 0 / 20%), rgb(240 79 69 / 10%) 48%, rgb(235 50 164 / 18%));
   background-position: var(--world-position-desktop, 50% 50%);
   background-size: cover;
+  object-fit: cover;
+  object-position: var(--world-position-desktop, 50% 50%);
   will-change: transform;
 }
 
@@ -2106,6 +2109,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 @media (max-width: 756px) {
   .amso-world-visual__panel {
     background-position: var(--world-position-portrait, 50% 50%);
+    object-position: var(--world-position-portrait, 50% 50%);
   }
 
   .amso-campaign__main {
@@ -2326,6 +2330,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 @media (max-width: 756px) and (orientation: landscape) {
   .amso-world-visual__panel {
     background-position: var(--world-position-landscape, 50% 50%);
+    object-position: var(--world-position-landscape, 50% 50%);
   }
 }
 

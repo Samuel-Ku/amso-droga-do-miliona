@@ -44,8 +44,8 @@ describe("mobile-safe world assets", () => {
     expect(images).toHaveLength(1);
     images[0]!.dispatchEvent(new Event("load"));
 
-    await expect(first).resolves.toBe("data:image/webp;base64,AAA");
-    await expect(second).resolves.toBe("data:image/webp;base64,AAA");
+    await expect(first).resolves.toMatchObject({ path: "data:image/webp;base64,AAA" });
+    await expect(second).resolves.toMatchObject({ path: "data:image/webp;base64,AAA" });
     expect(images[0]!.decode).toHaveBeenCalledOnce();
   });
 
@@ -55,7 +55,7 @@ describe("mobile-safe world assets", () => {
     images[0]!.dispatchEvent(new Event("error"));
     await Promise.resolve();
     images[0]!.dispatchEvent(new Event("load"));
-    await expect(loading).resolves.toBe("data:image/webp;base64,BBB");
+    await expect(loading).resolves.toMatchObject({ path: "data:image/webp;base64,BBB" });
 
     const failed = store.load("data:image/webp;base64,CCC");
     images[1]!.dispatchEvent(new Event("error"));
@@ -107,7 +107,9 @@ describe("edge-to-edge gameplay background", () => {
 
     layer.setParallaxDistance(240, true);
     layer.show({ worldId: "quality-service", stateId: "epoch_2.resolve", phase: "game" });
-    images[1]!.dispatchEvent(new Event("load"));
+    const qualityImage = images.find(({ src }) => src.includes("world-03-quality-service"));
+    expect(qualityImage).toBeDefined();
+    qualityImage!.dispatchEvent(new Event("load"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
     layer.setParallaxDistance(240 + 960 * 1.08, true);
 
@@ -116,6 +118,30 @@ describe("edge-to-edge gameplay background", () => {
     expect(panels[0]!.style.transform).toBe("translate3d(0%, 0, 0)");
     expect(panels[1]!.style.transform).toBe("translate3d(100%, 0, 0)");
     expect(connector.hidden).toBe(true);
+  });
+
+  it("uses the connector before committing a world selected by a story card", async () => {
+    vi.useFakeTimers();
+    const { store, images } = imageHarness();
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+    layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "story" });
+    images[0]!.dispatchEvent(new Event("load"));
+    await Promise.resolve();
+    await Promise.resolve();
+
+    layer.show({ worldId: "order-process", stateId: "epoch_1.challenge", phase: "story" });
+    const orderImage = images.find(({ src }) => src.includes("world-02-order-process"));
+    expect(orderImage).toBeDefined();
+    orderImage!.dispatchEvent(new Event("load"));
+    await Promise.resolve();
+    await Promise.resolve();
+    const connector = host.querySelector<HTMLElement>("[data-world-connector]")!;
+    expect(connector.hidden).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(800);
+    expect(connector.hidden).toBe(true);
+    vi.useRealTimers();
   });
 
   it("keeps a bright branded fallback instead of a black or global error screen", async () => {

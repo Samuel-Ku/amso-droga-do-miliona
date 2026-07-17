@@ -1,4 +1,5 @@
 import {
+  CAMPAIGN_WORLDS,
   campaignWorld,
   sceneVisualState,
   type CampaignSceneVisualState,
@@ -27,7 +28,12 @@ function defaultImageFactory(): HTMLImageElement {
 interface WorldAssetEntry {
   readonly path: string;
   readonly image: HTMLImageElement;
-  readonly promise: Promise<string>;
+  readonly promise: Promise<DecodedWorldAsset>;
+}
+
+export interface DecodedWorldAsset {
+  readonly path: string;
+  readonly image: HTMLImageElement;
 }
 
 /** One decoded image object per world, with one bounded retry and a two-world window. */
@@ -36,13 +42,13 @@ export class WorldAssetStore {
 
   public constructor(private readonly imageFactory: WorldImageFactory = defaultImageFactory) {}
 
-  public load(path: string): Promise<string> {
+  public load(path: string): Promise<DecodedWorldAsset> {
     const cached = this.entries.get(path);
     if (cached !== undefined) return cached.promise;
 
     const image = this.imageFactory();
     let attempts = 0;
-    const promise = new Promise<string>((resolve, reject) => {
+    const promise = new Promise<DecodedWorldAsset>((resolve, reject) => {
       const failAttempt = (): void => {
         if (attempts < 2) {
           queueMicrotask(startAttempt);
@@ -59,7 +65,7 @@ export class WorldAssetStore {
           image.onerror = null;
           try {
             await image.decode?.();
-            resolve(path);
+            resolve({ path, image });
           } catch {
             failAttempt();
           }
@@ -88,15 +94,17 @@ function requiredElement<T extends Element>(root: ParentNode, selector: string):
 
 /** Adjacent world panels and a neutral connector share one absolute parallax phase. */
 export class WorldVisualLayer {
-  private readonly panels: readonly [HTMLElement, HTMLElement];
+  private readonly panels: readonly [HTMLCanvasElement, HTMLCanvasElement];
   private readonly connector: HTMLElement;
   private currentWorldId: CampaignWorldId | null = null;
   private currentStateId = "";
-  private requestedAssetPath = "";
-  private currentAssetPath = "";
-  private pendingAssetPath = "";
+  private requestedAssetPath: string | null = null;
+  private currentAsset: DecodedWorldAsset | null = null;
+  private pendingAsset: DecodedWorldAsset | null = null;
   private transitionStartDistance = 0;
   private lastDistance = 0;
+  private stationaryTransitionTimer: ReturnType<typeof setTimeout> | null = null;
+  private stationaryCommitTimer: ReturnType<typeof setTimeout> | null = null;
 
   public constructor(
     private readonly host: HTMLElement,
@@ -104,9 +112,9 @@ export class WorldVisualLayer {
   ) {
     host.innerHTML = `
       <div class="amso-world-visual__image-stack" aria-hidden="true">
-        <div class="amso-world-visual__panel" data-world-panel="current"></div>
+        <canvas class="amso-world-visual__panel" data-world-panel="current" width="1672" height="941"></canvas>
         <div class="amso-world-visual__connector" data-world-connector></div>
-        <div class="amso-world-visual__panel" data-world-panel="next"></div>
+        <canvas class="amso-world-visual__panel" data-world-panel="next" width="1672" height="941"></canvas>
       </div>
       ${WORLD_ROUTE_SVG}
       <div class="amso-world-visual__counter" aria-hidden="true">
@@ -114,8 +122,8 @@ export class WorldVisualLayer {
       </div>
     `;
     this.panels = [
-      requiredElement(host, '[data-world-panel="current"]'),
-      requiredElement(host, '[data-world-panel="next"]')
+      requiredElement<HTMLCanvasElement>(host, '[data-world-panel="current"]'),
+      requiredElement<HTMLCanvasElement>(host, '[data-world-panel="next"]')
     ];
     this.connector = requiredElement(host, "[data-world-connector]");
     this.host.style.setProperty("--world-overlap", "0px");
@@ -144,7 +152,10 @@ export class WorldVisualLayer {
     this.host.style.setProperty("--world-reading-origin-x", `${state.readingCamera.x * 100}%`);
     this.host.style.setProperty("--world-reading-origin-y", `${state.readingCamera.y * 100}%`);
 
-    if (worldChanged) this.loadWorldAsset(world.assetPath, selection.phase !== "game");
+    if (worldChanged) {
+      this.loadWorldAsset(world.assetPath, selection.phase !== "game");
+      this.prepareNextWorld(selection.worldId);
+    }
     if (worldChanged || stateChanged) {
       this.host.dataset.reveal = state.revealMotion;
       this.host.dataset.visualEvent = state.visualEvent;
@@ -179,12 +190,16 @@ export class WorldVisualLayer {
     this.host.dataset.motionState = active ? "moving" : "recentering";
 
     if (!active) {
-      if (this.pendingAssetPath !== "") this.commitPendingAsset();
-      this.placePanels(0, false);
+      if (this.pendingAsset !== null) this.startStationaryTransition();
+      else this.placePanels(0, false);
       return;
     }
 
-    if (this.pendingAssetPath !== "") {
+    if (this.stationaryTransitionTimer !== null || this.stationaryCommitTimer !== null) {
+      this.cancelStationaryTransition();
+      this.transitionStartDistance = distance;
+    }
+    if (this.pendingAsset !== null) {
       const transitionDistance = WORLD_WIDTH * (1 + WORLD_CONNECTOR_FRACTION);
       const transition = Math.max(0, (distance - this.transitionStartDistance) / transitionDistance);
       this.placePanels(Math.min(1, transition), true);
@@ -209,39 +224,84 @@ export class WorldVisualLayer {
 
   private loadWorldAsset(assetPath: string, commitImmediately: boolean): void {
     if (this.requestedAssetPath === assetPath) return;
+    this.cancelStationaryTransition();
     this.requestedAssetPath = assetPath;
     this.host.dataset.assetState = "loading";
-    void this.assets.load(assetPath).then((decodedPath) => {
+    void this.assets.load(assetPath).then((decodedAsset) => {
       if (this.requestedAssetPath !== assetPath) return;
-      if (this.currentAssetPath === "" || commitImmediately) {
-        this.currentAssetPath = decodedPath;
-        this.pendingAssetPath = "";
-        this.setPanelImage(this.panels[0], decodedPath);
-        this.setPanelImage(this.panels[1], decodedPath);
+      if (this.currentAsset === null) {
+        this.currentAsset = decodedAsset;
+        this.pendingAsset = null;
+        this.drawPanel(this.panels[0], decodedAsset);
+        this.drawPanel(this.panels[1], decodedAsset);
       } else {
-        this.pendingAssetPath = decodedPath;
+        this.pendingAsset = decodedAsset;
         this.transitionStartDistance = this.lastDistance;
-        this.setPanelImage(this.panels[1], decodedPath);
+        this.drawPanel(this.panels[1], decodedAsset);
+        if (commitImmediately) this.startStationaryTransition();
       }
       this.host.dataset.assetState = "loaded";
     }).catch(() => {
       if (this.requestedAssetPath !== assetPath) return;
-      this.pendingAssetPath = "";
+      this.pendingAsset = null;
+      this.clearPanels();
       this.host.dataset.assetState = "fallback";
     });
   }
 
   private commitPendingAsset(): void {
-    if (this.pendingAssetPath === "") return;
-    this.currentAssetPath = this.pendingAssetPath;
-    this.pendingAssetPath = "";
-    this.setPanelImage(this.panels[0], this.currentAssetPath);
-    this.setPanelImage(this.panels[1], this.currentAssetPath);
+    if (this.pendingAsset === null) return;
+    this.currentAsset = this.pendingAsset;
+    this.pendingAsset = null;
+    this.drawPanel(this.panels[0], this.currentAsset);
+    this.drawPanel(this.panels[1], this.currentAsset);
     this.connector.hidden = true;
     this.placePanels(0, false);
   }
 
-  private setPanelImage(panel: HTMLElement, path: string): void {
-    panel.style.backgroundImage = `url("${path}")`;
+  private prepareNextWorld(worldId: CampaignWorldId): void {
+    const index = CAMPAIGN_WORLDS.findIndex(({ worldId: candidate }) => candidate === worldId);
+    const next = CAMPAIGN_WORLDS[index + 1];
+    if (next !== undefined) void this.assets.load(next.assetPath).catch(() => undefined);
+  }
+
+  private startStationaryTransition(): void {
+    if (this.pendingAsset === null || this.stationaryTransitionTimer !== null ||
+        this.stationaryCommitTimer !== null) return;
+    this.host.dataset.motionState = "recentering";
+    this.placePanels(0, true);
+    this.stationaryTransitionTimer = setTimeout(() => {
+      this.stationaryTransitionTimer = null;
+      this.placePanels(1, true);
+    }, 16);
+    this.stationaryCommitTimer = setTimeout(() => {
+      this.stationaryCommitTimer = null;
+      this.host.dataset.motionState = "moving";
+      this.commitPendingAsset();
+    }, 760);
+  }
+
+  private cancelStationaryTransition(): void {
+    if (this.stationaryTransitionTimer !== null) clearTimeout(this.stationaryTransitionTimer);
+    if (this.stationaryCommitTimer !== null) clearTimeout(this.stationaryCommitTimer);
+    this.stationaryTransitionTimer = null;
+    this.stationaryCommitTimer = null;
+  }
+
+  private drawPanel(panel: HTMLCanvasElement, asset: DecodedWorldAsset): void {
+    const width = asset.image.naturalWidth || 1672;
+    const height = asset.image.naturalHeight || 941;
+    panel.width = width;
+    panel.height = height;
+    const context = panel.getContext("2d");
+    if (context === null) return;
+    context.clearRect(0, 0, width, height);
+    context.drawImage(asset.image, 0, 0, width, height);
+  }
+
+  private clearPanels(): void {
+    for (const panel of this.panels) {
+      panel.getContext("2d")?.clearRect(0, 0, panel.width, panel.height);
+    }
   }
 }
