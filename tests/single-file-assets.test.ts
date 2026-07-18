@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { EMBEDDED_AVIF_MAX_LENGTH } from "../src/config/schema";
+import {
+  EMBEDDED_AVIF_MAX_LENGTH,
+  EMBEDDED_WEBP_MAX_LENGTH
+} from "../src/config/schema";
 
 const qaPreview = readFileSync(
   new URL("../droga-do-miliona-qa.html", import.meta.url),
@@ -112,6 +115,11 @@ describe("single-file QA artwork", () => {
     const embeddedWebps = new Set(
       qaPreview.match(/data:image\/webp;base64,[A-Za-z0-9+/=]+/g) ?? []
     );
+    for (const embeddedWebp of embeddedWebps) {
+      expect(embeddedWebp.length).toBeLessThanOrEqual(
+        EMBEDDED_WEBP_MAX_LENGTH
+      );
+    }
     // Seven worlds, two atlases, run + crouch + jump couriers, four parcel frames,
     // Four ground/primary obstacles, two extra overhead variants and exact A.
     expect(embeddedWebps.size).toBe(23);

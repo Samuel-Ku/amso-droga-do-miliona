@@ -5,6 +5,7 @@ import {
   DEFAULT_RUNNER_STYLE_PATH
 } from "../src/config/defaults";
 import {
+  EMBEDDED_WEBP_MAX_LENGTH,
   isAllowedAssetPath,
   isAllowedRelativePath,
   parseRunnerConfig,
@@ -373,6 +374,23 @@ describe("runner config v5 story validation", () => {
       .not.toBeNull();
   });
 
+  it("accepts large embedded WebP worlds in the trusted single-file build", () => {
+    const embedded = validConfig();
+    const bundles = ((embedded.assets as Record<string, unknown>)
+      .bundles as Array<Record<string, unknown>>);
+    const webp = bundles
+      .flatMap((bundle) => bundle.resources as Array<Record<string, unknown>>)
+      .find((resource) => typeof resource.source === "string" &&
+        resource.source.endsWith(".webp"));
+    if (!webp) throw new Error("production config should contain a WebP resource");
+    webp.source = `data:image/webp;base64,${"A".repeat(
+      EMBEDDED_WEBP_MAX_LENGTH - 24
+    )}`;
+
+    expect(parseRunnerConfig(embedded, { allowEmbeddedImageSources: true }))
+      .not.toBeNull();
+  });
+
   it("rejects unsafe embedded resources even for the trusted single-file build", () => {
     const trustedOptions: RunnerConfigValidationOptions & {
       allowEmbeddedImageSources: true;
@@ -411,6 +429,12 @@ describe("runner config v5 story validation", () => {
     )).toBeNull();
     expect(parseRunnerConfig(
       withFirstImage(`data:image/avif;base64,${"A".repeat(512_000)}`),
+      trustedOptions
+    )).toBeNull();
+    expect(parseRunnerConfig(
+      withFirstImage(
+        `data:image/webp;base64,${"A".repeat(EMBEDDED_WEBP_MAX_LENGTH)}`
+      ),
       trustedOptions
     )).toBeNull();
     expect(parseRunnerConfig(

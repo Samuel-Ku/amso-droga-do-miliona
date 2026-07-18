@@ -95,6 +95,8 @@ const EMBEDDED_IMAGE_PREFIXES = [
 ] as const;
 export const EMBEDDED_AVIF_MAX_LENGTH =
   embeddedResourcePolicy.maxEmbeddedAvifDataUriLength;
+export const EMBEDDED_WEBP_MAX_LENGTH =
+  embeddedResourcePolicy.maxEmbeddedWebpDataUriLength;
 const BASE64_PAYLOAD_PATTERN = /^[A-Za-z0-9+/]+={0,2}$/;
 
 function issue(code: RunnerConfigIssue["code"], path: string): RunnerConfigValidationResult {
@@ -179,13 +181,16 @@ export function isAllowedCampaignResourceSource(
   if (type === "procedural") return PROCEDURAL_SOURCE_PATTERN.test(source);
   if (
     type === "image" &&
-    allowEmbeddedImageSources &&
-    source.length <= EMBEDDED_AVIF_MAX_LENGTH
+    allowEmbeddedImageSources
   ) {
     const prefix = EMBEDDED_IMAGE_PREFIXES.find((candidate) =>
       source.startsWith(candidate)
     );
     if (prefix !== undefined) {
+      const maxLength = prefix === EMBEDDED_WEBP_PREFIX
+        ? EMBEDDED_WEBP_MAX_LENGTH
+        : EMBEDDED_AVIF_MAX_LENGTH;
+      if (source.length > maxLength) return false;
       const payload = source.slice(prefix.length);
       return payload.length >= 4 && payload.length % 4 === 0 &&
         BASE64_PAYLOAD_PATTERN.test(payload);

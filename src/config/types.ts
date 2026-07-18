@@ -21,7 +21,7 @@ export type RunnerConfigValidationResult =
 export interface RunnerConfigValidationOptions {
   /** Date used for inclusive validFrom/validTo checks. */
   now?: Date;
-  /** Trusted build-only escape hatch for AVIF data URIs embedded in the QA artifact. */
+  /** Trusted build-only escape hatch for bounded image data URIs in the QA artifact. */
   allowEmbeddedImageSources?: boolean;
 }
 

@@ -18,8 +18,13 @@ const embeddedResourcePolicy = JSON.parse(
 );
 const embeddedAvifMaxLength =
   embeddedResourcePolicy.maxEmbeddedAvifDataUriLength;
+const embeddedWebpMaxLength =
+  embeddedResourcePolicy.maxEmbeddedWebpDataUriLength;
 if (!Number.isSafeInteger(embeddedAvifMaxLength) || embeddedAvifMaxLength <= 0) {
   throw new Error("Nieprawidlowy limit osadzonych plikow AVIF");
+}
+if (!Number.isSafeInteger(embeddedWebpMaxLength) || embeddedWebpMaxLength <= 0) {
+  throw new Error("Nieprawidlowy limit osadzonych plikow WebP");
 }
 const campaignAssetDir = path.join(
   root,
@@ -68,6 +73,11 @@ function inlineCampaignImageAssets(document) {
     if (extension === ".avif" && dataUri.length > embeddedAvifMaxLength) {
       throw new Error(
         `Osadzony AVIF ${assetRelativePath} przekracza limit ${embeddedAvifMaxLength} znakow`,
+      );
+    }
+    if (extension === ".webp" && dataUri.length > embeddedWebpMaxLength) {
+      throw new Error(
+        `Osadzony WebP ${assetRelativePath} przekracza limit ${embeddedWebpMaxLength} znakow`,
       );
     }
     const sourceVariants = [`.${publicPath}`, publicPath, assetRelativePath];

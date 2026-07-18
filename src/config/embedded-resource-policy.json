@@ -1,3 +1,4 @@
 {
-  "maxEmbeddedAvifDataUriLength": 512000
+  "maxEmbeddedAvifDataUriLength": 512000,
+  "maxEmbeddedWebpDataUriLength": 2500000
 }
