@@ -1041,7 +1041,8 @@ export class CampaignShell {
     this.applyWorldVisual(
       snapshot.visualWorldId,
       displayedVisualStateId,
-      this.root.dataset.view === "story_scene" ? "story" : "game"
+      this.root.dataset.view === "story_scene" ? "story" : "game",
+      this.activeMode === "challenge" ? "offscreen" : "story-linked"
     );
     this.worldVisualLayer.setCounterValue(snapshot.millionCounterValue);
     this.worldVisualLayer.setParallaxDistance(
@@ -1438,12 +1439,14 @@ export class CampaignShell {
   private applyWorldVisual(
     worldId: GameSnapshot["visualWorldId"],
     stateId: string,
-    phase: "landing" | "story" | "game" | "result"
+    phase: "landing" | "story" | "game" | "result",
+    transitionMode: "story-linked" | "offscreen" = "story-linked"
   ): void {
     const state = this.worldVisualLayer.show({
       worldId,
       stateId,
-      phase
+      phase,
+      transitionMode
     });
     this.root.dataset.visualWorld = state.worldId;
     this.root.dataset.visualState = state.stateId;

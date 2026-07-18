@@ -10,11 +10,13 @@ import { WORLD_WIDTH } from "../game/constants";
 import { reducedMotionBackgroundTravelPixels } from "./background-parallax";
 
 export type WorldVisualPhase = "landing" | "story" | "game" | "result";
+export type WorldTransitionMode = "story-linked" | "offscreen";
 
 export interface WorldVisualSelection {
   readonly worldId: CampaignWorldId;
   readonly stateId: string;
   readonly phase: WorldVisualPhase;
+  readonly transitionMode?: WorldTransitionMode;
 }
 
 type WorldImageFactory = () => HTMLImageElement;
@@ -92,13 +94,15 @@ function requiredElement<T extends Element>(root: ParentNode, selector: string):
 
 /** Two adjacent world panels share one absolute parallax phase. */
 export class WorldVisualLayer {
-  private readonly panels: readonly [HTMLCanvasElement, HTMLCanvasElement];
+  private panels: [HTMLCanvasElement, HTMLCanvasElement];
   private currentWorldId: CampaignWorldId | null = null;
   private currentStateId = "";
   private requestedAssetPath: string | null = null;
   private currentAsset: DecodedWorldAsset | null = null;
   private pendingAsset: DecodedWorldAsset | null = null;
+  private queuedAsset: DecodedWorldAsset | null = null;
   private pendingPanelPrepared = false;
+  private transitionMode: WorldTransitionMode = "story-linked";
   private transitionStartDistance = 0;
   private lastDistance = 0;
   private lastParallaxCycle: number | null = null;
@@ -132,6 +136,7 @@ export class WorldVisualLayer {
     const world = campaignWorld(selection.worldId);
     const worldChanged = this.currentWorldId !== selection.worldId;
     const stateChanged = this.currentStateId !== selection.stateId;
+    this.transitionMode = selection.transitionMode ?? "story-linked";
     this.currentWorldId = selection.worldId;
     this.currentStateId = selection.stateId;
 
@@ -189,6 +194,11 @@ export class WorldVisualLayer {
       return;
     }
 
+    if (this.transitionMode === "offscreen") {
+      this.setOffscreenParallaxDistance(distance);
+      return;
+    }
+
     const cycle = Math.floor(distance / WORLD_WIDTH);
     const wrapped = this.lastParallaxCycle !== null && cycle !== this.lastParallaxCycle;
     this.setPanelMotion(this.lastParallaxCycle !== null && !wrapped);
@@ -201,7 +211,7 @@ export class WorldVisualLayer {
       }
       const transition = Math.max(0, (distance - this.transitionStartDistance) / WORLD_WIDTH);
       if (transition >= 1 - Number.EPSILON * 8) {
-        this.commitPendingAsset();
+        this.commitPendingAsset(true);
       } else {
         this.placePanels(Math.min(1, transition));
       }
@@ -209,6 +219,42 @@ export class WorldVisualLayer {
     }
     const progress = (distance % WORLD_WIDTH) / WORLD_WIDTH;
     this.placePanels(progress);
+  }
+
+  private setOffscreenParallaxDistance(distance: number): void {
+    const cycle = Math.floor(distance / WORLD_WIDTH);
+    const progress = (distance % WORLD_WIDTH) / WORLD_WIDTH;
+    const previousCycle = this.lastParallaxCycle;
+    const cycleDelta = previousCycle === null ? 0 : cycle - previousCycle;
+
+    if (previousCycle !== null && cycleDelta !== 0 && cycleDelta !== 1) {
+      this.resynchronizePanels(progress);
+      this.lastParallaxCycle = cycle;
+      return;
+    }
+
+    if (cycleDelta === 1) {
+      this.recyclePanels();
+      this.setPanelMotion(true, false);
+      this.placePanels(progress);
+      if (this.pendingAsset !== null) {
+        if (this.pendingPanelPrepared) {
+          this.commitPendingAsset(false);
+        } else {
+          this.drawPanel(this.panels[1], this.pendingAsset);
+          this.pendingPanelPrepared = true;
+        }
+      }
+    } else {
+      this.setPanelMotion(previousCycle !== null);
+      this.placePanels(progress);
+      if (previousCycle === null && progress <= Number.EPSILON * 8 &&
+          this.pendingAsset !== null && !this.pendingPanelPrepared) {
+        this.drawPanel(this.panels[1], this.pendingAsset);
+        this.pendingPanelPrepared = true;
+      }
+    }
+    this.lastParallaxCycle = cycle;
   }
 
   private placePanels(progress: number): void {
@@ -219,10 +265,33 @@ export class WorldVisualLayer {
     this.panels[1].style.transform = `translate3d(${nextX}%, 0, 0)`;
   }
 
-  private setPanelMotion(smooth: boolean): void {
-    for (const panel of this.panels) {
-      panel.style.transition = smooth ? "transform 140ms linear" : "none";
+  private setPanelMotion(currentSmooth: boolean, nextSmooth = currentSmooth): void {
+    this.panels[0].style.transition = currentSmooth
+      ? "transform 140ms linear"
+      : "none";
+    this.panels[1].style.transition = nextSmooth
+      ? "transform 140ms linear"
+      : "none";
+  }
+
+  private recyclePanels(): void {
+    this.panels = [this.panels[1], this.panels[0]];
+    this.panels[0].dataset.worldPanel = "current";
+    this.panels[1].dataset.worldPanel = "next";
+  }
+
+  private resynchronizePanels(progress: number): void {
+    this.setPanelMotion(false);
+    if (this.currentAsset !== null && this.pendingPanelPrepared) {
+      this.drawPanel(this.panels[0], this.currentAsset);
+      this.drawPanel(this.panels[1], this.currentAsset);
     }
+    if (this.queuedAsset !== null) {
+      this.pendingAsset = this.queuedAsset;
+      this.queuedAsset = null;
+    }
+    this.pendingPanelPrepared = false;
+    this.placePanels(progress);
   }
 
   private loadWorldAsset(assetPath: string): void {
@@ -234,19 +303,34 @@ export class WorldVisualLayer {
       if (this.currentAsset === null) {
         this.currentAsset = decodedAsset;
         this.pendingAsset = null;
+        this.queuedAsset = null;
         this.pendingPanelPrepared = false;
         this.drawPanel(this.panels[0], decodedAsset);
         this.drawPanel(this.panels[1], decodedAsset);
         this.prepareNextWorld(decodedAsset.path);
+      } else if (this.transitionMode === "offscreen" &&
+          this.pendingAsset !== null && this.pendingPanelPrepared) {
+        this.queuedAsset = decodedAsset.path === this.pendingAsset.path
+          ? null
+          : decodedAsset;
       } else {
         this.pendingAsset = decodedAsset;
+        this.queuedAsset = null;
         this.pendingPanelPrepared = false;
         this.transitionStartDistance = this.lastDistance - this.lastDistance % WORLD_WIDTH;
       }
       this.host.dataset.assetState = "loaded";
     }).catch(() => {
       if (this.requestedAssetPath !== assetPath) return;
+      if (this.transitionMode === "offscreen" &&
+          this.pendingAsset !== null && this.pendingPanelPrepared) {
+        this.queuedAsset = null;
+        this.requestedAssetPath = this.pendingAsset.path;
+        this.host.dataset.assetState = "loaded";
+        return;
+      }
       this.pendingAsset = null;
+      this.queuedAsset = null;
       this.pendingPanelPrepared = false;
       if (this.currentAsset === null) {
         this.clearPanels();
@@ -258,14 +342,17 @@ export class WorldVisualLayer {
     });
   }
 
-  private commitPendingAsset(): void {
+  private commitPendingAsset(redrawVisiblePanel: boolean): void {
     if (this.pendingAsset === null) return;
     this.currentAsset = this.pendingAsset;
-    this.pendingAsset = null;
+    this.pendingAsset = this.queuedAsset;
+    this.queuedAsset = null;
     this.pendingPanelPrepared = false;
-    this.drawPanel(this.panels[0], this.currentAsset);
+    if (redrawVisiblePanel) this.drawPanel(this.panels[0], this.currentAsset);
     this.drawPanel(this.panels[1], this.currentAsset);
-    this.placePanels((this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH);
+    if (redrawVisiblePanel) {
+      this.placePanels((this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH);
+    }
     this.prepareNextWorld(this.currentAsset.path);
   }
 
