@@ -38,6 +38,8 @@ export interface GameSnapshot {
   visualWorldIndex: number;
   visualTransitionPending: boolean;
   score: number;
+  /** Physical parcels collected; equipment is intentionally excluded. */
+  packagesCollected: number;
   ordersCollected: number;
   challengeScore: number;
   challengeOrdersCollected: number;
@@ -88,6 +90,8 @@ export interface GameSnapshot {
   epochIndexMax: number;
   epochProgress: number;
   packageTypeCounts: Record<PackageType, number>;
+  /** Equipment pickups by visual product type; physical parcels are excluded. */
+  equipmentTypeCounts: Record<PackageType, number>;
   totalWeightKg: number;
   activePowerUps: PowerUpKind[];
   activePowerUpStatuses: ActivePowerUpStatus[];

@@ -433,7 +433,7 @@ export class CampaignController {
     this.audio.stop();
     if (result.mode === "story") {
       this.shell.showStoryResult({
-        orders: result.ordersCollected,
+        orders: result.packagesCollected,
         score: result.score,
         bestCombo: result.bestCombo
       });
@@ -446,7 +446,7 @@ export class CampaignController {
       result.challengeOrdersCollected
     );
     this.shell.showChallengeResult({
-      orders: result.ordersCollected,
+      orders: result.packagesCollected,
       totalScore: result.score,
       challengeScore: result.challengeScore,
       bestScore: this.profile.snapshot.bestChallengeScore,

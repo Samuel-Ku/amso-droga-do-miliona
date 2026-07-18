@@ -45,7 +45,7 @@ function createCelebration(threshold: number, sequenceIndex: number): MilestoneC
     intensity,
     durationSeconds: Math.min(1.8, MILESTONE_CELEBRATION_PRESENTATION[kind].durationSeconds +
       sequenceIndex * 0.12),
-    text: `${formatThreshold(threshold)} ZAMÓWIEŃ!`
+    text: `${formatThreshold(threshold)} PACZEK!`
   };
 }
 

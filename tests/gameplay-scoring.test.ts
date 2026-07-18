@@ -33,7 +33,7 @@ describe("package collection and scoring rules", () => {
 
   it("does not count power-ups as delivered packages", () => {
     for (const kind of ["gwarancja_48", "podwojny_wynik"] as const) {
-      expect(resolvePackageCollection(kind, 0, 3, false)).toEqual({
+      expect(resolvePackageCollection(kind, "parcel", 3, false)).toEqual({
         countsAsPackage: false,
         pointsAwarded: 0,
         bonusScoreAwarded: 0,
@@ -43,17 +43,36 @@ describe("package collection and scoring rules", () => {
   });
 
   it("uses one ordinary order value with SERIA and 2× WYNIK", () => {
-    expect(resolvePackageCollection("standard", 100, 1, false)).toMatchObject({
+    expect(resolvePackageCollection("standard", "parcel", 1, false)).toMatchObject({
       countsAsPackage: true,
       pointsAwarded: 100,
       bonusScoreAwarded: 0,
       nextCombo: 2
     });
-    expect(resolvePackageCollection("standard", 100, 1, true).pointsAwarded).toBe(200);
+    expect(resolvePackageCollection("standard", "parcel", 1, true).pointsAwarded).toBe(200);
+  });
+
+  it("awards equipment points without turning equipment into parcel milestones", () => {
+    expect(resolvePackageCollection("standard", "equipment", 1, false)).toEqual({
+      countsAsPackage: false,
+      pointsAwarded: 250,
+      bonusScoreAwarded: 150,
+      nextCombo: 2
+    });
+    expect(resolvePackageCollection("standard", "equipment", 1, true)).toEqual({
+      countsAsPackage: false,
+      pointsAwarded: 500,
+      bonusScoreAwarded: 400,
+      nextCombo: 2
+    });
+    expect(resolvePackageCollection("standard", "parcel", 1, true)).toMatchObject({
+      countsAsPackage: true,
+      pointsAwarded: 200
+    });
   });
 
   it("grows combo to a cap and resets only on an unprotected collision", () => {
-    expect(resolvePackageCollection("standard", 100, MAX_COMBO_MULTIPLIER, false).nextCombo)
+    expect(resolvePackageCollection("standard", "parcel", MAX_COMBO_MULTIPLIER, false).nextCombo)
       .toBe(MAX_COMBO_MULTIPLIER);
     expect(resolveCollision("story", false).resetCombo).toBe(true);
     expect(resolveCollision("challenge", false).resetCombo).toBe(true);

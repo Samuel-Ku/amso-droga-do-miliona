@@ -69,12 +69,12 @@ describe("responsive milestone message", () => {
       durationSeconds: 1.45,
       remainingSeconds: 1,
       progress: 0.3,
-      text: "1 000 ZAMÓWIEŃ!"
+      text: "1 000 PACZEK!"
     });
     const message = document.querySelector<HTMLElement>("[data-campaign-milestone-message]")!;
 
     expect(message.hidden).toBe(false);
-    expect(message.textContent).toBe("1 000 ZAMÓWIEŃ!");
+    expect(message.textContent).toBe("1 000 PACZEK!");
     expect(message.textContent).not.toContain("Następny próg");
     expect(message.dataset.kind).toBe("order-confetti");
     shell.destroy();
@@ -89,7 +89,7 @@ describe("responsive milestone message", () => {
       durationSeconds: 1.3,
       remainingSeconds: 1,
       progress: 0.2,
-      text: "50 ZAMÓWIEŃ!"
+      text: "50 PACZEK!"
     };
     shell.showMilestoneCelebration(celebration, true);
     const message = document.querySelector<HTMLElement>("[data-campaign-milestone-message]")!;

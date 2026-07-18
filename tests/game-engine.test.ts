@@ -56,7 +56,7 @@ describe("game random and spawning", () => {
             gapPixels: wave.gapPixels,
             pattern: wave.pattern,
             packages: wave.packages.map(
-              (parcel) => `${parcel.kind}:${parcel.scoreValue}:${parcel.x}:${parcel.y}`
+              (parcel) => `${parcel.kind}:${parcel.collectibleClass}:${parcel.x}:${parcel.y}`
             )
           });
         }
@@ -81,7 +81,15 @@ describe("game random and spawning", () => {
       waves += 1;
       patterns.add(wave.pattern);
       wave.packages.filter(({ kind }) => kind === "standard")
-        .forEach(({ orderVisualType }) => orderVisuals.add(orderVisualType));
+        .forEach(({ orderVisualType, collectibleClass, packageType }) => {
+          orderVisuals.add(orderVisualType);
+          if (orderVisualType === "parcel") {
+            expect(collectibleClass).toBe("parcel");
+          } else {
+            expect(collectibleClass).toBe("equipment");
+            expect(packageType).toBe(orderVisualType);
+          }
+        });
     }
 
     expect(waves).toBe(80);
@@ -274,7 +282,7 @@ describe("collision and scoring", () => {
     const parcel: PackageModel = {
       active: true,
       kind: "standard",
-      scoreValue: 100,
+      collectibleClass: "equipment",
       x: runner.x + 18,
       y: runner.y + 30,
       size: 30,
@@ -463,7 +471,6 @@ describe("boss rendering", () => {
     if (!order) throw new Error("package pool is empty");
     order.active = true;
     order.kind = "standard";
-    order.scoreValue = GAMEPLAY.packageScore;
     order.x = 560;
     order.y = 350;
     const renderer = new WarehouseRenderer();

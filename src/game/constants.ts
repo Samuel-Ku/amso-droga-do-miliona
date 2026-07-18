@@ -42,6 +42,7 @@ export const BACKGROUND = {
 export const GAMEPLAY = {
   pixelsPerMeter: 35,
   packageScore: 100,
+  equipmentScore: 250,
   fixedStepSeconds: 1 / 120,
   maxFrameSeconds: 0.1,
   maxFixedStepsPerFrame: 12,

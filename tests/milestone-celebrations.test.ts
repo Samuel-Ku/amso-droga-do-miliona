@@ -61,7 +61,7 @@ function renderingHarness(reducedMotion: boolean): {
       durationSeconds: 1.35,
       remainingSeconds: 0.8,
       progress: 0.4,
-      text: "100 ZAMÓWIEŃ!"
+      text: "100 PACZEK!"
     }
   };
   return { context, rotate, scene };
@@ -102,7 +102,7 @@ describe("order milestone celebrations", () => {
     expect(events[0]!.intensity).toBe(1);
     expect(events[4]!.intensity).toBeGreaterThan(events[0]!.intensity);
     expect(events[5]!.intensity).toBeGreaterThanOrEqual(events[4]!.intensity);
-    expect(events[4]!.text).toBe("1 000 ZAMÓWIEŃ!");
+    expect(events[4]!.text).toBe("1 000 PACZEK!");
     expect(events.every(({ durationSeconds }) => durationSeconds >= 1.2 && durationSeconds <= 1.8))
       .toBe(true);
   });
@@ -128,9 +128,9 @@ describe("order milestone celebrations", () => {
     expect(events[0]).toMatchObject({
       kind: "order-confetti",
       achievement: "record",
-      text: "NOWY REKORD · 10 ZAMÓWIEŃ!"
+      text: "NOWY REKORD · 10 PACZEK!"
     });
-    expect(director.snapshot?.text).toBe("NOWY REKORD · 10 ZAMÓWIEŃ!");
+    expect(director.snapshot?.text).toBe("NOWY REKORD · 10 PACZEK!");
   });
 
   it("presents a new record once even when no round threshold is crossed", () => {

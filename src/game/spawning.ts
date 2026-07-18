@@ -18,9 +18,10 @@ import type {
   PackageKind,
   PackageModel
 } from "./types";
-import type { OrderVisualType, PackageType } from "../shared/types";
+import type { CollectibleClass, OrderVisualType, PackageType } from "../shared/types";
 import { ORDER_VISUAL_TYPES } from "./runner-artwork";
 import type { SemanticObstacleVariant } from "./semantic-obstacle";
+import { collectibleClassForVisual } from "./collectibles";
 
 export interface ObstacleSpec {
   width: number;
@@ -32,7 +33,7 @@ export interface PackageSpawn {
   y: number;
   phase: number;
   kind: PackageKind;
-  scoreValue: number;
+  collectibleClass: CollectibleClass;
   packageType: PackageType;
   orderVisualType: OrderVisualType;
   weightKg: number;
@@ -269,7 +270,7 @@ export function createPackagePool(size: number = GAMEPLAY.packagePoolSize): Pack
   return Array.from({ length: Math.max(1, Math.floor(size)) }, () => ({
     active: false,
     kind: "standard" as const,
-    scoreValue: GAMEPLAY.packageScore,
+    collectibleClass: "equipment" as const,
     x: 0,
     y: 0,
     size: PACKAGE_MODEL_SIZE,
@@ -368,18 +369,22 @@ function buildPackagePattern(
 ): PackageSpawn[] {
   const packCount = heights.length;
   const span = speed * JUMP_FLIGHT_SECONDS * PACKAGE_ARC_SPAN_FRACTION;
-  const packageType = PACKAGE_TYPE_VALUES[random.integer(0, PACKAGE_TYPE_VALUES.length - 1)] ?? "notebook";
+  const parcelFactType = PACKAGE_TYPE_VALUES[
+    random.integer(0, PACKAGE_TYPE_VALUES.length - 1)
+  ] ?? "notebook";
   return heights.map((height, index) => {
     const centering = packCount > 1 ? index / (packCount - 1) - 0.5 : 0;
     const offset = span * centering;
+    const orderVisualType = orderVisuals.next();
+    const collectibleClass = collectibleClassForVisual(orderVisualType);
     return {
       x: obstacleX + offset,
       y: GROUND_Y - height - 15,
       phase: random.range(0, Math.PI * 2),
       kind: "standard",
-      scoreValue: GAMEPLAY.packageScore,
-      packageType,
-      orderVisualType: orderVisuals.next(),
+      collectibleClass,
+      packageType: orderVisualType === "parcel" ? parcelFactType : orderVisualType,
+      orderVisualType,
       weightKg: 0
     };
   });
@@ -508,6 +513,15 @@ export function createAuthoredRewardWave(
     const rewardIndex = rewardSlots.indexOf(index);
     const reward = rewardIndex >= 0 ? options.rewards[rewardIndex] : undefined;
     const packageKind = reward?.kind ?? "standard";
+    const fallbackVisualType = ORDER_VISUAL_TYPES[
+      (patternIndex + index) % ORDER_VISUAL_TYPES.length
+    ] ?? "parcel";
+    const orderVisualType = packageKind === "standard"
+      ? reward?.packageType ?? fallbackVisualType
+      : "parcel";
+    const collectibleClass = packageKind === "standard"
+      ? collectibleClassForVisual(orderVisualType)
+      : "parcel";
     return {
       x: options.spawnX + span * centering,
       // Slide-route parcels sit completely below the hanging beam; jump-route
@@ -515,12 +529,12 @@ export function createAuthoredRewardWave(
       y: kind === "overhead" ? GROUND_Y - height : GROUND_Y - height - 15,
       phase: (patternIndex + index) * 0.73,
       kind: packageKind,
-      scoreValue: packageKind === "standard"
-          ? GAMEPLAY.packageScore
-          : 0,
-      packageType: reward?.packageType ??
-        packageTypes[(patternIndex + index) % packageTypes.length] ?? "notebook",
-      orderVisualType: ORDER_VISUAL_TYPES[(patternIndex + index) % ORDER_VISUAL_TYPES.length] ?? "parcel",
+      collectibleClass,
+      packageType: orderVisualType === "parcel"
+        ? reward?.packageType ??
+          packageTypes[(patternIndex + index) % packageTypes.length] ?? "notebook"
+        : orderVisualType,
+      orderVisualType,
       weightKg: 0,
       storyRewardPattern: true,
       ...(options.authoredWaveId ? { authoredWaveId: options.authoredWaveId } : {}),
@@ -558,12 +572,14 @@ export function activateTutorialPackages(packages: PackageModel[]): void {
     if (!parcel || x === undefined) continue;
     parcel.active = true;
     parcel.kind = "standard";
-    parcel.scoreValue = GAMEPLAY.packageScore;
+    parcel.orderVisualType = ORDER_VISUAL_TYPES[index] ?? "parcel";
+    parcel.collectibleClass = collectibleClassForVisual(parcel.orderVisualType);
     parcel.x = x;
     parcel.y = GROUND_Y - parcel.size - 17;
     parcel.phase = index * 0.9;
-    parcel.packageType = "notebook";
-    parcel.orderVisualType = ORDER_VISUAL_TYPES[index] ?? "parcel";
+    parcel.packageType = parcel.orderVisualType === "parcel"
+      ? "notebook"
+      : parcel.orderVisualType;
     parcel.weightKg = 0;
     parcel.storyRewardPattern = false;
     parcel.authoredWaveId = "challenge-onboarding";
@@ -611,7 +627,7 @@ export function activateWave(
     if (!spawn || !parcel) return false;
     parcel.active = true;
     parcel.kind = spawn.kind;
-    parcel.scoreValue = spawn.scoreValue;
+    parcel.collectibleClass = spawn.collectibleClass;
     parcel.x = spawn.x;
     parcel.y = spawn.y;
     parcel.phase = spawn.phase;

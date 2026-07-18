@@ -65,7 +65,7 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   fullscreenExit: "Wyjdź z pełnego",
   cssGameModeEnter: "Tryb gry",
   cssGameModeExit: "Wyjdź z trybu gry",
-  hudPackages: "Zamówienia",
+  hudPackages: "Paczki",
   hudScore: "Wynik",
   pauseAction: "Pauza",
   storyMode: "Droga do Miliona",
@@ -581,7 +581,7 @@ export class CampaignShell {
               <span class="amso-campaign__hud-notice" data-campaign-hud-notice hidden role="status"></span>
             </div>
             <div class="amso-campaign__hud-stats">
-              <span><small data-campaign-copy="hudPackages">Zamówienia</small> <strong data-campaign-hud-packages>0</strong></span>
+              <span><small data-campaign-copy="hudPackages">Paczki</small> <strong data-campaign-hud-packages>0</strong></span>
               <span><small data-campaign-copy="hudScore">Wynik</small> <strong data-campaign-hud-score>0</strong></span>
               <span><small>SERIA</small> <strong data-campaign-hud-combo>×1</strong></span>
             </div>
@@ -1067,7 +1067,7 @@ export class CampaignShell {
             : "POWTÓRZ FALĘ");
       }
     }
-    this.hudPackages.textContent = formatInteger(snapshot.ordersCollected);
+    this.hudPackages.textContent = formatInteger(snapshot.packagesCollected);
     this.hudScore.textContent = formatInteger(snapshot.score);
     this.hudCombo.textContent = `×${formatInteger(snapshot.combo)}`;
     const activePowerUps = formatPowerUpHud(

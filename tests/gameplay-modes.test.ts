@@ -173,14 +173,14 @@ function createGameHarness(
     avoidObstacles,
     collectPackagesUntil(total: number): void {
       const internals = game as unknown as {
-        ordersCollected: number;
+        packagesCollected: number;
         collectPackage(parcel: PackageModel): void;
       };
-      while (internals.ordersCollected < total) {
+      while (internals.packagesCollected < total) {
         internals.collectPackage({
           active: true,
           kind: "standard",
-          scoreValue: 100,
+          collectibleClass: "parcel",
           x: 120,
           y: 400,
           size: 30,
@@ -392,7 +392,7 @@ describe("campaign collision contract", () => {
       threshold: 10,
       kind: "order-confetti",
       intensity: 1,
-      text: "10 ZAMÓWIEŃ!"
+      text: "10 PACZEK!"
     });
     expect(new Set(harness.milestoneCelebrations.map(({ threshold }) => threshold)).size)
       .toBe(harness.milestoneCelebrations.length);
@@ -440,6 +440,11 @@ describe("campaign collision contract", () => {
     const finalStorySnapshot = harness.snapshots
       .filter(({ mode }) => mode === "story")
       .at(-1);
+    expect(finalStorySnapshot?.millionCounterValue).toBe(1_000_000);
+    expect(finalStorySnapshot?.ordersCollected)
+      .toBeGreaterThan(finalStorySnapshot?.packagesCollected ?? 0);
+    expect(Object.values(finalStorySnapshot?.equipmentTypeCounts ?? {})
+      .reduce((total, count) => total + count, 0)).toBeGreaterThan(0);
     expect(challengeSnapshot?.backgroundTravelPixels)
       .toBeGreaterThanOrEqual(finalStorySnapshot?.backgroundTravelPixels ?? 0);
 
@@ -562,6 +567,111 @@ describe("campaign collision contract", () => {
     expect(harness.snapshots.some(({ authoredWave }) =>
       authoredWave?.microlevelId === "million-threshold" && authoredWave.completed
     )).toBe(true);
+    harness.game.destroy();
+  });
+});
+
+describe("parcel and equipment collection contract", () => {
+  it.each([
+    ["parcel", "notebook", 100, 1, { notebook: 0, telefon: 0, pc: 0, lcd: 0 }],
+    ["notebook", "notebook", 250, 0, { notebook: 1, telefon: 0, pc: 0, lcd: 0 }],
+    ["telefon", "telefon", 250, 0, { notebook: 0, telefon: 1, pc: 0, lcd: 0 }],
+    ["pc", "pc", 250, 0, { notebook: 0, telefon: 0, pc: 1, lcd: 0 }],
+    ["lcd", "lcd", 250, 0, { notebook: 0, telefon: 0, pc: 0, lcd: 1 }]
+  ] as const)(
+    "reports %s through the public snapshot",
+    (orderVisualType, packageType, expectedScore, expectedPackages, expectedEquipment) => {
+      const harness = createGameHarness("challenge");
+      const internals = harness.game as unknown as {
+        collectPackage(parcel: PackageModel): void;
+      };
+      internals.collectPackage({
+        active: true,
+        kind: "standard",
+        collectibleClass: orderVisualType === "parcel" ? "parcel" : "equipment",
+        x: 120,
+        y: 400,
+        size: 30,
+        phase: 0,
+        packageType,
+        orderVisualType,
+        weightKg: 0
+      });
+
+      harness.game.start("keyboard");
+      const snapshot = harness.snapshots.at(-1);
+      expect(snapshot).toMatchObject({
+        score: expectedScore,
+        ordersCollected: 1,
+        packagesCollected: expectedPackages,
+        equipmentTypeCounts: expectedEquipment
+      });
+      harness.game.destroy();
+    }
+  );
+
+  it("drives package milestones only from physical parcels", () => {
+    const harness = createGameHarness("challenge");
+    const internals = harness.game as unknown as {
+      collectPackage(parcel: PackageModel): void;
+    };
+    const collect = (collectibleClass: "parcel" | "equipment"): void => {
+      internals.collectPackage({
+        active: true,
+        kind: "standard",
+        collectibleClass,
+        x: 120,
+        y: 400,
+        size: 30,
+        phase: 0,
+        packageType: "notebook",
+        orderVisualType: collectibleClass === "parcel" ? "parcel" : "notebook",
+        weightKg: 0
+      });
+    };
+
+    harness.game.start("keyboard");
+    collect("equipment");
+    for (let count = 0; count < 9; count += 1) collect("parcel");
+    expect(harness.milestoneCelebrations.some(({ threshold, text }) =>
+      threshold === 10 && text.includes("PACZEK")
+    )).toBe(false);
+
+    collect("parcel");
+    expect(harness.milestoneCelebrations).toContainEqual(expect.objectContaining({
+      threshold: 10,
+      text: "10 PACZEK!"
+    }));
+    harness.game.destroy();
+  });
+
+  it("leaves public run state unchanged when optional equipment is missed", () => {
+    const harness = createGameHarness("challenge");
+    harness.game.start("keyboard");
+    const before = harness.snapshots.at(-1);
+    const internals = harness.game as unknown as { packages: PackageModel[] };
+    const missed = internals.packages.find(({ active }) => !active);
+    if (!missed || !before) throw new Error("test requires one inactive collectible");
+    Object.assign(missed, {
+      active: true,
+      kind: "standard",
+      collectibleClass: "equipment",
+      x: -100,
+      y: 400,
+      packageType: "telefon",
+      orderVisualType: "telefon"
+    } satisfies Partial<PackageModel>);
+
+    harness.advance(0.1);
+
+    expect(missed.active).toBe(false);
+    expect(harness.snapshots.at(-1)).toMatchObject({
+      score: before.score,
+      packagesCollected: before.packagesCollected,
+      equipmentTypeCounts: before.equipmentTypeCounts,
+      combo: before.combo,
+      storyObjectivesCompleted: before.storyObjectivesCompleted
+    });
     harness.game.destroy();
   });
 });

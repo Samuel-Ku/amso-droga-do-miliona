@@ -1,6 +1,12 @@
 import type { GameState } from "./contracts";
 import type { StoryPhase } from "./story-timeline";
-import type { CampaignMode, OrderVisualType, PackageType, PowerUpKind } from "../shared/types";
+import type {
+  CampaignMode,
+  CollectibleClass,
+  OrderVisualType,
+  PackageType,
+  PowerUpKind
+} from "../shared/types";
 import type { StoryClimaxModel } from "./story-climax";
 import type { StoryObstacleTransformation } from "./story-effects";
 import type { StoryObjectivesSnapshot } from "./story-objectives";
@@ -49,7 +55,8 @@ export interface ObstacleModel {
 export interface PackageModel {
   active: boolean;
   kind: PackageKind;
-  scoreValue: number;
+  /** Gameplay class; independent from the transparent bounds of its artwork. */
+  collectibleClass: CollectibleClass;
   x: number;
   y: number;
   size: number;

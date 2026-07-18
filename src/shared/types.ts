@@ -12,6 +12,7 @@ export interface RunnerFact {
 export type PackageType = "notebook" | "telefon" | "pc" | "lcd";
 /** Visual form of one ordinary order. Physical facts still use PackageType. */
 export type OrderVisualType = PackageType | "parcel";
+export type CollectibleClass = "parcel" | "equipment";
 export type PowerUpKind = "gwarancja_48" | "podwojny_wynik";
 export type CampaignMode = "story" | "challenge";
 export type StoryBeatKind = "title" | "dialogue" | "copy" | "stat" | "challenge";

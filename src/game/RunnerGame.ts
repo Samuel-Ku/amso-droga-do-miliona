@@ -162,6 +162,7 @@ export class RunnerGame implements RunnerGameApi {
   private challengeElapsedSeconds = 0;
   private distancePixels = 0;
   private visualDistancePixels = 0;
+  private packagesCollected = 0;
   private ordersCollected = 0;
   private bonusScore = 0;
   private challengeStartScore = 0;
@@ -199,6 +200,12 @@ export class RunnerGame implements RunnerGameApi {
   private furthestEpochReached = 0;
   private factsUnlockedCount = 0;
   private readonly packageTypeCounts: Record<PackageType, number> = {
+    notebook: 0,
+    telefon: 0,
+    pc: 0,
+    lcd: 0
+  };
+  private readonly equipmentTypeCounts: Record<PackageType, number> = {
     notebook: 0,
     telefon: 0,
     pc: 0,
@@ -430,6 +437,7 @@ export class RunnerGame implements RunnerGameApi {
     this.challengeWorldDirector.reset("direct");
     this.distancePixels = 0;
     this.visualDistancePixels = 0;
+    this.packagesCollected = 0;
     this.ordersCollected = 0;
     this.bonusScore = 0;
     this.challengeStartScore = 0;
@@ -496,6 +504,7 @@ export class RunnerGame implements RunnerGameApi {
     this.storyObjectivePatternIndex = 0;
     for (const type of Object.keys(this.packageTypeCounts) as PackageType[]) {
       this.packageTypeCounts[type] = 0;
+      this.equipmentTypeCounts[type] = 0;
     }
     this.factEngine = this.mode === "story" && this.narrative
       ? new FactEngine(this.narrative.facts)
@@ -1120,11 +1129,11 @@ export class RunnerGame implements RunnerGameApi {
     parcel.active = false;
     const collection = resolvePackageCollection(
       parcel.kind,
-      parcel.scoreValue,
+      parcel.collectibleClass,
       this.combo,
       this.activePowerUps.has("podwojny_wynik")
     );
-    if (collection.countsAsPackage) {
+    if (parcel.kind === "standard") {
       if (parcel.authoredWaveId &&
           this.authoredWaveDirector?.currentWave?.id === parcel.authoredWaveId) {
         this.authoredWaveDirector.recordPackage();
@@ -1133,6 +1142,11 @@ export class RunnerGame implements RunnerGameApi {
         if (challengeWave !== undefined) challengeWave.collected += 1;
       }
       this.ordersCollected += 1;
+      if (collection.countsAsPackage) {
+        this.packagesCollected += 1;
+      } else {
+        this.equipmentTypeCounts[parcel.packageType] += 1;
+      }
       const challengeOrders = Math.max(0, this.ordersCollected - this.challengeStartOrders);
       if (this.mode === "challenge" && this.pendingPowerUpReward === null) {
         this.pendingPowerUpReward = this.challengePowerUps.dueAt(
@@ -1150,11 +1164,13 @@ export class RunnerGame implements RunnerGameApi {
       if (newPersonalRecord && safeToCelebrate && !this.reducedMotion) {
         this.recordEmphasisRemaining = 0.25;
       }
-      const celebrations = this.milestoneCelebrationDirector.recordOrders(
-        this.ordersCollected,
-        safeToCelebrate,
-        newPersonalRecord ? "NOWY REKORD" : undefined
-      );
+      const celebrations = collection.countsAsPackage
+        ? this.milestoneCelebrationDirector.recordOrders(
+            this.packagesCollected,
+            safeToCelebrate,
+            newPersonalRecord ? "NOWY REKORD" : undefined
+          )
+        : [];
       if (newPersonalRecord && celebrations.length === 0) {
         celebrations.push(this.milestoneCelebrationDirector.recordAchievement(
           challengeOrders,
@@ -1177,20 +1193,22 @@ export class RunnerGame implements RunnerGameApi {
       this.packageTypeCounts[parcel.packageType] += 1;
       this.totalWeightKg += parcel.weightKg;
       this.factEngine?.recordPackage(parcel.packageType, parcel.weightKg);
-      this.handleStoryObjectiveUpdate(
-        this.storyObjectiveDirector.recordCreativePickup(parcel.packageType)
-      );
+      if (parcel.collectibleClass === "equipment") {
+        this.handleStoryObjectiveUpdate(
+          this.storyObjectiveDirector.recordCreativePickup(parcel.packageType)
+        );
+      }
       this.handleStoryObjectiveUpdate(
         this.storyObjectiveDirector.recordCurrentCombo(this.combo)
       );
       this.handleStoryObjectiveUpdate(this.storyObjectiveDirector.recordTrustCollection());
       this.handleStoryObjectiveUpdate(this.storyObjectiveDirector.recordMillionOrder());
-      if (parcel.storyOrder === true) {
+      if (parcel.storyOrder === true && parcel.collectibleClass === "equipment") {
         this.handleStoryObjectiveUpdate(
           this.storyObjectiveDirector.recordOrder(parcel.packageType)
         );
       }
-    } else if (parcel.kind !== "standard") {
+    } else {
       if (parcel.authoredWaveId === "safe-power-up") this.pendingPowerUpReward = null;
       if (this.activatePowerUp(parcel.kind)) this.callbacks.onSpecialPickup?.(parcel.kind);
     }
@@ -1278,11 +1296,12 @@ export class RunnerGame implements RunnerGameApi {
       free.forEach((parcel, index) => {
         parcel.active = true;
         parcel.kind = "standard";
-        parcel.scoreValue = GAMEPLAY.packageScore;
+        parcel.collectibleClass = "parcel";
         parcel.x = startX + index * 66;
         parcel.y = GROUND_Y - parcel.size - (heights[index] ?? 28);
         parcel.phase = index * 0.72;
         parcel.packageType = "notebook";
+        parcel.orderVisualType = "parcel";
         parcel.weightKg = 0;
         parcel.storyRewardPattern = true;
         parcel.authoredWaveId = wave.id;
@@ -1373,7 +1392,7 @@ export class RunnerGame implements RunnerGameApi {
     if (!kind || !parcel) return;
     parcel.active = true;
     parcel.kind = kind;
-    parcel.scoreValue = 0;
+    parcel.collectibleClass = "parcel";
     parcel.x = authoredRewardSpawnX(this.speed, STORY_CLIMAX_SPAWN_X, 1.6);
     parcel.y = GROUND_Y - parcel.size - 12;
     parcel.phase = 0;
@@ -1835,6 +1854,7 @@ export class RunnerGame implements RunnerGameApi {
       visualWorldIndex: visual.worldIndex,
       visualTransitionPending: visual.transitionPending,
       score,
+      packagesCollected: this.packagesCollected,
       ordersCollected: this.ordersCollected,
       challengeScore: this.mode === "challenge"
         ? Math.max(0, score - this.challengeStartScore)
@@ -1891,6 +1911,7 @@ export class RunnerGame implements RunnerGameApi {
       epochIndexMax: epochMax,
       epochProgress: Math.min(1, this.epochElapsed / epochDuration),
       packageTypeCounts: { ...this.packageTypeCounts },
+      equipmentTypeCounts: { ...this.equipmentTypeCounts },
       totalWeightKg: Math.round(this.totalWeightKg),
       activePowerUps: this.activePowerUps.keys(),
       activePowerUpStatuses: this.activePowerUps.statuses(),

@@ -1,5 +1,7 @@
 import { GAMEPLAY } from "./constants";
 import type { PackageKind } from "./types";
+import type { CollectibleClass } from "../shared/types";
+import { collectibleScore } from "./collectibles";
 
 export const MAX_COMBO_MULTIPLIER = 8;
 
@@ -35,7 +37,7 @@ function normalizedCombo(combo: number): number {
 /** Resolves one pickup without mutating run state. */
 export function resolvePackageCollection(
   kind: PackageKind,
-  scoreValue: number,
+  collectibleClass: CollectibleClass,
   combo: number,
   doublePoints: boolean
 ): PackageCollectionResolution {
@@ -49,10 +51,10 @@ export function resolvePackageCollection(
     };
   }
 
-  const basePoints = Math.max(0, Math.floor(scoreValue));
+  const basePoints = collectibleScore(collectibleClass);
   const pointsAwarded = basePoints * currentCombo * (doublePoints ? 2 : 1);
   return {
-    countsAsPackage: true,
+    countsAsPackage: collectibleClass === "parcel",
     pointsAwarded,
     // calculateScore supplies the ordinary 100 points through ordersCollected.
     bonusScoreAwarded: Math.max(0, pointsAwarded - GAMEPLAY.packageScore),

@@ -185,7 +185,13 @@ describe("challenge spawning fairness", () => {
     });
     expect(wave).not.toBeNull();
     expect(wave?.packages.filter(({ storyOrder }) => storyOrder)).toMatchObject([
-      { kind: "standard", packageType: "pc", storyOrder: true }
+      {
+        kind: "standard",
+        collectibleClass: "equipment",
+        packageType: "pc",
+        orderVisualType: "pc",
+        storyOrder: true
+      }
     ]);
     expect(wave?.packages.filter(({ storyOrder }) => storyOrder !== true)).toHaveLength(4);
   });
@@ -287,13 +293,13 @@ describe("challenge spawning fairness", () => {
     const packages = [{
       active: true,
       kind: "standard" as const,
-      scoreValue: 250,
+      collectibleClass: "equipment" as const,
       x: 750,
       y: GROUND_Y - 47,
       size: 30,
       phase: 0,
-        packageType: "notebook" as const,
-        orderVisualType: "notebook" as const,
+      packageType: "notebook" as const,
+      orderVisualType: "notebook" as const,
       weightKg: 0
     }];
 

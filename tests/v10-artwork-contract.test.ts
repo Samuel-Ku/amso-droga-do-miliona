@@ -137,7 +137,7 @@ describe("v10 production artwork contract", () => {
         kind: "order-confetti",
         intensity: 3,
         durationSeconds: 1.6,
-        text: "500 ZAMÓWIEŃ!",
+        text: "500 PACZEK!",
         remainingSeconds: 1,
         progress: 0.4
       }
