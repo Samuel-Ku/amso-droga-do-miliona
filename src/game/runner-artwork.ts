@@ -1,6 +1,6 @@
 import type { OrderVisualType, PowerUpKind } from "../shared/types";
 import type { ObstacleKind, ObstacleModel, RenderScene, RunnerModel } from "./types";
-import { OVERHEAD } from "./constants";
+import { OVERHEAD, PHYSICS } from "./constants";
 
 export const ORDER_VISUAL_TYPES: readonly OrderVisualType[] =
   ["notebook", "telefon", "pc", "lcd", "parcel"] as const;
@@ -25,6 +25,8 @@ export const POWER_UP_ATLAS_PATH = "/assets/milion-runner/powerups/powerup-atlas
 export const COURIER_SPRITE_PATH = "/assets/milion-runner/courier/courier-run-sheet.webp";
 export const COURIER_CROUCH_SPRITE_PATH =
   "/assets/milion-runner/courier/courier-crouch-sheet.webp";
+export const COURIER_JUMP_SPRITE_PATH =
+  "/assets/milion-runner/courier/courier-jump-sheet.webp";
 export const OBSTACLE_ASSET_PATHS = {
   "box-stack": "/assets/milion-runner/obstacles/box-stack.webp",
   pallet: "/assets/milion-runner/obstacles/pallet.webp",
@@ -38,6 +40,7 @@ export const OVERHEAD_VARIANT_ASSET_PATHS = [
 ] as const;
 export const COURIER_SPRITE_FRAME_COUNT = 8;
 export const COURIER_CROUCH_SPRITE_FRAME_COUNT = 8;
+export const COURIER_JUMP_SPRITE_FRAME_COUNT = 8;
 
 const COURIER_SPRITE_CELL_SIZE = 512;
 const COURIER_SOURCE_GROUND_Y = 470;
@@ -78,6 +81,16 @@ export function courierCrouchSpriteFrame(runner: Readonly<RunnerModel>): number 
   );
 }
 
+export function courierJumpSpriteFrame(runner: Readonly<RunnerModel>): number {
+  const velocity = Number.isFinite(runner.velocityY) ? runner.velocityY : 0;
+  const jumpSpeed = Math.abs(PHYSICS.jumpVelocity);
+  const progress = Math.max(0, Math.min(1, (velocity + jumpSpeed) / (jumpSpeed * 2)));
+  return Math.min(
+    COURIER_JUMP_SPRITE_FRAME_COUNT - 1,
+    Math.floor(progress * COURIER_JUMP_SPRITE_FRAME_COUNT)
+  );
+}
+
 export function courierCrouchFrameOffsetX(frame: number): number {
   const anchor = COURIER_CROUCH_FRAME_ANCHOR_X[
     Math.max(0, Math.min(COURIER_CROUCH_SPRITE_FRAME_COUNT - 1, frame))
@@ -111,6 +124,7 @@ export class RunnerArtwork {
   private readonly powerUps: HTMLImageElement | null;
   private readonly courier: HTMLImageElement | null;
   private readonly courierCrouch: HTMLImageElement | null;
+  private readonly courierJump: HTMLImageElement | null;
   private readonly obstacles: Readonly<Record<ObstacleKind, HTMLImageElement | null>>;
   private readonly overheadVariants: readonly (HTMLImageElement | null)[];
   private readonly parcelFrames: readonly (HTMLImageElement | null)[];
@@ -120,6 +134,7 @@ export class RunnerArtwork {
     this.powerUps = loadImage(POWER_UP_ATLAS_PATH, factory);
     this.courier = loadImage(COURIER_SPRITE_PATH, factory);
     this.courierCrouch = loadImage(COURIER_CROUCH_SPRITE_PATH, factory);
+    this.courierJump = loadImage(COURIER_JUMP_SPRITE_PATH, factory);
     this.obstacles = {
       "box-stack": loadImage(OBSTACLE_ASSET_PATHS["box-stack"], factory),
       pallet: loadImage(OBSTACLE_ASSET_PATHS.pallet, factory),
@@ -253,15 +268,22 @@ export class RunnerArtwork {
     scene: Readonly<RenderScene>
   ): boolean {
     const useCrouchArtwork = runner.crouching && drawable(this.courierCrouch);
-    const artwork = useCrouchArtwork ? this.courierCrouch : this.courier;
+    const useJumpArtwork = !runner.grounded && drawable(this.courierJump);
+    const artwork = useCrouchArtwork
+      ? this.courierCrouch
+      : useJumpArtwork
+        ? this.courierJump
+        : this.courier;
     if (!drawable(artwork)) return false;
     const frame = useCrouchArtwork
       ? scene.reducedMotion
         ? COURIER_CROUCH_SPRITE_FRAME_COUNT - 1
         : courierCrouchSpriteFrame(runner)
-      : scene.reducedMotion
-        ? 0
-        : courierSpriteFrame(runner, scene);
+      : useJumpArtwork
+        ? courierJumpSpriteFrame(runner)
+        : scene.reducedMotion
+          ? 0
+          : courierSpriteFrame(runner, scene);
     const feetY = runner.y + runner.height + 4;
     const x = runner.x + runner.width / 2 - COURIER_RENDER_SIZE / 2 +
       (useCrouchArtwork ? courierCrouchFrameOffsetX(frame) : 0);

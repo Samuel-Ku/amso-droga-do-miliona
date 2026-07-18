@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build production courier run and crouch sprite sheets from approved videos."""
+"""Build production courier run, crouch and jump sheets from approved videos."""
 
 from __future__ import annotations
 
@@ -17,11 +17,13 @@ from PIL import Image, ImageFilter
 
 FRAME_INDICES = (0, 5, 10, 16, 21, 26, 31, 37)
 CROUCH_FRAME_INDICES = (36, 42, 48, 54, 60, 66, 72, 78)
+JUMP_FRAME_INDICES = (60, 64, 68, 72, 76, 80, 84, 88)
 CELL_SIZE = 512
 SOURCE_GROUND_Y = 925
 DESTINATION_GROUND_Y = 470
 UNIFORM_SCALE = 0.45
 CROUCH_UNIFORM_SCALE = 0.41
+JUMP_UNIFORM_SCALE = 0.51
 
 # The backpack moves and tilts slightly through the authored run cycle.  Keep
 # the logo attached to the visible orange face instead of drawing one fixed
@@ -158,6 +160,26 @@ def isolate_courier(source: Image.Image) -> Image.Image:
     return rgba
 
 
+def jump_isolator() -> Callable[[Image.Image], Image.Image]:
+    """Create one shared semantic-background-removal session for jump frames."""
+    try:
+        from rembg import new_session, remove
+    except ImportError as error:
+        raise RuntimeError(
+            "Jump extraction needs rembg and onnxruntime. Install rembg[cpu] first."
+        ) from error
+
+    session = new_session("birefnet-general-lite")
+
+    def isolate(source: Image.Image) -> Image.Image:
+        result = remove(source.convert("RGB"), session=session)
+        if not isinstance(result, Image.Image):
+            raise RuntimeError("Background removal did not return an image")
+        return result.convert("RGBA")
+
+    return isolate
+
+
 def place_run_on_cell(courier: Image.Image) -> Image.Image:
     scaled_size = tuple(round(dimension * UNIFORM_SCALE) for dimension in courier.size)
     scaled = courier.resize(scaled_size, Image.Resampling.LANCZOS)
@@ -180,6 +202,28 @@ def place_crouch_on_cell(courier: Image.Image) -> Image.Image:
         ),
         Image.Resampling.LANCZOS,
     )
+    cell = Image.new("RGBA", (CELL_SIZE, CELL_SIZE), (0, 0, 0, 0))
+    cell.alpha_composite(
+        scaled,
+        ((CELL_SIZE - scaled.width) // 2, DESTINATION_GROUND_Y - scaled.height),
+    )
+    return cell
+
+
+def place_jump_on_cell(courier: Image.Image) -> Image.Image:
+    bounds = courier.getchannel("A").getbbox()
+    if bounds is None:
+        raise RuntimeError("Jump frame contains no courier pixels")
+    cropped = courier.crop(bounds)
+    scaled = cropped.resize(
+        (
+            round(cropped.width * JUMP_UNIFORM_SCALE),
+            round(cropped.height * JUMP_UNIFORM_SCALE),
+        ),
+        Image.Resampling.LANCZOS,
+    )
+    if scaled.width > CELL_SIZE - 20 or scaled.height > CELL_SIZE - 20:
+        raise RuntimeError(f"Jump frame does not fit its cell: {scaled.size}")
     cell = Image.new("RGBA", (CELL_SIZE, CELL_SIZE), (0, 0, 0, 0))
     cell.alpha_composite(
         scaled,
@@ -236,6 +280,7 @@ def build_motion(
     sheet_stem: str,
     temporary_prefix: str,
     place_frame: Callable[[Image.Image], Image.Image],
+    isolate_frame: Callable[[Image.Image], Image.Image],
     mark_transforms: tuple[BackpackMarkTransform, ...] | None,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -252,7 +297,7 @@ def build_motion(
         sources = extract_frames(video, Path(temp), frame_indices)
         frames: list[Image.Image] = []
         for index, source_path in enumerate(sources):
-            frame = place_frame(isolate_courier(Image.open(source_path)))
+            frame = place_frame(isolate_frame(Image.open(source_path)))
             if mark is not None and mark_transforms is not None:
                 frame = brand_backpack(frame, mark, index, mark_transforms)
             validate_frame(frame, index)
@@ -282,6 +327,7 @@ def build_run(video: Path, output_dir: Path) -> None:
         sheet_stem="courier-run-sheet",
         temporary_prefix="amso-run-",
         place_frame=place_run_on_cell,
+        isolate_frame=isolate_courier,
         mark_transforms=BACKPACK_MARK_TRANSFORMS,
     )
 
@@ -296,9 +342,26 @@ def build_crouch(video: Path, output_dir: Path) -> None:
         sheet_stem="courier-crouch-sheet",
         temporary_prefix="amso-crouch-",
         place_frame=place_crouch_on_cell,
+        isolate_frame=isolate_courier,
         # Keep the authored crouch frames unbranded. The mark needs manual
         # occlusion/perspective work so it reads as print on the backpack,
         # instead of floating above the courier's arm.
+        mark_transforms=None,
+    )
+
+
+def build_jump(video: Path, output_dir: Path) -> None:
+    build_motion(
+        video,
+        output_dir,
+        frame_indices=JUMP_FRAME_INDICES,
+        frames_directory="jump-frames",
+        frame_prefix="jump",
+        sheet_stem="courier-jump-sheet",
+        temporary_prefix="amso-jump-",
+        place_frame=place_jump_on_cell,
+        isolate_frame=jump_isolator(),
+        # As with crouch, backpack branding needs manual perspective/occlusion.
         mark_transforms=None,
     )
 
@@ -307,9 +370,13 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("video", type=Path)
     parser.add_argument("output_dir", type=Path)
-    parser.add_argument("--motion", choices=("run", "crouch"), default="run")
+    parser.add_argument("--motion", choices=("run", "crouch", "jump"), default="run")
     args = parser.parse_args()
-    builder = build_crouch if args.motion == "crouch" else build_run
+    builder = {
+        "run": build_run,
+        "crouch": build_crouch,
+        "jump": build_jump,
+    }[args.motion]
     builder(args.video.resolve(), args.output_dir.resolve())
 
 

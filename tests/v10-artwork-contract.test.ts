@@ -6,6 +6,8 @@ import {
   COURIER_SPRITE_PATH,
   COURIER_CROUCH_SPRITE_FRAME_COUNT,
   COURIER_CROUCH_SPRITE_PATH,
+  COURIER_JUMP_SPRITE_FRAME_COUNT,
+  COURIER_JUMP_SPRITE_PATH,
   OBSTACLE_ASSET_PATHS,
   OVERHEAD_VARIANT_ASSET_PATHS,
   ORDER_ASSET_PATHS,
@@ -13,6 +15,7 @@ import {
   PARCEL_CELEBRATION_FRAME_PATHS,
   courierSpriteFrame,
   courierCrouchSpriteFrame,
+  courierJumpSpriteFrame,
   courierCrouchFrameOffsetX,
   parcelAnimationFrame
 } from "../src/game/runner-artwork";
@@ -92,9 +95,12 @@ describe("v10 production artwork contract", () => {
     ))).toBe(true);
     expect(COURIER_SPRITE_FRAME_COUNT).toBe(8);
     expect(COURIER_CROUCH_SPRITE_FRAME_COUNT).toBe(8);
+    expect(COURIER_JUMP_SPRITE_FRAME_COUNT).toBe(8);
     expect(COURIER_SPRITE_PATH).toBe("/assets/milion-runner/courier/courier-run-sheet.webp");
     expect(COURIER_CROUCH_SPRITE_PATH)
       .toBe("/assets/milion-runner/courier/courier-crouch-sheet.webp");
+    expect(COURIER_JUMP_SPRITE_PATH)
+      .toBe("/assets/milion-runner/courier/courier-jump-sheet.webp");
     expect(existsSync(new URL(
       "../public/assets/milion-runner/courier/courier-run-sheet.webp",
       import.meta.url
@@ -103,9 +109,16 @@ describe("v10 production artwork contract", () => {
       "../public/assets/milion-runner/courier/courier-crouch-sheet.webp",
       import.meta.url
     ))).toBe(true);
+    expect(existsSync(new URL(
+      "../public/assets/milion-runner/courier/courier-jump-sheet.webp",
+      import.meta.url
+    ))).toBe(true);
     expect(courierSpriteFrame(runner, scene({ elapsedSeconds: 0 }))).toBe(0);
     expect(courierSpriteFrame(runner, scene({ elapsedSeconds: 0.25 }))).toBeGreaterThan(0);
     expect(courierSpriteFrame({ ...runner, grounded: false, velocityY: -100 }, scene())).toBe(3);
+    expect(courierJumpSpriteFrame({ ...runner, grounded: false, velocityY: -760 })).toBe(0);
+    expect(courierJumpSpriteFrame({ ...runner, grounded: false, velocityY: 0 })).toBe(4);
+    expect(courierJumpSpriteFrame({ ...runner, grounded: false, velocityY: 760 })).toBe(7);
     expect(courierCrouchSpriteFrame({
       ...runner,
       crouching: true,
@@ -160,6 +173,29 @@ describe("v10 production artwork contract", () => {
     expect(standingHeight / standingWidth).toBe(1);
     expect(courierDraws[0]?.[8]).toBe(courierDraws[1]?.[8]);
     expect(courierDraws[0]?.[7]).toBe(courierDraws[1]?.[7]);
+  });
+
+  it("uses the dedicated jump sheet while the courier is airborne", () => {
+    const drawImage = vi.fn();
+    const context = { drawImage } as unknown as CanvasRenderingContext2D;
+    const factory = () => ({
+      complete: true,
+      naturalWidth: 4096,
+      naturalHeight: 512,
+      decoding: "async",
+      src: ""
+    }) as unknown as HTMLImageElement;
+    const artwork = new RunnerArtwork(factory);
+
+    artwork.drawCourier(context, {
+      ...runner,
+      grounded: false,
+      velocityY: 0
+    }, scene());
+
+    const [image, sourceX] = drawImage.mock.calls[0] ?? [];
+    expect((image as HTMLImageElement).src).toBe(COURIER_JUMP_SPRITE_PATH);
+    expect(sourceX).toBe(4 * 512);
   });
 
   it("animates the parcel through four authored perspectives", () => {
