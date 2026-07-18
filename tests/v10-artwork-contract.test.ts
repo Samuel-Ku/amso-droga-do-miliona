@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import type { RenderScene, RunnerModel } from "../src/game/types";
 import {
   COURIER_SPRITE_FRAME_COUNT,
@@ -142,6 +142,16 @@ describe("v10 production artwork contract", () => {
         progress: 0.4
       }
     }))).toBeGreaterThanOrEqual(0);
+  });
+
+  it("keeps courier motion sheets free of an automatically overlaid A", () => {
+    const builder = readFileSync(
+      new URL("../scripts/build-run-sprite.py", import.meta.url),
+      "utf8"
+    );
+
+    expect(builder).not.toContain("brand_backpack");
+    expect(builder).not.toContain("BACKPACK_MARK_TRANSFORMS");
   });
 
   it("keeps the courier at one visual size while changing to a crouch pose", () => {

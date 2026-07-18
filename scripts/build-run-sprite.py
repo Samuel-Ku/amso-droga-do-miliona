@@ -8,7 +8,6 @@ import subprocess
 import tempfile
 from collections import deque
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -24,30 +23,6 @@ DESTINATION_GROUND_Y = 470
 UNIFORM_SCALE = 0.45
 CROUCH_UNIFORM_SCALE = 0.41
 JUMP_UNIFORM_SCALE = 0.51
-
-# The backpack moves and tilts slightly through the authored run cycle.  Keep
-# the logo attached to the visible orange face instead of drawing one fixed
-# screen-space mark over the courier at runtime.
-
-
-@dataclass(frozen=True)
-class BackpackMarkTransform:
-    center_x: int
-    center_y: int
-    width: int
-    angle_degrees: int
-
-
-BACKPACK_MARK_TRANSFORMS = (
-    BackpackMarkTransform(176, 210, 46, -15),
-    BackpackMarkTransform(177, 211, 46, -14),
-    BackpackMarkTransform(181, 207, 46, -13),
-    BackpackMarkTransform(184, 205, 46, -12),
-    BackpackMarkTransform(177, 207, 46, -14),
-    BackpackMarkTransform(179, 208, 46, -14),
-    BackpackMarkTransform(184, 204, 44, -12),
-    BackpackMarkTransform(184, 205, 44, -12),
-)
 
 def extract_frames(
     video: Path,
@@ -232,32 +207,6 @@ def place_jump_on_cell(courier: Image.Image) -> Image.Image:
     return cell
 
 
-def brand_backpack(
-    frame: Image.Image,
-    mark: Image.Image,
-    index: int,
-    transforms: tuple[BackpackMarkTransform, ...] = BACKPACK_MARK_TRANSFORMS,
-) -> Image.Image:
-    placement = transforms[index]
-    height = round(mark.height * placement.width / mark.width)
-    transformed = mark.resize(
-        (placement.width, height), Image.Resampling.LANCZOS
-    ).rotate(
-        placement.angle_degrees,
-        resample=Image.Resampling.BICUBIC,
-        expand=True,
-    )
-    branded = frame.copy()
-    branded.alpha_composite(
-        transformed,
-        (
-            round(placement.center_x - transformed.width / 2),
-            round(placement.center_y - transformed.height / 2),
-        ),
-    )
-    return branded
-
-
 def validate_frame(frame: Image.Image, index: int) -> None:
     alpha = np.asarray(frame.getchannel("A"))
     if alpha[0, 0] != 0 or alpha[-1, -1] != 0:
@@ -281,25 +230,15 @@ def build_motion(
     temporary_prefix: str,
     place_frame: Callable[[Image.Image], Image.Image],
     isolate_frame: Callable[[Image.Image], Image.Image],
-    mark_transforms: tuple[BackpackMarkTransform, ...] | None,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     frames_dir = output_dir / frames_directory
     frames_dir.mkdir(parents=True, exist_ok=True)
-    mark: Image.Image | None = None
-    if mark_transforms is not None:
-        mark_path = output_dir / "A.webp"
-        if not mark_path.exists():
-            raise RuntimeError(f"Missing approved backpack mark: {mark_path}")
-        mark = Image.open(mark_path).convert("RGBA")
-
     with tempfile.TemporaryDirectory(prefix=temporary_prefix) as temp:
         sources = extract_frames(video, Path(temp), frame_indices)
         frames: list[Image.Image] = []
         for index, source_path in enumerate(sources):
             frame = place_frame(isolate_frame(Image.open(source_path)))
-            if mark is not None and mark_transforms is not None:
-                frame = brand_backpack(frame, mark, index, mark_transforms)
             validate_frame(frame, index)
             frame.save(frames_dir / f"{frame_prefix}-{index:02d}.png", optimize=True)
             frames.append(frame)
@@ -328,7 +267,6 @@ def build_run(video: Path, output_dir: Path) -> None:
         temporary_prefix="amso-run-",
         place_frame=place_run_on_cell,
         isolate_frame=isolate_courier,
-        mark_transforms=BACKPACK_MARK_TRANSFORMS,
     )
 
 
@@ -343,10 +281,6 @@ def build_crouch(video: Path, output_dir: Path) -> None:
         temporary_prefix="amso-crouch-",
         place_frame=place_crouch_on_cell,
         isolate_frame=isolate_courier,
-        # Keep the authored crouch frames unbranded. The mark needs manual
-        # occlusion/perspective work so it reads as print on the backpack,
-        # instead of floating above the courier's arm.
-        mark_transforms=None,
     )
 
 
@@ -361,8 +295,6 @@ def build_jump(video: Path, output_dir: Path) -> None:
         temporary_prefix="amso-jump-",
         place_frame=place_jump_on_cell,
         isolate_frame=jump_isolator(),
-        # As with crouch, backpack branding needs manual perspective/occlusion.
-        mark_transforms=None,
     )
 
 
