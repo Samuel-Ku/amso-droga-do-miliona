@@ -23,7 +23,12 @@ export const OVERHEAD = {
   /** Y of the top of the hanging beam (hangs from the ceiling). */
   topY: 200,
   /** Gap between the ground and the bottom edge of the beam. */
-  clearance: 54
+  clearance: 54,
+  /**
+   * Artwork ends above the collision edge. At 34 px, the visible beam overlaps
+   * every standing run frame but leaves the settled crouch pose a 14 px gap.
+   */
+  visualLift: 34
 } as const;
 
 /** Beam height so its bottom edge sits `clearance` pixels above the ground. */

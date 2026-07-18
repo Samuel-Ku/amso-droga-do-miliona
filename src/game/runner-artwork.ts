@@ -1,5 +1,6 @@
 import type { OrderVisualType, PowerUpKind } from "../shared/types";
 import type { ObstacleKind, ObstacleModel, RenderScene, RunnerModel } from "./types";
+import { OVERHEAD } from "./constants";
 
 export const ORDER_VISUAL_TYPES: readonly OrderVisualType[] =
   ["notebook", "telefon", "pc", "lcd", "parcel"] as const;
@@ -46,7 +47,6 @@ const COURIER_CROUCH_FPS = 16;
 const COURIER_CROUCH_REFERENCE_ANCHOR_X = 250;
 const COURIER_CROUCH_FRAME_ANCHOR_X = [250, 310, 310, 310, 310, 310, 310, 310] as const;
 const ATLAS_TILE_SIZE = 256;
-const OVERHEAD_VISUAL_LIFT = 72;
 
 export function parcelAnimationFrame(
   elapsedSeconds: number,
@@ -155,7 +155,7 @@ export class RunnerArtwork {
       const drawWidth = obstacle.width + 18;
       const drawHeight = drawWidth * image.naturalHeight / image.naturalWidth;
       const drawX = obstacle.x - (drawWidth - obstacle.width) / 2;
-      const drawY = obstacle.y + obstacle.height - drawHeight - OVERHEAD_VISUAL_LIFT;
+      const drawY = obstacle.y + obstacle.height - drawHeight - OVERHEAD.visualLift;
       const railInset = drawWidth * 0.095;
       context.strokeStyle = "#2d343b";
       context.lineWidth = 5;

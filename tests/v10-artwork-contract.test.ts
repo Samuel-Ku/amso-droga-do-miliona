@@ -17,6 +17,7 @@ import {
   parcelAnimationFrame
 } from "../src/game/runner-artwork";
 import { RunnerArtwork } from "../src/game/runner-artwork";
+import { GROUND_Y, OVERHEAD } from "../src/game/constants";
 
 const runner: RunnerModel = {
   x: 110,
@@ -76,6 +77,12 @@ describe("v10 production artwork contract", () => {
     for (const path of OVERHEAD_VARIANT_ASSET_PATHS) {
       expect(existsSync(new URL(`../public${path}`, import.meta.url))).toBe(true);
     }
+  });
+
+  it("sets the overhead artwork low enough to require the settled crouch pose", () => {
+    const visibleUndersideY = GROUND_Y - OVERHEAD.clearance - OVERHEAD.visualLift;
+
+    expect(visibleUndersideY).toBe(344);
   });
 
   it("ships the selected Todd courier and preserves pose-state timing", () => {
