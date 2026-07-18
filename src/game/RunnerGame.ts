@@ -702,7 +702,10 @@ export class RunnerGame implements RunnerGameApi {
     this.recoverySeconds = Math.max(0, this.recoverySeconds - activeDeltaSeconds);
     this.startProtectionSeconds = Math.max(0, this.startProtectionSeconds - activeDeltaSeconds);
     this.warrantyBreakSeconds = Math.max(0, this.warrantyBreakSeconds - activeDeltaSeconds);
-    this.shieldActivationSeconds = Math.max(0, this.shieldActivationSeconds - deltaSeconds);
+    this.shieldActivationSeconds = Math.max(
+      0,
+      this.shieldActivationSeconds - activeDeltaSeconds
+    );
     this.impactSeconds = Math.max(0, this.impactSeconds - activeDeltaSeconds);
     this.impact = this.impactSeconds > 0;
     this.storyObstacleTransformer.advance(deltaSeconds);

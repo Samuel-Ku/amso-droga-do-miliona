@@ -1183,8 +1183,8 @@ function drawWarrantyShield(
   if (presentation === null) return;
   const animation = courierShieldAnimation({
     elapsedSeconds: scene.elapsedSeconds,
-    activationRemaining: scene.shieldActivationSeconds ?? 0,
-    breakRemaining: scene.warrantyBreakSeconds ?? 0,
+    activationSecondsRemaining: scene.shieldActivationSeconds ?? 0,
+    breakSecondsRemaining: scene.warrantyBreakSeconds ?? 0,
     reducedMotion: scene.reducedMotion
   });
   const { radiusX, radiusY } = presentation;
@@ -1206,8 +1206,8 @@ function drawWarrantyShield(
   if (field !== undefined) {
     field.addColorStop(0, "rgba(255,255,255,0.19)");
     field.addColorStop(0.5, "rgba(255,255,255,0.075)");
-    field.addColorStop(0.82, "rgba(244,113,0,0.045)");
-    field.addColorStop(1, "rgba(235,50,164,0.075)");
+    field.addColorStop(0.82, "rgba(255,255,255,0.055)");
+    field.addColorStop(1, "rgba(255,255,255,0.025)");
   }
   context.fillStyle = field ?? "rgba(255,255,255,0.09)";
   context.beginPath();
@@ -1216,26 +1216,20 @@ function drawWarrantyShield(
 
   // Only the inner energy texture rotates. The outer bubble remains upright,
   // so it reads as protection attached to the courier instead of a spinner.
-  if (!scene.reducedMotion) {
-    context.save();
-    context.beginPath();
-    context.ellipse(0, 0, radiusX - 2, radiusY - 2, 0, 0, Math.PI * 2);
-    context.clip();
-    context.rotate(animation.meshRotationRadians);
-    context.strokeStyle = "rgba(255,255,255,0.15)";
-    context.lineWidth = 0.85;
-    const mesh = getWarrantyShieldMesh();
-    if (mesh !== null) context.stroke(mesh);
-    context.restore();
-  }
+  context.save();
+  context.beginPath();
+  context.ellipse(0, 0, radiusX - 2, radiusY - 2, 0, 0, Math.PI * 2);
+  context.clip();
+  context.rotate(animation.meshRotationRadians);
+  context.strokeStyle = "rgba(255,255,255,0.15)";
+  context.lineWidth = 0.85;
+  const mesh = getWarrantyShieldMesh();
+  if (mesh !== null) context.stroke(mesh);
+  context.restore();
 
-  const rim = context.createLinearGradient(-radiusX, 0, radiusX, 0);
-  rim.addColorStop(0, "rgba(244,113,0,0.88)");
-  rim.addColorStop(0.43, "rgba(255,255,255,0.82)");
-  rim.addColorStop(1, "rgba(235,50,164,0.88)");
-  context.strokeStyle = rim;
+  context.strokeStyle = "rgba(255,255,255,0.78)";
   context.lineWidth = 3;
-  context.shadowColor = "rgba(244,113,0,0.38)";
+  context.shadowColor = "rgba(255,255,255,0.42)";
   context.shadowBlur = scene.reducedMotion ? 3 : 7;
   context.beginPath();
   context.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
@@ -1251,6 +1245,14 @@ function drawWarrantyShield(
   if (presentation.breaking && !scene.reducedMotion) {
     const burstAlpha = 1 - animation.breakingProgress;
     context.globalAlpha = animation.alpha * burstAlpha;
+    const flash = context.createLinearGradient(-radiusX, 0, radiusX, 0);
+    flash.addColorStop(0, "rgba(244,113,0,0.28)");
+    flash.addColorStop(0.52, "rgba(255,255,255,0.16)");
+    flash.addColorStop(1, "rgba(235,50,164,0.3)");
+    context.fillStyle = flash;
+    context.beginPath();
+    context.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
+    context.fill();
     context.shadowColor = "rgba(235,50,164,0.9)";
     context.shadowBlur = 12;
     context.strokeStyle = "rgba(255,255,255,0.95)";
@@ -1265,6 +1267,20 @@ function drawWarrantyShield(
         Math.sin(angle + 0.12) * radiusY * (1.08 + animation.breakingProgress * 0.18)
       );
       context.stroke();
+
+      const fragmentDistance = 1.1 + animation.breakingProgress * 0.24;
+      const fragmentX = Math.cos(angle) * radiusX * fragmentDistance;
+      const fragmentY = Math.sin(angle) * radiusY * fragmentDistance;
+      const tangentX = -Math.sin(angle) * 7;
+      const tangentY = Math.cos(angle) * 7;
+      context.strokeStyle = angle < 0
+        ? "rgba(244,113,0,0.95)"
+        : "rgba(235,50,164,0.95)";
+      context.beginPath();
+      context.moveTo(fragmentX - tangentX, fragmentY - tangentY);
+      context.lineTo(fragmentX + tangentX, fragmentY + tangentY);
+      context.stroke();
+      context.strokeStyle = "rgba(255,255,255,0.95)";
     }
   }
   context.restore();

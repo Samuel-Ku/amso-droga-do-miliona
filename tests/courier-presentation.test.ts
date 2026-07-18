@@ -23,8 +23,8 @@ describe("courier presentation", () => {
 
     const warranty = courierProtectionPresentation(runner, "warranty");
     const start = courierProtectionPresentation(runner, "start");
-    expect(warranty).toMatchObject({ state: "warranty", breaking: false });
-    expect(start).toMatchObject({ state: "start", breaking: false });
+    expect(warranty).toMatchObject({ breaking: false });
+    expect(start).toMatchObject({ breaking: false });
     expect(warranty!.radiusY).toBeGreaterThan(warranty!.radiusX);
   });
 
@@ -43,20 +43,20 @@ describe("courier presentation", () => {
   it("rotates the energy mesh and breathes within the agreed limits", () => {
     const brightest = courierShieldAnimation({
       elapsedSeconds: 0.45,
-      activationRemaining: 0,
-      breakRemaining: 0,
+      activationSecondsRemaining: 0,
+      breakSecondsRemaining: 0,
       reducedMotion: false
     });
     const softest = courierShieldAnimation({
       elapsedSeconds: 1.35,
-      activationRemaining: 0,
-      breakRemaining: 0,
+      activationSecondsRemaining: 0,
+      breakSecondsRemaining: 0,
       reducedMotion: false
     });
     const oneSecond = courierShieldAnimation({
       elapsedSeconds: 1,
-      activationRemaining: 0,
-      breakRemaining: 0,
+      activationSecondsRemaining: 0,
+      breakSecondsRemaining: 0,
       reducedMotion: false
     });
 
@@ -70,20 +70,20 @@ describe("courier presentation", () => {
   it("appears with a short overshoot and bursts in under 140 milliseconds", () => {
     const firstFrame = courierShieldAnimation({
       elapsedSeconds: 0,
-      activationRemaining: SHIELD_APPEAR_SECONDS,
-      breakRemaining: 0,
+      activationSecondsRemaining: SHIELD_APPEAR_SECONDS,
+      breakSecondsRemaining: 0,
       reducedMotion: false
     });
     const overshoot = courierShieldAnimation({
       elapsedSeconds: 0.15,
-      activationRemaining: SHIELD_APPEAR_SECONDS * 0.3,
-      breakRemaining: 0,
+      activationSecondsRemaining: SHIELD_APPEAR_SECONDS * 0.3,
+      breakSecondsRemaining: 0,
       reducedMotion: false
     });
     const halfBurst = courierShieldAnimation({
       elapsedSeconds: 1,
-      activationRemaining: 0,
-      breakRemaining: SHIELD_BREAK_SECONDS / 2,
+      activationSecondsRemaining: 0,
+      breakSecondsRemaining: SHIELD_BREAK_SECONDS / 2,
       reducedMotion: false
     });
 
@@ -97,8 +97,8 @@ describe("courier presentation", () => {
   it("honors reduced motion without hiding the protection state", () => {
     expect(courierShieldAnimation({
       elapsedSeconds: 9,
-      activationRemaining: 0,
-      breakRemaining: 0,
+      activationSecondsRemaining: 0,
+      breakSecondsRemaining: 0,
       reducedMotion: true
     })).toMatchObject({
       scale: 1,
@@ -108,7 +108,7 @@ describe("courier presentation", () => {
     });
   });
 
-  it("moves the protection circle with the courier during a jump", () => {
+  it("moves the protection bubble with the courier during a jump", () => {
     const standing = courierProtectionPresentation(createRunnerModel(), "warranty")!;
     const airborneRunner = { ...createRunnerModel(), grounded: false, y: 250, velocityY: -200 };
     const airborne = courierProtectionPresentation(airborneRunner, "warranty")!;

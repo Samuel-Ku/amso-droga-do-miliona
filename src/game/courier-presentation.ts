@@ -11,8 +11,6 @@ export interface CourierProtectionPresentation {
   readonly centerY: number;
   readonly radiusX: number;
   readonly radiusY: number;
-  readonly state: CourierProtectionState;
-  readonly color: "#f47100";
   readonly breaking: boolean;
 }
 
@@ -25,8 +23,8 @@ const SHIELD_ROTATION_RADIANS_PER_SECOND = Math.PI / 15;
 
 export interface CourierShieldAnimationInput {
   readonly elapsedSeconds: number;
-  readonly activationRemaining: number;
-  readonly breakRemaining: number;
+  readonly activationSecondsRemaining: number;
+  readonly breakSecondsRemaining: number;
   readonly reducedMotion: boolean;
 }
 
@@ -47,15 +45,15 @@ export function courierShieldAnimation(
   const elapsedSeconds = Math.max(0, Number.isFinite(input.elapsedSeconds)
     ? input.elapsedSeconds
     : 0);
-  const activationRemaining = Math.max(0, input.activationRemaining);
-  const breakRemaining = Math.max(0, input.breakRemaining);
-  const breakingProgress = breakRemaining > 0
-    ? clamp01(1 - breakRemaining / SHIELD_BREAK_SECONDS)
+  const activationSecondsRemaining = Math.max(0, input.activationSecondsRemaining);
+  const breakSecondsRemaining = Math.max(0, input.breakSecondsRemaining);
+  const breakingProgress = breakSecondsRemaining > 0
+    ? clamp01(1 - breakSecondsRemaining / SHIELD_BREAK_SECONDS)
     : 0;
 
   if (input.reducedMotion) {
-    const appearanceProgress = activationRemaining > 0
-      ? clamp01(1 - activationRemaining / SHIELD_APPEAR_SECONDS)
+    const appearanceProgress = activationSecondsRemaining > 0
+      ? clamp01(1 - activationSecondsRemaining / SHIELD_APPEAR_SECONDS)
       : 1;
     return {
       scale: 1,
@@ -74,8 +72,8 @@ export function courierShieldAnimation(
     };
   }
 
-  if (activationRemaining > 0) {
-    const progress = clamp01(1 - activationRemaining / SHIELD_APPEAR_SECONDS);
+  if (activationSecondsRemaining > 0) {
+    const progress = clamp01(1 - activationSecondsRemaining / SHIELD_APPEAR_SECONDS);
     const scale = progress <= 0.7
       ? 0.72 + (1.08 - 0.72) * progress / 0.7
       : 1.08 + (1 - 1.08) * (progress - 0.7) / 0.3;
@@ -118,8 +116,6 @@ export function courierProtectionPresentation(
     centerY: runner.y + runner.height / 2,
     radiusX,
     radiusY: radiusX + 8,
-    state,
-    color: "#f47100",
     breaking: state === "breaking"
   };
 }
