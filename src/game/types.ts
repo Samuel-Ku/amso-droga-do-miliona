@@ -118,6 +118,7 @@ export interface RenderScene {
   recoverySeconds?: number;
   startProtectionSeconds?: number;
   warrantyBreakSeconds?: number;
+  shieldActivationSeconds?: number;
   storyPhase?: StoryPhase | null;
   storyProgress?: number;
   storyObjectives?: Readonly<StoryObjectivesSnapshot>;

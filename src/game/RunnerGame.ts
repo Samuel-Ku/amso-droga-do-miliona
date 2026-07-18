@@ -86,6 +86,10 @@ import {
   challengePressureAt
 } from "./challenge-pressure";
 import { AdaptiveDecorationQuality } from "./adaptive-decoration-quality";
+import {
+  SHIELD_APPEAR_SECONDS,
+  SHIELD_BREAK_SECONDS
+} from "./courier-presentation";
 
 const CUTSCENE_SECONDS = 2.6;
 export const STORY_FINALE_CELEBRATION_SECONDS = 3.5;
@@ -211,6 +215,7 @@ export class RunnerGame implements RunnerGameApi {
   private recoverySeconds = 0;
   private startProtectionSeconds = 0;
   private warrantyBreakSeconds = 0;
+  private shieldActivationSeconds = 0;
   private combo = 1;
   private bestCombo = 1;
   private warrantySaves = 0;
@@ -474,6 +479,7 @@ export class RunnerGame implements RunnerGameApi {
     this.recoverySeconds = 0;
     this.startProtectionSeconds = START_PROTECTION_SECONDS;
     this.warrantyBreakSeconds = 0;
+    this.shieldActivationSeconds = SHIELD_APPEAR_SECONDS;
     this.combo = 1;
     this.bestCombo = 1;
     this.warrantySaves = 0;
@@ -696,6 +702,7 @@ export class RunnerGame implements RunnerGameApi {
     this.recoverySeconds = Math.max(0, this.recoverySeconds - activeDeltaSeconds);
     this.startProtectionSeconds = Math.max(0, this.startProtectionSeconds - activeDeltaSeconds);
     this.warrantyBreakSeconds = Math.max(0, this.warrantyBreakSeconds - activeDeltaSeconds);
+    this.shieldActivationSeconds = Math.max(0, this.shieldActivationSeconds - deltaSeconds);
     this.impactSeconds = Math.max(0, this.impactSeconds - activeDeltaSeconds);
     this.impact = this.impactSeconds > 0;
     this.storyObstacleTransformer.advance(deltaSeconds);
@@ -1044,7 +1051,8 @@ export class RunnerGame implements RunnerGameApi {
             Math.max(0, this.ordersCollected - this.challengeStartOrders)
           );
           this.warrantySaves += 1;
-          this.warrantyBreakSeconds = 0.18;
+          this.shieldActivationSeconds = 0;
+          this.warrantyBreakSeconds = SHIELD_BREAK_SECONDS;
         }
       }
       if (resolution.resetCombo) {
@@ -1478,7 +1486,12 @@ export class RunnerGame implements RunnerGameApi {
   }
 
   private activatePowerUp(kind: PowerUpKind): boolean {
+    const wasProtected = kind === "gwarancja_48" &&
+      this.activePowerUps.has("gwarancja_48");
     const activated = this.activePowerUps.activate(kind);
+    if (activated && kind === "gwarancja_48" && !wasProtected) {
+      this.shieldActivationSeconds = SHIELD_APPEAR_SECONDS;
+    }
     if (activated && this.mode === "story" && this.storyTimeline !== null &&
         !this.seenPowerUpDemos.has(kind)) {
       this.seenPowerUpDemos.add(kind);
@@ -1663,6 +1676,7 @@ export class RunnerGame implements RunnerGameApi {
     this.recoverySeconds = 0;
     this.startProtectionSeconds = START_PROTECTION_SECONDS;
     this.warrantyBreakSeconds = 0;
+    this.shieldActivationSeconds = SHIELD_APPEAR_SECONDS;
     this.crouchHeld = false;
     this.runner.crouching = false;
     this.clearInteractiveWorld();
@@ -2020,6 +2034,7 @@ export class RunnerGame implements RunnerGameApi {
       recoverySeconds: this.recoverySeconds,
       startProtectionSeconds: this.startProtectionSeconds,
       warrantyBreakSeconds: this.warrantyBreakSeconds,
+      shieldActivationSeconds: this.shieldActivationSeconds,
       storyPhase: this.storyTimeline?.snapshot.phase ?? null,
       storyProgress: this.storyTimeline?.snapshot.progress ?? 0,
       storyObjectives: this.storyObjectiveDirector.snapshot,

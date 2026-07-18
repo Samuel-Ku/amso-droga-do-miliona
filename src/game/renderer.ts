@@ -15,6 +15,7 @@ import {
 } from "./courier-brand";
 import {
   courierProtectionPresentation,
+  courierShieldAnimation,
   runnerStrideCyclesPerSecond
 } from "./courier-presentation";
 import {
@@ -42,6 +43,36 @@ const COLORS = {
   cardboardLight: "#dfbd98",
   blue: "#eb32a4"
 } as const;
+
+let warrantyShieldMesh: Path2D | null | undefined;
+
+function getWarrantyShieldMesh(): Path2D | null {
+  if (warrantyShieldMesh !== undefined) return warrantyShieldMesh;
+  if (typeof Path2D === "undefined") {
+    warrantyShieldMesh = null;
+    return warrantyShieldMesh;
+  }
+  const mesh = new Path2D();
+  const hexRadius = 11;
+  const hexWidth = Math.sqrt(3) * hexRadius;
+  const rowHeight = hexRadius * 1.5;
+  for (let row = -9; row <= 9; row += 1) {
+    for (let column = -8; column <= 8; column += 1) {
+      const centerX = column * hexWidth + (row % 2 === 0 ? 0 : hexWidth / 2);
+      const centerY = row * rowHeight;
+      for (let corner = 0; corner < 6; corner += 1) {
+        const angle = Math.PI / 6 + corner * Math.PI / 3;
+        const x = centerX + Math.cos(angle) * hexRadius;
+        const y = centerY + Math.sin(angle) * hexRadius;
+        if (corner === 0) mesh.moveTo(x, y);
+        else mesh.lineTo(x, y);
+      }
+      mesh.closePath();
+    }
+  }
+  warrantyShieldMesh = mesh;
+  return warrantyShieldMesh;
+}
 
 const INTEGER_FORMATTER = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
 
@@ -1150,37 +1181,88 @@ function drawWarrantyShield(
           : null
   );
   if (presentation === null) return;
-  const pulse = scene.reducedMotion
-    ? 0
-    : Math.sin(scene.elapsedSeconds * (Math.PI * 2 / 1.9)) * 1.5;
+  const animation = courierShieldAnimation({
+    elapsedSeconds: scene.elapsedSeconds,
+    activationRemaining: scene.shieldActivationSeconds ?? 0,
+    breakRemaining: scene.warrantyBreakSeconds ?? 0,
+    reducedMotion: scene.reducedMotion
+  });
+  const { radiusX, radiusY } = presentation;
+
   context.save();
-  context.globalAlpha = presentation.breaking ? 0.72 : 0.94;
-  context.strokeStyle = presentation.color;
-  context.lineWidth = 4;
-  context.shadowColor = "rgba(244,113,0,0.42)";
-  context.shadowBlur = scene.reducedMotion ? 4 : 7 + pulse;
+  context.translate(presentation.centerX, presentation.centerY);
+  context.scale(animation.scale, animation.scale);
+  context.globalAlpha = animation.alpha;
   context.setLineDash([]);
+
+  const field = context.createRadialGradient(
+    -radiusX * 0.28,
+    -radiusY * 0.34,
+    radiusX * 0.08,
+    0,
+    0,
+    radiusY
+  ) as CanvasGradient | undefined;
+  if (field !== undefined) {
+    field.addColorStop(0, "rgba(255,255,255,0.19)");
+    field.addColorStop(0.5, "rgba(255,255,255,0.075)");
+    field.addColorStop(0.82, "rgba(244,113,0,0.045)");
+    field.addColorStop(1, "rgba(235,50,164,0.075)");
+  }
+  context.fillStyle = field ?? "rgba(255,255,255,0.09)";
   context.beginPath();
-  context.ellipse(
-    presentation.centerX,
-    presentation.centerY,
-    presentation.radiusX + pulse,
-    presentation.radiusY + pulse,
-    0,
-    0,
-    Math.PI * 2
-  );
+  context.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
+  context.fill();
+
+  // Only the inner energy texture rotates. The outer bubble remains upright,
+  // so it reads as protection attached to the courier instead of a spinner.
+  if (!scene.reducedMotion) {
+    context.save();
+    context.beginPath();
+    context.ellipse(0, 0, radiusX - 2, radiusY - 2, 0, 0, Math.PI * 2);
+    context.clip();
+    context.rotate(animation.meshRotationRadians);
+    context.strokeStyle = "rgba(255,255,255,0.15)";
+    context.lineWidth = 0.85;
+    const mesh = getWarrantyShieldMesh();
+    if (mesh !== null) context.stroke(mesh);
+    context.restore();
+  }
+
+  const rim = context.createLinearGradient(-radiusX, 0, radiusX, 0);
+  rim.addColorStop(0, "rgba(244,113,0,0.88)");
+  rim.addColorStop(0.43, "rgba(255,255,255,0.82)");
+  rim.addColorStop(1, "rgba(235,50,164,0.88)");
+  context.strokeStyle = rim;
+  context.lineWidth = 3;
+  context.shadowColor = "rgba(244,113,0,0.38)";
+  context.shadowBlur = scene.reducedMotion ? 3 : 7;
+  context.beginPath();
+  context.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
   context.stroke();
+
+  context.shadowBlur = 5;
+  context.strokeStyle = "rgba(255,255,255,0.72)";
+  context.lineWidth = 2.2;
+  context.beginPath();
+  context.ellipse(0, 0, radiusX - 3, radiusY - 3, 0, Math.PI * 1.08, Math.PI * 1.58);
+  context.stroke();
+
   if (presentation.breaking && !scene.reducedMotion) {
+    const burstAlpha = 1 - animation.breakingProgress;
+    context.globalAlpha = animation.alpha * burstAlpha;
+    context.shadowColor = "rgba(235,50,164,0.9)";
+    context.shadowBlur = 12;
+    context.strokeStyle = "rgba(255,255,255,0.95)";
     context.lineWidth = 3;
-    for (const angle of [-0.9, -0.2, 0.55]) {
-      const innerX = presentation.centerX + Math.cos(angle) * presentation.radiusX * 0.45;
-      const innerY = presentation.centerY + Math.sin(angle) * presentation.radiusY * 0.45;
+    for (const angle of [-1.03, -0.32, 0.46, 2.65]) {
+      const innerX = Math.cos(angle) * radiusX * 0.72;
+      const innerY = Math.sin(angle) * radiusY * 0.72;
       context.beginPath();
       context.moveTo(innerX, innerY);
       context.lineTo(
-        presentation.centerX + Math.cos(angle + 0.16) * presentation.radiusX,
-        presentation.centerY + Math.sin(angle + 0.16) * presentation.radiusY
+        Math.cos(angle + 0.12) * radiusX * (1.08 + animation.breakingProgress * 0.18),
+        Math.sin(angle + 0.12) * radiusY * (1.08 + animation.breakingProgress * 0.18)
       );
       context.stroke();
     }
