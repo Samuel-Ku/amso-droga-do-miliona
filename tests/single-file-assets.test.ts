@@ -81,9 +81,18 @@ describe("single-file QA artwork", () => {
     const inlineScripts = [
       ...qaPreview.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)
     ];
-    expect(inlineScripts).toHaveLength(2);
-    expect(inlineScripts[0]?.[1]).toContain("campaignScripting");
-    expect(inlineScripts[1]?.[1]).toContain("AMSO campaign bootstrap failed");
+    // watchdog + embedded runner config + app bundle
+    expect(inlineScripts.length).toBeGreaterThanOrEqual(3);
+    expect(
+      inlineScripts.some((script) => script[1]?.includes("campaignScripting"))
+    ).toBe(true);
+    expect(
+      inlineScripts.some((script) => script[1]?.includes("__RUNNER_CONFIG__"))
+    ).toBe(true);
+    const appScript = inlineScripts.find((script) =>
+      script[1]?.includes("AMSO campaign bootstrap failed")
+    );
+    expect(appScript?.[1]).toContain("AMSO campaign bootstrap failed");
     const bootMarkupPosition = qaPreview.indexOf(
       '<section class="amso-campaign-boot" data-campaign-boot'
     );
@@ -127,5 +136,19 @@ describe("single-file QA artwork", () => {
       qaPreview.match(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+/g) ?? []
     );
     expect(embeddedSvgs.size).toBe(0);
+  });
+
+  it("embeds the runner config so it can load from a file:// origin", () => {
+    const match = qaPreview.match(
+      /window\.__RUNNER_CONFIG__=([^]*?)<\/script>/
+    );
+    expect(match).not.toBeNull();
+    const embedded = JSON.parse(match?.[1] ?? "null");
+    expect(embedded.schemaVersion).toBe(4);
+    expect(embedded.enabled).toBe(true);
+    const threshold =
+      embedded.millionThreshold ?? embedded.story?.millionThreshold;
+    expect(threshold).toBeTruthy();
+    expect(threshold.orderTarget ?? threshold.counterTarget).toBeGreaterThan(0);
   });
 });

@@ -34,6 +34,7 @@ export interface ProductionLoaderController {
 export interface ProductionLoaderOptions {
   script?: HTMLScriptElement | null;
   configPath?: string;
+  configResolver?: ConfigResolver;
   document?: Document;
   window?: BrowserWindow;
   fetch?: typeof fetch;
@@ -97,8 +98,7 @@ function safeOriginUrl(path: string, baseHref: string): URL | null {
   }
 }
 
-function safeSameOriginHref(value: string, baseHref: string): URL | null {
-  if (value.length === 0 || value.length > 1_024 || /[\u0000-\u001f\u007f]/u.test(value)) {
+function safeSameOriginHref(value: string, baseHref: string): URL | null {  if (value.length === 0 || value.length > 1_024 || /[\u0000-\u001f\u007f]/u.test(value)) {
     return null;
   }
 
@@ -236,6 +236,28 @@ export class RunnerConfigStore {
   }
 }
 
+interface EmbeddedRunnerConfigWindow extends Window {
+  __RUNNER_CONFIG__?: unknown;
+}
+
+interface EmbeddedRunnerModuleWindow extends Window {
+  __RUNNER_MODULE__?: string;
+  __RUNNER_STYLE__?: string;
+}
+
+/**
+ * Reads a config injected inline by the single-file build so the game can run
+ * from a `file://` origin where fetching `/assets/...` is blocked by the
+ * browser's unique-origin policy. Returns null when nothing valid is present.
+ */
+export function embeddedRunnerConfig(
+  globalObject: typeof globalThis = globalThis
+): RunnerConfig | null {
+  const injected = (globalObject as unknown as Partial<EmbeddedRunnerConfigWindow>).__RUNNER_CONFIG__;
+  if (injected === undefined) return null;
+  return parseRunnerConfig(injected);
+}
+
 function isRunnerPublicApi(value: unknown): value is RunnerPublicApi {
   if (value === null || typeof value !== "object") {
     return false;
@@ -249,7 +271,26 @@ function isRunnerPublicApi(value: unknown): value is RunnerPublicApi {
   );
 }
 
-function importRuntime(moduleUrl: URL, windowReference: BrowserWindow): Promise<RuntimeModule> {
+function importRuntime(
+  moduleUrl: URL | null,
+  windowReference: BrowserWindow
+): Promise<RuntimeModule> {
+  if (moduleUrl === null) {
+    const inlined = (globalThis as unknown as EmbeddedRunnerModuleWindow).__RUNNER_MODULE__;
+    if (typeof inlined !== "string" || inlined.length === 0) {
+      return Promise.reject(new RunnerLoaderError("module_load_failed"));
+    }
+    const blobUrl = URL.createObjectURL(
+      new Blob([inlined], { type: "text/javascript" })
+    );
+    const runtimeImport = (import(/* @vite-ignore */ blobUrl) as Promise<RuntimeModule>).catch(
+      () => {
+        throw new RunnerLoaderError("module_load_failed");
+      }
+    );
+    return withTimeout(runtimeImport, ASSET_TIMEOUT_MS, windowReference, "module_load_failed");
+  }
+
   const runtimeImport = (import(/* @vite-ignore */ moduleUrl.href) as Promise<RuntimeModule>).catch(
     () => {
       throw new RunnerLoaderError("module_load_failed");
@@ -259,10 +300,30 @@ function importRuntime(moduleUrl: URL, windowReference: BrowserWindow): Promise<
 }
 
 function loadStyle(
-  styleUrl: URL,
+  styleUrl: URL | null,
   documentReference: Document,
   windowReference: BrowserWindow
 ): Promise<void> {
+  const inlinedStyle = styleUrl === null
+    ? (globalThis as unknown as EmbeddedRunnerModuleWindow).__RUNNER_STYLE__
+    : undefined;
+  if (styleUrl === null) {
+    if (typeof inlinedStyle !== "string" || inlinedStyle.length === 0) {
+      return Promise.reject(new RunnerLoaderError("style_load_failed"));
+    }
+    const existing = Array.from(
+      documentReference.querySelectorAll<HTMLStyleElement>("style[data-amso-million-runner-style]")
+    ).find((style) => style.textContent === inlinedStyle);
+    if (existing !== undefined) {
+      return Promise.resolve();
+    }
+    const style = documentReference.createElement("style");
+    style.dataset.amsoMillionRunnerStyle = "";
+    style.textContent = inlinedStyle;
+    documentReference.head.append(style);
+    return Promise.resolve();
+  }
+
   const existing = Array.from(documentReference.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'))
     .find((link) => link.href === styleUrl.href);
 
@@ -580,7 +641,11 @@ export async function startProductionLoader(
   const requestedConfigPath = options.configPath ?? script?.dataset.runnerConfig ?? DEFAULT_CONFIG_PATH;
   const configUrl = safeOriginUrl(requestedConfigPath, windowReference.location.href);
   if (configUrl === null) {
-    return null;
+    const embedded = embeddedRunnerConfig();
+    if (embedded === null) {
+      return null;
+    }
+    return startWithConfig(embedded, options, windowReference, documentReference);
   }
 
   const store = new RunnerConfigStore(configUrl, fetchImplementation, options.now);
@@ -594,6 +659,26 @@ export async function startProductionLoader(
   if (!initialConfig.enabled) {
     return null;
   }
+
+  return startWithConfig(initialConfig, {
+    ...options,
+    configResolver: { peek: () => store.peek(), get: () => store.get() }
+  }, windowReference, documentReference);
+}
+
+interface ConfigResolver {
+  peek(): RunnerConfig | null;
+  get(): Promise<RunnerConfig>;
+}
+
+function startWithConfig(
+  initialConfig: RunnerConfig,
+  options: ProductionLoaderOptions,
+  windowReference: BrowserWindow,
+  documentReference: Document
+): ProductionLoaderController | null {
+  const configResolver: ConfigResolver = options.configResolver ??
+    defaultConfigResolver(initialConfig);
 
   const selector = initialConfig.triggerSelector ?? DEFAULT_RUNNER_TRIGGER_SELECTOR;
   const triggers = Array.from(documentReference.querySelectorAll<HTMLElement>(selector));
@@ -686,7 +771,7 @@ export async function startProductionLoader(
       const activationGeneration = generation;
       const sourceLocation = triggerSource(trigger);
       const requestedAt = windowReference.performance.now();
-      const cachedConfig = store.peek() ?? initialConfig;
+      const cachedConfig = configResolver.peek() ?? initialConfig;
       const tracker = new DataLayerTracker({
         gameVersion: cachedConfig.gameVersion,
         sourceLocation,
@@ -704,7 +789,7 @@ export async function startProductionLoader(
         let config = cachedConfig;
 
         try {
-          config = await store.get();
+          config = await configResolver.get();
           if (destroyed || cancelled || activationGeneration !== generation) {
             return;
           }
@@ -773,6 +858,13 @@ export async function startProductionLoader(
       runtimeApi = null;
       runtimePromise = null;
     }
+  };
+}
+
+function defaultConfigResolver(initialConfig: RunnerConfig): ConfigResolver {
+  return {
+    peek: () => initialConfig,
+    get: async () => initialConfig
   };
 }
 

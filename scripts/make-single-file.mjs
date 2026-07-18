@@ -140,9 +140,33 @@ html = html.replace(
   () => `${deferredScripts.join("\n")}\n</body>`,
 );
 html = html.replace(styleMatch[0], () => `<style>\n${style}\n</style>`);
+
+// Embed the runner config inline so the loader can run from a file:// origin
+// where fetching /assets/... is blocked by the browser's unique-origin policy.
+// It is injected BEFORE the artwork inlining below so the config's own asset
+// source URLs (bundles, worlds) are also rewritten to data: URIs, keeping the
+// artifact fully offline.
+const runnerConfigPath = path.join(campaignAssetDir, "runner-config.json");
+const runnerConfigJson = fs.readFileSync(runnerConfigPath, "utf8");
+const embeddedConfigScript = `<script>window.__RUNNER_CONFIG__=${JSON.stringify(
+  JSON.parse(runnerConfigJson)
+)}</script>`;
+
+// Embed the runtime module and stylesheet inline as strings so the loader can
+// boot them from a file:// origin (where /assets/... URLs are blocked) via Blob
+// URL / <style> injection instead of a same-origin fetch.
+const runtimeModulePath = path.join(root, "dist", "assets", "milion-runner", "runner.js");
+const runtimeStylePath = path.join(root, "dist", "assets", "milion-runner", "runner.css");
+const embeddedRuntimeScript = `<script>window.__RUNNER_MODULE__=${JSON.stringify(
+  fs.readFileSync(runtimeModulePath, "utf8")
+)}</script>`;
+const embeddedStyleScript = `<script>window.__RUNNER_STYLE__=${JSON.stringify(
+  fs.readFileSync(runtimeStylePath, "utf8")
+)}</script>`;
+
 html = html.replace(
   "</head>",
-  '<meta name="generator" content="AMSO QA preview">\n</head>',
+  `${embeddedConfigScript}\n${embeddedRuntimeScript}\n${embeddedStyleScript}\n<meta name="generator" content="AMSO QA preview">\n</head>`,
 );
 
 // Vite intentionally leaves files from public/ as external URLs. The production
