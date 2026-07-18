@@ -48,7 +48,7 @@ export const GAMEPLAY = {
   maxFixedStepsPerFrame: 12,
   snapshotIntervalSeconds: 0.1,
   obstaclePoolSize: 12,
-  packagePoolSize: 32,
+  packagePoolSize: 48,
   spawnPadding: 72
 } as const;
 

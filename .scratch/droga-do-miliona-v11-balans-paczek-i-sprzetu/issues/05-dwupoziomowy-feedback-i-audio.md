@@ -4,13 +4,17 @@
 
 **Blocked by:** 01 — Expand: osobny kontrakt paczki i sprzętu
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Zebranie paczki pokazuje krótkie `+100` i odtwarza podstawowy sygnał pickup.
-- [ ] Zebranie dowolnego sprzętu pokazuje wyraźniejsze `+250`, silniejszy efekt oraz odrębny przyjemny sygnał.
-- [ ] Oba komunikaty znikają po około 0,6 sekundy i nie tworzą stałej legendy na HUD.
-- [ ] Feedback nie zasłania gracza, konturu przeszkody, licznika ani aktywnej celebracji milestone.
-- [ ] Różnica między paczką i sprzętem jest czytelna przez liczbę, intensywność i dźwięk, a nie wyłącznie kolor.
-- [ ] Pominięcie sprzętu nie emituje negatywnego dźwięku, komunikatu ani efektu utraty combo.
-- [ ] Globalne `Wycisz` natychmiast obejmuje oba sygnały bez wpływu na stan rozgrywki.
-- [ ] DOM/canvas i audio tests sprawdzają zachowanie przez publiczne zdarzenia pickup, bez odwołania do prywatnej kolejki renderera.
+- [x] Zebranie paczki pokazuje krótkie `+100` i odtwarza podstawowy sygnał pickup.
+- [x] Zebranie dowolnego sprzętu pokazuje wyraźniejsze `+250`, silniejszy efekt oraz odrębny przyjemny sygnał.
+- [x] Oba komunikaty znikają po około 0,6 sekundy i nie tworzą stałej legendy na HUD.
+- [x] Feedback nie zasłania gracza, konturu przeszkody, licznika ani aktywnej celebracji milestone.
+- [x] Różnica między paczką i sprzętem jest czytelna przez liczbę, intensywność i dźwięk, a nie wyłącznie kolor.
+- [x] Pominięcie sprzętu nie emituje negatywnego dźwięku, komunikatu ani efektu utraty combo.
+- [x] Globalne `Wycisz` natychmiast obejmuje oba sygnały bez wpływu na stan rozgrywki.
+- [x] DOM/canvas i audio tests sprawdzają zachowanie przez publiczne zdarzenia pickup, bez odwołania do prywatnej kolejki renderera.
+
+## Comments
+
+Feedback korzysta z publicznego zdarzenia pickup; testy obejmują czas życia, powtarzający się tekst i wyciszenie.

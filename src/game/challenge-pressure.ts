@@ -40,12 +40,12 @@ const AXES: readonly ChallengePressureAxis[] = [
 const CYCLE_SECONDS = [20, 24, 27, 22, 30] as const;
 
 export const VALIDATED_CHALLENGE_ATOMS: readonly ValidatedChallengeAtom[] = Object.freeze([
-  { id: "pallet-arc", action: "jump", obstacleKind: "pallet", packageCount: 3 },
-  { id: "scanner-line", action: "slide", obstacleKind: "overhead", packageCount: 4 },
-  { id: "box-rise", action: "jump", obstacleKind: "box-stack", packageCount: 4 },
-  { id: "beam-wave", action: "slide", obstacleKind: "overhead", packageCount: 5 },
-  { id: "trolley-arc", action: "jump", obstacleKind: "trolley", packageCount: 5 },
-  { id: "low-conveyor", action: "slide", obstacleKind: "overhead", packageCount: 3 }
+  { id: "pallet-arc", action: "jump", obstacleKind: "pallet", packageCount: 5 },
+  { id: "scanner-line", action: "slide", obstacleKind: "overhead", packageCount: 6 },
+  { id: "box-rise", action: "jump", obstacleKind: "box-stack", packageCount: 6 },
+  { id: "beam-wave", action: "slide", obstacleKind: "overhead", packageCount: 7 },
+  { id: "trolley-arc", action: "jump", obstacleKind: "trolley", packageCount: 8 },
+  { id: "low-conveyor", action: "slide", obstacleKind: "overhead", packageCount: 5 }
 ]);
 
 /** Deterministic 20–30 second cycles: only one pressure axis is foregrounded at a time. */
@@ -86,6 +86,7 @@ export function challengePatternTuning(
   basePackageCount: number
 ): ChallengePatternTuning {
   const pressure = challengePressureAt(elapsedSeconds);
+  const densePackageCount = Math.max(5, Math.min(8, Math.floor(basePackageCount)));
   const baseBreath = challengeBreathSeconds(patternIndex, elapsedSeconds);
   const burstBreak = baseBreath >= 1;
   const sequenceGapSeconds = [0.62, 0.74, 0.57, 0.68][
@@ -95,7 +96,7 @@ export function challengePatternTuning(
     case "density":
       return {
         axis: pressure.axis,
-        packageCount: Math.min(5, basePackageCount + 1),
+        packageCount: Math.min(8, densePackageCount + 1),
         reactionSeconds: 1.2,
         breathSeconds: burstBreak ? baseBreath : baseBreath * 0.72,
         sequenceLength: 1,
@@ -104,7 +105,7 @@ export function challengePatternTuning(
     case "complexity":
       return {
         axis: pressure.axis,
-        packageCount: basePackageCount,
+        packageCount: densePackageCount,
         reactionSeconds: 1.2,
         breathSeconds: burstBreak ? baseBreath : 0.38,
         sequenceLength: 2,
@@ -113,7 +114,7 @@ export function challengePatternTuning(
     case "precision":
       return {
         axis: pressure.axis,
-        packageCount: 2,
+        packageCount: densePackageCount,
         reactionSeconds: 1.2,
         breathSeconds: baseBreath,
         sequenceLength: 1,
@@ -122,7 +123,7 @@ export function challengePatternTuning(
     case "pressure":
       return {
         axis: pressure.axis,
-        packageCount: Math.max(3, basePackageCount),
+        packageCount: densePackageCount,
         reactionSeconds: 1.2,
         breathSeconds: burstBreak ? baseBreath : 0.24,
         sequenceLength: 3,
@@ -131,7 +132,7 @@ export function challengePatternTuning(
     case "speed":
       return {
         axis: pressure.axis,
-        packageCount: basePackageCount,
+        packageCount: densePackageCount,
         reactionSeconds: 1.2,
         breathSeconds: baseBreath,
         sequenceLength: 1,

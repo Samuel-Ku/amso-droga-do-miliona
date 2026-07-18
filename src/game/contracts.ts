@@ -113,6 +113,13 @@ export interface GameResult extends GameSnapshot {
   furthestEpochReached: number;
 }
 
+export interface CollectiblePickupEvent {
+  collectibleClass: "parcel" | "equipment";
+  packageType: PackageType;
+  basePoints: number;
+  combo: number;
+}
+
 export interface RunnerGameCallbacks {
   onStateChange?: (state: GameState, previousState: GameState) => void;
   onSnapshot?: (snapshot: GameSnapshot) => void;
@@ -125,6 +132,7 @@ export interface RunnerGameCallbacks {
   onStoryComplete?: () => void;
   onStoryObjectiveCompleted?: (objectiveId: StoryObjectiveId) => void;
   onSpecialPickup?: (kind: Exclude<PackageKind, "standard">) => void;
+  onCollectiblePickup?: (event: CollectiblePickupEvent) => void;
   onMilestoneCelebration?: (celebration: MilestoneCelebrationEvent) => void;
   onModeChange?: (mode: GameMode, previousMode: GameMode) => void;
 }

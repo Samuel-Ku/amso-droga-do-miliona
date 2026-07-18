@@ -562,6 +562,35 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   font-weight: 850;
 }
 
+.amso-campaign__hud-notice[data-tone="parcel"] {
+  border-color: var(--campaign-orange-500);
+  animation: amso-pickup-pop-a 0.6s ease-out both;
+}
+
+.amso-campaign__hud-notice[data-tone="equipment"] {
+  border-color: var(--campaign-pink-500);
+  color: var(--campaign-pink-500);
+  font-size: 1.16em;
+  text-shadow: 0 2px 12px rgb(235 35 148 / 28%);
+  animation: amso-pickup-pop-a 0.6s cubic-bezier(.2, .8, .25, 1.18) both;
+}
+
+.amso-campaign__hud-notice[data-pulse="b"] {
+  animation-name: amso-pickup-pop-b;
+}
+
+@keyframes amso-pickup-pop-a {
+  0% { opacity: 0; transform: translateY(5px) scale(.92); }
+  24% { opacity: 1; transform: translateY(0) scale(1.06); }
+  100% { opacity: 0; transform: translateY(-5px) scale(1); }
+}
+
+@keyframes amso-pickup-pop-b {
+  0% { opacity: 0; transform: translateY(5px) scale(.92); }
+  24% { opacity: 1; transform: translateY(0) scale(1.06); }
+  100% { opacity: 0; transform: translateY(-5px) scale(1); }
+}
+
 .amso-campaign__hud-stats {
   display: flex;
   min-height: 48px;

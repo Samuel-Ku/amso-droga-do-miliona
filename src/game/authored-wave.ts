@@ -100,7 +100,7 @@ const FINALE_RECOVERY_WAVE: Readonly<AuthoredWaveDefinition> = Object.freeze({
   actions: ["jump"] as const,
   obstacleKinds: ["pallet"] as const,
   obstacleVariant: "recovery-route",
-  packageCount: 2,
+  packageCount: 3,
   telegraphSeconds: STORY_MIN_TELEGRAPH_SECONDS,
   breathSeconds: 1,
   speedMultiplier: 1.55
@@ -194,12 +194,12 @@ export function validateStoryMicrolevel(
         }
       }
     }
-    if (wave.packageCount < 2 || wave.packageCount > 5) {
+    if (wave.packageCount < 3 || wave.packageCount > 6) {
       issues.push({
         code: "invalid_package_count",
         microlevelId: definition.id,
         waveId: wave.id,
-        message: `${definition.id}/${wave.id}: story waves require 2–5 packages.`
+        message: `${definition.id}/${wave.id}: story waves require 3–6 packages.`
       });
     }
     if (wave.telegraphSeconds < STORY_MIN_TELEGRAPH_SECONDS) {
@@ -488,18 +488,18 @@ export const STORY_MICROLEVELS: readonly StoryMicrolevelDefinition[] = Object.fr
     repeatWavesUntil: 12,
     finaleOrderTarget: 30,
     waves: [
-      wave("million-single-jump", "jump", "pallet", 2, 1.55, "single"),
-      wave("million-single-slide", "slide", "overhead", 2, 1.58, "single"),
-      sequence("million-double-jump", ["jump", "jump"], ["box-stack", "trolley"], 2, 1.61, "doublet"),
-      sequence("million-jump-slide", ["jump", "slide"], ["pallet", "overhead"], 2, 1.64, "doublet"),
-      sequence("million-slide-jump", ["slide", "jump"], ["overhead", "box-stack"], 2, 1.67, "doublet"),
-      sequence("million-three-a", ["jump", "slide", "jump"], ["trolley", "overhead", "pallet"], 2, 1.7, "three-action"),
-      sequence("million-three-b", ["slide", "jump", "slide"], ["overhead", "box-stack", "overhead"], 2, 1.72, "three-action"),
-      wave("million-long-arc", "jump", "trolley", 2, 1.74, "long-arc"),
-      wave("million-low-line", "slide", "overhead", 2, 1.76, "low-line"),
-      sequence("million-tempo-a", ["jump", "jump", "slide"], ["pallet", "box-stack", "overhead"], 2, 1.79, "tempo-change"),
-      sequence("million-tempo-b", ["slide", "jump", "jump"], ["overhead", "trolley", "pallet"], 2, 1.82, "tempo-change"),
-      sequence("million-mastery", ["jump", "slide", "jump"], ["box-stack", "overhead", "trolley"], 2, 1.85, "mastery", "million")
+      wave("million-single-jump", "jump", "pallet", 3, 1.55, "single"),
+      wave("million-single-slide", "slide", "overhead", 3, 1.58, "single"),
+      sequence("million-double-jump", ["jump", "jump"], ["box-stack", "trolley"], 3, 1.61, "doublet"),
+      sequence("million-jump-slide", ["jump", "slide"], ["pallet", "overhead"], 3, 1.64, "doublet"),
+      sequence("million-slide-jump", ["slide", "jump"], ["overhead", "box-stack"], 3, 1.67, "doublet"),
+      sequence("million-three-a", ["jump", "slide", "jump"], ["trolley", "overhead", "pallet"], 3, 1.7, "three-action"),
+      sequence("million-three-b", ["slide", "jump", "slide"], ["overhead", "box-stack", "overhead"], 3, 1.72, "three-action"),
+      wave("million-long-arc", "jump", "trolley", 3, 1.74, "long-arc"),
+      wave("million-low-line", "slide", "overhead", 3, 1.76, "low-line"),
+      sequence("million-tempo-a", ["jump", "jump", "slide"], ["pallet", "box-stack", "overhead"], 3, 1.79, "tempo-change"),
+      sequence("million-tempo-b", ["slide", "jump", "jump"], ["overhead", "trolley", "pallet"], 3, 1.82, "tempo-change"),
+      sequence("million-mastery", ["jump", "slide", "jump"], ["box-stack", "overhead", "trolley"], 3, 1.85, "mastery", "million")
     ]
   }
 ]);

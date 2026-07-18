@@ -332,6 +332,17 @@ export class CampaignAudio {
     });
   }
 
+  public playParcelPickup(streak: number): void {
+    this.playOrderPickup(streak);
+  }
+
+  /** Premium equipment gets a brighter three-note answer distinct from a parcel. */
+  public playEquipmentPickup(): void {
+    this.withCueOutput(() => {
+      this.playSequence([659.25, 880, 1174.66], 0.045, 0.11, 0.56, "triangle");
+    });
+  }
+
   /** Distinct signatures let players identify the bonus before reading its label. */
   public playPowerUpCue(kind: PowerUpKind): void {
     this.withCueOutput(() => {

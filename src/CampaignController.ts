@@ -304,6 +304,15 @@ export class CampaignController {
         } as const;
         this.shell.showPickupNotice(copy[kind]);
       },
+      onCollectiblePickup: (pickup) => {
+        if (pickup.collectibleClass === "equipment") {
+          this.audio.playEquipmentPickup();
+          this.shell.showPickupNotice(`+${pickup.basePoints}`, "equipment", 600);
+        } else {
+          this.audio.playParcelPickup(pickup.combo);
+          this.shell.showPickupNotice(`+${pickup.basePoints}`, "parcel", 600);
+        }
+      },
       onMilestoneCelebration: (celebration) => {
         this.audio.playMilestoneCue(celebration.kind, celebration.intensity);
         if (celebration.achievement === "record") this.audio.playRecordCue();
@@ -334,9 +343,6 @@ export class CampaignController {
     this.warmWorldAssetWindow(snapshot.visualWorldId);
     const previous = this.lastSnapshot;
     if (previous !== null) {
-      if (snapshot.ordersCollected > previous.ordersCollected) {
-        this.audio.playOrderPickup(snapshot.combo);
-      }
       if (snapshot.collisions > previous.collisions) {
         this.audio.playCue("collision");
       }
@@ -440,7 +446,7 @@ export class CampaignController {
       return;
     }
 
-    const firstChallengeResult = this.profile.snapshot.challengeRuns === 0;
+    const firstChallengeResult = this.profile.snapshot.challengeRecordRuns === 0;
     this.profile.recordChallengeResult(
       result.challengeScore,
       result.challengeOrdersCollected

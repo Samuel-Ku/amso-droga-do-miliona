@@ -496,6 +496,7 @@ export class CampaignShell {
   private readonly hudControls: HTMLElement;
   private readonly hudPowerUps: HTMLElement;
   private readonly hudNotice: HTMLElement;
+  private pickupNoticeVersion = 0;
   private readonly hudPackages: HTMLElement;
   private readonly hudScore: HTMLElement;
   private readonly hudCombo: HTMLElement;
@@ -1116,16 +1117,25 @@ export class CampaignShell {
     this.milestoneMessage.hidden = false;
   }
 
-  public showPickupNotice(message: string): void {
+  public showPickupNotice(
+    message: string,
+    tone: "default" | "parcel" | "equipment" = "default",
+    durationMs = 3_800
+  ): void {
     if (this.destroyed) return;
+    const noticeVersion = ++this.pickupNoticeVersion;
     this.hudNotice.textContent = message;
+    this.hudNotice.dataset.tone = tone;
+    this.hudNotice.dataset.pulse = noticeVersion % 2 === 0 ? "b" : "a";
     this.hudNotice.hidden = false;
     this.announce(message);
     window.setTimeout(() => {
-      if (this.destroyed || this.hudNotice.textContent !== message) return;
+      if (this.destroyed || noticeVersion !== this.pickupNoticeVersion) return;
       this.hudNotice.hidden = true;
       this.hudNotice.textContent = "";
-    }, 3_800);
+      delete this.hudNotice.dataset.tone;
+      delete this.hudNotice.dataset.pulse;
+    }, durationMs);
   }
 
   public showStoryObjective(message: string | null): void {

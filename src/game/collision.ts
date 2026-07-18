@@ -1,5 +1,6 @@
 import { CROUCH } from "./constants";
 import type { ObstacleModel, PackageModel, RunnerModel } from "./types";
+import type { CollectibleClass } from "../shared/types";
 
 export interface Rectangle {
   x: number;
@@ -61,12 +62,19 @@ export function collidesWithObstacle(
   return obstacle.active && rectanglesOverlap(runnerHitbox(runner), obstacleHitbox(obstacle));
 }
 
+/** Shared semantic inset used by runtime pickup and route reachability checks. */
+export function collectiblePickupInset(size: number, collectibleClass: CollectibleClass): number {
+  return size * (collectibleClass === "equipment" ? 0.132 : 0.18);
+}
+
 export function collectsPackage(
   runner: Readonly<RunnerModel>,
   parcel: Readonly<PackageModel>
 ): boolean {
   if (!parcel.active) return false;
-  const inset = parcel.size * 0.18;
+  // Equipment uses a semantic pickup zone 115% of the parcel zone. This is
+  // independent of transparent artwork margins and makes premium routes fair.
+  const inset = collectiblePickupInset(parcel.size, parcel.collectibleClass);
   return rectanglesOverlap(runnerHitbox(runner), {
     x: parcel.x + inset,
     y: parcel.y + inset,

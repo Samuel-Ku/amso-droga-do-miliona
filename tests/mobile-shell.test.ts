@@ -36,6 +36,25 @@ describe("mobile campaign shell", () => {
     });
   });
 
+  it("keeps a newer identical pickup notice visible for its own full lifetime", () => {
+    vi.useFakeTimers();
+    const shell = createShell();
+    const notice = document.querySelector<HTMLElement>("[data-campaign-hud-notice]")!;
+
+    shell.showPickupNotice("+100", "parcel", 600);
+    const firstPulse = notice.dataset.pulse;
+    vi.advanceTimersByTime(400);
+    shell.showPickupNotice("+100", "parcel", 600);
+    expect(notice.dataset.pulse).toBeDefined();
+    expect(notice.dataset.pulse).not.toBe(firstPulse);
+    vi.advanceTimersByTime(250);
+    expect(notice.hidden).toBe(false);
+    vi.advanceTimersByTime(350);
+    expect(notice.hidden).toBe(true);
+    shell.destroy();
+    vi.useRealTimers();
+  });
+
   it("accepts a wide Android landscape viewport while preserving minimums", () => {
     expect(isCampaignViewportTooNarrow(960, 315)).toBe(false);
     expect(isCampaignViewportTooNarrow(640, 280)).toBe(false);

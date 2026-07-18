@@ -4,14 +4,18 @@
 
 **Blocked by:** 01 — Expand: osobny kontrakt paczki i sprzętu
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Każda kombinacja Trybu Wyzwania zawiera od 5 do 8 paczek oraz od 1 do 2 dodatkowych sprzętów.
-- [ ] Sprzęt nie zastępuje żadnej paczki w zatwierdzonym zakresie 5–8.
-- [ ] Duża deterministyczna próbka zbliża się do proporcji około 80% paczek i 20% sprzętu.
-- [ ] Dwa sprzęty nie występują jako bezpośrednio sąsiadujące collectible.
-- [ ] Notebook, telefon, PC i LCD są mieszane bez długiego powtarzania jednego typu.
-- [ ] Pierwszy osiągalny sprzęt pojawia się nie później niż około 8 sekund po rozpoczęciu challenge.
-- [ ] Po pierwszym sprzęcie przerwa do kolejnego osiągalnego sprzętu nie przekracza około 12 sekund.
-- [ ] Worek jest deterministyczny dla ustalonego seeda i daje powtarzalne fale w testach.
-- [ ] Reset lub ponowienie challenge rozpoczyna świeżą, poprawną sekwencję bez dziedziczenia zaległej premii.
+- [x] Każda kombinacja Trybu Wyzwania zawiera od 5 do 8 paczek oraz od 1 do 2 dodatkowych sprzętów.
+- [x] Sprzęt nie zastępuje żadnej paczki w zatwierdzonym zakresie 5–8.
+- [x] Duża deterministyczna próbka zbliża się do proporcji około 80% paczek i 20% sprzętu.
+- [x] Dwa sprzęty nie występują jako bezpośrednio sąsiadujące collectible.
+- [x] Notebook, telefon, PC i LCD są mieszane bez długiego powtarzania jednego typu.
+- [x] Pierwszy osiągalny sprzęt pojawia się nie później niż około 8 sekund po rozpoczęciu challenge.
+- [x] Po pierwszym sprzęcie przerwa do kolejnego osiągalnego sprzętu nie przekracza około 12 sekund.
+- [x] Worek jest deterministyczny dla ustalonego seeda i daje powtarzalne fale w testach.
+- [x] Reset lub ponowienie challenge rozpoczyna świeżą, poprawną sekwencję bez dziedziczenia zaległej premii.
+
+## Comments
+
+Worek ma deterministyczną rotację czterech typów, proporcję 80/20 i test zegara 8/12 s.

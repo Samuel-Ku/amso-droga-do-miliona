@@ -4,6 +4,7 @@ import {
   OVERHEAD,
   OVERHEAD_BEAM_HEIGHT,
   PHYSICS,
+  RUNNER_HEIGHT,
   RUNNER_WIDTH,
   RUNNER_X,
   WORLD_WIDTH
@@ -19,9 +20,15 @@ import type {
   PackageModel
 } from "./types";
 import type { CollectibleClass, OrderVisualType, PackageType } from "../shared/types";
-import { ORDER_VISUAL_TYPES } from "./runner-artwork";
 import type { SemanticObstacleVariant } from "./semantic-obstacle";
 import { collectibleClassForVisual } from "./collectibles";
+import {
+  collectiblePickupInset,
+  obstacleHitbox,
+  rectanglesOverlap,
+  runnerHitbox
+} from "./collision";
+import { createRunnerModel } from "./physics";
 
 export interface ObstacleSpec {
   width: number;
@@ -68,6 +75,7 @@ export interface SpawnWave {
   authoredWaveId?: string;
   authoredActionIndex?: number;
   semanticVariant?: SemanticObstacleVariant;
+  rewardRouteFamily?: RewardRouteFamily;
 }
 
 export type AuthoredRewardAction = "jump" | "slide";
@@ -93,47 +101,346 @@ export interface AuthoredRewardWaveOptions {
   minimumReactionSeconds?: number;
 }
 
+export type RewardRouteFamily = typeof REWARD_ROUTE_FAMILIES[number];
+
 export const MIN_AUTHORED_REACTION_SECONDS = 1.6;
 const PACKAGE_MODEL_SIZE = 30;
 
-/** Soft weighted random: natural short runs, no four-of-a-kind, stale types gain weight. */
-export class WeightedOrderVisualDirector {
-  private readonly unseen = new Map<OrderVisualType, number>(
-    ORDER_VISUAL_TYPES.map((type) => [type, 0])
-  );
-  private readonly recent: OrderVisualType[] = [];
+/** Deterministic challenge reward bag: dense parcel routes with optional premium equipment. */
+export class ChallengeRewardDirector {
+  private readonly equipmentBag: ShuffleBag<PackageType>;
+  private waveIndex = 0;
 
-  public constructor(private readonly random: SeededRandom) {}
-
-  public next(forced?: OrderVisualType): OrderVisualType {
-    const selected = forced ?? this.pickWeighted();
-    for (const type of ORDER_VISUAL_TYPES) {
-      this.unseen.set(type, type === selected ? 0 : (this.unseen.get(type) ?? 0) + 1);
-    }
-    this.recent.push(selected);
-    if (this.recent.length > 3) this.recent.shift();
-    return selected;
+  public constructor(random: SeededRandom) {
+    this.equipmentBag = new ShuffleBag(PACKAGE_TYPE_VALUES, random);
   }
 
-  private pickWeighted(): OrderVisualType {
-    const blocked = this.recent.length === 3 && this.recent.every((type) => type === this.recent[0])
-      ? this.recent[0]
-      : null;
-    const entries = ORDER_VISUAL_TYPES.map((type) => {
-      const unseenFor = this.unseen.get(type) ?? 0;
-      return {
-        type,
-        weight: type === blocked ? 0 : 1 + Math.max(0, unseenFor - 11) * 0.42
-      };
+  public createWave(
+    options: Omit<AuthoredRewardWaveOptions, "rewards"> & { packageCount: number }
+  ): SpawnWave | null {
+    const routeFamily = REWARD_ROUTE_FAMILIES[this.waveIndex % REWARD_ROUTE_FAMILIES.length] ?? "arc";
+    const equipmentCount = this.waveIndex % 2 === 0 ? 2 : 1;
+    const rewards = Array.from({ length: equipmentCount }, (): AuthoredRewardSpec => ({
+      kind: "standard",
+      packageType: this.equipmentBag.next()
+    }));
+    this.waveIndex += 1;
+    const wave = createAuthoredRewardWave({
+      ...options,
+      packageCount: Math.max(5, Math.min(8, Math.floor(options.packageCount))),
+      rewards
     });
-    const total = entries.reduce((sum, entry) => sum + entry.weight, 0);
-    let roll = this.random.next() * total;
-    for (const entry of entries) {
-      roll -= entry.weight;
-      if (roll <= 0 && entry.weight > 0) return entry.type;
+    if (!wave) return null;
+    const ordered = [...wave.packages].sort((left, right) => left.x - right.x);
+    const routed = routeFamily === "premium-finale"
+      ? (() => {
+          const finale = [...ordered].reverse().find(({ collectibleClass }) =>
+            collectibleClass === "equipment"
+          );
+          return finale
+            ? [...ordered.filter((collectible) => collectible !== finale), finale]
+            : ordered;
+        })()
+      : ordered;
+    const firstX = routed[0]?.x ?? wave.x;
+    const routeY = routed.map(({ y }) => y);
+    if (routeFamily === "low-line") {
+      routeY.fill(options.action === "slide" ? GROUND_Y - 28 : GROUND_Y - 45);
     }
-    return entries.find(({ weight }) => weight > 0)?.type ?? "parcel";
+    if (routeFamily === "rising-steps") routeY.sort((left, right) => right - left);
+    if (routeFamily === "falling-steps") routeY.sort((left, right) => left - right);
+    const routeSpacing = Math.max(150, options.speed * 0.36);
+    const spaced = routed.map((collectible, index) => {
+      const splitGap = routeFamily === "split-groups" && index >= Math.ceil(routed.length / 2)
+        ? 120
+        : 0;
+      // Equipment is always the optional premium line in challenge: higher on
+      // jumps and slightly higher within the crouch corridor on slide routes.
+      const premiumLift = collectible.collectibleClass === "equipment"
+        ? routeFamily === "alternate-route"
+          ? options.action === "jump" ? 38 : 18
+          : routeFamily === "premium-finale"
+            ? options.action === "jump" ? 26 : 14
+            : options.action === "jump" ? 18 : 10
+        : 0;
+      const x = firstX + index * routeSpacing + splitGap;
+      const jumpApexSeconds = -PHYSICS.jumpVelocity / PHYSICS.gravity;
+      const obstacleCenterSeconds = (
+        wave.x + wave.width / 2 - (RUNNER_X + RUNNER_WIDTH / 2)
+      ) / Math.max(1, options.speed);
+      const collectibleSeconds = (
+        x + PACKAGE_MODEL_SIZE / 2 - (RUNNER_X + RUNNER_WIDTH / 2)
+      ) / Math.max(1, options.speed);
+      const elapsedSinceJump = collectibleSeconds - (obstacleCenterSeconds - jumpApexSeconds);
+      const runnerY = elapsedSinceJump >= 0 && elapsedSinceJump <= JUMP_DURATION_SECONDS
+        ? GROUND_Y - RUNNER_HEIGHT + PHYSICS.jumpVelocity * elapsedSinceJump +
+          PHYSICS.gravity * elapsedSinceJump * elapsedSinceJump / 2
+        : GROUND_Y - RUNNER_HEIGHT;
+      const positioned = {
+        ...collectible,
+        x,
+        y: options.action === "jump"
+          ? collectible.collectibleClass === "equipment"
+            ? Math.max(0, routeFamily === "alternate-route"
+              ? Math.min(runnerY + 28 - premiumLift, (routeY[index] ?? collectible.y) - premiumLift)
+              : runnerY + 28 - premiumLift)
+            : Math.max(
+              GROUND_Y - PACKAGE_MODEL_SIZE -
+                (PHYSICS.jumpVelocity * PHYSICS.jumpVelocity) / (2 * PHYSICS.gravity) - 24,
+              (routeY[index] ?? collectible.y) - premiumLift
+            )
+          : (routeY[index] ?? collectible.y) - premiumLift
+      };
+      if (options.action !== "jump") return positioned;
+      const obstacle = obstacleHitbox({
+        active: true,
+        kind: wave.kind,
+        source: wave.source,
+        x: wave.x,
+        y: wave.y,
+        width: wave.width,
+        height: wave.height
+      });
+      const box = {
+        x: positioned.x,
+        y: positioned.y,
+        width: PACKAGE_MODEL_SIZE,
+        height: PACKAGE_MODEL_SIZE
+      };
+      return rectanglesOverlap(box, obstacle)
+        ? { ...positioned, y: Math.max(0, obstacle.y - PACKAGE_MODEL_SIZE - 6) }
+        : positioned;
+    });
+    const candidate = { ...wave, packages: spaced, rewardRouteFamily: routeFamily };
+    const geometryIssue = validateSpawnWaveGeometry(
+      candidate,
+      options.speed,
+      options.minimumReactionSeconds ?? 1.2
+    );
+    return geometryIssue ? null : candidate;
   }
+}
+
+export const REWARD_ROUTE_FAMILIES = Object.freeze([
+  "arc",
+  "low-line",
+  "rising-steps",
+  "falling-steps",
+  "split-groups",
+  "premium-finale",
+  "alternate-route"
+] as const);
+
+const JUMP_DURATION_SECONDS = (-PHYSICS.jumpVelocity * 2) / PHYSICS.gravity;
+
+function setRunnerJumpPose(
+  runner: ReturnType<typeof createRunnerModel>,
+  elapsedSinceJump: number
+): void {
+  runner.y = GROUND_Y - runner.height;
+  runner.grounded = true;
+  runner.crouching = false;
+  if (elapsedSinceJump < 0 || elapsedSinceJump > JUMP_DURATION_SECONDS) return;
+  runner.y += PHYSICS.jumpVelocity * elapsedSinceJump +
+    PHYSICS.gravity * elapsedSinceJump * elapsedSinceJump / 2;
+  runner.grounded = false;
+}
+
+function collectibleOverlapsRunnerAtX(
+  collectible: Readonly<PackageSpawn>,
+  runner: ReturnType<typeof createRunnerModel>,
+  x: number
+): boolean {
+  const inset = collectiblePickupInset(PACKAGE_MODEL_SIZE, collectible.collectibleClass);
+  return rectanglesOverlap(runnerHitbox(runner), {
+    x: x + inset,
+    y: collectible.y + inset,
+    width: PACKAGE_MODEL_SIZE - inset * 2,
+    height: PACKAGE_MODEL_SIZE - inset * 2
+  });
+}
+
+function addDominantRouteState(
+  states: Map<number, number[]>,
+  jumpPhase: number,
+  collectedMask: number
+): void {
+  const existing = states.get(jumpPhase) ?? [];
+  if (existing.some((mask) => (mask | collectedMask) === mask)) return;
+  states.set(
+    jumpPhase,
+    [...existing.filter((mask) => (mask | collectedMask) !== collectedMask), collectedMask]
+  );
+}
+
+function bitCount(value: number): number {
+  let remaining = value >>> 0;
+  let count = 0;
+  while (remaining !== 0) {
+    remaining &= remaining - 1;
+    count += 1;
+  }
+  return count;
+}
+
+function validateTemporalReachability(wave: Readonly<SpawnWave>, speed: number): string | null {
+  const safeSpeed = Math.max(1, speed);
+  const obstacle = obstacleHitbox({
+    active: true,
+    kind: wave.kind,
+    source: wave.source,
+    x: wave.x,
+    y: wave.y,
+    width: wave.width,
+    height: wave.height
+  });
+  const runner = createRunnerModel();
+  const obstacleEnter = Math.max(0, (obstacle.x - (runner.x + runner.width)) / safeSpeed);
+  const obstacleExit = Math.max(obstacleEnter, (obstacle.x + obstacle.width - runner.x) / safeSpeed);
+  const parcels = wave.packages.filter(({ collectibleClass }) => collectibleClass === "parcel");
+  const equipment = wave.packages.filter(({ collectibleClass }) => collectibleClass === "equipment");
+  const requiredParcels = Math.ceil(parcels.length * 0.6);
+  const simulationEnd = Math.max(
+    obstacleExit,
+    ...wave.packages.map((collectible) =>
+      (collectible.x + PACKAGE_MODEL_SIZE - runner.x) / safeSpeed
+    )
+  );
+  // A 60 Hz route simulation matches the visual performance target while
+  // keeping property tests fast enough to cover many seeds and speeds.
+  const fixedStep = 1 / 60;
+
+  if (wave.kind === "overhead") {
+    runner.crouching = true;
+    const collected = new Set<PackageSpawn>();
+    for (let time = 0; time <= simulationEnd + fixedStep; time += fixedStep) {
+      if (rectanglesOverlap(runnerHitbox(runner), {
+        ...obstacle,
+        x: obstacle.x - safeSpeed * time
+      })) return "crouch timing still collides with obstacle";
+      for (const collectible of wave.packages) {
+        if (collectibleOverlapsRunnerAtX(
+          collectible,
+          runner,
+          collectible.x - safeSpeed * time
+        )) collected.add(collectible);
+      }
+    }
+    const parcelReach = parcels.filter((collectible) => collected.has(collectible)).length;
+    if (parcelReach < requiredParcels) return "base crouch route cannot collect its parcel target";
+    if (equipment.some((collectible) => !collected.has(collectible))) {
+      return "premium crouch route is unreachable";
+    }
+    return null;
+  }
+
+  const jumpFrames = Math.ceil(JUMP_DURATION_SECONDS / fixedStep);
+  const parcelMask = wave.packages.reduce((mask, collectible, index) =>
+    collectible.collectibleClass === "parcel" ? mask | (1 << index) : mask, 0
+  );
+  const equipmentMask = wave.packages.reduce((mask, collectible, index) =>
+    collectible.collectibleClass === "equipment" ? mask | (1 << index) : mask, 0
+  );
+  let states = new Map<number, number[]>([[0, [0]]]);
+  const totalFrames = Math.ceil(simulationEnd / fixedStep) + 1;
+  for (let frame = 0; frame <= totalFrames; frame += 1) {
+    const time = frame * fixedStep;
+    const nextStates = new Map<number, number[]>();
+    for (const [jumpPhase, masks] of states) {
+      const nextPhases = jumpPhase === 0
+        ? [0, 1]
+        : [jumpPhase >= jumpFrames ? 0 : jumpPhase + 1];
+      for (const nextPhase of nextPhases) {
+        setRunnerJumpPose(runner, nextPhase === 0 ? -1 : (nextPhase - 1) * fixedStep);
+        if (rectanglesOverlap(runnerHitbox(runner), {
+          ...obstacle,
+          x: obstacle.x - safeSpeed * time
+        })) continue;
+        for (const mask of masks) {
+          let collectedMask = mask;
+          wave.packages.forEach((collectible, index) => {
+            if ((collectedMask & (1 << index)) !== 0) return;
+            if (collectibleOverlapsRunnerAtX(
+              collectible,
+              runner,
+              collectible.x - safeSpeed * time
+            )) collectedMask |= 1 << index;
+          });
+          addDominantRouteState(nextStates, nextPhase, collectedMask);
+        }
+      }
+    }
+    states = nextStates;
+    if (states.size === 0) return "no collision-free jump sequence exists";
+  }
+  const completedMasks = [...states.values()].flat();
+  if (!completedMasks.some((mask) => bitCount(mask & parcelMask) >= requiredParcels)) {
+    return "base jump route cannot collect its parcel target";
+  }
+  if (!completedMasks.some((mask) =>
+    bitCount(mask & parcelMask) >= requiredParcels && (mask & equipmentMask) === equipmentMask
+  )) return "premium jump route is unreachable";
+  return null;
+}
+
+/** Public geometry gate shared by authored story and seeded challenge routes. */
+export function validateSpawnWaveGeometry(
+  wave: Readonly<SpawnWave>,
+  speed: number,
+  minimumReactionSeconds: number
+): string | null {
+  const safeSpeed = Math.max(1, speed);
+  const reactionSeconds = (wave.x - (RUNNER_X + RUNNER_WIDTH)) / safeSpeed;
+  if (reactionSeconds < minimumReactionSeconds) return "obstacle telegraph is too short";
+
+  const obstacle = obstacleHitbox({
+    active: true,
+    kind: wave.kind,
+    source: wave.source,
+    x: wave.x,
+    y: wave.y,
+    width: wave.width,
+    height: wave.height
+  });
+  const runner = createRunnerModel();
+  const obstacleAtRunner = { ...obstacle, x: runner.x };
+  if (wave.kind === "overhead") {
+    const standingBlocked = rectanglesOverlap(runnerHitbox(runner), obstacleAtRunner);
+    runner.crouching = true;
+    const crouchingBlocked = rectanglesOverlap(runnerHitbox(runner), obstacleAtRunner);
+    if (!standingBlocked || crouchingBlocked) return "overhead route is not crouch-readable";
+  }
+
+  const jumpRise = (PHYSICS.jumpVelocity * PHYSICS.jumpVelocity) / (2 * PHYSICS.gravity);
+  for (let index = 0; index < wave.packages.length; index += 1) {
+    const collectible = wave.packages[index]!;
+    const box = { x: collectible.x, y: collectible.y, width: PACKAGE_MODEL_SIZE, height: PACKAGE_MODEL_SIZE };
+    // The low slide line intentionally lets the 30 px artwork sit two pixels
+    // into the painted ground. Its inset pickup hitbox remains fully above it.
+    if (box.y < 0 || box.y + box.height > GROUND_Y + 2) {
+      return "collectible is outside player bounds";
+    }
+    if (wave.kind !== "overhead" && GROUND_Y - (box.y + box.height) > jumpRise + 24) {
+      return "collectible exceeds jump reach";
+    }
+    if (rectanglesOverlap(box, obstacle)) return "collectible intersects obstacle";
+    for (let otherIndex = index + 1; otherIndex < wave.packages.length; otherIndex += 1) {
+      const other = wave.packages[otherIndex]!;
+      if (rectanglesOverlap(box, {
+        x: other.x, y: other.y, width: PACKAGE_MODEL_SIZE, height: PACKAGE_MODEL_SIZE
+      })) return "collectibles overlap";
+    }
+  }
+
+  const firstX = Math.floor(Math.min(...wave.packages.map(({ x }) => x), wave.x)) - WORLD_WIDTH;
+  const lastX = Math.ceil(Math.max(...wave.packages.map(({ x }) => x), wave.x + wave.width));
+  for (let viewportLeft = firstX; viewportLeft <= lastX; viewportLeft += 24) {
+    const visible = wave.packages.filter(({ x }) =>
+      x + PACKAGE_MODEL_SIZE > viewportLeft && x < viewportLeft + WORLD_WIDTH
+    ).length;
+    if (visible > 7) return "more than seven collectibles are visible";
+  }
+  return validateTemporalReachability(wave, safeSpeed);
 }
 
 /** Keeps authored reward patterns reachable as challenge speed increases. */
@@ -166,15 +473,7 @@ export function validateAuthoredRouteGeometry(options: {
     rewards: [{ kind: "standard" }]
   });
   if (!wave) return "wave cannot be spawned with the requested reaction time";
-  const obstacleX = RUNNER_X;
-  const obstacleRight = obstacleX + wave.width;
-  for (const parcel of wave.packages) {
-    const parcelX = obstacleX + (parcel.x - wave.x);
-    const overlaps = parcelX < obstacleRight && parcelX + PACKAGE_MODEL_SIZE > obstacleX &&
-      parcel.y < wave.y + wave.height && parcel.y + PACKAGE_MODEL_SIZE > wave.y;
-    if (overlaps) return "reward route intersects the paired obstacle hitbox";
-  }
-  return null;
+  return validateSpawnWaveGeometry(wave, options.speed, options.minimumReactionSeconds);
 }
 
 export interface SafeCollectiblePlacement {
@@ -364,8 +663,7 @@ function buildPackagePattern(
   heights: readonly number[],
   obstacleX: number,
   random: SeededRandom,
-  speed: number,
-  orderVisuals: WeightedOrderVisualDirector
+  speed: number
 ): PackageSpawn[] {
   const packCount = heights.length;
   const span = speed * JUMP_FLIGHT_SECONDS * PACKAGE_ARC_SPAN_FRACTION;
@@ -375,15 +673,15 @@ function buildPackagePattern(
   return heights.map((height, index) => {
     const centering = packCount > 1 ? index / (packCount - 1) - 0.5 : 0;
     const offset = span * centering;
-    const orderVisualType = orderVisuals.next();
-    const collectibleClass = collectibleClassForVisual(orderVisualType);
+    const orderVisualType: OrderVisualType = "parcel";
+    const collectibleClass: CollectibleClass = "parcel";
     return {
       x: obstacleX + offset,
       y: GROUND_Y - height - 15,
       phase: random.range(0, Math.PI * 2),
       kind: "standard",
       collectibleClass,
-      packageType: orderVisualType === "parcel" ? parcelFactType : orderVisualType,
+      packageType: parcelFactType,
       orderVisualType,
       weightKg: 0
     };
@@ -398,7 +696,6 @@ export class FairSpawner {
   private distanceUntilNext: number;
   private readonly obstaclePatterns: readonly ObstaclePatternDefinition[];
   private readonly patternBag: ShuffleBag<ObstaclePatternDefinition>;
-  private readonly orderVisuals: WeightedOrderVisualDirector;
 
   constructor(
     private readonly random: SeededRandom,
@@ -413,7 +710,6 @@ export class FairSpawner {
       ? allowedPatterns
       : OBSTACLE_PATTERN_CATALOG;
     this.patternBag = new ShuffleBag(this.obstaclePatterns, this.random);
-    this.orderVisuals = new WeightedOrderVisualDirector(this.random);
   }
 
   advance(
@@ -434,17 +730,23 @@ export class FairSpawner {
     this.distanceUntilNext += gapPixels;
 
     const baseHeights = PACKAGE_PATTERN_HEIGHTS[pattern];
-    const packageHeights = isOverhead
+    const rawPackageHeights = isOverhead
       ? baseHeights.map((_, index) => OVERHEAD_PACKAGE_HEIGHTS[index % OVERHEAD_PACKAGE_HEIGHTS.length]!)
       : baseHeights;
+    const packageCount = Math.max(3, Math.min(6, rawPackageHeights.length));
+    const packageHeights = Array.from({ length: packageCount }, (_, index) => {
+      const sourceIndex = Math.round(
+        index * (rawPackageHeights.length - 1) / Math.max(1, packageCount - 1)
+      );
+      return rawPackageHeights[sourceIndex] ?? rawPackageHeights[0]!;
+    });
     const obstacleY = isOverhead ? OVERHEAD.topY : GROUND_Y - spec.height;
 
     const packages = buildPackagePattern(
       packageHeights,
       spawnX,
       this.random,
-      speed,
-      this.orderVisuals
+      speed
     );
     const leftmost = Math.min(spawnX, ...packages.map(({ x }) => x));
     const shift = Math.max(0, spawnX - leftmost);
@@ -474,9 +776,9 @@ export function createAuthoredRewardWave(
   const speed = Math.max(1, options.speed);
   const minimumReactionSeconds = options.minimumReactionSeconds ?? MIN_AUTHORED_REACTION_SECONDS;
   const reactionSeconds = (options.spawnX - (RUNNER_X + RUNNER_WIDTH)) / speed;
-  const packageCount = Math.max(2, Math.min(5, Math.floor(options.packageCount ?? 5)));
+  const packageCount = Math.max(3, Math.min(8, Math.floor(options.packageCount ?? 5)));
   if (reactionSeconds < minimumReactionSeconds ||
-      options.rewards.length < 1 || options.rewards.length > 2) return null;
+      options.rewards.length > 2) return null;
   if (options.rewards.some(({ kind, packageType, storyOrder }) =>
     (storyOrder === true &&
       (packageType === undefined || kind !== "standard"))
@@ -493,35 +795,37 @@ export function createAuthoredRewardWave(
     ? "overhead"
     : jumpKinds[patternIndex % jumpKinds.length] ?? "pallet");
   const spec = OBSTACLE_SPECS[kind];
+  const totalCount = packageCount + options.rewards.length;
   const fullHeights = kind === "overhead"
     ? OVERHEAD_PACKAGE_HEIGHTS
-    : PACKAGE_PATTERN_HEIGHTS["five-arc"];
-  const heights = packageCount === fullHeights.length
-    ? fullHeights
-    : Array.from({ length: packageCount }, (_, index) => {
-        const sourceIndex = Math.round(index * (fullHeights.length - 1) / Math.max(1, packageCount - 1));
-        return fullHeights[sourceIndex] ?? fullHeights[0]!;
-      });
-  const span = speed * JUMP_FLIGHT_SECONDS * PACKAGE_ARC_SPAN_FRACTION;
-  const center = Math.floor((packageCount - 1) / 2);
+    : PACKAGE_PATTERN_HEIGHTS["seven-arc"];
+  const heights = Array.from({ length: totalCount }, (_, index) => {
+    const sourceIndex = Math.round(index * (fullHeights.length - 1) / Math.max(1, totalCount - 1));
+    return fullHeights[sourceIndex] ?? fullHeights[0]!;
+  });
+  const span = Math.max(
+    speed * JUMP_FLIGHT_SECONDS * PACKAGE_ARC_SPAN_FRACTION,
+    Math.max(0, totalCount - 1) * 38
+  );
   const rewardSlots = options.rewards.length === 1
-    ? [center]
-    : [center, Math.min(packageCount - 1, center + 1)];
+    ? [Math.min(totalCount - 2, Math.ceil(totalCount * 0.62))]
+    : [Math.max(1, Math.floor(totalCount / 3)), Math.min(totalCount - 2, Math.ceil(totalCount * 0.7))];
   const packageTypes = PACKAGE_TYPE_VALUES;
+  let parcelIndex = 0;
   const packages = heights.map((height, index): PackageSpawn => {
-    const centering = index / (heights.length - 1) - 0.5;
+    const centering = totalCount > 1 ? index / (totalCount - 1) - 0.5 : 0;
     const rewardIndex = rewardSlots.indexOf(index);
     const reward = rewardIndex >= 0 ? options.rewards[rewardIndex] : undefined;
     const packageKind = reward?.kind ?? "standard";
-    const fallbackVisualType = ORDER_VISUAL_TYPES[
-      (patternIndex + index) % ORDER_VISUAL_TYPES.length
-    ] ?? "parcel";
-    const orderVisualType = packageKind === "standard"
-      ? reward?.packageType ?? fallbackVisualType
+    const orderVisualType: OrderVisualType = reward?.kind === "standard" && reward.packageType
+      ? reward.packageType
       : "parcel";
-    const collectibleClass = packageKind === "standard"
-      ? collectibleClassForVisual(orderVisualType)
-      : "parcel";
+    const collectibleClass: CollectibleClass = orderVisualType === "parcel"
+      ? "parcel"
+      : "equipment";
+    const factType = reward?.packageType ??
+      packageTypes[(patternIndex + parcelIndex) % packageTypes.length] ?? "notebook";
+    if (reward === undefined) parcelIndex += 1;
     return {
       x: options.spawnX + span * centering,
       // Slide-route parcels sit completely below the hanging beam; jump-route
@@ -530,10 +834,7 @@ export function createAuthoredRewardWave(
       phase: (patternIndex + index) * 0.73,
       kind: packageKind,
       collectibleClass,
-      packageType: orderVisualType === "parcel"
-        ? reward?.packageType ??
-          packageTypes[(patternIndex + index) % packageTypes.length] ?? "notebook"
-        : orderVisualType,
+      packageType: orderVisualType === "parcel" ? factType : orderVisualType,
       orderVisualType,
       weightKg: 0,
       storyRewardPattern: true,
@@ -565,14 +866,14 @@ export function createAuthoredRewardWave(
 
 export function activateTutorialPackages(packages: PackageModel[]): void {
   const firstX = WORLD_WIDTH + GAMEPLAY.spawnPadding;
-  const positions = [firstX, firstX + 80, firstX + 160, firstX + 240, firstX + 320];
+  const positions = [firstX, firstX + 64, firstX + 128, firstX + 192, firstX + 256, firstX + 320];
   for (let index = 0; index < positions.length; index += 1) {
     const parcel = packages[index];
     const x = positions[index];
     if (!parcel || x === undefined) continue;
     parcel.active = true;
     parcel.kind = "standard";
-    parcel.orderVisualType = ORDER_VISUAL_TYPES[index] ?? "parcel";
+    parcel.orderVisualType = index === 3 ? "notebook" : "parcel";
     parcel.collectibleClass = collectibleClassForVisual(parcel.orderVisualType);
     parcel.x = x;
     parcel.y = GROUND_Y - parcel.size - 17;

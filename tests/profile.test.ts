@@ -34,11 +34,13 @@ describe("PlayerProfileStore", () => {
     const store = new PlayerProfileStore(new MemoryStorage());
 
     expect(store.snapshot).toEqual({
-      schemaVersion: 4,
+      schemaVersion: 5,
+      challengeRecordVersion: 11,
       storyCompleted: false,
       bestChallengeScore: 0,
       bestChallengeOrders: 0,
       challengeRuns: 0,
+      challengeRecordRuns: 0,
       soundMuted: false,
       fullscreenPreference: null
     });
@@ -69,17 +71,19 @@ describe("PlayerProfileStore", () => {
 
     restored.setSoundMuted(true);
     expect(JSON.parse(storage.getItem("amso_milion_runner_profile") ?? "null")).toEqual({
-      schemaVersion: 4,
+      schemaVersion: 5,
+      challengeRecordVersion: 11,
       storyCompleted: false,
-      bestChallengeScore: 900,
-      bestChallengeOrders: 7,
+      bestChallengeScore: 0,
+      bestChallengeOrders: 0,
       challengeRuns: 0,
+      challengeRecordRuns: 0,
       soundMuted: true,
       fullscreenPreference: null
     });
   });
 
-  it("migrates the legacy challenge package record without emitting the old field", () => {
+  it("starts a fresh v11 record while preserving story completion and total runs", () => {
     const storage = new MemoryStorage();
     storage.setItem("amso_milion_runner_profile", JSON.stringify({
       schemaVersion: 3,
@@ -90,12 +94,52 @@ describe("PlayerProfileStore", () => {
     }));
 
     const restored = new PlayerProfileStore(storage);
-    expect(restored.snapshot.bestChallengeOrders).toBe(123);
+    expect(restored.snapshot.bestChallengeOrders).toBe(0);
+    expect(restored.snapshot.bestChallengeScore).toBe(0);
+    expect(restored.snapshot.storyCompleted).toBe(true);
+    expect(restored.snapshot.challengeRuns).toBe(4);
+    expect(restored.snapshot.challengeRecordRuns).toBe(0);
 
-    restored.setSoundMuted(true);
+    restored.recordChallengeResult(9_500, 42);
     const persisted = storage.getItem("amso_milion_runner_profile") ?? "";
     expect(persisted).not.toContain("bestChallengePackages");
-    expect(JSON.parse(persisted)).toMatchObject({ bestChallengeOrders: 123 });
+    expect(JSON.parse(persisted)).toMatchObject({
+      schemaVersion: 5,
+      challengeRecordVersion: 11,
+      bestChallengeScore: 9_500,
+      bestChallengeOrders: 42,
+      challengeRuns: 5,
+      challengeRecordRuns: 1,
+      storyCompleted: true
+    });
+
+    const reloaded = new PlayerProfileStore(storage);
+    expect(reloaded.snapshot.bestChallengeScore).toBe(9_500);
+    expect(reloaded.snapshot.challengeRecordRuns).toBe(1);
+  });
+
+  it("keeps a v11 record across an unrelated future profile-schema migration", () => {
+    const storage = new MemoryStorage();
+    storage.setItem("amso_milion_runner_profile", JSON.stringify({
+      schemaVersion: 6,
+      challengeRecordVersion: 11,
+      storyCompleted: true,
+      bestChallengeScore: 77_250,
+      bestChallengeOrders: 219,
+      challengeRuns: 8,
+      challengeRecordRuns: 3
+    }));
+
+    const restored = new PlayerProfileStore(storage);
+
+    expect(restored.snapshot).toMatchObject({
+      schemaVersion: 5,
+      challengeRecordVersion: 11,
+      bestChallengeScore: 77_250,
+      bestChallengeOrders: 219,
+      challengeRuns: 8,
+      challengeRecordRuns: 3
+    });
   });
 
   it("unlocks challenge only when the full story is completed", () => {
@@ -121,6 +165,7 @@ describe("PlayerProfileStore", () => {
     expect(restored.snapshot.bestChallengeScore).toBe(12_450);
     expect(restored.snapshot.bestChallengeOrders).toBe(102);
     expect(restored.snapshot.challengeRuns).toBe(2);
+    expect(restored.snapshot.challengeRecordRuns).toBe(2);
     expect(restored.snapshot.soundMuted).toBe(true);
     expect(restored.snapshot.fullscreenPreference).toBe("fullscreen");
   });

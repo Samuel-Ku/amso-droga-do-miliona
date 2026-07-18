@@ -68,7 +68,7 @@ describe("game random and spawning", () => {
     expect(collect()).toHaveLength(6);
   });
 
-  it("mixes package layouts and all five ordinary order visuals without golden parcels", () => {
+  it("keeps generic story routes at three to six physical parcels", () => {
     const difficulty = getDifficulty(35);
     const spawner = new FairSpawner(new SeededRandom(44), difficulty.speed);
     const patterns = new Set<string>();
@@ -80,6 +80,8 @@ describe("game random and spawning", () => {
       if (!wave) continue;
       waves += 1;
       patterns.add(wave.pattern);
+      expect(wave.packages.length).toBeGreaterThanOrEqual(3);
+      expect(wave.packages.length).toBeLessThanOrEqual(6);
       wave.packages.filter(({ kind }) => kind === "standard")
         .forEach(({ orderVisualType, collectibleClass, packageType }) => {
           orderVisuals.add(orderVisualType);
@@ -94,7 +96,7 @@ describe("game random and spawning", () => {
 
     expect(waves).toBe(80);
     expect(patterns.size).toBe(14);
-    expect(orderVisuals).toEqual(new Set(["notebook", "telefon", "pc", "lcd", "parcel"]));
+    expect(orderVisuals).toEqual(new Set(["parcel"]));
   });
 
   it("does not partially activate a wave when the package pool is exhausted", () => {
@@ -294,6 +296,20 @@ describe("collision and scoring", () => {
     expect(collectsPackage(runner, parcel)).toBe(true);
     parcel.active = false;
     expect(collectsPackage(runner, parcel)).toBe(false);
+  });
+
+  it("gives equipment a collection zone about fifteen percent larger than a parcel", () => {
+    const runner = createRunnerModel();
+    const parcel = createPackagePool(1)[0]!;
+    const runnerHitboxRight = runner.x + runner.width - 11;
+    parcel.active = true;
+    parcel.y = runner.y + 20;
+    parcel.x = runnerHitboxRight - 4.6;
+    parcel.collectibleClass = "parcel";
+    expect(collectsPackage(runner, parcel)).toBe(false);
+
+    parcel.collectibleClass = "equipment";
+    expect(collectsPackage(runner, parcel)).toBe(true);
   });
 
   it("adds 100 points per parcel to full metres", () => {

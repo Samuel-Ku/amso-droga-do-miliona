@@ -445,6 +445,8 @@ describe("campaign collision contract", () => {
       .toBeGreaterThan(finalStorySnapshot?.packagesCollected ?? 0);
     expect(Object.values(finalStorySnapshot?.equipmentTypeCounts ?? {})
       .reduce((total, count) => total + count, 0)).toBeGreaterThan(0);
+    expect(Object.values(finalStorySnapshot?.equipmentTypeCounts ?? {})
+      .every((count) => count > 0)).toBe(true);
     expect(challengeSnapshot?.backgroundTravelPixels)
       .toBeGreaterThanOrEqual(finalStorySnapshot?.backgroundTravelPixels ?? 0);
 
@@ -456,9 +458,41 @@ describe("campaign collision contract", () => {
     expect(harness.milestoneModes).toContain("story");
     expect(harness.milestoneModes).toContain("challenge");
 
+    const run = harness.game as unknown as {
+      recoverySeconds: number;
+      startProtectionSeconds: number;
+      activePowerUps: { clear(): void };
+      runner: { x: number; y: number; grounded: boolean; velocityY: number };
+      obstacles: Array<{
+        active: boolean; kind: "pallet"; source: "normal"; x: number; y: number;
+        width: number; height: number;
+      }>;
+    };
+    run.recoverySeconds = 0;
+    run.startProtectionSeconds = 0;
+    run.activePowerUps.clear();
+    run.runner.y = 432 - 82;
+    run.runner.grounded = true;
+    run.runner.velocityY = 0;
+    Object.assign(run.obstacles[0]!, {
+      active: true,
+      kind: "pallet",
+      source: "normal",
+      x: run.runner.x,
+      y: run.runner.y + 20,
+      width: 80,
+      height: 80
+    });
+    harness.advance(0.2);
+    expect(harness.game.state).toBe("game_over");
+    expect(harness.gameOvers).toBe(1);
+    expect(harness.outcome).not.toBeNull();
+
     const eventsBeforeReset = harness.milestoneCelebrations.length;
     harness.game.reset();
     harness.game.start("keyboard");
+    expect(harness.game.state).toBe("running");
+    expect(harness.snapshots.at(-1)?.mode).toBe("challenge");
     harness.collectPackagesUntil(10);
     expect(harness.milestoneCelebrations.slice(eventsBeforeReset)
       .filter(({ text }) => text !== "NOWY REKORD")

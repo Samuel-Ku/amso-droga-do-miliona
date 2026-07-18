@@ -1,11 +1,13 @@
 export type GameMode = "story" | "challenge";
 
 export interface PlayerProfile {
-  schemaVersion: 4;
+  schemaVersion: 5;
+  challengeRecordVersion: 11;
   storyCompleted: boolean;
   bestChallengeScore: number;
   bestChallengeOrders: number;
   challengeRuns: number;
+  challengeRecordRuns: number;
   soundMuted: boolean;
   fullscreenPreference: "fullscreen" | "portrait" | null;
 }
@@ -14,11 +16,13 @@ const STORAGE_KEY = "amso_milion_runner_profile";
 
 function emptyProfile(): PlayerProfile {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
+    challengeRecordVersion: 11,
     storyCompleted: false,
     bestChallengeScore: 0,
     bestChallengeOrders: 0,
     challengeRuns: 0,
+    challengeRecordRuns: 0,
     soundMuted: false,
     fullscreenPreference: null
   };
@@ -57,22 +61,27 @@ export class PlayerProfileStore {
         bestChallengePackages?: unknown;
       };
       const storyCompleted = parsed.storyCompleted === true;
+      const currentChallengeEconomy = parsed.challengeRecordVersion === 11;
       const fullscreenPreference = parsed.fullscreenPreference === "fullscreen" ||
         parsed.fullscreenPreference === "portrait"
         ? parsed.fullscreenPreference
         : null;
       return {
-        schemaVersion: 4,
+        schemaVersion: 5,
+        challengeRecordVersion: 11,
         storyCompleted,
-        bestChallengeScore: Math.round(
-          safeNonNegativeNumber(parsed.bestChallengeScore ?? parsed.bestScore)
-        ),
-        bestChallengeOrders: Math.round(
-          safeNonNegativeNumber(
-            parsed.bestChallengeOrders ?? parsed.bestChallengePackages ?? parsed.bestPackages
-          )
-        ),
+        bestChallengeScore: currentChallengeEconomy
+          ? Math.round(safeNonNegativeNumber(parsed.bestChallengeScore ?? parsed.bestScore))
+          : 0,
+        bestChallengeOrders: currentChallengeEconomy
+          ? Math.round(safeNonNegativeNumber(
+              parsed.bestChallengeOrders ?? parsed.bestChallengePackages ?? parsed.bestPackages
+            ))
+          : 0,
         challengeRuns: Math.round(safeNonNegativeNumber(parsed.challengeRuns)),
+        challengeRecordRuns: currentChallengeEconomy
+          ? Math.round(safeNonNegativeNumber(parsed.challengeRecordRuns))
+          : 0,
         soundMuted: parsed.soundMuted === true,
         fullscreenPreference
       };
@@ -113,6 +122,7 @@ export class PlayerProfileStore {
       Math.round(safeNonNegativeNumber(orders))
     );
     this.profile.challengeRuns += 1;
+    this.profile.challengeRecordRuns += 1;
     this.write();
   }
 

@@ -58,6 +58,27 @@ describe("milestone audio", () => {
     await audio.destroy();
   });
 
+  it("uses a richer equipment pickup cue and mutes both pickup levels", async () => {
+    vi.useFakeTimers();
+    const harness = audioHarness();
+    const audio = new CampaignAudio({ contextFactory: () => harness.context });
+    await audio.start();
+    const afterMusic = harness.oscillatorCount();
+
+    audio.playParcelPickup(1);
+    const parcelNotes = harness.oscillatorCount() - afterMusic;
+    audio.playEquipmentPickup();
+    const equipmentNotes = harness.oscillatorCount() - afterMusic - parcelNotes;
+    audio.setMuted(true);
+    audio.playParcelPickup(2);
+    audio.playEquipmentPickup();
+
+    expect(parcelNotes).toBe(1);
+    expect(equipmentNotes).toBeGreaterThan(parcelNotes);
+    expect(harness.oscillatorCount()).toBe(afterMusic + parcelNotes + equipmentNotes);
+    await audio.destroy();
+  });
+
   it("adds notes for higher tiers and produces no cue while muted", async () => {
     vi.useFakeTimers();
     const harness = audioHarness();

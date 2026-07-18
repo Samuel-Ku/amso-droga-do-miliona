@@ -47,7 +47,10 @@ describe("v7 challenge pressure", () => {
     expect(density.packageCount).toBeGreaterThan(speed.packageCount);
     expect(complexity.breathSeconds).toBeLessThan(speed.breathSeconds);
     expect(complexity.sequenceLength).toBe(2);
-    expect(precision.packageCount).toBe(2);
+    for (const tuning of [speed, density, complexity, precision, pressure]) {
+      expect(tuning.packageCount).toBeGreaterThanOrEqual(5);
+      expect(tuning.packageCount).toBeLessThanOrEqual(8);
+    }
     expect(pressure.breathSeconds).toBeLessThan(speed.breathSeconds);
     expect(pressure.sequenceLength).toBe(3);
     expect(pressure.sequenceGapSeconds).toBeGreaterThanOrEqual(0.55);

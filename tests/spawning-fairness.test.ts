@@ -15,13 +15,15 @@ import {
   createPackagePool,
   activateWave,
   authoredRewardSpawnX,
+  ChallengeRewardDirector,
   findSafeCollectibleX,
   FairSpawner,
   MIN_AUTHORED_REACTION_SECONDS,
   OBSTACLE_PATTERN_CATALOG,
   PACKAGE_PATTERN_HEIGHTS,
   PACKAGE_PATTERN_IDS,
-  WeightedOrderVisualDirector,
+  REWARD_ROUTE_FAMILIES,
+  validateSpawnWaveGeometry,
   type SpawnWave
 } from "../src/game/spawning";
 import type { ObstacleModel, PackageKind } from "../src/game/types";
@@ -51,14 +53,216 @@ function isSpecial(kind: PackageKind): boolean {
 }
 
 describe("challenge spawning fairness", () => {
-  it("varies five order visuals without four identical pickups in a row", () => {
-    const director = new WeightedOrderVisualDirector(new SeededRandom(90210));
-    const sequence = Array.from({ length: 100 }, () => director.next());
+  it("keeps three to six physical parcels when a story equipment reward is added", () => {
+    for (const packageCount of [3, 4, 5, 6]) {
+      const wave = createAuthoredRewardWave({
+        action: packageCount % 2 === 0 ? "slide" : "jump",
+        spawnX: SPAWN_X,
+        speed: 280,
+        packageCount,
+        rewards: [{ kind: "standard", packageType: "pc", storyOrder: true }]
+      });
 
-    expect(new Set(sequence)).toEqual(new Set(["notebook", "telefon", "pc", "lcd", "parcel"]));
-    for (let index = 3; index < sequence.length; index += 1) {
-      expect(new Set(sequence.slice(index - 3, index + 1)).size).toBeGreaterThan(1);
+      expect(wave).not.toBeNull();
+      expect(wave?.packages.filter(({ collectibleClass }) => collectibleClass === "parcel"))
+        .toHaveLength(packageCount);
+      expect(wave?.packages.filter(({ collectibleClass }) => collectibleClass === "equipment"))
+        .toMatchObject([{ packageType: "pc", storyOrder: true }]);
     }
+  });
+
+  it("builds deterministic challenge waves with five to eight parcels and separated equipment", () => {
+    const first = new ChallengeRewardDirector(new SeededRandom(7821));
+    const second = new ChallengeRewardDirector(new SeededRandom(7821));
+    const signatures: string[] = [];
+    let parcelTotal = 0;
+    let equipmentTotal = 0;
+
+    for (let index = 0; index < 80; index += 1) {
+      const packageCount = 5 + (index % 4);
+      const options = {
+        action: index % 2 === 0 ? "jump" as const : "slide" as const,
+        spawnX: authoredRewardSpawnX(420, SPAWN_X, 1.2),
+        speed: 420,
+        packageCount,
+        patternIndex: index,
+        minimumReactionSeconds: 1.2
+      };
+      const wave = first.createWave(options);
+      const repeated = second.createWave(options);
+      expect(wave).not.toBeNull();
+      expect(repeated).toEqual(wave);
+      if (!wave) continue;
+      const parcels = wave.packages.filter(({ collectibleClass }) => collectibleClass === "parcel");
+      const equipment = wave.packages.filter(({ collectibleClass }) => collectibleClass === "equipment");
+      expect(parcels).toHaveLength(packageCount);
+      expect(equipment.length).toBeGreaterThanOrEqual(1);
+      expect(equipment.length).toBeLessThanOrEqual(2);
+      parcelTotal += parcels.length;
+      equipmentTotal += equipment.length;
+      const ordered = [...wave.packages].sort((left, right) => left.x - right.x);
+      for (let item = 1; item < ordered.length; item += 1) {
+        expect(
+          ordered[item - 1]?.collectibleClass === "equipment" &&
+          ordered[item]?.collectibleClass === "equipment"
+        ).toBe(false);
+      }
+      signatures.push(equipment.map(({ packageType }) => packageType).join("+"));
+      for (let left = Math.floor(wave.packages[0]?.x ?? 0) - 960;
+        left <= Math.ceil(wave.packages.at(-1)?.x ?? 0); left += 24) {
+        const visible = wave.packages.filter(({ x }) => x + PACKAGE_SIZE > left && x < left + 960);
+        expect(visible.length).toBeLessThanOrEqual(7);
+      }
+    }
+
+    expect(new Set(signatures.join("+").split("+")))
+      .toEqual(new Set(["notebook", "telefon", "pc", "lcd"]));
+    expect(equipmentTotal / (parcelTotal + equipmentTotal)).toBeGreaterThan(0.17);
+    expect(equipmentTotal / (parcelTotal + equipmentTotal)).toBeLessThan(0.23);
+  });
+
+  it("publishes the complete readable risk-reward route library", () => {
+    expect(REWARD_ROUTE_FAMILIES).toEqual([
+      "arc", "low-line", "rising-steps", "falling-steps", "split-groups",
+      "premium-finale", "alternate-route"
+    ]);
+  });
+
+  it("gives every challenge route family a materially distinct geometry", () => {
+    const director = new ChallengeRewardDirector(new SeededRandom(913));
+    const waves = REWARD_ROUTE_FAMILIES.map((family, index) => {
+      const action = index % 2 === 0 ? "jump" as const : "slide" as const;
+      const wave = director.createWave({
+        action,
+        obstacleKind: action === "jump" ? "pallet" : "overhead",
+        spawnX: authoredRewardSpawnX(420, SPAWN_X, 1.2),
+        speed: 420,
+        packageCount: 6,
+        patternIndex: index,
+        minimumReactionSeconds: 1.2
+      });
+      expect(wave?.rewardRouteFamily).toBe(family);
+      return wave!;
+    });
+
+    const ordered = waves.map((wave) => [...wave.packages].sort((left, right) => left.x - right.x));
+    expect(new Set(ordered[0]!.map(({ y }) => Math.round(y))).size).toBeGreaterThan(2);
+    expect(new Set(ordered[1]!
+      .filter(({ collectibleClass }) => collectibleClass === "parcel")
+      .map(({ y }) => Math.round(y)))).toHaveProperty("size", 1);
+
+    const risingParcels = ordered[2]!.filter(({ collectibleClass }) => collectibleClass === "parcel");
+    const fallingParcels = ordered[3]!.filter(({ collectibleClass }) => collectibleClass === "parcel");
+    expect(risingParcels[0]!.y).toBeGreaterThan(risingParcels.at(-1)!.y);
+    expect(fallingParcels[0]!.y).toBeLessThan(fallingParcels.at(-1)!.y);
+
+    const ordinaryGaps = ordered[0]!.slice(1).map((item, index) => item.x - ordered[0]![index]!.x);
+    const splitGaps = ordered[4]!.slice(1).map((item, index) => item.x - ordered[4]![index]!.x);
+    expect(Math.max(...splitGaps)).toBeGreaterThan(Math.max(...ordinaryGaps));
+    expect(ordered[5]!.at(-1)?.collectibleClass).toBe("equipment");
+
+    const alternate = ordered[6]!;
+    const equipmentY = alternate
+      .filter(({ collectibleClass }) => collectibleClass === "equipment")
+      .reduce((sum, item) => sum + item.y, 0) /
+      alternate.filter(({ collectibleClass }) => collectibleClass === "equipment").length;
+    const parcelY = alternate
+      .filter(({ collectibleClass }) => collectibleClass === "parcel")
+      .reduce((sum, item) => sum + item.y, 0) /
+      alternate.filter(({ collectibleClass }) => collectibleClass === "parcel").length;
+    expect(equipmentY).toBeLessThan(parcelY);
+  });
+
+  it("makes equipment reachable within eight seconds and never leaves a twelve-second gap", () => {
+    const speed = 280 * CHALLENGE_DIFFICULTY.speedStartMultiplier;
+    const director = new ChallengeRewardDirector(new SeededRandom(3719));
+    const equipmentReachTimes: number[] = [];
+    let nextSpawnSeconds = 0;
+
+    for (let index = 0; index < 24; index += 1) {
+      const wave = director.createWave({
+        action: index % 2 === 0 ? "jump" : "slide",
+        spawnX: authoredRewardSpawnX(speed, SPAWN_X, 1.2),
+        speed,
+        packageCount: 5 + (index % 4),
+        patternIndex: index,
+        minimumReactionSeconds: 1.2
+      });
+      expect(wave).not.toBeNull();
+      if (!wave) continue;
+      for (const equipment of wave.packages.filter(({ collectibleClass }) =>
+        collectibleClass === "equipment"
+      )) {
+        equipmentReachTimes.push(nextSpawnSeconds + (equipment.x - RUNNER_X) / speed);
+      }
+      const lastX = Math.max(...wave.packages.map(({ x }) => x), wave.x + wave.width);
+      nextSpawnSeconds += (lastX + PACKAGE_SIZE) / speed + 1.1;
+    }
+
+    expect(equipmentReachTimes[0]).toBeLessThanOrEqual(8);
+    for (let index = 1; index < equipmentReachTimes.length; index += 1) {
+      expect(equipmentReachTimes[index]! - equipmentReachTimes[index - 1]!).toBeLessThanOrEqual(12);
+    }
+  });
+
+  it("validates every challenge obstacle family across seeds and the full speed range", () => {
+    const variants = [
+      ["jump", "pallet"], ["jump", "box-stack"], ["jump", "trolley"],
+      ["slide", "overhead"]
+    ] as const;
+    for (const speed of [280 * 1.3, 280 * 2.2, 280 * 3.5]) {
+      for (let seed = 1; seed <= 12; seed += 1) {
+        const director = new ChallengeRewardDirector(new SeededRandom(seed));
+        for (let index = 0; index < variants.length; index += 1) {
+          const [action, obstacleKind] = variants[index]!;
+          const wave = director.createWave({
+            action,
+            obstacleKind,
+            spawnX: authoredRewardSpawnX(speed, SPAWN_X, 1.2),
+            speed,
+            packageCount: 5 + ((seed + index) % 4),
+            patternIndex: index,
+            minimumReactionSeconds: 1.2
+          });
+          expect(wave).not.toBeNull();
+          if (wave) expect(validateSpawnWaveGeometry(wave, speed, 1.2)).toBeNull();
+        }
+      }
+    }
+  });
+
+  it("rejects a premium route assembled from mutually exclusive jump timings", () => {
+    const reward = (
+      x: number,
+      y: number,
+      collectibleClass: "parcel" | "equipment",
+      packageType: "notebook" | "telefon" = "notebook"
+    ) => ({
+      x, y, phase: 0, kind: "standard" as const, collectibleClass, packageType,
+      orderVisualType: collectibleClass === "parcel" ? "parcel" as const : packageType,
+      weightKg: 1
+    });
+    const impossiblePremiumRoute: SpawnWave = {
+      kind: "pallet",
+      source: "normal",
+      pattern: "five-arc",
+      obstaclePattern: "temporal-regression",
+      x: 1_600,
+      y: 382,
+      width: 80,
+      height: 50,
+      gapPixels: 220,
+      packages: [
+        reward(2_200, 247, "equipment", "notebook"),
+        reward(2_200, 400, "equipment", "telefon"),
+        reward(2_400, 390, "parcel"),
+        reward(2_550, 390, "parcel"),
+        reward(2_700, 390, "parcel")
+      ]
+    };
+
+    expect(validateSpawnWaveGeometry(impossiblePremiumRoute, 980, 1.2))
+      .toBe("premium jump route is unreachable");
   });
 
   it("publishes fourteen parcel patterns from one to seven parcels", () => {
@@ -193,7 +397,7 @@ describe("challenge spawning fairness", () => {
         storyOrder: true
       }
     ]);
-    expect(wave?.packages.filter(({ storyOrder }) => storyOrder !== true)).toHaveLength(4);
+    expect(wave?.packages.filter(({ storyOrder }) => storyOrder !== true)).toHaveLength(5);
   });
 
   it("keeps authored targets outside the paired hazard hitbox", () => {

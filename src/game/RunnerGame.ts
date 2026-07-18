@@ -34,6 +34,7 @@ import {
   createBossAttackWave,
   createObstaclePool,
   createPackagePool,
+  ChallengeRewardDirector,
   FairSpawner,
   type SpawnWave
 } from "./spawning";
@@ -46,6 +47,7 @@ import type { NarrativeConfig, PackageType, PowerUpKind, StoryConfig } from "../
 import type { ObstacleKind, ObstacleModel, PackageModel, RenderScene, RunnerModel } from "./types";
 import { calculateCanvasBuffer } from "./viewport";
 import { resolveCollision, START_PROTECTION_SECONDS } from "./mode-rules";
+import { collectibleScore } from "./collectibles";
 import {
   ActivePowerUps,
   ChallengePowerUpSchedule
@@ -146,6 +148,7 @@ export class RunnerGame implements RunnerGameApi {
   private finaleRewardRunRemaining = 0;
   private authoredFinaleCelebrated = false;
   private challengePatternIndex = 0;
+  private challengeRewards!: ChallengeRewardDirector;
   private challengeSpawnCooldown = 0;
   private challengeOnboardingPending = false;
   private readonly challengeWaves = new Map<string, { available: number; collected: number }>();
@@ -958,13 +961,10 @@ export class RunnerGame implements RunnerGameApi {
     if (this.mode === "challenge") {
       const visualRouteClear = routeClear && this.bossDirector.model.phase === "inactive";
       this.challengeWorldDirector.advance(activeDeltaSeconds, visualRouteClear);
-      const activeChallengeObstacles = this.obstacles.filter(({ active, authoredWaveId }) =>
-        active && authoredWaveId?.startsWith("challenge-")
-      ).length;
       const startingSequence = this.challengeSequenceRemaining === 0 &&
         this.challengeWaves.size === 0 && routeClear && !this.challengeOnboardingPending;
       const continuingSequence = this.challengeSequenceRemaining > 0 &&
-        activeChallengeObstacles < 3;
+        this.challengeWaves.size === 0 && routeClear;
       if (this.recoverySeconds <= 0 && this.challengeSpawnCooldown <= 0 &&
           (startingSequence || continuingSequence)) {
         this.spawnChallengePattern();
@@ -1135,11 +1135,14 @@ export class RunnerGame implements RunnerGameApi {
     );
     if (parcel.kind === "standard") {
       if (parcel.authoredWaveId &&
-          this.authoredWaveDirector?.currentWave?.id === parcel.authoredWaveId) {
+          this.authoredWaveDirector?.currentWave?.id === parcel.authoredWaveId &&
+          parcel.collectibleClass === "parcel") {
         this.authoredWaveDirector.recordPackage();
       } else if (parcel.authoredWaveId) {
         const challengeWave = this.challengeWaves.get(parcel.authoredWaveId);
-        if (challengeWave !== undefined) challengeWave.collected += 1;
+        if (challengeWave !== undefined && parcel.collectibleClass === "parcel") {
+          challengeWave.collected += 1;
+        }
       }
       this.ordersCollected += 1;
       if (collection.countsAsPackage) {
@@ -1208,6 +1211,16 @@ export class RunnerGame implements RunnerGameApi {
           this.storyObjectiveDirector.recordOrder(parcel.packageType)
         );
       }
+      try {
+        this.callbacks.onCollectiblePickup?.({
+          collectibleClass: parcel.collectibleClass,
+          packageType: parcel.packageType,
+          basePoints: collectibleScore(parcel.collectibleClass),
+          combo: this.combo
+        });
+      } catch {
+        // Host feedback must never interfere with collection or scoring.
+      }
     } else {
       if (parcel.authoredWaveId === "safe-power-up") this.pendingPowerUpReward = null;
       if (this.activatePowerUp(parcel.kind)) this.callbacks.onSpecialPickup?.(parcel.kind);
@@ -1247,7 +1260,7 @@ export class RunnerGame implements RunnerGameApi {
       speed: this.speed,
       patternIndex: this.storyObjectivePatternIndex,
       source: "story-reward",
-      rewards: [{ kind: "standard" }]
+      rewards: []
     });
     if (!wave || !activateWave(
       this.prepareStoryWave(wave, segmentId),
@@ -1287,6 +1300,8 @@ export class RunnerGame implements RunnerGameApi {
     if (!action || !kind) return;
     const packageCount = this.packagesForAuthoredAction(wave, this.authoredActionIndex);
     const reactionSeconds = wave.telegraphSeconds + (this.controlMethod === "touch" ? 0.1 : 0);
+    const authoredSegmentId = this.storyTimeline?.snapshot.playSegment?.id ?? null;
+    const authoredEquipment = this.takeThematicEquipment(authoredSegmentId);
     if ((wave.obstacleVariant === "parcel-arc" || wave.obstacleVariant === "recovery-route") &&
         this.authoredActionIndex === 0) {
       const free = this.packages.filter(({ active }) => !active).slice(0, packageCount);
@@ -1321,7 +1336,7 @@ export class RunnerGame implements RunnerGameApi {
       authoredActionIndex: this.authoredActionIndex,
       semanticVariant: wave.obstacleVariant,
       minimumReactionSeconds: reactionSeconds,
-      rewards: [{ kind: "standard" }]
+      rewards: [{ kind: "standard", packageType: authoredEquipment }]
     });
     if (!runtimeWave || !activateWave(runtimeWave, this.obstacles, this.packages)) return;
     this.authoredActionSpawned = true;
@@ -1408,6 +1423,9 @@ export class RunnerGame implements RunnerGameApi {
     this.challengePatternIndex = 0;
     this.challengeSpawnCooldown = 0;
     this.challengePowerUps.reset();
+    this.challengeRewards = new ChallengeRewardDirector(
+      new SeededRandom(mixSeed(this.baseSeed, this.runIndex + 20_000))
+    );
     this.challengeOnboardingPending = this.mode === "challenge";
     this.challengeWaves.clear();
     this.resetChallengeSequence();
@@ -1434,7 +1452,7 @@ export class RunnerGame implements RunnerGameApi {
       this.challengeSequenceBreathSeconds = tuning.breathSeconds;
     }
     const waveId = `challenge-${this.challengePatternIndex}`;
-    const wave = createAuthoredRewardWave({
+    const wave = this.challengeRewards.createWave({
       action: atom.action,
       obstacleKind: atom.obstacleKind,
       spawnX: authoredRewardSpawnX(
@@ -1447,8 +1465,7 @@ export class RunnerGame implements RunnerGameApi {
       patternIndex: this.challengePatternIndex,
       source: "normal",
       authoredWaveId: waveId,
-      minimumReactionSeconds: tuning.reactionSeconds,
-      rewards: [{ kind: "standard" }]
+      minimumReactionSeconds: tuning.reactionSeconds
     });
     if (!wave || !activateWave(wave, this.obstacles, this.packages)) return;
     this.challengeWaves.set(waveId, { available: tuning.packageCount, collected: 0 });
@@ -1488,14 +1505,35 @@ export class RunnerGame implements RunnerGameApi {
 
   private prepareStoryWave(wave: SpawnWave, segmentId: string | null): SpawnWave {
     if (segmentId !== "epoch_3.matching_creative") return wave;
-    const packages = wave.packages.map((parcel, index) => ({
-      ...parcel,
-      packageType: STORY_CREATIVE_EQUIPMENT_IDS[
-        (this.creativeEquipmentCursor + index) % STORY_CREATIVE_EQUIPMENT_IDS.length
-      ] ?? "notebook"
-    }));
-    this.creativeEquipmentCursor += packages.length;
-    return { ...wave, packages };
+    if (wave.packages.some(({ collectibleClass }) => collectibleClass === "equipment")) return wave;
+    const last = wave.packages.at(-1);
+    if (!last) return wave;
+    const packageType = this.takeThematicEquipment(segmentId);
+    return {
+      ...wave,
+      packages: [
+        ...wave.packages.map((collectible, index) => index === Math.floor(wave.packages.length / 2)
+          ? {
+              ...collectible,
+              collectibleClass: "equipment" as const,
+              packageType,
+              orderVisualType: packageType
+            }
+          : collectible),
+        { ...last, x: last.x + 55, phase: last.phase + 0.63 }
+      ]
+    };
+  }
+
+  private takeThematicEquipment(segmentId: string | null): PackageType {
+    if (segmentId === "epoch_3.matching_creative") {
+      const selected = STORY_CREATIVE_EQUIPMENT_IDS[
+        this.creativeEquipmentCursor % STORY_CREATIVE_EQUIPMENT_IDS.length
+      ] ?? "notebook";
+      this.creativeEquipmentCursor += 1;
+      return selected;
+    }
+    return STORY_ORDER_TYPES[this.currentEpoch % STORY_ORDER_TYPES.length] ?? "notebook";
   }
 
   private positiveMotifForEpoch(epochIndex: number): StoryPositiveMotif {

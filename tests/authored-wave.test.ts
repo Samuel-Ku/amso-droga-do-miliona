@@ -10,27 +10,19 @@ import {
 import { getAuthoredStoryDifficulty, getChallengeDifficulty } from "../src/game/difficulty";
 
 describe("v7 authored story waves", () => {
-  it("offers exactly 50 packages across the twelve finale combinations", () => {
+  it("offers exactly 75 packages across the denser twelve finale combinations", () => {
     const finale = STORY_MICROLEVELS.find(({ id }) => id === "million-threshold");
     expect(finale).toBeDefined();
-    expect(finale!.waves.reduce((sum, item) => sum + availablePackages(item), 0)).toBe(50);
+    expect(finale!.waves.reduce((sum, item) => sum + availablePackages(item), 0)).toBe(75);
   });
 
-  it("supports 40, 50, and 60 package finale targets with package-only recovery", () => {
+  it("supports the approved 40, 50, and 60 package finale targets with denser routes", () => {
     const finale = STORY_MICROLEVELS.find(({ id }) => id === "million-threshold")!;
     for (const target of [40, 50, 60]) {
       const director = new AuthoredWaveDirector({ ...finale, finaleOrderTarget: target });
       for (const item of finale.waves) {
         for (let count = 0; count < availablePackages(item); count += 1) director.recordPackage();
         director.resolve(true);
-      }
-      if (target === 60) {
-        expect(director.currentWave?.obstacleVariant).toBe("recovery-route");
-        for (let recovery = 0; recovery < 5; recovery += 1) {
-          director.recordPackage();
-          director.recordPackage();
-          director.resolve(true);
-        }
       }
       director.advance(finale.minimumDurationSeconds);
       expect(director.snapshot.totalOrderTarget).toBe(target);
