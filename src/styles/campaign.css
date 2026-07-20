@@ -212,6 +212,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   --records-pad: 0.9rem 1rem 1.1rem;
   --records-cell-pad: 0.4rem 0.6rem;
   --records-max-width: 570px;
+  --records-result-max: 650px;
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -2412,7 +2413,16 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
    box-sizing: border-box;
    width: 100%;
    max-width: var(--records-max-width);
-   margin: 1.25rem auto 0;
+   margin: 1.25rem 0 0;
+   margin-inline: 0;
+ }
+
+ /* On the result screen the host shares the same centered grid column as
+    .amso-campaign__result-card (650px). Match that width so their LEFT
+    edges coincide exactly (no horizontal shift), and let the grid center
+    both identically. */
+ .amso-campaign__screen--result [data-campaign-result-records] {
+   max-width: var(--records-result-max);
  }
 
  .amso-records {
