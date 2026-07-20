@@ -1,7 +1,41 @@
 node_modules/
-dist/
-dist-demo/
-droga-do-miliona-qa.zip
 coverage/
 .DS_Store
 *.log
+
+# Affinity Photo working files and lock files (not shippable artwork)
+*.af
+*.af~lock~
+
+# Duplicate / scratch artwork that should never enter version control
+public/assets/milion-runner/courier-amso-a.webp
+public/assets/milion-runner/courier/A.webp
+public/assets/milion-runner/courier/courier-sprite-sheet.webp
+public/assets/milion-runner/orders/b-parcel-02.webp
+public/assets/milion-runner/orders/b-parcel-03.webp
+public/assets/milion-runner/orders/b-parcel-04.webp
+public/assets/milion-runner/worlds/1world-01-first-mile-v2.webp
+public/assets/milion-runner/worlds/2world-02-order-process-v2.webp
+public/assets/milion-runner/worlds/3world-03-quality-service-v2.webp
+public/assets/milion-runner/worlds/4world-04-client-paths-v2.webp
+public/assets/milion-runner/worlds/5world-05-scale-logistics-v2.webp
+public/assets/milion-runner/worlds/6world-06-million-approach-v2.webp
+public/assets/milion-runner/worlds/7world-07-million-finale-v2.webp
+
+# Third-party moodboards / reference dumps
+public/assets/todd/
+
+# Scratch screenshots and standalone brand exports
+*.png
+amso_logo_nav.png
+LOGO_AMSO_WHITE.svg
+public/assets/amso-logo-white.png
+public/assets/big-vector-set-gift-boxes-with-ribbon-bright-festive-color-isolated/
+public/assets/delivery-man-character-constructor-objects-animation-scene-vector-illustration/
+
+# Packed world archives
+worlds.zip
+droga-do-miliona-*.zip
+
+# Local issue tracker / scratch notes
+.scratch/

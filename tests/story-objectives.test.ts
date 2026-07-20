@@ -27,18 +27,19 @@ describe("StoryObjectiveDirector", () => {
     expect(director.snapshot.activeSegmentId).toBe("epoch_2.quality_series");
   });
 
-  it("models the million threshold as 30 orders and 12 combinations without symbols", () => {
+  it("models the million threshold as 50 orders reaching 1 000 000, with combinations as a bonus goal", () => {
     const director = new StoryObjectiveDirector();
     director.enterSegment("epoch_5.million_threshold");
     expect(director.snapshot.epoch5.millionThreshold).toMatchObject({
-      counterValue: 999_970, orderTarget: 30, combinationTarget: 12, completed: false
+      counterValue: 999_950, orderTarget: 50, combinationTarget: 12, completed: false
     });
     for (let index = 0; index < 50; index += 1) director.recordMillionOrder();
-    for (let index = 0; index < 12; index += 1) director.recordMillionCombination();
     expect(director.snapshot.epoch5.millionThreshold).toMatchObject({
-      ordersCollected: 30, combinationsCompleted: 12, counterValue: 1_000_000, completed: true
+      ordersCollected: 50, combinationsCompleted: 0, counterValue: 1_000_000, completed: true
     });
     expect(director.snapshot.completedObjectiveIds).toContain("epoch_5.million_threshold");
+    for (let index = 0; index < 12; index += 1) director.recordMillionCombination();
+    expect(director.snapshot.epoch5.millionThreshold.combinationsCompleted).toBe(12);
   });
 
   it("tracks successful mixed patterns and alternating order-backlog clears", () => {
@@ -169,15 +170,15 @@ describe("StoryObjectiveDirector", () => {
     });
   });
 
-  it("keeps the two million goals independent and caps both targets", () => {
+  it("completes the million finale on the order goal alone and keeps combinations as a tracked bonus", () => {
     const director = new StoryObjectiveDirector();
     director.enterSegment("epoch_5.million_threshold");
     for (let index = 0; index < 51; index += 1) director.recordMillionOrder();
     expect(director.snapshot.epoch5.millionThreshold).toMatchObject({
-      ordersCollected: 30,
+      ordersCollected: 50,
       combinationsCompleted: 0,
       counterValue: 1_000_000,
-      completed: false
+      completed: true
     });
     for (let index = 0; index < 13; index += 1) director.recordMillionCombination();
     expect(director.snapshot.epoch5.millionThreshold).toMatchObject({

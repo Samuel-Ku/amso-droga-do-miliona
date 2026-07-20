@@ -65,9 +65,9 @@ describe("runner config v5 story validation", () => {
       resumeCountdownSeconds: 3
     };
     story.millionThreshold = {
-      counterStart: 999_970,
+      counterStart: 999_950,
       counterTarget: 1_000_000,
-      orderTarget: 30,
+      orderTarget: 50,
       combinationTarget: 12
     };
 
@@ -92,9 +92,9 @@ describe("runner config v5 story validation", () => {
       resumeCountdownSeconds: 3
     });
     expect(parsed?.story.millionThreshold).toEqual({
-      counterStart: 999_970,
+      counterStart: 999_950,
       counterTarget: 1_000_000,
-      orderTarget: 30,
+      orderTarget: 50,
       combinationTarget: 12
     });
   });
@@ -121,7 +121,7 @@ describe("runner config v5 story validation", () => {
     delete threshold.orderTarget;
 
     const parsed = parseRunnerConfig(legacy);
-    expect(parsed?.story.millionThreshold.orderTarget).toBe(30);
+    expect(parsed?.story.millionThreshold.orderTarget).toBe(50);
     expect(JSON.stringify(parsed)).not.toContain("packageTarget");
   });
 

@@ -926,6 +926,14 @@ export function activateWave(
     const spawn = wave.packages[index];
     const parcel = freePackages[index];
     if (!spawn || !parcel) return false;
+    // Never drop a parcel on top of an already-active one sharing its lane, so
+    // pickups never visually overlap (e.g. a parcel onto a phone).
+    const overlapsExisting = packages.some(
+      (existing) => existing.active &&
+        Math.abs(existing.x - spawn.x) < PACKAGE_MODEL_SIZE * 0.75 &&
+        Math.abs(existing.y - spawn.y) < PACKAGE_MODEL_SIZE * 0.75
+    );
+    if (overlapsExisting) continue;
     parcel.active = true;
     parcel.kind = spawn.kind;
     parcel.collectibleClass = spawn.collectibleClass;

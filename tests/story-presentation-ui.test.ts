@@ -178,7 +178,7 @@ describe("player-paced story presentation", () => {
     for (let index = 0; index < 12; index += 1) director.recordMillionOrder();
     for (let index = 0; index < 3; index += 1) director.recordMillionCombination();
     expect(formatStoryObjectiveHud(director.snapshot, []))
-      .toBe("Próg Miliona · ZAMÓWIENIA 12/30 · KOMBINACJE 3/12");
+      .toBe("Próg Miliona · ZAMÓWIENIA 12/50 · KOMBINACJE 3/12");
   });
 
   it("wraps keyboard focus inside the two-control story dialog", () => {

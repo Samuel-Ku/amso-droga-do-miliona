@@ -62,6 +62,20 @@ export function collidesWithObstacle(
   return obstacle.active && rectanglesOverlap(runnerHitbox(runner), obstacleHitbox(obstacle));
 }
 
+/**
+ * Pickup zone matches the body hitbox but extends up to the head, so parcels
+ * lined up at head height are still collected. Lateral and lower bounds stay
+ * identical to the collision hitbox so fair near-misses are preserved.
+ */
+export function runnerPickupBox(runner: Readonly<RunnerModel>): Rectangle {
+  return {
+    x: runner.x + 12,
+    y: runner.y,
+    width: runner.width - 23,
+    height: runner.height - 3
+  };
+}
+
 /** Shared semantic inset used by runtime pickup and route reachability checks. */
 export function collectiblePickupInset(size: number, collectibleClass: CollectibleClass): number {
   return size * (collectibleClass === "equipment" ? 0.132 : 0.18);
@@ -75,7 +89,7 @@ export function collectsPackage(
   // Equipment uses a semantic pickup zone 115% of the parcel zone. This is
   // independent of transparent artwork margins and makes premium routes fair.
   const inset = collectiblePickupInset(parcel.size, parcel.collectibleClass);
-  return rectanglesOverlap(runnerHitbox(runner), {
+  return rectanglesOverlap(runnerPickupBox(runner), {
     x: parcel.x + inset,
     y: parcel.y + inset,
     width: parcel.size - inset * 2,

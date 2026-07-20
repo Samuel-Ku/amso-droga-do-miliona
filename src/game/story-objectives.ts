@@ -105,7 +105,7 @@ export const STORY_OBJECTIVE_TARGETS = {
   trustClean: 12,
   requiredOrders: 6,
   orderPeakSeconds: 60,
-  millionOrders: 30,
+  millionOrders: 50,
   millionCombinations: 12
 } as const;
 
@@ -400,11 +400,9 @@ export class StoryObjectiveDirector {
           counterStart: 1_000_000 - TARGETS.millionOrders,
           counterTarget: 1_000_000,
           counterValue: 1_000_000 - TARGETS.millionOrders + this.thresholdOrders,
-          completed: this.thresholdOrders >= TARGETS.millionOrders &&
-            this.thresholdCombinations >= TARGETS.millionCombinations
+          completed: this.thresholdOrders >= TARGETS.millionOrders
         },
-        completed: this.thresholdOrders >= TARGETS.millionOrders &&
-          this.thresholdCombinations >= TARGETS.millionCombinations
+        completed: this.thresholdOrders >= TARGETS.millionOrders
       }
     };
   }
@@ -421,8 +419,7 @@ export class StoryObjectiveDirector {
     if (this.trustBest >= TARGETS.trustClean) ids.push("epoch_3.matching_trust");
     if (this.requiredOrders >= TARGETS.requiredOrders) ids.push("epoch_4.order_peak");
     if (this.orderPeakElapsedSeconds >= this.orderPeakDurationSeconds) ids.push("epoch_4.order_peak_final");
-    if (this.thresholdOrders >= TARGETS.millionOrders &&
-        this.thresholdCombinations >= TARGETS.millionCombinations) {
+    if (this.thresholdOrders >= TARGETS.millionOrders) {
       ids.push("epoch_5.million_threshold");
     }
     return ids;

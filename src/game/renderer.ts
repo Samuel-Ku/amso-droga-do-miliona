@@ -603,7 +603,7 @@ function drawMillionVignette(
   const finale = scene.storyObjectives?.epoch5.millionThreshold;
   const completed = finale?.completed === true || scene.storyPhase === "finale" ||
     scene.storyPhase === "completed";
-  const counter = finale?.counterValue ?? (completed ? 1_000_000 : 999_970);
+  const counter = finale?.counterValue ?? (completed ? 1_000_000 : 999_950);
   context.save();
   const frame = completed
     ? context.createLinearGradient(560, 0, 914, 0)
@@ -1204,12 +1204,12 @@ function drawWarrantyShield(
     radiusY
   ) as CanvasGradient | undefined;
   if (field !== undefined) {
-    field.addColorStop(0, "rgba(255,255,255,0.19)");
-    field.addColorStop(0.5, "rgba(255,255,255,0.075)");
-    field.addColorStop(0.82, "rgba(255,255,255,0.055)");
-    field.addColorStop(1, "rgba(255,255,255,0.025)");
+    field.addColorStop(0, "rgba(244,113,0,0.14)");
+    field.addColorStop(0.5, "rgba(244,113,0,0.06)");
+    field.addColorStop(0.82, "rgba(244,113,0,0.04)");
+    field.addColorStop(1, "rgba(244,113,0,0.02)");
   }
-  context.fillStyle = field ?? "rgba(255,255,255,0.09)";
+  context.fillStyle = field ?? "rgba(244,113,0,0.07)";
   context.beginPath();
   context.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
   context.fill();
@@ -1221,22 +1221,22 @@ function drawWarrantyShield(
   context.ellipse(0, 0, radiusX - 2, radiusY - 2, 0, 0, Math.PI * 2);
   context.clip();
   context.rotate(animation.meshRotationRadians);
-  context.strokeStyle = "rgba(255,255,255,0.15)";
+  context.strokeStyle = "rgba(244,113,0,0.16)";
   context.lineWidth = 0.85;
   const mesh = getWarrantyShieldMesh();
   if (mesh !== null) context.stroke(mesh);
   context.restore();
 
-  context.strokeStyle = "rgba(255,255,255,0.78)";
+  context.strokeStyle = "rgba(244,113,0,0.6)";
   context.lineWidth = 3;
-  context.shadowColor = "rgba(255,255,255,0.42)";
+  context.shadowColor = "rgba(244,113,0,0.45)";
   context.shadowBlur = scene.reducedMotion ? 3 : 7;
   context.beginPath();
   context.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
   context.stroke();
 
   context.shadowBlur = 5;
-  context.strokeStyle = "rgba(255,255,255,0.72)";
+  context.strokeStyle = "rgba(244,113,0,0.5)";
   context.lineWidth = 2.2;
   context.beginPath();
   context.ellipse(0, 0, radiusX - 3, radiusY - 3, 0, Math.PI * 1.08, Math.PI * 1.58);

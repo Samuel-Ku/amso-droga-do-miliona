@@ -1,6 +1,7 @@
 import type { OrderVisualType, PowerUpKind } from "../shared/types";
 import type { ObstacleKind, ObstacleModel, RenderScene, RunnerModel } from "./types";
 import { OVERHEAD, PHYSICS } from "./constants";
+import { runnerStrideCyclesPerSecond } from "./courier-presentation";
 
 export const ORDER_VISUAL_TYPES: readonly OrderVisualType[] =
   ["notebook", "telefon", "pc", "lcd", "parcel"] as const;
@@ -45,7 +46,7 @@ export const COURIER_JUMP_SPRITE_FRAME_COUNT = 8;
 const COURIER_SPRITE_CELL_SIZE = 512;
 const COURIER_SOURCE_GROUND_Y = 470;
 const COURIER_RENDER_SIZE = 170;
-const COURIER_RUN_FPS = 12;
+const COURIER_CROUCH_RENDER_SCALE = 0.9;
 const COURIER_CROUCH_FPS = 16;
 const COURIER_CROUCH_REFERENCE_ANCHOR_X = 250;
 const COURIER_CROUCH_FRAME_ANCHOR_X = [250, 310, 310, 310, 310, 310, 310, 310] as const;
@@ -63,14 +64,15 @@ export function parcelAnimationFrame(
 
 export function courierSpriteFrame(
   runner: Readonly<RunnerModel>,
-  scene: Pick<RenderScene, "elapsedSeconds" | "milestoneCelebration">
+  scene: Pick<RenderScene, "elapsedSeconds" | "milestoneCelebration" | "speed">
 ): number {
   if (!runner.grounded) {
     if (runner.velocityY < -40) return 3;
     if (runner.velocityY > 40) return 7;
     return 4;
   }
-  return Math.floor(scene.elapsedSeconds * COURIER_RUN_FPS) % COURIER_SPRITE_FRAME_COUNT;
+  const cyclesPerSecond = runnerStrideCyclesPerSecond(scene.speed);
+  return Math.floor(scene.elapsedSeconds * cyclesPerSecond) % COURIER_SPRITE_FRAME_COUNT;
 }
 
 export function courierCrouchSpriteFrame(runner: Readonly<RunnerModel>): number {
@@ -284,11 +286,14 @@ export class RunnerArtwork {
         : scene.reducedMotion
           ? 0
           : courierSpriteFrame(runner, scene);
+    const courierRenderSize = useCrouchArtwork
+      ? COURIER_RENDER_SIZE * COURIER_CROUCH_RENDER_SCALE
+      : COURIER_RENDER_SIZE;
     const feetY = runner.y + runner.height + 4;
-    const x = runner.x + runner.width / 2 - COURIER_RENDER_SIZE / 2 +
+    const x = runner.x + runner.width / 2 - courierRenderSize / 2 +
       (useCrouchArtwork ? courierCrouchFrameOffsetX(frame) : 0);
     const y = feetY - COURIER_SOURCE_GROUND_Y / COURIER_SPRITE_CELL_SIZE *
-      COURIER_RENDER_SIZE;
+      courierRenderSize;
     context.drawImage(
       artwork,
       frame * COURIER_SPRITE_CELL_SIZE,
@@ -297,8 +302,8 @@ export class RunnerArtwork {
       COURIER_SPRITE_CELL_SIZE,
       x,
       y,
-      COURIER_RENDER_SIZE,
-      COURIER_RENDER_SIZE
+      courierRenderSize,
+      courierRenderSize
     );
     return true;
   }

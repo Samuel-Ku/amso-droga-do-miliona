@@ -1,8 +1,8 @@
 import type { RunnerModel } from "./types";
 import { RUNNER_HEIGHT, RUNNER_WIDTH } from "./constants";
 
-const MIN_STRIDE_CYCLES_PER_SECOND = 2;
-const MAX_STRIDE_CYCLES_PER_SECOND = 4;
+const MIN_STRIDE_CYCLES_PER_SECOND = 12;
+const MAX_STRIDE_CYCLES_PER_SECOND = 22;
 const MIN_STRIDE_SPEED = 280;
 const MAX_STRIDE_SPEED = 980;
 

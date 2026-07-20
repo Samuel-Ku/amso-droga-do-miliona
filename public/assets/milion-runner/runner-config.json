@@ -305,9 +305,9 @@
       "resumeCountdownSeconds": 3
     },
     "millionThreshold": {
-      "counterStart": 999970,
+      "counterStart": 999950,
       "counterTarget": 1000000,
-      "orderTarget": 30,
+      "orderTarget": 50,
       "combinationTarget": 12
     }
   },

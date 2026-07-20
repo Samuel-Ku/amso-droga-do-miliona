@@ -130,8 +130,8 @@ describe("single-file QA artwork", () => {
       );
     }
     // Seven worlds, two atlases, run + crouch + jump couriers, four parcel frames,
-    // Four ground/primary obstacles, two extra overhead variants and exact A.
-    expect(embeddedWebps.size).toBe(23);
+    // four ground/primary obstacles, two extra overhead variants and exact A.
+    expect(embeddedWebps.size).toBe(20);
     const embeddedSvgs = new Set(
       qaPreview.match(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+/g) ?? []
     );

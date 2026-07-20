@@ -187,6 +187,7 @@ export class RunnerGame implements RunnerGameApi {
   private lastStorySignal = "";
   private storyCompleteEmitted = false;
   private finaleCelebrationRemaining = 0;
+  private finaleHandoffPending = false;
   private lastTrustCorridor = false;
   private creativeEquipmentCursor = 0;
   private storyOrderPatternIndex = 0;
@@ -255,7 +256,7 @@ export class RunnerGame implements RunnerGameApi {
     callbacks: RunnerGameCallbacks = {},
     options: RunnerGameOptions = {}
   ) {
-    const context = canvas.getContext("2d", { alpha: true, desynchronized: true });
+    const context = canvas.getContext("2d", { alpha: true });
     if (!context) throw new Error("RunnerGame requires a Canvas 2D context.");
 
     this.context = context;
@@ -501,6 +502,7 @@ export class RunnerGame implements RunnerGameApi {
     this.lastStorySignal = "";
     this.storyCompleteEmitted = false;
     this.finaleCelebrationRemaining = 0;
+    this.finaleHandoffPending = false;
     this.lastTrustCorridor = this.storyTimeline?.snapshot.trustCorridor ?? false;
     this.creativeEquipmentCursor = 0;
     this.storyOrderPatternIndex = 0;
@@ -702,6 +704,9 @@ export class RunnerGame implements RunnerGameApi {
     }
 
     this.visualElapsedSeconds += deltaSeconds;
+    if (this.finaleCelebrationRemaining > 0) {
+      this.visualElapsedSeconds -= deltaSeconds;
+    }
     if (this.powerUpDemoRemaining > 0) {
       this.powerUpDemoRemaining = Math.max(0, this.powerUpDemoRemaining - deltaSeconds);
     }
@@ -740,6 +745,12 @@ export class RunnerGame implements RunnerGameApi {
       this.runner.crouching = false;
       this.clearInteractiveWorld();
       this.emitSnapshot();
+      return;
+    }
+    if (this.finaleHandoffPending && this.mode === "story" &&
+        this.finaleRewardRunRemaining <= 0) {
+      this.finaleHandoffPending = false;
+      this.completeStoryAndEnterChallenge();
       return;
     }
     if (storyCompletedThisStep) {
@@ -1576,6 +1587,9 @@ export class RunnerGame implements RunnerGameApi {
       this.bonusScore += 750;
       if (objectiveId === "epoch_5.million_threshold") {
         this.finaleCelebrationRemaining = STORY_FINALE_CELEBRATION_SECONDS;
+        if (this.authoredWaveDirector?.definition.id !== "million-threshold") {
+          this.finaleHandoffPending = true;
+        }
         this.clearInteractiveWorld();
       }
       try {

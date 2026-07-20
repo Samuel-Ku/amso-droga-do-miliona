@@ -180,9 +180,14 @@ describe("v10 production artwork contract", () => {
     expect(drawImage).toHaveBeenCalledTimes(2);
     const standingWidth = courierDraws[0]?.[7] as number;
     const standingHeight = courierDraws[0]?.[8] as number;
+    const crouchWidth = courierDraws[1]?.[7] as number;
+    const crouchHeight = courierDraws[1]?.[8] as number;
+    // Standing and crouch sheets keep a square cell so the silhouette is not distorted.
     expect(standingHeight / standingWidth).toBe(1);
-    expect(courierDraws[0]?.[8]).toBe(courierDraws[1]?.[8]);
-    expect(courierDraws[0]?.[7]).toBe(courierDraws[1]?.[7]);
+    expect(crouchHeight / crouchWidth).toBe(1);
+    // Crouching renders slightly smaller (0.9 scale) so the courier reads larger
+    // once the asset's empty margin is accounted for.
+    expect(crouchHeight).toBeLessThan(standingHeight);
   });
 
   it("uses the dedicated jump sheet while the courier is airborne", () => {

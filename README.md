@@ -1,5 +1,11 @@
 # AMSO — Droga do Miliona
 
+Interaktywny **doodle** — endless runner uruchamiany z okazji
+**miliona zamówień zrealizowanych przez AMSO**. Gracz wciela się w kuriera, który
+sunie przez kolejne epoki logistyki, aż do finałowej Fali Miliona, gdzie licznik
+zamówień domyka się na **1 000 000**. Po osiągnięciu miliona gra płynnie
+przechodzi w Próbę Miliona — endless runner, w którym można pędzić dalej.
+
 Dedykowana, responsywna strona kampanii z dwiema odmianami runnera:
 
 - **Droga do Miliona** — 18 scen czytanych we własnym tempie i co najmniej 5 minut aktywnej gry;
