@@ -33,7 +33,7 @@ describe("v8 browser acceptance handoff document", () => {
     expect(report).toMatch(/Trybu Wyzwania/u);
     expect(report).toMatch(/białej szczeliny/u);
     expect(report).toMatch(/centralnego\s+kadru/u);
-    expect(report).toMatch(/GWARANCJA 48 M ×1/u);
+    expect(report).toMatch(/GWARANCJA AMSO CARE ×1/u);
     expect(report).toMatch(/3,5×/u);
     expect(report).toMatch(/W.*↑.*Spację/u);
     expect(report).toMatch(/S.*↓/u);

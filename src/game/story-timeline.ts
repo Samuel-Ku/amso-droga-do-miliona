@@ -6,7 +6,7 @@ import type {
   StorySequenceStepConfig
 } from "../shared/types";
 
-export const STORY_REFRAME_SECONDS = 0.72;
+export const STORY_REFRAME_SECONDS = 0.5;
 
 export type StoryState = "scene" | "reframe" | "countdown" | "play" | "completed";
 export type StoryPhase = "prologue" | "epoch" | "finale" | "completed";
@@ -163,6 +163,11 @@ export class StoryTimeline {
     return this.snapshot;
   }
 
+  /** Ends the current play step at once, advancing to the following step. */
+  public forceCompletePlayStep(): void {
+    if (this.currentStep?.type === "play") this.enterStep(this.stepIndex + 1);
+  }
+
   public get snapshot(): StoryTimelineSnapshot {
     const step = this.currentStep;
     const baseScene = step?.type === "scene" ? this.scenes.get(step.sceneId) ?? null : null;
@@ -184,9 +189,8 @@ export class StoryTimeline {
     const sceneIndex = scene === null
       ? -1
       : this.story.scenes.findIndex(({ id }) => id === scene.id);
-    const trustCorridor = this.state === "scene" || this.state === "reframe" ||
-      this.state === "countdown";
-    const activePlay = this.state === "play";
+    const trustCorridor = this.state === "scene" || this.state === "reframe";
+    const activePlay = this.state === "play" || this.state === "countdown";
     const safety: StorySafetySnapshot = completed
       ? { kind: "completed_safe", hazardsEnabled: false, pickupsEnabled: false, controlsEnabled: false }
       : activePlay
@@ -220,7 +224,7 @@ export class StoryTimeline {
       playSegment,
       activeBeats: [],
       trustCorridor,
-      controlsEnabled: this.state === "play",
+      controlsEnabled: activePlay,
       worldSpeedScale: trustCorridor ? this.story.readingSpeedMultiplier : 1,
       completed,
       safety

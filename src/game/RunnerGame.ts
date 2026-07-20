@@ -620,10 +620,25 @@ export class RunnerGame implements RunnerGameApi {
       const presentingMillion = this.finaleCelebrationRemaining > 0;
       const presentingPowerUp = this.powerUpDemoRemaining > 0;
       const millionTransitionActive = presentingMillion || this.finaleRewardRunRemaining > 0;
+      const millionObjectiveComplete = this.storyObjectiveDirector.snapshot
+        .epoch5.millionThreshold.completed;
+      if (millionObjectiveComplete &&
+          previousStory.playSegment?.id === "epoch_5.million_threshold" &&
+          previousStory.state === "play") {
+        // The million counter reaching 1 000 000 is the climax; end the finale
+        // play step at once so the celebration scene appears immediately instead
+        // of after the remaining play duration.
+        this.storyTimeline.forceCompletePlayStep();
+      }
       const waitingForFinaleGoals = previousStory.playSegment?.id === "epoch_5.million_threshold" &&
+        // Once the million counter reaches 1 000 000 the player-visible finale
+        // must proceed. Equipment rewards also credit that counter, so gating on
+        // the authored parcel tally alone could strand a full counter with no
+        // finale. The twelve-combination goal stays a tracked bonus.
+        !millionObjectiveComplete &&
         ((this.authoredWaveDirector
           ? !this.authoredWaveDirector.completed
-          : !this.storyObjectiveDirector.snapshot.epoch5.millionThreshold.completed) ||
+          : true) ||
           millionTransitionActive);
       const waitingForTutorialActions = previousStory.playSegment?.id === "epoch_1.training" &&
         !this.storyObjectiveDirector.snapshot.epoch1.training.completed;
@@ -1419,7 +1434,13 @@ export class RunnerGame implements RunnerGameApi {
     parcel.active = true;
     parcel.kind = kind;
     parcel.collectibleClass = "parcel";
-    parcel.x = authoredRewardSpawnX(this.speed, STORY_CLIMAX_SPAWN_X, 1.6);
+    let spawnX = authoredRewardSpawnX(this.speed, STORY_CLIMAX_SPAWN_X, 1.6);
+    const clearance = parcel.size + 28;
+    for (const other of this.packages) {
+      if (other === parcel || !other.active) continue;
+      if (Math.abs(other.x - spawnX) < clearance) spawnX = other.x + clearance;
+    }
+    parcel.x = spawnX;
     parcel.y = GROUND_Y - parcel.size - 12;
     parcel.phase = 0;
     parcel.packageType = "notebook";

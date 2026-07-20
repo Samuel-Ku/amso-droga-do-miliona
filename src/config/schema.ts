@@ -356,14 +356,14 @@ function parseModeHandoff(value: unknown): StoryModeHandoffConfig | null {
     ["id", "from", "to", "safe", "confirmationRequired", "resumeCountdownSeconds"]
   ) || !isIdentifier(value.id) || value.from !== "story" || value.to !== "challenge" ||
       value.safe !== true || value.confirmationRequired !== true ||
-      value.resumeCountdownSeconds !== 3) return null;
+      !finiteInRange(value.resumeCountdownSeconds, 2, 3)) return null;
   return {
     id: value.id,
     from: "story",
     to: "challenge",
     safe: true,
     confirmationRequired: true,
-    resumeCountdownSeconds: 3
+    resumeCountdownSeconds: value.resumeCountdownSeconds
   };
 }
 
@@ -449,7 +449,7 @@ function parseStory(value: unknown): StoryConfig | null {
       !finiteInRange(value.readingSpeedMultiplier, 0.1, 0.5) ||
       !finiteInRange(value.speedStartMultiplier, 0.5, 1.5) ||
       !finiteInRange(value.speedMaxMultiplier, value.speedStartMultiplier, 2) ||
-      value.resumeCountdownSeconds !== 3 ||
+      !finiteInRange(value.resumeCountdownSeconds, 2, 3) ||
       !finiteInRange(value.firstCompletionBonusScore, 0, 1_000_000) ||
       !Number.isInteger(value.firstCompletionBonusScore) ||
       !Array.isArray(value.scenes) || !Array.isArray(value.sequence) ||
@@ -586,14 +586,14 @@ export function validateRunnerConfig(
   if (!isRecord(value)) return issue("invalid_type", "$" );
   const rootKeys = [
     "schemaVersion", "enabled", "gameVersion", "claim", "modulePath", "stylePath",
-    "triggerSelector", "cta", "story", "challenge", "audio", "assets", "ui"
+    "triggerSelector", "cta", "story", "challenge", "audio", "assets", "ui", "recordsApi"
   ];
   if (!hasExactKeys(
     value,
     rootKeys,
     [
       "schemaVersion", "enabled", "gameVersion", "claim", "cta", "story", "challenge",
-      "audio", "assets", "ui"
+      "audio", "assets", "ui", "recordsApi"
     ]
   )) return issue("unknown_key", "$" );
   if (value.schemaVersion !== RUNNER_SCHEMA_VERSION) return issue("unsupported_schema", "$.schemaVersion");
@@ -625,6 +625,13 @@ export function validateRunnerConfig(
   if (assets === null) return issue("invalid_value", "$.assets");
   const ui = parseUiCopy(value.ui);
   if (ui === null) return issue("invalid_value", "$.ui");
+  const recordsApi =
+    value.recordsApi === undefined
+      ? undefined
+      : typeof value.recordsApi === "string" && value.recordsApi.length > 0
+        ? value.recordsApi
+        : null;
+  if (recordsApi === null) return issue("invalid_value", "$.recordsApi");
 
   return {
     success: true,
@@ -650,7 +657,8 @@ export function validateRunnerConfig(
       assets,
       ui,
       narrativeMode: true,
-      narrative: { epochs: story.epochs, facts: [] }
+      narrative: { epochs: story.epochs, facts: [] },
+      ...(recordsApi !== undefined ? { recordsApi } : {})
     }
   };
 }

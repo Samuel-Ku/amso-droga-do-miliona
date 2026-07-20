@@ -18,22 +18,22 @@ function validConfig(): Record<string, unknown> {
 }
 
 describe("runner config v5 story validation", () => {
-  it("uses the Gwarancja 48 M name consistently in player-facing config copy", () => {
+  it("uses the Gwarancja AMSO Care name consistently in player-facing config copy", () => {
     const visibleCopy = JSON.stringify(productionConfig);
 
     expect(visibleCopy).not.toMatch(/OCHRONA|Ochrona/u);
-    expect(productionConfig.ui?.powerupWarranty).toMatch(/^GWARANCJA 48 M\b/u);
-    expect(visibleCopy).toContain("GWARANCJA 48 M");
+    expect(productionConfig.ui?.powerupWarranty).toMatch(/^GWARANCJA AMSO CARE\b/u);
+    expect(visibleCopy).toContain("GWARANCJA AMSO CARE");
   });
 
   it("documents both keyboard pairs in the configurable tutorial copy", () => {
     expect(productionConfig.ui?.tutorialJump).toMatch(/W.*↑.*Spacj/u);
     expect(productionConfig.ui?.tutorialSlide).toMatch(/S.*↓/u);
     expect(productionConfig.ui?.controlsHud).toBe("Skok: W/↑/Spacja/tap · Ślizg: S/↓");
-    expect(productionConfig.ui?.powerupWarrantyHud).toBe("GWARANCJA 48 M ×1");
-    expect(productionConfig.ui?.warrantyConsumed).toContain("GWARANCJA 48 M");
+    expect(productionConfig.ui?.powerupWarrantyHud).toBe("GWARANCJA AMSO CARE ×1");
+    expect(productionConfig.ui?.warrantyConsumed).toContain("GWARANCJA AMSO CARE");
     expect(productionConfig.ui?.parcelWarrantyLine1).toBe("GWARANCJA");
-    expect(productionConfig.ui?.parcelWarrantyLine2).toBe("48 M");
+    expect(productionConfig.ui?.parcelWarrantyLine2).toBe("AMSO CARE");
     expect(productionConfig.ui?.parcelSecondLifeLine1).toBe("2×");
     expect(productionConfig.ui?.parcelSecondLifeLine2).toBe("PUNKTY");
   });
@@ -159,7 +159,7 @@ describe("runner config v5 story validation", () => {
     expect(result.data.story.readingSpeedMultiplier).toBe(0.3);
     expect(result.data.story.speedStartMultiplier).toBe(0.95);
     expect(result.data.story.speedMaxMultiplier).toBe(1.85);
-    expect(result.data.story.resumeCountdownSeconds).toBe(3);
+    expect(result.data.story.resumeCountdownSeconds).toBe(2);
     expect(result.data.story.scenes).toHaveLength(11);
     expect(result.data.story.scenes[0]?.id).toBe("story.first_package");
     expect(result.data.story.scenes.at(-1)?.id).toBe("story.challenge_handoff");
@@ -250,12 +250,18 @@ describe("runner config v5 story validation", () => {
     expect(parseRunnerConfig(tuned)).not.toBeNull();
   });
 
-  it("requires the complete three-second return-to-game countdown", () => {
-    for (const invalidCountdown of [2, 5]) {
+  it("requires the two-or-three-second return-to-game countdown", () => {
+    for (const invalidCountdown of [1, 4, 5]) {
       const config = validConfig();
       (config.story as Record<string, unknown>).resumeCountdownSeconds = invalidCountdown;
 
       expect(parseRunnerConfig(config)).toBeNull();
+    }
+    for (const validCountdown of [2, 3]) {
+      const config = validConfig();
+      (config.story as Record<string, unknown>).resumeCountdownSeconds = validCountdown;
+
+      expect(parseRunnerConfig(config)).not.toBeNull();
     }
   });
 

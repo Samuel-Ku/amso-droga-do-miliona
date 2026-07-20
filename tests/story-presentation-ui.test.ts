@@ -90,7 +90,7 @@ describe("player-paced story presentation", () => {
   it("formats carried powers compactly for the persistent HUD", () => {
     expect(formatPowerUpHud([])).toBe("");
     expect(formatPowerUpHud(["podwojny_wynik", "gwarancja_48"]))
-      .toBe("×2 WYNIK · GWARANCJA 48 M ×1");
+      .toBe("×2 WYNIK · GWARANCJA AMSO CARE ×1");
     expect(formatPowerUpHud(["podwojny_wynik"], [{
       kind: "podwojny_wynik",
       remainingSeconds: 6.2

@@ -42,7 +42,9 @@ describe("PlayerProfileStore", () => {
       challengeRuns: 0,
       challengeRecordRuns: 0,
       soundMuted: false,
-      fullscreenPreference: null
+      fullscreenPreference: null,
+      playerName: null,
+      submittedBestScore: 0
     });
     expect(store.snapshot).not.toHaveProperty("storyCheckpoint");
     expect(store.availableModes).toEqual(["story"]);
@@ -79,7 +81,9 @@ describe("PlayerProfileStore", () => {
       challengeRuns: 0,
       challengeRecordRuns: 0,
       soundMuted: true,
-      fullscreenPreference: null
+      fullscreenPreference: null,
+      playerName: null,
+      submittedBestScore: 0
     });
   });
 

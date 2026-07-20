@@ -134,7 +134,11 @@ describe("player-paced story timeline", () => {
     timeline.advance(0.01);
     expect(timeline.snapshot.state).toBe("countdown");
     expect(timeline.snapshot.countdownValue).toBe(3);
-    expect(timeline.snapshot.controlsEnabled).toBe(false);
+    expect(timeline.snapshot.controlsEnabled).toBe(true);
+    expect(timeline.snapshot.trustCorridor).toBe(false);
+    expect(timeline.snapshot.safety).toEqual({
+      kind: "active_play", hazardsEnabled: true, pickupsEnabled: true, controlsEnabled: true
+    });
     timeline.advance(1.01);
     expect(timeline.snapshot.countdownValue).toBe(2);
     timeline.advance(1);
@@ -223,7 +227,7 @@ describe("player-paced story timeline", () => {
 
     expect(playSteps).toBe(6);
     expect(powerUpDebuts).toBe(3);
-    expect(conservativeRuntimeSeconds).toBeCloseTo(326.72, 2);
+    expect(conservativeRuntimeSeconds).toBeCloseTo(319.4, 2);
     expect(conservativeRuntimeSeconds).toBeLessThanOrEqual(330);
   });
 });

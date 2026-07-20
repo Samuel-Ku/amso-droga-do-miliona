@@ -11,6 +11,7 @@
     "challengeLabel": "Gramy dalej — tryb wyzwania",
     "path": "/milion"
   },
+  "recordsApi": "https://droga-do-miliona-records.s-kutsenko.workers.dev/api/records",
   "ui": {
     "brandEdition": "Droga do Miliona",
     "soundOn": "Wycisz",
@@ -59,7 +60,7 @@
     "challengeResultTitle": "Koniec próby",
     "resultBest": "Rekord",
     "resultDistance": "Przebyta droga",
-    "resultWarranty": "Gwarancja 48 M uratowała bieg",
+    "resultWarranty": "Gwarancja AMSO Care uratowała bieg",
     "retryChallenge": "Spróbuj jeszcze raz",
     "shareResult": "Udostępnij wynik",
     "shareLead": "Wybierz, gdzie chcesz udostępnić kartę wyniku.",
@@ -81,15 +82,15 @@
     "tutorialJump": "Naciśnij W, ↑, Spację lub tapnij, żeby skoczyć.",
     "tutorialSlide": "Naciśnij S, ↓ lub przesuń palcem w dół, żeby zrobić ślizg.",
     "controlsHud": "Skok: W/↑/Spacja/tap · Ślizg: S/↓",
-    "powerupWarrantyHud": "GWARANCJA 48 M ×1",
-    "warrantyConsumed": "GWARANCJA 48 M zadziałała — próba trwa dalej.",
+    "powerupWarrantyHud": "GWARANCJA AMSO CARE ×1",
+    "warrantyConsumed": "GWARANCJA AMSO CARE zadziałała — próba trwa dalej.",
     "parcelWarrantyLine1": "GWARANCJA",
-    "parcelWarrantyLine2": "48 M",
+    "parcelWarrantyLine2": "AMSO CARE",
     "parcelSecondLifeLine1": "2×",
     "parcelSecondLifeLine2": "PUNKTY",
     "corridorResume": "Biegniemy dalej.",
     "powerupSecondLife": "2× WYNIK — punkty za każde zamówienie liczą się podwójnie.",
-    "powerupWarranty": "GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania.",
+    "powerupWarranty": "GWARANCJA AMSO CARE — uratuje jedną próbę w Trybie Wyzwania.",
     "logisticWarning": "Uwaga: fala logistyczna",
     "logisticReward": "Fala opanowana — zamówienia są zrealizowane."
   },
@@ -184,7 +185,7 @@
     "readingSpeedMultiplier": 0.3,
     "speedStartMultiplier": 0.95,
     "speedMaxMultiplier": 1.85,
-    "resumeCountdownSeconds": 3,
+    "resumeCountdownSeconds": 2,
     "firstCompletionBonusScore": 10000,
     "scenes": [
       {
@@ -255,18 +256,18 @@
           { "id": "two-goals", "title": "Dwanaście prób prowadzi do miliona.", "body": ["Zrealizuj 30 zamówień w dwunastu kombinacjach skoku oraz ślizgu. W fabule nie ma game over: pominięte zamówienia wracają bez przeszkód."], "continueLabel": "Rozpocznij finał", "safe": true, "fact": "Próg Miliona wymaga 30 zamówień i dwunastu kombinacji bez game over w fabule.", "action": "HUD pokazuje jeden licznik zamówień rosnący z każdym zebranym urządzeniem lub paczką.", "finalFrame": "Licznik zamówień jest widoczny nad bezpiecznym początkiem finałowej trasy." }
         ]
       },
-      {
-        "id": "story.million_finale", "chapter": "finale", "eyebrow": "Nasza historia", "title": "1 000 000 zamówień.",
-        "body": ["Do miliona dotarliśmy razem z ludźmi, którzy potrzebowali sprzętu do swoich planów."], "vignette": "million-package", "continueLabel": "Zobacz, co dalej", "perspective": "amso",
+       {
+        "id": "story.million_finale", "chapter": "finale", "eyebrow": "Nasza historia", "title": "BRAWO! Wspólnie przygotowaliśmy aż MILION paczek!",
+        "body": ["Dziękujemy!", "Graj dalej i pobijaj kolejne rekordy. Jedno potknięcie kończy Twoją grę."], "vignette": "million-package", "continueLabel": "Zobacz, co dalej", "perspective": "amso",
         "steps": [
-          { "id": "million-celebration", "title": "Milion zamówień. Milion ludzkich planów.", "body": ["Pierwszą paczkę przygotowaliśmy sami. Milionową świętujemy z zespołem i klientami, bo każda część tej drogi prowadziła do czyjegoś planu."], "continueLabel": "Zobacz, co dalej", "safe": true, "fact": "AMSO osiągnęło milion zrealizowanych zamówień.", "action": "Licznik przechodzi na 1 000 000, a zespół AMSO otacza milionową paczkę.", "finalFrame": "Świąteczny znak 1 000 000, milionowa paczka i zespół AMSO tworzą jeden centralny kadr." }
+          { "id": "million-celebration", "title": "BRAWO! Wspólnie przygotowaliśmy aż MILION paczek!", "body": ["Dziękujemy!", "Graj dalej i pobijaj kolejne rekordy. Jedno potknięcie kończy Twoją grę."], "continueLabel": "Zobacz, co dalej", "safe": true, "fact": "AMSO osiągnęło milion zrealizowanych zamówień.", "action": "Licznik przechodzi na 1 000 000, a zespół AMSO otacza milionową paczkę.", "finalFrame": "Świąteczny znak 1 000 000, milionowa paczka i zespół AMSO tworzą jeden centralny kadr." }
         ]
       },
       {
         "id": "story.challenge_handoff", "chapter": "finale", "eyebrow": "TRYB WYZWANIA", "title": "Wynik zostaje. Zasady się zmieniają.",
         "body": ["Płynnie przechodzisz z historii do Trybu Wyzwania."], "vignette": "thank-you", "continueLabel": "Podejmuję wyzwanie", "perspective": "challenge",
         "steps": [
-          { "id": "rules-change", "title": "Wynik zostaje. Zasady się zmieniają.", "body": ["Zachowujesz punkty, zamówienia i aktywne bonusy. Teraz tempo rośnie, a pierwsze niezabezpieczone zderzenie kończy bieg. Gwarancja 48 M może uratować próbę raz."], "continueLabel": "Podejmuję wyzwanie", "safe": true, "fact": "Po fabule wynik pozostaje, a challenge kończy pierwsze niezabezpieczone zderzenie.", "action": "Panel zachowanego wyniku przesuwa się obok znaku TRYB WYZWANIA i tarczy Gwarancji 48 M.", "finalFrame": "Zachowany wynik, nowe zasady i aktywna Gwarancja 48 M są opisane przed odliczaniem 3–2–1." }
+          { "id": "rules-change", "title": "Wynik zostaje. Zasady się zmieniają.", "body": ["Zachowujesz punkty, zamówienia i aktywne bonusy. Teraz tempo rośnie, a pierwsze potknięcie kończy Twój bieg. Gwarancja AMSO Care może uratować Cię tylko raz."], "continueLabel": "Podejmuję wyzwanie", "safe": true, "fact": "Po fabule wynik pozostaje, a challenge kończy pierwsze niezabezpieczone zderzenie.", "action": "Panel zachowanego wyniku przesuwa się obok znaku TRYB WYZWANIA i tarczy Gwarancji AMSO Care.", "finalFrame": "Zachowany wynik, nowe zasady i aktywna Gwarancja AMSO Care są opisane przed odliczaniem 3–2–1." }
         ]
       }
     ],
@@ -302,7 +303,7 @@
       "to": "challenge",
       "safe": true,
       "confirmationRequired": true,
-      "resumeCountdownSeconds": 3
+      "resumeCountdownSeconds": 2
     },
     "millionThreshold": {
       "counterStart": 999950,

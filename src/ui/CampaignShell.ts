@@ -15,6 +15,10 @@ import {
   StoryContinuationGate,
   type CampaignStorySceneInput
 } from "./story-presentation";
+import { RecordBoard } from "./record-board";
+import { NamePrompt } from "./name-prompt";
+import { RecordsClient } from "../records-client";
+import type { PlayerProfileStore } from "../profile";
 
 export type { CampaignStoryScene, CampaignStorySceneInput } from "./story-presentation";
 
@@ -110,10 +114,10 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   challengeResultTitle: "Koniec próby",
   resultBest: "Rekord",
   resultDistance: "Przebyta droga",
-  resultWarranty: "Gwarancja 48 M uratowała bieg",
-  powerupWarranty: "GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania.",
-  powerupWarrantyHud: "GWARANCJA 48 M ×1",
-  warrantyConsumed: "GWARANCJA 48 M zadziałała — próba trwa dalej.",
+  resultWarranty: "Gwarancja AMSO Care uratowała bieg",
+  powerupWarranty: "GWARANCJA AMSO CARE — uratuje jedną próbę w Trybie Wyzwania.",
+  powerupWarrantyHud: "GWARANCJA AMSO CARE ×1",
+  warrantyConsumed: "GWARANCJA AMSO CARE zadziałała — próba trwa dalej.",
   controlsHud: "Skok: W/↑/Spacja/tap · Ślizg: S/↓",
   retryChallenge: "Spróbuj jeszcze raz",
   shareResult: "Udostępnij wynik",
@@ -159,6 +163,8 @@ export interface CampaignShellOptions {
   campaignUrl?: string;
   fullStoryUrl?: string;
   copy?: Partial<CampaignShellCopy>;
+  recordsClient?: RecordsClient;
+  profile?: PlayerProfileStore;
 }
 
 export interface CampaignShareCardOptions {
@@ -506,6 +512,11 @@ export class CampaignShell {
   private readonly sharePanel: HTMLElement;
   private readonly shareStatus: HTMLElement;
   private readonly tooNarrow: HTMLElement;
+  private readonly recordsClient: RecordsClient | null;
+  private readonly profile: PlayerProfileStore | null;
+  private readonly landingRecords: RecordBoard | null;
+  private readonly resultRecords: RecordBoard | null;
+  private readonly namePrompt: NamePrompt | null;
   private readonly canonicalUrl: string;
   private readonly campaignUrl: string;
   private readonly fullStoryUrl: string;
@@ -604,6 +615,7 @@ export class CampaignShell {
                 </div>
               </details>
               <div class="amso-campaign__landing-actions" data-campaign-landing-actions></div>
+              <div class="amso-campaign__landing-records" data-campaign-landing-records></div>
             </div>
             <div class="amso-campaign__landing-art" aria-hidden="true">
               <img class="amso-campaign__main-lockup" src="${MAIN_LOCKUP_PATH}" alt="" width="1600" height="1460" />
@@ -665,7 +677,7 @@ export class CampaignShell {
               <div class="amso-campaign__pause-bonuses" aria-label="Bonusy">
                 <strong>Bonusy</strong>
                 <span><b>×2 WYNIK</b> — przez 7 s podwaja punkty za zamówienia.</span>
-                <span data-campaign-copy="powerupWarranty">GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania.</span>
+                 <span data-campaign-copy="powerupWarranty">GWARANCJA AMSO CARE — uratuje jedną próbę w Trybie Wyzwania.</span>
               </div>
               <div class="amso-campaign__actions">
                 <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-resume data-campaign-copy="resume">Wznów</button>
@@ -704,7 +716,7 @@ export class CampaignShell {
                 <span><small>Wynik wyzwania</small> <strong data-campaign-challenge-score>0</strong></span>
                 <span><small data-campaign-challenge-best-label>Twój rekord wyzwania</small> <strong data-campaign-challenge-best>0</strong></span>
                 <span><small data-campaign-copy="resultDistance">Przebyta droga</small> <strong><i data-campaign-challenge-distance>0</i> m</strong></span>
-                <span data-campaign-challenge-saves-stat><small data-campaign-copy="resultWarranty">Gwarancja 48 M uratowała bieg</small> <strong data-campaign-challenge-saves>0</strong></span>
+                <span data-campaign-challenge-saves-stat><small data-campaign-copy="resultWarranty">Gwarancja AMSO Care uratowała bieg</small> <strong data-campaign-challenge-saves>0</strong></span>
               </div>
               <div class="amso-campaign__actions">
                 <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-restart-challenge data-campaign-copy="retryChallenge">Spróbuj jeszcze raz</button>
@@ -712,6 +724,7 @@ export class CampaignShell {
                 <button class="amso-campaign__text-link" type="button" data-campaign-restart-story data-campaign-copy="replayStory">Przejdź historię ponownie</button>
                 <a class="amso-campaign__text-link" data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
               </div>
+              <div class="amso-campaign__result-records" data-campaign-result-records></div>
               <div class="amso-campaign__share-panel" data-campaign-share-panel hidden>
                 <img class="amso-campaign__share-lockup" src="${COMPACT_LOCKUP_PATH}" alt="" width="1600" height="924" />
                 <p><strong data-campaign-copy="shareTurn">Teraz Twoja kolej.</strong> <span data-campaign-copy="shareLead">Wybierz, gdzie chcesz udostępnić kartę wyniku.</span></p>
@@ -812,6 +825,19 @@ export class CampaignShell {
     this.sharePanel = requiredElement(this.root, "[data-campaign-share-panel]");
     this.shareStatus = requiredElement(this.root, "[data-campaign-share-status]");
     this.tooNarrow = requiredElement(this.root, "[data-campaign-too-narrow]");
+    this.recordsClient = options.recordsClient ?? null;
+    this.profile = options.profile ?? null;
+    if (this.recordsClient) {
+      const landingHost = this.root.querySelector<HTMLElement>("[data-campaign-landing-records]");
+      const resultHost = this.root.querySelector<HTMLElement>("[data-campaign-result-records]");
+      this.landingRecords = landingHost ? new RecordBoard(landingHost, this.recordsClient) : null;
+      this.resultRecords = resultHost ? new RecordBoard(resultHost, this.recordsClient) : null;
+      this.namePrompt = new NamePrompt(this.root);
+    } else {
+      this.landingRecords = null;
+      this.resultRecords = null;
+      this.namePrompt = null;
+    }
     this.presentationBackground = [
       requiredElement(this.root, ".amso-campaign__header"),
       requiredElement(this.root, ".amso-campaign__footer")
@@ -846,6 +872,11 @@ export class CampaignShell {
     this.canvas.tabIndex = -1;
     this.landingActions.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
     this.announce("Gra gotowa. Wybierz swoją drogę.");
+    void this.refreshLandingRecords();
+  }
+
+  private refreshLandingRecords(): void {
+    if (this.landingRecords) void this.landingRecords.refresh();
   }
 
   public showLoading(progress?: number, label?: string): void {
@@ -1183,6 +1214,37 @@ export class CampaignShell {
       `Wynik wyzwania: ${formatInteger(result.challengeScore)}. ` +
       `${this.copy.resultPackages}: ${formatInteger(result.orders)}.`
     );
+    void this.syncChallengeRecord(result.challengeScore, result.orders);
+  }
+
+  private async syncChallengeRecord(challengeScore: number, orders: number): Promise<void> {
+    if (!this.recordsClient || !this.profile || !this.resultRecords || !this.namePrompt) return;
+    const score = Math.round(challengeScore);
+    const needsName = this.profile.playerName === null;
+    const beatsBest = score > this.profile.submittedBestScore;
+
+    if (needsName && beatsBest) {
+      const answer = await this.namePrompt.ask("");
+      if (answer.skipped) {
+        // Player declined: still show the board without their entry.
+        await this.resultRecords.refresh();
+        return;
+      }
+      this.profile.setPlayerName(answer.name);
+    }
+
+    try {
+      const { board, submitted } = await this.recordsClient.submitIfBest(
+        this.profile,
+        score,
+        orders
+      );
+      this.resultRecords.setHighlight(this.profile.playerName);
+      this.resultRecords.renderFrom(board);
+      if (submitted) this.announce("Wpisano Cię na tablicę rekordów!");
+    } catch {
+      await this.resultRecords.refresh();
+    }
   }
 
   public setMuted(muted: boolean, notify = true): void {

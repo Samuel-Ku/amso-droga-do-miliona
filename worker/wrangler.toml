@@ -1,0 +1,9 @@
+name = "droga-do-miliona-records"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+# Bind an R2 bucket named "DROGA_RECORDS" in the Cloudflare dashboard,
+# or set it via: `wrangler r2 bucket create droga-records`
+[[r2_buckets]]
+binding = "RECORDS"
+bucket_name = "droga-records"

@@ -10,11 +10,11 @@ import { createRunnerModel } from "../src/game/physics";
 import { readFileSync } from "node:fs";
 
 describe("courier presentation", () => {
-  it("keeps the running gait between two and four cycles per second", () => {
-    expect(runnerStrideCyclesPerSecond(280)).toBe(2);
-    expect(runnerStrideCyclesPerSecond(630)).toBe(3);
-    expect(runnerStrideCyclesPerSecond(980)).toBe(4);
-    expect(runnerStrideCyclesPerSecond(2_000)).toBe(4);
+  it("keeps the running gait between twelve and fifteen cycles per second", () => {
+    expect(runnerStrideCyclesPerSecond(280)).toBe(12);
+    expect(runnerStrideCyclesPerSecond(630)).toBeCloseTo(13.5, 1);
+    expect(runnerStrideCyclesPerSecond(980)).toBe(15);
+    expect(runnerStrideCyclesPerSecond(2_000)).toBe(15);
   });
 
   it("shows one energy bubble only while protection is active", () => {

@@ -419,8 +419,11 @@ describe("campaign collision contract", () => {
     expect(challengeSnapshot?.score).toBeGreaterThanOrEqual(config.story.firstCompletionBonusScore);
     expect(challengeSnapshot?.challengeScore).toBe(0);
     expect(challengeSnapshot?.challengeOrdersCollected).toBe(0);
-    expect(harness.snapshots.some(({ authoredWave }) =>
-      authoredWave?.microlevelId === "million-threshold" && authoredWave.completed
+    expect(harness.snapshots.some(({ millionCounterValue }) =>
+      millionCounterValue === 1_000_000
+    )).toBe(true);
+    expect(harness.snapshots.some(({ visualStateId }) =>
+      visualStateId === "story.million_finale"
     )).toBe(true);
     expect(harness.snapshots.some(({ powerUpDemoRemaining }) => powerUpDemoRemaining > 0))
       .toBe(true);
@@ -598,9 +601,18 @@ describe("campaign collision contract", () => {
     expect(harness.snapshots.at(-1)?.bossPhase).toBe("inactive");
     expect(harness.snapshots.at(-1)?.authoredWave?.waveTarget).toBe(12);
     harness.advance(80, harness.avoidObstacles);
-    expect(harness.snapshots.some(({ authoredWave }) =>
-      authoredWave?.microlevelId === "million-threshold" && authoredWave.completed
-    )).toBe(true);
+    // The finale triggers as soon as the million counter reaches 1 000 000,
+    // independent of the twelve-combination goal, which stays a tracked bonus.
+    const finaleReached = harness.snapshots.some(({ millionCounterValue }) =>
+      millionCounterValue === 1_000_000);
+    expect(finaleReached).toBe(true);
+    // Continue through the finale scenes to reach the challenge handoff.
+    for (let guard = 0; guard < 60 && harness.snapshots.at(-1)?.mode === "story"; guard += 1) {
+      const story = harness.storyUpdates.at(-1);
+      if (story?.state === "scene" && story.scene) harness.game.continueStoryScene(story.scene.id);
+      else harness.advance(1, harness.avoidObstacles);
+    }
+    expect(harness.snapshots.at(-1)?.mode).toBe("challenge");
     harness.game.destroy();
   });
 });

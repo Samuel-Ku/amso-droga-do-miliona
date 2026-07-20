@@ -782,7 +782,7 @@ const POWER_UP_COLORS: Readonly<Record<PowerUpKind, string>> = {
 // Fail-safe labels for direct RunnerGame embeds. Campaign builds pass the
 // marketing-owned equivalents from runner-config.json through RenderScene.
 const DEFAULT_POWER_UP_COPY: Readonly<Record<PowerUpKind, readonly [string, string]>> = {
-  gwarancja_48: ["GWARANCJA", "48 M"],
+  gwarancja_48: ["GWARANCJA", "AMSO CARE"],
   podwojny_wynik: ["2×", "PUNKTY"]
 };
 

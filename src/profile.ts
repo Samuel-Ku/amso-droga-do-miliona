@@ -1,4 +1,5 @@
 export type GameMode = "story" | "challenge";
+export type { RecordBoardEntry } from "./shared/types";
 
 export interface PlayerProfile {
   schemaVersion: 5;
@@ -10,6 +11,10 @@ export interface PlayerProfile {
   challengeRecordRuns: number;
   soundMuted: boolean;
   fullscreenPreference: "fullscreen" | "portrait" | null;
+  /** Player-chosen display name for the records board; asked once. */
+  playerName: string | null;
+  /** Best challenge score we have already submitted to the board. */
+  submittedBestScore: number;
 }
 
 const STORAGE_KEY = "amso_milion_runner_profile";
@@ -24,7 +29,9 @@ function emptyProfile(): PlayerProfile {
     challengeRuns: 0,
     challengeRecordRuns: 0,
     soundMuted: false,
-    fullscreenPreference: null
+    fullscreenPreference: null,
+    playerName: null,
+    submittedBestScore: 0
   };
 }
 
@@ -83,7 +90,12 @@ export class PlayerProfileStore {
           ? Math.round(safeNonNegativeNumber(parsed.challengeRecordRuns))
           : 0,
         soundMuted: parsed.soundMuted === true,
-        fullscreenPreference
+        fullscreenPreference,
+        playerName:
+          typeof parsed.playerName === "string" && parsed.playerName.length > 0
+            ? parsed.playerName.slice(0, 24)
+            : null,
+        submittedBestScore: Math.round(safeNonNegativeNumber(parsed.submittedBestScore))
       };
     } catch {
       return emptyProfile();
@@ -133,6 +145,28 @@ export class PlayerProfileStore {
 
   public setFullscreenPreference(preference: "fullscreen" | "portrait"): void {
     this.profile.fullscreenPreference = preference;
+    this.write();
+  }
+
+  public get playerName(): string | null {
+    return this.profile.playerName;
+  }
+
+  public setPlayerName(name: string | null): void {
+    this.profile.playerName =
+      name && name.length > 0 ? name.slice(0, 24) : null;
+    this.write();
+  }
+
+  public get submittedBestScore(): number {
+    return this.profile.submittedBestScore;
+  }
+
+  public markSubmitted(score: number): void {
+    this.profile.submittedBestScore = Math.max(
+      this.profile.submittedBestScore,
+      Math.round(safeNonNegativeNumber(score))
+    );
     this.write();
   }
 }

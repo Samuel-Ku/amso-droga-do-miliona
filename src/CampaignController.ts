@@ -20,6 +20,7 @@ import type {
 import { RunnerGame } from "./game/RunnerGame";
 import type { StoryTimelineSnapshot } from "./game/story-timeline";
 import { PlayerProfileStore } from "./profile";
+import { RecordsClient } from "./records-client";
 import { QaSessionReportCollector } from "./qa/session-report";
 import type { RunnerConfig } from "./shared/types";
 import {
@@ -99,6 +100,7 @@ export function authoredAudioFeedback(snapshot: Readonly<GameSnapshot>): {
 
 export class CampaignController {
   private readonly profile: PlayerProfileStore;
+  private readonly recordsClient: RecordsClient;
   private readonly tracker: DataLayerTracker;
   private readonly shell: CampaignShell;
   private readonly audio: CampaignAudio;
@@ -124,6 +126,7 @@ export class CampaignController {
     assetLoader = new AssetBundleLoader(config.assets.bundles)
   ) {
     this.profile = profile;
+    this.recordsClient = new RecordsClient(config.recordsApi ?? "/api/records");
     this.tracker = new DataLayerTracker({
       gameVersion: config.gameVersion,
       consentGranted: hasAnalyticsConsent
@@ -166,6 +169,8 @@ export class CampaignController {
     }, {
       campaignUrl: config.cta.path,
       fullStoryUrl: config.cta.path,
+      recordsClient: this.recordsClient,
+      profile: this.profile,
       copy: {
         ...config.ui,
         startChallenge: config.cta.challengeLabel,
@@ -245,7 +250,7 @@ export class CampaignController {
         powerUpCopy: {
           gwarancja_48: [
             this.uiCopy("parcelWarrantyLine1", "GWARANCJA"),
-            this.uiCopy("parcelWarrantyLine2", "48 M")
+            this.uiCopy("parcelWarrantyLine2", "AMSO CARE")
           ],
           podwojny_wynik: [
             this.uiCopy("parcelSecondLifeLine1", "2×"),
@@ -299,7 +304,7 @@ export class CampaignController {
           podwojny_wynik: "2× WYNIK — punkty za każde zamówienie liczą się podwójnie.",
           gwarancja_48: this.uiCopy(
             "powerupWarranty",
-            "GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania."
+            "GWARANCJA AMSO CARE — uratuje jedną próbę w Trybie Wyzwania."
           )
         } as const;
         this.shell.showPickupNotice(copy[kind]);
@@ -349,7 +354,7 @@ export class CampaignController {
       if (snapshot.warrantySaves > previous.warrantySaves) {
         this.shell.showPickupNotice(this.uiCopy(
           "warrantyConsumed",
-          "GWARANCJA 48 M zadziałała — próba trwa dalej."
+          "GWARANCJA AMSO CARE zadziałała — próba trwa dalej."
         ));
       }
       const activatedPowerUp = snapshot.activePowerUps.find(

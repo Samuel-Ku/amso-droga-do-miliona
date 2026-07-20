@@ -10,6 +10,13 @@ export interface RunnerFact {
 }
 
 export type PackageType = "notebook" | "telefon" | "pc" | "lcd";
+
+export interface RecordBoardEntry {
+  name: string;
+  challengeScore: number;
+  orders: number;
+  updatedAt: number;
+}
 /** Visual form of one ordinary order. Physical facts still use PackageType. */
 export type OrderVisualType = PackageType | "parcel";
 export type CollectibleClass = "parcel" | "equipment";
@@ -151,7 +158,7 @@ export interface StoryModeHandoffConfig {
   to: "challenge";
   safe: true;
   confirmationRequired: true;
-  resumeCountdownSeconds: 3;
+  resumeCountdownSeconds: number;
 }
 
 export interface MillionThresholdConfig {
@@ -258,6 +265,9 @@ export interface RunnerConfig {
   discountCode?: DiscountCodeConfig;
   /** Narrative campaign definition (epochs + triggered facts). */
   narrative?: NarrativeConfig;
+  /** Absolute URL of the records board API. Defaults to relative "/api/records"
+   *  (same-origin Worker route). Set this when the API lives on another origin. */
+  recordsApi?: string;
 }
 
 export interface RunnerOpenOptions {
