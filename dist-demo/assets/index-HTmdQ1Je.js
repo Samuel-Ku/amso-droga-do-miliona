@@ -125,7 +125,7 @@
                 </div>
               </details>
               <div class="amso-campaign__landing-actions" data-campaign-landing-actions></div>
-              <div class="amso-campaign__landing-records" data-campaign-landing-records></div>
+              <div data-campaign-landing-records></div>
             </div>
             <div class="amso-campaign__landing-art" aria-hidden="true">
               <img class="amso-campaign__main-lockup" src="${fo}" alt="" width="1600" height="1460" />
@@ -234,7 +234,7 @@
                 <button class="amso-campaign__text-link" type="button" data-campaign-restart-story data-campaign-copy="replayStory">Przejdź historię ponownie</button>
                 <a class="amso-campaign__text-link" data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
               </div>
-              <div class="amso-campaign__result-records" data-campaign-result-records></div>
+              <div data-campaign-result-records></div>
               <div class="amso-campaign__share-panel" data-campaign-share-panel hidden>
                 <img class="amso-campaign__share-lockup" src="${po}" alt="" width="1600" height="924" />
                 <p><strong data-campaign-copy="shareTurn">Teraz Twoja kolej.</strong> <span data-campaign-copy="shareLead">Wybierz, gdzie chcesz udostępnić kartę wyniku.</span></p>
@@ -308,4 +308,4 @@
       </div>
     </section>
   `}
-//# sourceMappingURL=index-Dda8Ke_-.js.map
+//# sourceMappingURL=index-HTmdQ1Je.js.map
