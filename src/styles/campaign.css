@@ -2386,23 +2386,23 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   }
 }
 
-/* ---- Records dashboard ---- */
-.amso-campaign__landing-records,
-.amso-campaign__result-records {
-  margin-top: 1.25rem;
-}
+ /* ---- Records dashboard ---- */
+ .amso-campaign__landing-records,
+ .amso-campaign__result-records {
+   box-sizing: border-box;
+   width: 100%;
+   max-width: 30rem;
+   margin: 1.25rem auto 0;
+ }
 
-.amso-records {
-  background: color-mix(in srgb, CanvasText 6%, transparent);
-  border: 1px solid color-mix(in srgb, CanvasText 14%, transparent);
-  border-radius: 14px;
-  padding: 0.9rem 1rem 1.1rem;
-  max-width: 30rem;
-}
-
-.amso-campaign__landing-records .amso-records {
-  margin-inline: auto;
-}
+ .amso-records {
+   box-sizing: border-box;
+   width: 100%;
+   background: color-mix(in srgb, CanvasText 6%, transparent);
+   border: 1px solid color-mix(in srgb, CanvasText 14%, transparent);
+   border-radius: 14px;
+   padding: 0.9rem 1rem 1.1rem;
+ }
 
 .amso-records__title {
   margin: 0 0 0.6rem;
