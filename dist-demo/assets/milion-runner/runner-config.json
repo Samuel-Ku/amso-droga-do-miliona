@@ -1,0 +1,325 @@
+{
+  "schemaVersion": 4,
+  "enabled": true,
+  "gameVersion": "4.0.0",
+  "claim": "1 000 000 zamówień",
+  "modulePath": "/assets/milion-runner/runner.js",
+  "stylePath": "/assets/milion-runner/runner.css",
+  "triggerSelector": "[data-amso-million-runner]",
+  "cta": {
+    "campaignLabel": "Poznaj pełną historię AMSO",
+    "challengeLabel": "Gramy dalej — tryb wyzwania",
+    "path": "/milion"
+  },
+  "ui": {
+    "brandEdition": "Droga do Miliona",
+    "soundOn": "Wycisz",
+    "soundOff": "Włącz dźwięk",
+    "fullscreenEnter": "Pełny ekran",
+    "fullscreenExit": "Wyjdź z pełnego",
+    "hudPackages": "Paczki",
+    "hudScore": "Wynik",
+    "pauseAction": "Pauza",
+    "storyMode": "Droga do Miliona",
+    "challengeMode": "Szybki start — Tryb Wyzwania",
+    "landingEyebrow": "Jubileuszowa historia AMSO",
+    "landingTitle": "AMSO —",
+    "landingTitleAccent": "Droga do Miliona",
+    "landingLead": "Jedna paczka rozpoczęła historię. Przebiegnij z nami drogę do zamówienia nr 1 000 000.",
+    "landingMeta": "Około 6 minut · historia w Twoim tempie · skok i ślizg",
+    "startStory": "Rozpocznij historię",
+    "choosePath": "Wybierz swoją drogę",
+    "replayStory": "Pełna historia i instrukcja",
+    "orientationEyebrow": "Szerszy kadr",
+    "orientationTitle": "Chcesz zobaczyć szerszy kadr?",
+    "orientationBody": "Obróć telefon i włącz pełny ekran. Możesz też grać pionowo.",
+    "orientationFullscreen": "Włącz pełny ekran",
+    "orientationPortrait": "Zostań w pionie",
+    "loading": "Przygotowujemy pierwszą paczkę…",
+    "errorEyebrow": "Trasa chwilowo niedostępна",
+    "errorTitle": "Nie udało się przygotować gry.",
+    "errorBody": "Sprawdź połączenie i spróbuj ponownie.",
+    "retry": "Spróbuj ponownie",
+    "campaignBack": "Wróć na stronę kampanii",
+    "pauseEyebrow": "Bezpieczny przystanek",
+    "pauseTitle": "Gra wstrzymana",
+    "pauseBody": "Twój postęp jest bezpieczny.",
+    "resume": "Wznów",
+    "returnToMenu": "Wróć do menu",
+    "corridorEyebrow": "Bezpieczny odcinek — historia biegnie dalej",
+    "storyResultEyebrow": "Dziękujemy za wspólną drogę",
+    "storyResultTitle": "Twoja Droga do Miliona",
+    "resultPackages": "Zrealizowane zamówienia",
+    "resultScore": "Wynik",
+    "resultCombo": "Najlepsza seria",
+    "storyResultIntro": "Biegnij do pierwszego niezabezpieczonego zderzenia i ustanów rekord.",
+    "startChallenge": "Gramy dalej — tryb wyzwania",
+    "fullStory": "Poznaj pełną historię AMSO",
+    "challengeResultEyebrow": "Próba Miliona",
+    "challengeResultTitle": "Koniec próby",
+    "resultBest": "Rekord",
+    "resultDistance": "Przebyta droga",
+    "resultWarranty": "Gwarancja 48 M uratowała bieg",
+    "retryChallenge": "Spróbuj jeszcze raz",
+    "shareResult": "Udostępnij wynik",
+    "shareLead": "Wybierz, gdzie chcesz udostępnić kartę wyniku.",
+    "shareScoreLabel": "Mój wynik",
+    "shareTurn": "Teraz Twoja kolej.",
+    "sharePublication": "Sprawdź, jak daleko dojdziesz w Drodze do Miliona.",
+    "sharePreparing": "Przygotowujemy kartę wyniku…",
+    "shareReady": "Karta wyniku jest gotowa do udostępnienia.",
+    "shareFacebookReady": "Facebook otwarty. Dołącz pobraną kartę wyniku do posta.",
+    "shareDownloaded": "Zapisaliśmy kartę. Dodaj ją do relacji lub posta.",
+    "shareCancelled": "Udostępnianie anulowane.",
+    "shareFailure": "Nie udało się przygotować karty. Spróbuj ponownie.",
+    "facebook": "Facebook",
+    "instagram": "Instagram",
+    "narrowTitle": "Potrzebujemy trochę więcej miejsca.",
+    "narrowBody": "Obróć urządzenie, żeby rozpocząć grę.",
+    "footerTagline": "AMSO. Sprzęt z przeszłością. Na przyszłość.",
+    "footerCampaign": "Strona kampanii",
+    "tutorialJump": "Naciśnij W, ↑, Spację lub tapnij, żeby skoczyć.",
+    "tutorialSlide": "Naciśnij S, ↓ lub przesuń palcem w dół, żeby zrobić ślizg.",
+    "controlsHud": "Skok: W/↑/Spacja/tap · Ślizg: S/↓",
+    "powerupWarrantyHud": "GWARANCJA 48 M ×1",
+    "warrantyConsumed": "GWARANCJA 48 M zadziałała — próba trwa dalej.",
+    "parcelWarrantyLine1": "GWARANCJA",
+    "parcelWarrantyLine2": "48 M",
+    "parcelSecondLifeLine1": "2×",
+    "parcelSecondLifeLine2": "PUNKTY",
+    "corridorResume": "Biegniemy dalej.",
+    "powerupSecondLife": "2× WYNIK — punkty za każde zamówienie liczą się podwójnie.",
+    "powerupWarranty": "GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania.",
+    "logisticWarning": "Uwaga: fala logistyczna",
+    "logisticReward": "Fala opanowana — zamówienia są zrealizowane."
+  },
+  "assets": {
+    "bundles": [
+      {
+        "id": "common",
+        "resources": [
+          { "id": "courier-animation", "type": "procedural", "source": "procedural:courier-animation", "critical": true },
+          { "id": "courier-run-sheet", "type": "image", "source": "/assets/milion-runner/courier/courier-run-sheet.webp", "critical": true },
+          { "id": "courier-amso-a", "type": "image", "source": "/assets/milion-runner/courier/A.webp", "critical": true },
+          { "id": "courier-crouch", "type": "image", "source": "/assets/milion-runner/courier/courier-crouch-sheet.webp", "critical": true },
+          { "id": "obstacle-box-stack", "type": "image", "source": "/assets/milion-runner/obstacles/box-stack.webp", "critical": true },
+          { "id": "obstacle-pallet", "type": "image", "source": "/assets/milion-runner/obstacles/pallet.webp", "critical": true },
+          { "id": "obstacle-trolley", "type": "image", "source": "/assets/milion-runner/obstacles/trolley.webp", "critical": true },
+          { "id": "obstacle-overhead", "type": "image", "source": "/assets/milion-runner/obstacles/overhead.webp", "critical": true },
+          { "id": "obstacle-overhead-door", "type": "image", "source": "/assets/milion-runner/obstacles/overhead-door.webp", "critical": true },
+          { "id": "obstacle-overhead-conveyor", "type": "image", "source": "/assets/milion-runner/obstacles/overhead-conveyor.webp", "critical": true },
+          { "id": "base-ui", "type": "procedural", "source": "procedural:base-ui", "critical": true },
+          { "id": "first-audio-cues", "type": "procedural", "source": "procedural:first-audio-cues", "critical": true },
+          { "id": "mz-main-lockup-v1", "type": "image", "source": "/assets/milion-runner/brand/mz-main-lockup-v1.avif", "critical": false },
+          { "id": "mz-compact-lockup-v1", "type": "image", "source": "/assets/milion-runner/brand/mz-compact-lockup-v1.avif", "critical": false }
+        ]
+      },
+      {
+        "id": "prologue",
+        "resources": [
+          { "id": "first-package", "type": "procedural", "source": "procedural:first-package", "critical": true },
+          { "id": "manual-label", "type": "procedural", "source": "procedural:manual-label", "critical": true },
+          { "id": "world-first-mile-v2", "type": "image", "source": "/assets/milion-runner/worlds/world-01-first-mile-v2.webp", "critical": false }
+        ]
+      },
+      {
+        "id": "epoch_1",
+        "resources": [
+          { "id": "small-warehouse", "type": "procedural", "source": "procedural:small-warehouse", "critical": true },
+          { "id": "order-backlog", "type": "procedural", "source": "procedural:order-backlog", "critical": true },
+          { "id": "world-order-process-v2", "type": "image", "source": "/assets/milion-runner/worlds/world-02-order-process-v2.webp", "critical": false }
+        ]
+      },
+      {
+        "id": "epoch_2",
+        "resources": [
+          { "id": "quality-service", "type": "procedural", "source": "procedural:quality-service", "critical": true },
+          { "id": "quality-trial", "type": "procedural", "source": "procedural:quality-trial", "critical": true },
+          { "id": "world-quality-service-v2", "type": "image", "source": "/assets/milion-runner/worlds/world-03-quality-service-v2.webp", "critical": false }
+        ]
+      },
+      {
+        "id": "epoch_3",
+        "resources": [
+          { "id": "customer-stories", "type": "procedural", "source": "procedural:customer-stories", "critical": true },
+          { "id": "matching-challenge", "type": "procedural", "source": "procedural:matching-challenge", "critical": true },
+          { "id": "world-client-paths-v2", "type": "image", "source": "/assets/milion-runner/worlds/world-04-client-paths-v2.webp", "critical": false }
+        ]
+      },
+      {
+        "id": "epoch_4",
+        "resources": [
+          { "id": "warehouse-scale", "type": "procedural", "source": "procedural:warehouse-scale", "critical": true },
+          { "id": "order-peak", "type": "procedural", "source": "procedural:order-peak", "critical": true },
+          { "id": "world-scale-logistics-v2", "type": "image", "source": "/assets/milion-runner/worlds/world-05-scale-logistics-v2.webp", "critical": false }
+        ]
+      },
+      {
+        "id": "epoch_5",
+        "resources": [
+          { "id": "million-wave", "type": "procedural", "source": "procedural:million-wave", "critical": true },
+          { "id": "million-threshold", "type": "procedural", "source": "procedural:million-threshold", "critical": true },
+          { "id": "world-million-approach-v2", "type": "image", "source": "/assets/milion-runner/worlds/world-06-million-approach-v2.webp", "critical": false }
+        ]
+      },
+      {
+        "id": "finale",
+        "resources": [
+          { "id": "million-package", "type": "procedural", "source": "procedural:million-package", "critical": true },
+          { "id": "poland-lights", "type": "procedural", "source": "procedural:poland-lights", "critical": true },
+          { "id": "world-million-finale-v2", "type": "image", "source": "/assets/milion-runner/worlds/world-07-million-finale-v2.webp", "critical": false }
+        ]
+      },
+      {
+        "id": "challenge",
+        "resources": [
+          { "id": "contemporary-world", "type": "procedural", "source": "procedural:contemporary-world", "critical": true },
+          { "id": "logistic-waves", "type": "procedural", "source": "procedural:logistic-waves", "critical": true }
+        ]
+      }
+    ]
+  },
+  "story": {
+    "activeDurationSeconds": 285,
+    "readingSpeedMultiplier": 0.3,
+    "speedStartMultiplier": 0.95,
+    "speedMaxMultiplier": 1.85,
+    "resumeCountdownSeconds": 3,
+    "firstCompletionBonusScore": 10000,
+    "scenes": [
+      {
+        "id": "story.first_package", "chapter": "prologue", "eyebrow": "Nasza historia", "title": "Zaczęło się od jednej paczki.",
+        "body": ["Pierwsze zamówienie przygotowaliśmy własnymi rękami. Tak rozpoczęła się droga AMSO."],
+        "vignette": "first-package", "continueLabel": "Dalej", "perspective": "amso",
+        "steps": [
+          { "id": "game-purpose", "title": "To gra o drodze AMSO.", "body": ["Bieg łączy etapy rozwoju firmy z bezpiecznymi kartami historii. Skacz klawiszem W, ↑, Spacją lub dotykiem; ślizgaj się klawiszem S, ↓ lub gestem w dół i realizuj zamówienia aż do miliona."], "continueLabel": "Poznaj początek", "safe": true, "fact": "Gra opowiada prawdziwą drogę AMSO od pierwszej paczki do miliona zamówień.", "action": "Pierwsza paczka rusza przez podgląd kolejnych miejsc: magazynu, stanowiska jakości i licznika.", "finalFrame": "Pierwsza paczka stoi na początku trasy prowadzącej do czytelnego znaku 1 000 000." },
+          { "id": "first-hand-packed", "title": "Pierwszą paczkę przygotowaliśmy sami.", "body": ["Z małego sklepu i magazynu wielkości kawalerki własnymi rękami wysłaliśmy pierwsze zamówienie. Ty poprowadzisz tę drogę aż do miliona."], "continueLabel": "Rozpocznij drogę", "safe": true, "fact": "Pierwsze zamówienie AMSO zostało przygotowane własnymi rękami w małym sklepie i magazynie.", "action": "Pracownik składa karton, wkłada urządzenie, zamyka paczkę i nakleja etykietę.", "finalFrame": "Gotowa pierwsza paczka stoi przy wyjściu z małego magazynu, a zespół AMSO jest obok." }
+        ]
+      },
+      {
+        "id": "story.order_backlog", "chapter": "epoch_1", "eyebrow": "Nasza historia", "title": "Zamówień przybywało szybciej niż miejsca.",
+        "body": ["Mały magazyn wypełniły realne paczki, palety, ręczne etykiety i kolejne zadania."], "vignette": "small-warehouse", "continueLabel": "Rozładuj zator", "perspective": "amso",
+        "steps": [
+          { "id": "backlog-challenge", "title": "Zamówienia zaczęły tworzyć zator.", "body": ["Paczki, ręczne etykiety i zadania wypełniły mały magazyn. Użyj skoku i ślizgu, aby pomóc nam przywrócić płynny przepływ."], "continueLabel": "Rozładuj zator", "safe": true, "fact": "Rosnąca liczba zamówień stworzyła zator w małym magazynie AMSO.", "action": "Kolejne paczki zapełniają stanowisko, paletę i przejście między strefami.", "finalFrame": "Realne kartony i palety tworzą czytelny zator przed stanowiskiem pakowania." }
+        ]
+      },
+      {
+        "id": "story.quality_promise", "chapter": "epoch_2", "eyebrow": "Nasza historia", "title": "Sprzęt z przeszłością. Sprawdzony na przyszłość.",
+        "body": ["Każde urządzenie przygotowujemy, zanim trafi do kolejnej osoby."], "vignette": "tested-device", "continueLabel": "Rozpocznij próbę", "perspective": "amso",
+        "steps": [
+          { "id": "quality-process", "title": "Jakość prowadzi sprzęt dalej.", "body": ["Urządzenie przechodzi przez uruchomienie i przygotowanie. Ukończ Próbę Jakości, aby otrzymało oznaczenie SPRAWDZONY i wróciło do obiegu."], "continueLabel": "Rozpocznij próbę", "safe": true, "fact": "AMSO przygotowuje urządzenie przed wysłaniem go do kolejnego użytkownika.", "action": "Pracownik uruchamia laptop, przygotowuje go, oznacza i pakuje po ukończeniu próby.", "finalFrame": "Laptop z etykietą SPRAWDZONY znajduje się w otwartej paczce gotowej do wysyłki." }
+        ]
+      },
+      {
+        "id": "client.business_start", "chapter": "epoch_3", "eyebrow": "Historia klienta", "title": "Firma zaczynała od jednego potrzebnego narzędzia.",
+        "body": ["Najpierw poznajemy potrzebę i budżet. Rezultat tej historii odsłoni się dopiero po przejściu trzech faz rozwoju."], "vignette": "growing-business", "continueLabel": "Rozpocznij historię klienta", "perspective": "client",
+        "steps": [
+          { "id": "new-business", "title": "Na początku liczył się budżet.", "body": ["Klient dopiero rozpoczynał działalność. Potrzebował pierwszego narzędzia do pracy i przyszedł do AMSO po laptop w budżecie do 400 zł."], "continueLabel": "Rozpocznij trzy fazy", "safe": true, "fact": "Klient rozpoczynający działalność szukał laptopa w budżecie do 400 zł.", "action": "Klient sprawdza portfel i przekazuje pracownikowi kartę z budżetem do 400 zł.", "finalFrame": "Ten sam anonimowy klient siedzi przy pustym biurku obok czytelnej kwoty 400 zł." }
+        ]
+      },
+      {
+        "id": "client.business_growth", "chapter": "epoch_3", "eyebrow": "Historia klienta — rezultat", "title": "Trzy fazy pokazały, jak rosła firma klienta.",
+        "body": ["Po ukończeniu faz: pierwszy laptop, większy zespół i rozwinięte biuro — odsłaniamy potwierdzone rezultaty."], "vignette": "growing-business", "continueLabel": "Poznaj rezultat", "perspective": "client",
+        "steps": [
+          { "id": "three-hundred", "title": "Wybrał laptop za 300 zł.", "body": ["Sprawdzony laptop zmieścił się w budżecie i pozwolił rozpocząć pracę bez nadmiernego obciążania młodej firmy."], "continueLabel": "Dalej", "safe": true, "fact": "Klient wybrał w AMSO laptop za 300 zł.", "action": "Pracownik przekazuje klientowi pierwszy laptop, a klient ustawia go na biurku.", "finalFrame": "Klient pracuje przy pierwszym laptopie; obok pozostaje etykieta 300 zł." },
+          { "id": "one-year", "title": "Po roku firma była większa.", "body": ["Pojawiły się nowe zadania, pracownicy i większe potrzeby sprzętowe. Pierwszy laptop nadal stoi na biurku i łączy oba etapy historii."], "continueLabel": "Dalej", "safe": true, "fact": "Po roku firma klienta rozwinęła się i potrzebowała więcej sprzętu.", "action": "Kalendarz przesuwa się o rok, a wokół pierwszego biurka pojawiają się nowe stanowiska.", "finalFrame": "Ten sam klient i laptop są w większym biurze z kilkoma przygotowanymi stanowiskami." },
+          { "id": "hundred-thousand", "title": "Wrócił z budżetem 100 000 zł.", "body": ["Rozwinięta firma nadal wybierała sprzęt poleasingowy. Od tamtej decyzji minęło siedem lat, a klient nadal uważa ten kierunek za dobry wybór dla firmy."], "continueLabel": "Zbuduj rozwój firmy", "safe": true, "fact": "Po roku ten sam klient wrócił do AMSO z budżetem 100 000 zł; przez kolejne siedem lat nadal wybierał sprzęt poleasingowy.", "action": "Klient przekazuje plan większego zakupu, a oś siedmiu lat prowadzi do współczesnego, rozwiniętego biura.", "finalFrame": "Rozwinięte biuro, ten sam klient i pierwszy laptop stoją obok kwoty 100 000 zł oraz podpisu 7 LAT PÓŹNIEJ." }
+        ]
+      },
+      {
+        "id": "story.matching_result", "chapter": "epoch_3", "eyebrow": "Nasza historia", "title": "Różne plany potrzebują różnych zestawów.",
+        "body": ["Dopasowanie nie oznacza wyboru najtańszego sprzętu. Oznacza zestaw odpowiadający potrzebom, planom i budżetowi konkretnej osoby lub firmy."],
+        "vignette": "product-stream", "continueLabel": "Zobacz skalę", "perspective": "amso",
+        "steps": [
+          { "id": "many-plans", "title": "To była jedna z wielu historii.", "body": ["Inna klientka tworzyła portfolio, a osobna firma najpierw testowała sprzęt. Każda z tych historii dotyczyła innych ludzi, potrzeb i zamówień."], "continueLabel": "Zobacz skalę", "safe": true, "fact": "W drodze do miliona było wiele odrębnych historii klientów i zastosowań sprzętu.", "action": "Kadr głównego klienta ustępuje trzem krótkim migawkom różnych osób i stanowisk.", "finalFrame": "Trzy oddzielne zamówienia prowadzą do wspólnego magazynu AMSO bez łączenia bohaterów." }
+        ]
+      },
+      {
+        "id": "story.scale", "chapter": "epoch_4", "eyebrow": "Nasza historia", "title": "Skala potrzebuje systemu.",
+        "body": ["Roczne liczby pokazują skalę pracy naszego zespołu."], "vignette": "warehouse-scale", "continueLabel": "Dalej", "perspective": "amso",
+        "steps": [
+          { "id": "phone-tower", "title": "Roczna sprzedaż sięga wysokości PKiN.", "body": ["Około 28 000 sprzedanych w rok smartfonów utworzyłoby wieżę wysoką na około 240 metrów. Za tym porównaniem stoją konkretne zamówienia i zespół."], "continueLabel": "Podejmij szczyt zamówień", "safe": true, "fact": "Około 28 000 smartfonów sprzedanych w rok utworzyłoby wieżę około 240 m, porównywalną z PKiN.", "action": "Kolejne telefony budują pionową wieżę obok czytelnej sylwetki PKiN.", "finalFrame": "Wieża telefonów i PKiN stoją na jednej podstawie z etykietami 28 000, rok i około 240 m." }
+        ]
+      },
+      {
+        "id": "story.million_approach", "chapter": "epoch_5", "eyebrow": "Nasza historia", "title": "Ostatnia droga do miliona.",
+        "body": ["Licznik zaczyna od 999 970 i rośnie wraz z każdym zrealizowanym zamówieniem."], "vignette": "million-counter", "continueLabel": "Rozpocznij finał", "perspective": "amso",
+        "steps": [
+          { "id": "counter-source", "title": "Do miliona zostało 30 zamówień.", "body": ["Licznik zaczyna od 999 970. Każde zebrane urządzenie lub paczka realizuje dokładnie jedno zamówienie, a dwanaście kombinacji przypomni umiejętności z całej drogi."], "continueLabel": "Poznaj zasady finału", "safe": true, "fact": "Finał rozpoczyna się od 999 970 zamówień i wymaga zrealizowania kolejnych 30.", "action": "Licznik zatrzymuje się na 999 970, a różne zamówienia ustawiają się przed trasą.", "finalFrame": "Czytelny licznik 999 970 stoi nad trasą, a pierwsze z trzydziestu zamówień czeka po prawej." }
+        ]
+      },
+      {
+        "id": "challenge.million_wave", "chapter": "epoch_5", "eyebrow": "Wyzwanie", "title": "Próg Miliona sprawdza całą drogę.",
+        "body": ["Zrealizuj 30 zamówień i ukończ dwanaście różnych kombinacji."], "vignette": "million-wave", "continueLabel": "Podejmij wyzwanie", "perspective": "challenge",
+        "steps": [
+          { "id": "two-goals", "title": "Dwanaście prób prowadzi do miliona.", "body": ["Zrealizuj 30 zamówień w dwunastu kombinacjach skoku oraz ślizgu. W fabule nie ma game over: pominięte zamówienia wracają bez przeszkód."], "continueLabel": "Rozpocznij finał", "safe": true, "fact": "Próg Miliona wymaga 30 zamówień i dwunastu kombinacji bez game over w fabule.", "action": "HUD pokazuje jeden licznik zamówień rosnący z każdym zebranym urządzeniem lub paczką.", "finalFrame": "Licznik zamówień jest widoczny nad bezpiecznym początkiem finałowej trasy." }
+        ]
+      },
+      {
+        "id": "story.million_finale", "chapter": "finale", "eyebrow": "Nasza historia", "title": "1 000 000 zamówień.",
+        "body": ["Do miliona dotarliśmy razem z ludźmi, którzy potrzebowali sprzętu do swoich planów."], "vignette": "million-package", "continueLabel": "Zobacz, co dalej", "perspective": "amso",
+        "steps": [
+          { "id": "million-celebration", "title": "Milion zamówień. Milion ludzkich planów.", "body": ["Pierwszą paczkę przygotowaliśmy sami. Milionową świętujemy z zespołem i klientami, bo każda część tej drogi prowadziła do czyjegoś planu."], "continueLabel": "Zobacz, co dalej", "safe": true, "fact": "AMSO osiągnęło milion zrealizowanych zamówień.", "action": "Licznik przechodzi na 1 000 000, a zespół AMSO otacza milionową paczkę.", "finalFrame": "Świąteczny znak 1 000 000, milionowa paczka i zespół AMSO tworzą jeden centralny kadr." }
+        ]
+      },
+      {
+        "id": "story.challenge_handoff", "chapter": "finale", "eyebrow": "TRYB WYZWANIA", "title": "Wynik zostaje. Zasady się zmieniają.",
+        "body": ["Płynnie przechodzisz z historii do Trybu Wyzwania."], "vignette": "thank-you", "continueLabel": "Podejmuję wyzwanie", "perspective": "challenge",
+        "steps": [
+          { "id": "rules-change", "title": "Wynik zostaje. Zasady się zmieniają.", "body": ["Zachowujesz punkty, zamówienia i aktywne bonusy. Teraz tempo rośnie, a pierwsze niezabezpieczone zderzenie kończy bieg. Gwarancja 48 M może uratować próbę raz."], "continueLabel": "Podejmuję wyzwanie", "safe": true, "fact": "Po fabule wynik pozostaje, a challenge kończy pierwsze niezabezpieczone zderzenie.", "action": "Panel zachowanego wyniku przesuwa się obok znaku TRYB WYZWANIA i tarczy Gwarancji 48 M.", "finalFrame": "Zachowany wynik, nowe zasady i aktywna Gwarancja 48 M są opisane przed odliczaniem 3–2–1." }
+        ]
+      }
+    ],
+    "sequence": [
+      { "type": "scene", "sceneId": "story.first_package" },
+      { "type": "play", "id": "epoch_1.first_package", "epochIndex": 0, "durationSeconds": 25 },
+      { "type": "scene", "sceneId": "story.order_backlog" },
+      { "type": "play", "id": "epoch_1.order_backlog", "epochIndex": 0, "durationSeconds": 50 },
+      { "type": "scene", "sceneId": "story.quality_promise" },
+      { "type": "play", "id": "epoch_2.quality_process", "epochIndex": 1, "durationSeconds": 45 },
+      { "type": "scene", "sceneId": "client.business_start" },
+      { "type": "play", "id": "epoch_3.client_growth", "epochIndex": 2, "durationSeconds": 40 },
+      { "type": "scene", "sceneId": "client.business_growth" },
+      { "type": "scene", "sceneId": "story.matching_result" },
+      { "type": "play", "id": "epoch_4.order_scale", "epochIndex": 3, "durationSeconds": 50 },
+      { "type": "scene", "sceneId": "story.scale" },
+      { "type": "scene", "sceneId": "story.million_approach" },
+      { "type": "scene", "sceneId": "challenge.million_wave" },
+      { "type": "play", "id": "epoch_5.million_threshold", "epochIndex": 4, "durationSeconds": 75 },
+      { "type": "scene", "sceneId": "story.million_finale" },
+      { "type": "scene", "sceneId": "story.challenge_handoff" }
+    ],
+    "epochs": [
+      { "index": 0, "id": "poczatek", "name": "Początek i zator", "year": "Pierwsza paczka", "themeIndex": 0, "durationSeconds": 75, "obstaclePool": ["box-stack", "pallet", "overhead"], "difficultyStart": 0.95, "difficultyEnd": 1.35, "challengeName": "Zator Zamówień" },
+      { "index": 1, "id": "podwojny_wynik", "name": "Proces i Jakość", "year": "Jakość i zaufanie", "themeIndex": 1, "durationSeconds": 45, "obstaclePool": ["box-stack", "pallet", "overhead"], "difficultyStart": 1.22, "difficultyEnd": 1.48, "challengeName": "Proces i Jakość", "powerUpDebut": "podwojny_wynik" },
+      { "index": 2, "id": "historie_klientow", "name": "Firma rośnie razem ze sprzętem", "year": "Jedna prawdziwa historia", "themeIndex": 2, "durationSeconds": 40, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.34, "difficultyEnd": 1.58, "challengeName": "Rozwój Firmy", "powerUpDebut": "podwojny_wynik" },
+      { "index": 3, "id": "skala", "name": "Skala Zamówień", "year": "Roczna skala", "themeIndex": 3, "durationSeconds": 50, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.45, "difficultyEnd": 1.7, "challengeName": "Skala Zamówień", "powerUpDebut": "gwarancja_48" },
+      { "index": 4, "id": "droga_do_miliona", "name": "Droga do Miliona", "year": "999 970 → 1 000 000", "themeIndex": 4, "durationSeconds": 75, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.55, "difficultyEnd": 1.85, "challengeName": "Próg Miliona" }
+    ],
+    "modeHandoff": {
+      "id": "story.challenge_handoff",
+      "from": "story",
+      "to": "challenge",
+      "safe": true,
+      "confirmationRequired": true,
+      "resumeCountdownSeconds": 3
+    },
+    "millionThreshold": {
+      "counterStart": 999950,
+      "counterTarget": 1000000,
+      "orderTarget": 50,
+      "combinationTarget": 12
+    }
+  },
+  "challenge": {
+    "mode": "challenge",
+    "speedStartMultiplier": 1.85,
+    "speedMaxMultiplier": 3.5,
+    "logisticWaveMinSeconds": 20,
+    "logisticWaveMaxSeconds": 30,
+    "warrantyOneUse": true
+  },
+  "audio": {
+    "enabled": true
+  }
+}
