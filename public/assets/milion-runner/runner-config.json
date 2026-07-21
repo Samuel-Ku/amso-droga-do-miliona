@@ -193,7 +193,7 @@
         "body": ["Pierwsze zamówienie przygotowaliśmy własnymi rękami. Tak rozpoczęła się droga AMSO."],
         "vignette": "first-package", "continueLabel": "Dalej", "perspective": "amso",
         "steps": [
-          { "id": "game-purpose", "title": "To gra o drodze AMSO.", "body": ["Bieg łączy etapy rozwoju firmy z bezpiecznymi kartami historii. Skacz klawiszem W, ↑, Spacją lub dotykiem; ślizgaj się klawiszem S, ↓ lub gestem w dół i realizuj zamówienia aż do miliona."], "continueLabel": "Poznaj początek", "safe": true, "fact": "Gra opowiada prawdziwą drogę AMSO od pierwszej paczki do miliona zamówień.", "action": "Pierwsza paczka rusza przez podgląd kolejnych miejsc: magazynu, stanowiska jakości i licznika.", "finalFrame": "Pierwsza paczka stoi na początku trasy prowadzącej do czytelnego znaku 1 000 000." },
+          { "id": "game-purpose", "title": "To gra o drodze AMSO.", "body": ["Pomóż kurierowi zebrać wszystkie paczki! Bieg łączy etapy rozwoju firmy z kartami naszej wspólnej historii. Skacz klawiszem W, ↑, Spacją lub dotykiem; ślizgaj się klawiszem S, ↓ lub gestem w dół i zbieraj paczki aż do miliona."], "continueLabel": "Poznaj początek", "safe": true, "fact": "Gra opowiada prawdziwą drogę AMSO od pierwszej paczki do miliona zamówień.", "action": "Pierwsza paczka rusza przez podgląd kolejnych miejsc: magazynu, stanowiska jakości i licznika.", "finalFrame": "Pierwsza paczka stoi na początku trasy prowadzącej do czytelnego znaku 1 000 000." },
           { "id": "first-hand-packed", "title": "Pierwszą paczkę przygotowaliśmy sami.", "body": ["Z małego sklepu i magazynu wielkości kawalerki własnymi rękami wysłaliśmy pierwsze zamówienie. Ty poprowadzisz tę drogę aż do miliona."], "continueLabel": "Rozpocznij drogę", "safe": true, "fact": "Pierwsze zamówienie AMSO zostało przygotowane własnymi rękami w małym sklepie i magazynie.", "action": "Pracownik składa karton, wkłada urządzenie, zamyka paczkę i nakleja etykietę.", "finalFrame": "Gotowa pierwsza paczka stoi przy wyjściu z małego magazynu, a zespół AMSO jest obok." }
         ]
       },
@@ -253,7 +253,7 @@
         "id": "challenge.million_wave", "chapter": "epoch_5", "eyebrow": "Wyzwanie", "title": "Próg Miliona sprawdza całą drogę.",
         "body": ["Zrealizuj 30 zamówień i ukończ dwanaście różnych kombinacji."], "vignette": "million-wave", "continueLabel": "Podejmij wyzwanie", "perspective": "challenge",
         "steps": [
-          { "id": "two-goals", "title": "Dwanaście prób prowadzi do miliona.", "body": ["Zrealizuj 30 zamówień w dwunastu kombinacjach skoku oraz ślizgu. W fabule nie ma game over: pominięte zamówienia wracają bez przeszkód."], "continueLabel": "Rozpocznij finał", "safe": true, "fact": "Próg Miliona wymaga 30 zamówień i dwunastu kombinacji bez game over w fabule.", "action": "HUD pokazuje jeden licznik zamówień rosnący z każdym zebranym urządzeniem lub paczką.", "finalFrame": "Licznik zamówień jest widoczny nad bezpiecznym początkiem finałowej trasy." }
+          { "id": "two-goals", "title": "Zbierz ostatnie 50 paczek.", "body": ["Zbierz je wszystkie i doprowadź licznik do 1 000 000 zamówień."], "continueLabel": "Rozpocznij finał", "safe": true, "fact": "Próg Miliona wymaga 30 zamówień i dwunastu kombinacji bez game over w fabule.", "action": "HUD pokazuje jeden licznik zamówień rosnący z każdym zebranym urządzeniem lub paczką.", "finalFrame": "Licznik zamówień jest widoczny nad bezpiecznym początkiem finałowej trasy." }
         ]
       },
        {
