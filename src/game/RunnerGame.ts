@@ -76,6 +76,7 @@ import {
 } from "../visuals/scene-manifest";
 import { backgroundTravelPixels } from "../visuals/background-parallax";
 import { MilestoneCelebrationDirector } from "./milestone-celebration";
+import { CelebrationManager } from "./celebration-manager";
 import {
   AuthoredWaveDirector,
   STORY_WAVE_COLLECTION_RATIO,
@@ -139,6 +140,7 @@ export class RunnerGame implements RunnerGameApi {
   private readonly storyClimaxDirector = new StoryClimaxDirector();
   private readonly storyObstacleTransformer = new StoryObstacleTransformer();
   private readonly milestoneCelebrationDirector = new MilestoneCelebrationDirector();
+  private readonly celebrationManager = new CelebrationManager();
   private readonly decorationQuality = new AdaptiveDecorationQuality();
   private storyObjectiveDirector = new StoryObjectiveDirector();
   private authoredWaveDirector: AuthoredWaveDirector | null = null;
@@ -290,6 +292,7 @@ export class RunnerGame implements RunnerGameApi {
     } else {
       this.reducedMotion = options.reducedMotion;
     }
+    this.celebrationManager.setReducedMotion(this.reducedMotion);
 
     this.resetModels();
     this.installLifecycleListeners();
@@ -390,6 +393,7 @@ export class RunnerGame implements RunnerGameApi {
     if (this._state !== "running") return;
     this.cancelFrame();
     this.lastFrameTime = null;
+    this.celebrationManager.cancel();
     this.setState("paused");
     this.render();
   }
@@ -406,6 +410,7 @@ export class RunnerGame implements RunnerGameApi {
   reset(): void {
     if (this._state === "destroyed") return;
     this.cancelFrame();
+    this.celebrationManager.cancel();
     this.runIndex += 1;
     this.resetModels();
     this.setState("ready");
@@ -416,6 +421,7 @@ export class RunnerGame implements RunnerGameApi {
   destroy(): void {
     if (this._state === "destroyed") return;
     this.cancelFrame();
+    this.celebrationManager.reset();
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
     this.view?.removeEventListener("resize", this.handleResize);
@@ -453,6 +459,7 @@ export class RunnerGame implements RunnerGameApi {
     this.storyClimaxDirector.reset();
     this.storyObstacleTransformer.reset();
     this.milestoneCelebrationDirector.reset();
+    this.celebrationManager.reset();
     this.storyObjectiveDirector = new StoryObjectiveDirector();
     this.authoredWaveDirector = null;
     this.authoredActionIndex = 0;
@@ -730,6 +737,7 @@ export class RunnerGame implements RunnerGameApi {
       active && x >= this.runner.x
     );
     this.milestoneCelebrationDirector.advance(activeDeltaSeconds, milestoneSafe);
+    this.celebrationManager.update(activeDeltaSeconds);
     if (this.mode === "challenge") this.challengeElapsedSeconds += activeDeltaSeconds;
     this.recoverySeconds = Math.max(0, this.recoverySeconds - activeDeltaSeconds);
     this.startProtectionSeconds = Math.max(0, this.startProtectionSeconds - activeDeltaSeconds);
@@ -1213,6 +1221,12 @@ export class RunnerGame implements RunnerGameApi {
         } catch {
           // Host callbacks are isolated from package collection.
         }
+        this.celebrationManager.trigger({
+          threshold: celebration.threshold,
+          isRecord: celebration.achievement === "record",
+          playerX: this.runner.x,
+          playerY: this.runner.y,
+        });
       }
       this.bonusScore += collection.bonusScoreAwarded;
       if (!parcel.authoredWaveId) {
@@ -1878,6 +1892,7 @@ export class RunnerGame implements RunnerGameApi {
 
   private finishRun(collisionType: string, outcome: "victory" | "dropout" = "dropout", furthestEpoch = 0): void {
     this.cancelFrame();
+    this.celebrationManager.cancel();
     this.impact = true;
     this.emitUnlockedFacts();
     if (this.narrative) {
@@ -2138,6 +2153,7 @@ export class RunnerGame implements RunnerGameApi {
       storyClimax: this.storyClimaxDirector.model,
       obstacleTransformations: this.storyObstacleTransformer.models,
       milestoneCelebration: this.milestoneCelebrationDirector.snapshot,
+      celebration: this.celebrationManager.getState(),
       authoredWave: this.authoredWaveDirector?.snapshot ?? null
     };
     this.renderer.render(this.context, this.canvas.width, this.canvas.height, scene);
@@ -2160,6 +2176,7 @@ export class RunnerGame implements RunnerGameApi {
   private readonly handleResize = (): void => {
     if (this._state === "destroyed") return;
     this.resizeCanvas();
+    this.celebrationManager.setScreenWidth(this.canvas.clientWidth || this.canvas.width || 960);
     this.render();
   };
 
@@ -2204,6 +2221,7 @@ export class RunnerGame implements RunnerGameApi {
 
   private readonly handleMotionPreferenceChange = (event: MediaQueryListEvent): void => {
     this.reducedMotion = event.matches;
+    this.celebrationManager.setReducedMotion(this.reducedMotion);
     this.render();
   };
 

@@ -8,6 +8,7 @@ import type {
 } from "./types";
 import type { PackageType, PowerUpKind } from "../shared/types";
 import type { StoryObstacleTransformation } from "./story-effects";
+import type { EffectConfig } from "./celebration-manager";
 import {
   COURIER_PALETTE,
   DEFAULT_COURIER_BRAND_ARTWORK,
@@ -1232,24 +1233,46 @@ function drawWarrantyShield(
   context.globalAlpha = animation.alpha;
   context.setLineDash([]);
 
-  const field = context.createRadialGradient(
-    -radiusX * 0.28,
-    -radiusY * 0.34,
-    radiusX * 0.08,
+  const isWarranty = scene.activePowerUps.includes("gwarancja_48");
+  const bubbleColor = isWarranty ? "235,50,164" : "244,113,0";
+
+  const fillGradient = context.createRadialGradient(
+    -radiusX * 0.3,
+    -radiusY * 0.35,
+    radiusX * 0.05,
     0,
     0,
     radiusY
   ) as CanvasGradient | undefined;
-  if (field !== undefined) {
-    field.addColorStop(0, "rgba(244,113,0,0.14)");
-    field.addColorStop(0.5, "rgba(244,113,0,0.06)");
-    field.addColorStop(0.82, "rgba(244,113,0,0.04)");
-    field.addColorStop(1, "rgba(244,113,0,0.02)");
+  if (fillGradient !== undefined) {
+    fillGradient.addColorStop(0, `rgba(${bubbleColor},0.22)`);
+    fillGradient.addColorStop(0.3, `rgba(${bubbleColor},0.1)`);
+    fillGradient.addColorStop(0.65, `rgba(${bubbleColor},0.04)`);
+    fillGradient.addColorStop(1, `rgba(${bubbleColor},0)`);
   }
-  context.fillStyle = field ?? "rgba(244,113,0,0.07)";
+  context.fillStyle = fillGradient ?? `rgba(${bubbleColor},0.08)`;
   context.beginPath();
   context.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
   context.fill();
+
+  // Specular highlight — bright curved arc at top-left for glass/bubble reflection
+  context.save();
+  context.beginPath();
+  context.ellipse(
+    -radiusX * 0.2,
+    -radiusY * 0.22,
+    radiusX * 0.5,
+    radiusY * 0.4,
+    -0.45,
+    -Math.PI * 0.7,
+    Math.PI * 0.22
+  );
+  context.fillStyle = `rgba(255,255,255,${isWarranty ? 0.12 : 0.09})`;
+  context.fill();
+  context.strokeStyle = `rgba(255,255,255,${isWarranty ? 0.5 : 0.4})`;
+  context.lineWidth = 3;
+  context.stroke();
+  context.restore();
 
   // Only the inner energy texture rotates. The outer bubble remains upright,
   // so it reads as protection attached to the courier instead of a spinner.
@@ -1258,26 +1281,45 @@ function drawWarrantyShield(
   context.ellipse(0, 0, radiusX - 2, radiusY - 2, 0, 0, Math.PI * 2);
   context.clip();
   context.rotate(animation.meshRotationRadians);
-  context.strokeStyle = "rgba(244,113,0,0.16)";
-  context.lineWidth = 0.85;
+  context.strokeStyle = `rgba(${bubbleColor},0.2)`;
+  context.lineWidth = 1;
   const mesh = getWarrantyShieldMesh();
   if (mesh !== null) context.stroke(mesh);
   context.restore();
 
-  context.strokeStyle = "rgba(244,113,0,0.6)";
-  context.lineWidth = 3;
-  context.shadowColor = "rgba(244,113,0,0.45)";
-  context.shadowBlur = scene.reducedMotion ? 3 : 7;
-  context.beginPath();
-  context.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
-  context.stroke();
+  if (scene.reducedMotion) {
+    context.shadowBlur = 5;
+    context.shadowColor = `rgba(${bubbleColor},0.5)`;
+    context.strokeStyle = `rgba(${bubbleColor},0.6)`;
+    context.lineWidth = 3;
+    context.beginPath();
+    context.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
+    context.stroke();
+    context.shadowBlur = 0;
+  } else {
+    context.shadowBlur = 24;
+    context.shadowColor = `rgba(${bubbleColor},0.65)`;
+    context.strokeStyle = `rgba(${bubbleColor},0.8)`;
+    context.lineWidth = 3.5;
+    context.beginPath();
+    context.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
+    context.stroke();
 
-  context.shadowBlur = 5;
-  context.strokeStyle = "rgba(244,113,0,0.5)";
-  context.lineWidth = 2.2;
-  context.beginPath();
-  context.ellipse(0, 0, radiusX - 3, radiusY - 3, 0, Math.PI * 1.08, Math.PI * 1.58);
-  context.stroke();
+    context.shadowBlur = 14;
+    context.shadowColor = `rgba(${bubbleColor},0.3)`;
+    context.strokeStyle = `rgba(${bubbleColor},0.4)`;
+    context.lineWidth = 2;
+    context.beginPath();
+    context.ellipse(0, 0, radiusX + 5, radiusY + 5, 0, 0, Math.PI * 2);
+    context.stroke();
+
+    context.shadowBlur = 0;
+    context.strokeStyle = `rgba(${bubbleColor},0.5)`;
+    context.lineWidth = 2;
+    context.beginPath();
+    context.ellipse(0, 0, radiusX - 2, radiusY - 2, 0, Math.PI * 1.08, Math.PI * 1.58);
+    context.stroke();
+  }
 
   if (presentation.breaking && !scene.reducedMotion) {
     const burstAlpha = 1 - animation.breakingProgress;
@@ -1563,80 +1605,292 @@ function drawFullWidthGameplayRoute(
   context.restore();
 }
 
-function drawMilestoneParticles(
+function effectOrigin(
+  origin: EffectConfig["origin"],
+  playerX: number,
+  playerY: number,
+): { x: number; y: number } {
+  switch (origin) {
+    case "player": return { x: playerX, y: playerY };
+    case "center": return { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
+    case "left": return { x: 0, y: WORLD_HEIGHT / 2 };
+    case "right": return { x: WORLD_WIDTH, y: WORLD_HEIGHT / 2 };
+    case "sides": return { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
+  }
+}
+
+function effectiveCount(
+  count: [number, number],
+  progress: number,
+  quality: "full" | "reduced" | undefined,
+  smallScreen: boolean,
+): number {
+  const [minC, maxC] = count;
+  const diff = maxC - minC;
+  const base = Math.ceil(minC + diff * progress);
+  const reduced = quality === "reduced" ? Math.ceil(base * 0.5) : base;
+  return smallScreen ? Math.ceil(reduced * 0.6) : reduced;
+}
+
+function drawConfettiBurst(
   context: CanvasRenderingContext2D,
-  scene: Readonly<RenderScene>,
-  artwork: RunnerArtwork
+  effect: EffectConfig,
+  progress: number,
+  reducedMotion: boolean,
+  playerX: number,
+  playerY: number,
+  quality: "full" | "reduced" | undefined,
+  smallScreen: boolean,
 ): void {
-  const celebration = scene.milestoneCelebration;
-  if (celebration === null || celebration === undefined) return;
-  const progress = Math.max(0, Math.min(1, celebration.progress));
-  const motion = scene.reducedMotion ? 0 : progress;
-  const alpha = scene.reducedMotion ? 0.66 : Math.sin(progress * Math.PI) * 0.86;
-  const fullParticleCount = Math.min(62, 16 + celebration.intensity * 7);
-  const particleCount = scene.decorationQuality === "reduced"
-    ? Math.ceil(fullParticleCount * 0.52)
-    : fullParticleCount;
+  const count = effectiveCount(effect.particleCount, progress, quality, smallScreen);
+  const { x: ox, y: oy } = effectOrigin(effect.origin, playerX, playerY);
+  const motion = reducedMotion ? 0 : progress;
+  const alpha = reducedMotion ? 0.66 : Math.sin(Math.min(1, progress * 2) * Math.PI) * 0.86;
+
   context.save();
   context.globalAlpha = alpha;
-  if (celebration.intensity >= 2) {
-    const flash = scene.reducedMotion
-      ? 0.12
-      : Math.sin(Math.min(1, progress * 2.2) * Math.PI) * 0.2;
-    context.save();
-    context.globalAlpha = flash;
-    const flashGradient = context.createLinearGradient(200, 0, 760, 0);
-    flashGradient.addColorStop(0, COLORS.orange);
-    flashGradient.addColorStop(0.5, COLORS.red);
-    flashGradient.addColorStop(1, COLORS.redDark);
-    context.fillStyle = flashGradient;
-    context.fillRect(210, 56, 540, 138);
-    context.restore();
-  }
-  for (let index = 0; index < particleCount; index += 1) {
-    const sourceX = positiveModulo(index * 137 + celebration.threshold, WORLD_WIDTH - 60) + 30;
-    const x = sourceX + Math.sin(index * 1.7) * motion * 34;
-    const y = 18 + positiveModulo(index * 53 + motion * (150 + (index % 5) * 24), 188);
-    context.fillStyle = index % 3 === 0
-      ? COLORS.orange
-      : index % 3 === 1
-        ? COLORS.red
-        : COLORS.redDark;
+
+  for (let index = 0; index < count; index++) {
+    const angle = (index / count) * Math.PI * 2 + motion * 2;
+    const dist = 30 + (index % 5) * 8 + motion * 40;
+    const x = ox + Math.cos(angle) * dist * (effect.spread / 100);
+    const y = oy + Math.sin(angle) * dist * (effect.spread / 100) - motion * 60;
+    context.fillStyle = effect.colors[index % effect.colors.length] ?? COLORS.orange;
     context.save();
     context.translate(x, y);
-    if (!scene.reducedMotion) context.rotate(motion * 5 + index);
-    context.fillRect(-5, -2, 10 + celebration.intensity * 0.5, 4);
+    if (!reducedMotion) context.rotate(motion * 5 + index);
+    context.fillRect(-4, -2, 8, 4);
     context.restore();
   }
 
-  const decorativeOrders = Math.min(5, Math.max(1, celebration.intensity));
-  for (let index = 0; index < decorativeOrders; index += 1) {
-    const side = index % 2 === 0 ? 1 : -1;
-    const lane = Math.floor(index / 2);
-    const x = side > 0 ? 68 + lane * 70 : WORLD_WIDTH - 122 - lane * 70;
-    const y = 46 + lane * 34 + (scene.reducedMotion ? 0 : Math.sin(progress * Math.PI) * -18);
-    const size = 54 + Math.min(10, celebration.intensity * 2);
-    if (!artwork.drawParcelOrder(
-      context,
-      x,
-      y,
-      size,
-      progress * 0.8,
-      index,
-      scene.reducedMotion
-    )) {
-      context.save();
-      context.translate(x + size / 2, y + size / 2);
-      if (!scene.reducedMotion) context.rotate(side * (0.08 + progress * 0.12));
-      context.fillStyle = COLORS.orange;
-      context.fillRect(-size / 2, -size / 2, size, size);
-      context.fillStyle = "#fff";
-      context.fillRect(-size * 0.09, -size / 2, size * 0.18, size);
-      context.fillRect(-size / 2, -size * 0.09, size, size * 0.18);
-      context.restore();
+  context.restore();
+}
+
+function drawSideCannon(
+  context: CanvasRenderingContext2D,
+  effect: EffectConfig,
+  progress: number,
+  reducedMotion: boolean,
+  quality: "full" | "reduced" | undefined,
+  smallScreen: boolean,
+): void {
+  if (smallScreen) return;
+  const count = effectiveCount(effect.particleCount, progress, quality, smallScreen);
+  const motion = reducedMotion ? 0 : progress;
+  const alpha = reducedMotion ? 0.66 : Math.sin(Math.min(1, progress * 2) * Math.PI) * 0.8;
+
+  context.save();
+  context.globalAlpha = alpha;
+
+  for (let index = 0; index < count; index++) {
+    const t = index / count;
+    const x = t < 0.5 ? 0 : WORLD_WIDTH;
+    const yTarget = 100 + t * 300;
+    const y = yTarget + motion * 80;
+    const xOff = motion * (60 + (index % 3) * 15) * (t < 0.5 ? 1 : -1);
+    context.fillStyle = effect.colors[index % effect.colors.length] ?? COLORS.orange;
+    context.save();
+    context.translate(x + xOff, y);
+    if (!reducedMotion) context.rotate(motion * 3 + index);
+    context.fillRect(-3, -2, 6, 4);
+    context.restore();
+  }
+
+  context.restore();
+}
+
+function drawSparkles(
+  context: CanvasRenderingContext2D,
+  effect: EffectConfig,
+  progress: number,
+  reducedMotion: boolean,
+  playerX: number,
+  playerY: number,
+  quality: "full" | "reduced" | undefined,
+  smallScreen: boolean,
+): void {
+  if (quality === "reduced") return;
+  const count = effectiveCount(effect.particleCount, progress, quality, smallScreen);
+  const { x: ox, y: oy } = effectOrigin(effect.origin, playerX, playerY);
+  const motion = reducedMotion ? 0 : progress;
+  const alpha = reducedMotion ? 0.66 : Math.sin(Math.min(1, progress * 2) * Math.PI) * 0.9;
+
+  context.save();
+  context.globalAlpha = alpha;
+
+  for (let index = 0; index < count; index++) {
+    const angle = (index / count) * Math.PI * 2 + motion * 1.5;
+    const dist = 10 + (index % 3) * 6 + motion * 20;
+    const x = ox + Math.cos(angle) * dist * (effect.spread / 100);
+    const y = oy + Math.sin(angle) * dist * (effect.spread / 100) - motion * 30;
+    context.fillStyle = effect.colors[index % effect.colors.length] ?? COLORS.orange;
+    const size = reducedMotion ? 2 : 2 + (index % 3);
+    context.fillRect(x - size / 2, y - size / 2, size, size);
+  }
+
+  context.restore();
+}
+
+function drawEnergyWave(
+  context: CanvasRenderingContext2D,
+  effect: EffectConfig,
+  progress: number,
+  reducedMotion: boolean,
+  quality: "full" | "reduced" | undefined,
+): void {
+  const baseAlpha = quality === "reduced" ? 0.15 : 0.35;
+  const alpha = reducedMotion ? 0.2 : Math.sin(progress * Math.PI) * baseAlpha;
+  const radius = reducedMotion ? 60 : 60 + progress * 200;
+  const color = effect.colors[0] ?? COLORS.orange;
+
+  context.save();
+  context.globalAlpha = alpha;
+  context.strokeStyle = color;
+  context.lineWidth = reducedMotion ? 4 : 8 - progress * 6;
+
+  context.beginPath();
+  context.ellipse(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, radius, radius * 0.3, 0, 0, Math.PI * 2);
+  context.stroke();
+
+  if (!reducedMotion) {
+    context.globalAlpha = alpha * 0.4;
+    context.lineWidth = 3 - progress * 2;
+    context.beginPath();
+    context.ellipse(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, radius * 0.8, radius * 0.24, 0, 0, Math.PI * 2);
+    context.stroke();
+  }
+
+  context.restore();
+}
+
+function drawPackageParticles(
+  context: CanvasRenderingContext2D,
+  effect: EffectConfig,
+  progress: number,
+  reducedMotion: boolean,
+  playerX: number,
+  playerY: number,
+  quality: "full" | "reduced" | undefined,
+  smallScreen: boolean,
+): void {
+  const count = effectiveCount(effect.particleCount, progress, quality, smallScreen);
+  const { x: ox, y: oy } = effectOrigin(effect.origin, playerX, playerY);
+  const motion = reducedMotion ? 0 : progress;
+  const alpha = reducedMotion ? 0.66 : Math.sin(Math.min(1, progress * 1.5) * Math.PI) * 0.85;
+
+  context.save();
+  context.globalAlpha = alpha;
+
+  for (let index = 0; index < count; index++) {
+    const angle = (index / count) * Math.PI * 2 + motion * 1.2;
+    const dist = 20 + (index % 4) * 10 + motion * 50;
+    const x = ox + Math.cos(angle) * dist * (effect.spread / 100);
+    const y = oy + Math.sin(angle) * dist * (effect.spread / 100) - motion * 80;
+    const size = reducedMotion ? 6 : 6 + (index % 3) * 3;
+    context.fillStyle = effect.colors[index % effect.colors.length] ?? COLORS.orange;
+    context.fillRect(x - size / 2, y - size / 2, size, size * 0.7);
+    context.fillStyle = COLORS.white;
+    context.fillRect(x - size * 0.1, y - size * 0.35, size * 0.2, size * 0.7);
+  }
+
+  context.restore();
+}
+
+function drawCoinParticles(
+  context: CanvasRenderingContext2D,
+  effect: EffectConfig,
+  progress: number,
+  reducedMotion: boolean,
+  quality: "full" | "reduced" | undefined,
+  smallScreen: boolean,
+): void {
+  const count = effectiveCount(effect.particleCount, progress, quality, smallScreen);
+  const { x: ox, y: oy } = effectOrigin(effect.origin, 0, 0);
+  const motion = reducedMotion ? 0 : progress;
+  const alpha = reducedMotion ? 0.66 : Math.sin(Math.min(1, progress * 1.5) * Math.PI) * 0.85;
+
+  context.save();
+  context.globalAlpha = alpha;
+
+  for (let index = 0; index < count; index++) {
+    const angle = (index / count) * Math.PI * 2 + motion * 0.8;
+    const dist = 40 + (index % 4) * 20 + motion * 50;
+    const x = ox + Math.cos(angle) * dist * (effect.spread / 100);
+    const y = oy + Math.sin(angle) * dist * (effect.spread / 100) - motion * 80;
+    context.fillStyle = effect.colors[index % effect.colors.length] ?? COLORS.orange;
+    context.beginPath();
+    context.arc(x, y, reducedMotion ? 6 : 6 + (index % 2) * 3, 0, Math.PI * 2);
+    context.fill();
+    if (!reducedMotion) {
+      context.fillStyle = COLORS.white;
+      context.font = "bold 9px system-ui, sans-serif";
+      context.textAlign = "center";
+      context.fillText("+" + (index + 1) * 100, x, y - 10);
     }
   }
+
   context.restore();
+}
+
+function drawScreenFlash(
+  context: CanvasRenderingContext2D,
+  progress: number,
+  reducedMotion: boolean,
+  quality: "full" | "reduced" | undefined,
+): void {
+  if (reducedMotion || quality === "reduced") return;
+
+  const alpha = Math.sin(Math.min(1, progress * 3) * Math.PI) * 0.2;
+  if (alpha <= 0) return;
+
+  context.save();
+  context.globalAlpha = alpha;
+  const gradient = context.createLinearGradient(200, 0, 760, 0);
+  gradient.addColorStop(0, COLORS.orange);
+  gradient.addColorStop(0.5, COLORS.white);
+  gradient.addColorStop(1, COLORS.redDark);
+  context.fillStyle = gradient;
+  context.fillRect(180, 40, 600, 150);
+  context.restore();
+}
+
+function drawCelebrationEffects(
+  context: CanvasRenderingContext2D,
+  scene: Readonly<RenderScene>,
+): void {
+  const celebration = scene.celebration;
+  if (celebration === null || celebration === undefined) return;
+
+  const progress = Math.max(0, Math.min(1, celebration.phaseProgress));
+  const { playerX, playerY } = celebration;
+
+  const smallScreen = celebration.isSmallScreen;
+
+  for (const effect of celebration.effects) {
+    switch (effect.type) {
+      case "confetti-burst":
+        drawConfettiBurst(context, effect, progress, scene.reducedMotion, playerX, playerY, scene.decorationQuality, smallScreen);
+        break;
+      case "side-cannon":
+        drawSideCannon(context, effect, progress, scene.reducedMotion, scene.decorationQuality, smallScreen);
+        break;
+      case "sparkles":
+        drawSparkles(context, effect, progress, scene.reducedMotion, playerX, playerY, scene.decorationQuality, smallScreen);
+        break;
+      case "energy-wave":
+        drawEnergyWave(context, effect, progress, scene.reducedMotion, scene.decorationQuality);
+        break;
+      case "package-particles":
+        drawPackageParticles(context, effect, progress, scene.reducedMotion, playerX, playerY, scene.decorationQuality, smallScreen);
+        break;
+      case "coin-particles":
+        drawCoinParticles(context, effect, progress, scene.reducedMotion, scene.decorationQuality, smallScreen);
+        break;
+      case "screen-flash":
+        drawScreenFlash(context, progress, scene.reducedMotion, scene.decorationQuality);
+        break;
+    }
+  }
 }
 
 export class WarehouseRenderer {
@@ -1715,7 +1969,7 @@ export class WarehouseRenderer {
       drawNarrativeVignette(context, scene, theme);
       drawGameplayRoute(context);
     }
-    drawMilestoneParticles(context, scene, this.artwork);
+    drawCelebrationEffects(context, scene);
     drawForkliftBoss(
       context,
       scene.boss,

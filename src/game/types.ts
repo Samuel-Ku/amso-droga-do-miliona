@@ -12,6 +12,7 @@ import type { StoryObstacleTransformation } from "./story-effects";
 import type { StoryObjectivesSnapshot } from "./story-objectives";
 import type { CampaignWorldId } from "../visuals/scene-manifest";
 import type { MilestoneCelebrationSnapshot } from "./milestone-celebration";
+import type { CelebrationState } from "./celebration-manager";
 import type { AuthoredWaveProgressSnapshot } from "./authored-wave";
 import type { SemanticObstacleVariant } from "./semantic-obstacle";
 
@@ -132,5 +133,6 @@ export interface RenderScene {
   storyClimax?: Readonly<StoryClimaxModel>;
   obstacleTransformations?: readonly Readonly<StoryObstacleTransformation>[];
   milestoneCelebration?: Readonly<MilestoneCelebrationSnapshot> | null;
+  celebration?: Readonly<CelebrationState> | null;
   authoredWave?: Readonly<AuthoredWaveProgressSnapshot> | null;
 }
