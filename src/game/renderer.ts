@@ -1095,6 +1095,43 @@ function drawTrolley(context: CanvasRenderingContext2D, obstacle: Readonly<Obsta
   context.fill();
 }
 
+/**
+ * Draws the vertical support posts of an overhead obstacle from the canvas
+ * top edge (ceilingY) down to the beam top — called *before* the world-space
+ * clip so the posts extend above y=0 and visually reach the CSS ceiling beam.
+ * Uses 5 px stroked lines (matching the artwork path) when raster artwork is
+ * available, and 10 px filled rects (matching the vector fallback) otherwise.
+ */
+function drawOverheadPostsCeiling(
+  context: CanvasRenderingContext2D,
+  obstacle: Readonly<ObstacleModel>,
+  ceilingY: number,
+  hasOverheadArtwork: boolean
+): void {
+  const { x, y, width } = obstacle;
+  const postEnd = y + 8;
+  if (postEnd <= ceilingY) return;
+
+  if (hasOverheadArtwork) {
+    const drawWidth = width + 18;
+    const railInset = drawWidth * 0.095;
+    const leftX = x - (drawWidth - width) / 2 + railInset;
+    const rightX = x - (drawWidth - width) / 2 + drawWidth - railInset;
+    context.strokeStyle = "#2d343b";
+    context.lineWidth = 5;
+    context.beginPath();
+    context.moveTo(leftX, ceilingY);
+    context.lineTo(leftX, postEnd);
+    context.moveTo(rightX, ceilingY);
+    context.lineTo(rightX, postEnd);
+    context.stroke();
+  } else {
+    context.fillStyle = COLORS.ink;
+    context.fillRect(x - 8, ceilingY, 10, postEnd - ceilingY);
+    context.fillRect(x + width - 2, ceilingY, 10, postEnd - ceilingY);
+  }
+}
+
 function drawOverhead(context: CanvasRenderingContext2D, obstacle: Readonly<ObstacleModel>): void {
   const { x, y, width, height } = obstacle;
   context.fillStyle = "rgba(23,49,59,0.16)";
@@ -1459,9 +1496,8 @@ function drawCourier(
 }
 
 /**
- * The generated world plate is framed independently of the fixed 960×540
- * gameplay viewport. This foreground route gives the runner, parcels and
- * obstacles one explicit shared ground line at every stage aspect ratio.
+ * Draws the gameplay route in world coordinates (inside the world-space clip).
+ * Used when no external CSS world visual is present.
  */
 function drawGameplayRoute(context: CanvasRenderingContext2D): void {
   context.save();
@@ -1483,6 +1519,47 @@ function drawGameplayRoute(context: CanvasRenderingContext2D): void {
   context.moveTo(-12, WORLD_ROUTE_Y);
   context.lineTo(WORLD_WIDTH + 12, WORLD_ROUTE_Y);
   context.stroke();
+  context.restore();
+}
+
+/**
+ * Draws the gameplay route (base + gradient accent lines) at full canvas
+ * pixel width so the track always reaches both screen edges regardless of
+ * aspect ratio.  Called *before* the world-space clip in render(), inside
+ * the translate/scale transform — all coordinates are in world space.
+ */
+function drawFullWidthGameplayRoute(
+  context: CanvasRenderingContext2D,
+  canvasWidth: number,
+  offsetX: number,
+  scale: number
+): void {
+  context.save();
+  context.lineCap = "round";
+
+  const leftX = -offsetX / scale;
+  const rightX = (canvasWidth - offsetX) / scale;
+  const baseY = WORLD_ROUTE_Y + WORLD_ROUTE_BASE_OFFSET_Y;
+  const accentY = WORLD_ROUTE_Y;
+
+  context.strokeStyle = WORLD_ROUTE_BASE_COLOR;
+  context.lineWidth = WORLD_ROUTE_BASE_WIDTH;
+  context.beginPath();
+  context.moveTo(leftX, baseY);
+  context.lineTo(rightX, baseY);
+  context.stroke();
+
+  const routeGradient = context.createLinearGradient(leftX, 0, rightX, 0);
+  for (const { offset, color } of WORLD_ROUTE_GRADIENT_STOPS) {
+    routeGradient.addColorStop(offset, color);
+  }
+  context.strokeStyle = routeGradient;
+  context.lineWidth = WORLD_ROUTE_ACCENT_WIDTH;
+  context.beginPath();
+  context.moveTo(leftX, accentY);
+  context.lineTo(rightX, accentY);
+  context.stroke();
+
   context.restore();
 }
 
@@ -1588,11 +1665,34 @@ export class WarehouseRenderer {
     const viewportWidth = WORLD_WIDTH * scale;
     const viewportHeight = WORLD_HEIGHT * scale;
     const offsetX = (pixelWidth - viewportWidth) / 2;
-    const offsetY = (pixelHeight - viewportHeight) / 2;
+    const rawOffsetY = (pixelHeight - viewportHeight) / 2;
+    const cssPixelScale = pixelHeight / (globalThis.innerHeight || pixelHeight);
+    const hudBottomCss = 102;
+    const hudGap = Math.min(Math.round(hudBottomCss * cssPixelScale / 2), rawOffsetY);
+    const offsetY = rawOffsetY + hudGap;
 
     context.save();
     context.translate(offsetX, offsetY);
     context.scale(scale, scale);
+
+    /* Draw the gameplay track at full canvas width *before* the world-space
+       clip so it spans edge-to-edge on every aspect ratio (not just 16:9). */
+    if (externalWorldVisual) {
+      drawFullWidthGameplayRoute(context, pixelWidth, offsetX, scale);
+    }
+
+    /* Never extend overhead posts above y=0 (world ceiling / start of drawn
+       scene). The background image is letterboxed with contain, so y=0 aligns
+       with the top of the visible background. */
+    const ceilingY = Math.max(0, -offsetY / scale);
+    if (ceilingY < 0) {
+      for (const obstacle of scene.obstacles) {
+        if (obstacle.kind === "overhead" && obstacle.active) {
+          drawOverheadPostsCeiling(context, obstacle, ceilingY, this.artwork.hasOverheadArtwork(obstacle.visualVariant ?? 0));
+        }
+      }
+    }
+
     context.beginPath();
     context.rect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     context.clip();
@@ -1613,7 +1713,6 @@ export class WarehouseRenderer {
         theme
       );
       drawNarrativeVignette(context, scene, theme);
-    } else {
       drawGameplayRoute(context);
     }
     drawMilestoneParticles(context, scene, this.artwork);

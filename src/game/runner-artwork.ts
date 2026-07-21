@@ -150,6 +150,13 @@ export class RunnerArtwork {
     this.parcelFrames = PARCEL_CELEBRATION_FRAME_PATHS.map((path) => loadImage(path, factory));
   }
 
+  public hasOverheadArtwork(visualVariant: number): boolean {
+    const image = this.overheadVariants[
+      Math.abs(Math.floor(visualVariant)) % this.overheadVariants.length
+    ] ?? this.obstacles.overhead;
+    return drawable(image);
+  }
+
   public drawObstacle(
     context: CanvasRenderingContext2D,
     obstacle: Readonly<ObstacleModel>

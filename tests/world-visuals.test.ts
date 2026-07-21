@@ -25,15 +25,15 @@ describe("world visual continuity", () => {
     );
     const renderer = readFileSync(new URL("../src/game/renderer.ts", import.meta.url), "utf8");
 
-    expect(css).toContain("object-fit: contain");
-    expect(css).not.toContain("object-fit: cover");
+    expect(css).toContain("object-fit: cover");
+    expect(css).toMatch(/\.amso-world-visual__panel\s*\{[^}]*object-fit:\s*cover/u);
     expect(css).toContain("--world-position-portrait");
     expect(css).toContain("--world-position-landscape");
     expect(css).not.toContain("--world-tile-blend-width");
     expect(css).not.toMatch(/\.amso-world-visual__panel\.is-leaving\s*\{/u);
     expect(worldLayer).toContain('this.host.style.setProperty("--world-overlap", "0px")');
     expect(worldLayer).toContain("WORLD_ROUTE_SVG");
-    expect(renderer).toContain("drawGameplayRoute(context)");
+    expect(renderer).toContain("drawFullWidthGameplayRoute");
     expect(WORLD_ROUTE_Y).toBe(GROUND_Y);
     expect(WORLD_ROUTE_BASE_WIDTH).toBe(18);
     expect(WORLD_ROUTE_ACCENT_WIDTH).toBe(7);
@@ -44,7 +44,7 @@ describe("world visual continuity", () => {
       { offset: 1, color: "#eb32a4" }
     ]);
     expect(renderer).toContain("WORLD_ROUTE_GRADIENT_STOPS");
-    expect(renderer).toContain("createLinearGradient(0, 0, WORLD_WIDTH, 0)");
+    expect(renderer).toContain("createLinearGradient(leftX, 0, rightX, 0)");
     expect(CAMPAIGN_WORLDS.every(({ assetPath }) => assetPath.endsWith("-v2.webp")))
       .toBe(true);
   });
