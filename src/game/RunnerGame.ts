@@ -837,11 +837,10 @@ export class RunnerGame implements RunnerGameApi {
     }
 
     const worldScale = this.storyTimeline?.snapshot.worldSpeedScale ?? 1;
-    const visualTravelledPixels = this.speed * (
-      activeDeltaSeconds > 0 ? activeDeltaSeconds : deltaSeconds * worldScale
-    );
+    const effectiveDeltaSeconds = activeDeltaSeconds > 0 ? activeDeltaSeconds * worldScale : deltaSeconds * worldScale;
+    const visualTravelledPixels = this.speed * effectiveDeltaSeconds;
     this.visualDistancePixels += visualTravelledPixels;
-    const travelledPixels = this.speed * activeDeltaSeconds;
+    const travelledPixels = this.speed * effectiveDeltaSeconds;
     this.distancePixels += travelledPixels;
 
     if (trustCorridor || activeDeltaSeconds <= 0) {
