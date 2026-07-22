@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BACKGROUND_PARALLAX_SPEED_RATIO,
   backgroundTravelPixels
@@ -98,6 +98,13 @@ describe("mobile-safe world assets", () => {
 });
 
 describe("edge-to-edge gameplay background", () => {
+  beforeEach(() => {
+    vi.spyOn(HTMLImageElement.prototype, "decode").mockResolvedValue();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   it("moves at exactly ten percent of gameplay travel", () => {
     expect(BACKGROUND_PARALLAX_SPEED_RATIO).toBe(0.1);
     expect(backgroundTravelPixels(2_400)).toBe(240);
@@ -210,6 +217,7 @@ describe("edge-to-edge gameplay background", () => {
       .toHaveLength(0);
 
     layer.setParallaxDistance(961, true);
+    await Promise.resolve();
     const qualityPanel = panels.find(({ dataset }) => dataset.assetPath?.includes("world-03"));
     expect(qualityPanel?.style.transform).toBe("translate3d(99.89583333333333%, 0, 0)");
   });
@@ -263,6 +271,8 @@ describe("edge-to-edge gameplay background", () => {
     qualityImage!.dispatchEvent(new Event("load"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
     layer.setParallaxDistance(961, true);
+    await Promise.resolve();
+    layer.setParallaxDistance(962, true);
 
     showOffscreen("client-paths", "epoch_3.start");
     const clientImage = images.find(({ src }) => src.includes("world-04-client-paths"));
@@ -274,7 +284,10 @@ describe("edge-to-edge gameplay background", () => {
     expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
       ?.dataset.assetPath).toContain("world-03-quality-service");
 
+    await Promise.resolve();
     layer.setParallaxDistance(2_881, true);
+    await Promise.resolve();
+    layer.setParallaxDistance(2_882, true);
     expect([...host.querySelectorAll<HTMLImageElement>("[data-world-panel]")]
       .some(({ dataset }) => dataset.assetPath?.includes("world-04-client-paths")))
       .toBe(true);
@@ -295,6 +308,12 @@ describe("edge-to-edge gameplay background", () => {
 
     expect(images).toHaveLength(2);
     layer.setParallaxDistance(960, true);
+    await vi.waitFor(() => {
+      const panel = host.querySelector<HTMLImageElement>('[data-world-panel="next"]');
+      expect(panel?.dataset.assetPath).toContain("world-02");
+      expect(panel?.hidden).toBe(false);
+    });
+    layer.setParallaxDistance(961, true);
     await vi.waitFor(() => expect(images).toHaveLength(3));
   });
 
@@ -333,6 +352,12 @@ describe("edge-to-edge gameplay background", () => {
       expect.stringContaining("world-01")
     ]);
     layer.setParallaxDistance(960, true);
+    await vi.waitFor(() => {
+      const panel = host.querySelector<HTMLImageElement>('[data-world-panel="next"]');
+      expect(panel?.dataset.assetPath).toContain("world-02");
+      expect(panel?.hidden).toBe(false);
+    });
+    layer.setParallaxDistance(961, true);
     expect(panels.every(({ dataset }) => dataset.assetPath?.includes("world-02")))
       .toBe(true);
     expect(host.dataset.assetState).toBe("loaded");

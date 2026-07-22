@@ -89,4 +89,13 @@ export class GameplayInputQueue {
     this.tail = 0;
     this.size = 0;
   }
+
+  public reset(): void {
+    this.clear();
+    this.sequence = 0;
+    this.crouchHeld = false;
+    this.overflowed = false;
+    this.overflowIncidents = 0;
+    this.droppedEvents = 0;
+  }
 }

@@ -48,6 +48,7 @@ import {
 } from "./game/runner-artwork";
 import { PERFORMANCE_REFERENCE_V1 } from "./qa/performance-reference-v1";
 import { exactDeterminismArtifact, type ExactDeterminismArtifact } from "./qa/determinism";
+import { evaluatePerformanceReleaseGate } from "./qa/release-gate";
 
 export interface CampaignRuntimeOptions {
   readonly qa?: QaBootConfig;
@@ -408,22 +409,25 @@ export class CampaignController {
   private async loadRunnerArtwork(): Promise<RunnerArtwork> {
     const load = (assetId: string, source: string) =>
       this.decodedImageStore.load(assetId, source).then(({ image }) => image);
-    const [orders, powerUps, courier, courierCrouch, courierJump, boxStack, pallet, trolley,
-      overhead, overheadDoor, overheadConveyor, ...parcelFrames] = await Promise.all([
-      load("order-atlas", ORDER_ATLAS_PATH),
-      load("power-up-atlas", POWER_UP_ATLAS_PATH),
-      load("courier-run-sheet", COURIER_SPRITE_PATH),
-      load("courier-crouch", COURIER_CROUCH_SPRITE_PATH),
-      load("courier-jump-sheet", COURIER_JUMP_SPRITE_PATH),
-      load("obstacle-box-stack", OBSTACLE_ASSET_PATHS["box-stack"]),
-      load("obstacle-pallet", OBSTACLE_ASSET_PATHS.pallet),
-      load("obstacle-trolley", OBSTACLE_ASSET_PATHS.trolley),
-      load("obstacle-overhead", OBSTACLE_ASSET_PATHS.overhead),
-      load("obstacle-overhead-door", OVERHEAD_VARIANT_ASSET_PATHS[1]!),
-      load("obstacle-overhead-conveyor", OVERHEAD_VARIANT_ASSET_PATHS[2]!),
-      ...PARCEL_CELEBRATION_FRAME_PATHS.map((source, index) =>
-        load(`parcel-celebration-${index + 1}`, source))
-    ]);
+    // Decode serially: mobile browsers can otherwise spike memory and main-thread work.
+    const orders = await load("order-atlas", ORDER_ATLAS_PATH);
+    const powerUps = await load("power-up-atlas", POWER_UP_ATLAS_PATH);
+    const courier = await load("courier-run-sheet", COURIER_SPRITE_PATH);
+    const courierCrouch = await load("courier-crouch", COURIER_CROUCH_SPRITE_PATH);
+    const courierJump = await load("courier-jump-sheet", COURIER_JUMP_SPRITE_PATH);
+    const boxStack = await load("obstacle-box-stack", OBSTACLE_ASSET_PATHS["box-stack"]);
+    const pallet = await load("obstacle-pallet", OBSTACLE_ASSET_PATHS.pallet);
+    const trolley = await load("obstacle-trolley", OBSTACLE_ASSET_PATHS.trolley);
+    const overhead = await load("obstacle-overhead", OBSTACLE_ASSET_PATHS.overhead);
+    const overheadDoor = await load("obstacle-overhead-door", OVERHEAD_VARIANT_ASSET_PATHS[1]!);
+    const overheadConveyor = await load("obstacle-overhead-conveyor", OVERHEAD_VARIANT_ASSET_PATHS[2]!);
+    const parcelFrames: HTMLImageElement[] = [];
+    for (let index = 0; index < PARCEL_CELEBRATION_FRAME_PATHS.length; index += 1) {
+      parcelFrames.push(await load(
+        `parcel-celebration-${index + 1}`,
+        PARCEL_CELEBRATION_FRAME_PATHS[index]!
+      ));
+    }
     if (!orders || !powerUps || !courier || !courierCrouch || !courierJump || !boxStack ||
         !pallet || !trolley || !overhead || !overheadDoor || !overheadConveyor) {
       throw new Error("critical_runner_artwork_missing");
@@ -485,6 +489,7 @@ export class CampaignController {
 
   public qaReportText(): string {
     if (this.runtime.qa === undefined) return this.qaReport.text(this.shell.geometryDiagnostics);
+    const session = this.qaReport.snapshot(this.shell.geometryDiagnostics);
     return JSON.stringify({
       qaRunConfiguration: {
         qaMode: "performance",
@@ -501,8 +506,13 @@ export class CampaignController {
         effectiveDpr: this.runtime.qa.dpr,
         externalWritesDisabled: true
       },
-      session: this.qaReport.snapshot(this.shell.geometryDiagnostics),
-      scenarioArtifact: this.scenarioArtifact
+      session,
+      scenarioArtifact: this.scenarioArtifact,
+      releaseGate: evaluatePerformanceReleaseGate({
+        inputQueueOverflows: session.inputQueueOverflows,
+        reportMetadataComplete: true,
+        minimumProfileDeviceAvailable: false
+      })
     }, null, 2);
   }
 

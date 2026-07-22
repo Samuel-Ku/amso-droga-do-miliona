@@ -78,12 +78,22 @@ function createWarrantyShieldMesh(): Path2D | null {
 
 export class RendererResourceCache {
   public readonly routeGradient: CanvasGradient;
+  public readonly completedMillionGradient: CanvasGradient;
+  public readonly screenFlashGradient: CanvasGradient;
   public readonly warrantyShieldMesh = createWarrantyShieldMesh();
   public constructor(readonly context: CanvasRenderingContext2D) {
     this.routeGradient = context.createLinearGradient(0, 0, WORLD_WIDTH, 0);
     for (const { offset, color } of WORLD_ROUTE_GRADIENT_STOPS) {
       this.routeGradient.addColorStop(offset, color);
     }
+    this.completedMillionGradient = context.createLinearGradient(560, 0, 914, 0);
+    this.completedMillionGradient.addColorStop(0, "#f47100");
+    this.completedMillionGradient.addColorStop(0.52, "#f04f45");
+    this.completedMillionGradient.addColorStop(1, "#eb32a4");
+    this.screenFlashGradient = context.createLinearGradient(200, 0, 760, 0);
+    this.screenFlashGradient.addColorStop(0, COLORS.orange);
+    this.screenFlashGradient.addColorStop(0.5, COLORS.white);
+    this.screenFlashGradient.addColorStop(1, COLORS.redDark);
   }
   public destroy(): void {
     // Dropping the renderer releases its context-bound resources as one unit.
@@ -614,21 +624,15 @@ function drawScaleVignette(
 
 function drawMillionVignette(
   context: CanvasRenderingContext2D,
-  scene: Readonly<RenderScene>
+  scene: Readonly<RenderScene>,
+  completedGradient: CanvasGradient
 ): void {
   const finale = scene.storyObjectives?.epoch5.millionThreshold;
   const completed = finale?.completed === true || scene.storyPhase === "finale" ||
     scene.storyPhase === "completed";
   const counter = finale?.counterValue ?? (completed ? 1_000_000 : 999_950);
   context.save();
-  const frame = completed
-    ? context.createLinearGradient(560, 0, 914, 0)
-    : COLORS.inkSoft;
-  if (completed && typeof frame !== "string") {
-    frame.addColorStop(0, "#f47100");
-    frame.addColorStop(0.52, "#f04f45");
-    frame.addColorStop(1, "#eb32a4");
-  }
+  const frame = completed ? completedGradient : COLORS.inkSoft;
   fillRoundedRectangle(context, 565, 74, 348, 112, 18, COLORS.white);
   context.strokeStyle = frame;
   context.lineWidth = 8;
@@ -693,7 +697,8 @@ function drawChallengeVignette(
 function drawNarrativeVignette(
   context: CanvasRenderingContext2D,
   scene: Readonly<RenderScene>,
-  theme: Readonly<BackgroundTheme>
+  theme: Readonly<BackgroundTheme>,
+  resources: RendererResourceCache
 ): void {
   if (scene.mode === "challenge") {
     drawChallengeVignette(context, scene, theme);
@@ -717,7 +722,7 @@ function drawNarrativeVignette(
       drawScaleVignette(context, scene, theme);
       break;
     case 4:
-      drawMillionVignette(context, scene);
+      drawMillionVignette(context, scene, resources.completedMillionGradient);
       break;
   }
 }
@@ -1555,18 +1560,21 @@ function drawGameplayRoute(
  * aspect ratio.  Called *before* the world-space clip in render(), inside
  * the translate/scale transform — all coordinates are in world space.
  */
-function effectOrigin(
+function effectOriginX(
   origin: EffectConfig["origin"],
   playerX: number,
-  playerY: number,
-): { x: number; y: number } {
+): number {
   switch (origin) {
-    case "player": return { x: playerX, y: playerY };
-    case "center": return { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
-    case "left": return { x: 0, y: WORLD_HEIGHT / 2 };
-    case "right": return { x: WORLD_WIDTH, y: WORLD_HEIGHT / 2 };
-    case "sides": return { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
+    case "player": return playerX;
+    case "left": return 0;
+    case "right": return WORLD_WIDTH;
+    case "center":
+    case "sides": return WORLD_WIDTH / 2;
   }
+}
+
+function effectOriginY(origin: EffectConfig["origin"], playerY: number): number {
+  return origin === "player" ? playerY : WORLD_HEIGHT / 2;
 }
 
 function effectiveCount(
@@ -1593,7 +1601,8 @@ function drawConfettiBurst(
   smallScreen: boolean,
 ): void {
   const count = effectiveCount(effect.particleCount, progress, quality, smallScreen);
-  const { x: ox, y: oy } = effectOrigin(effect.origin, playerX, playerY);
+  const ox = effectOriginX(effect.origin, playerX);
+  const oy = effectOriginY(effect.origin, playerY);
   const motion = reducedMotion ? 0 : progress;
   const alpha = reducedMotion ? 0.66 : Math.sin(Math.min(1, progress * 2) * Math.PI) * 0.86;
 
@@ -1661,7 +1670,8 @@ function drawSparkles(
 ): void {
   if (quality === "reduced") return;
   const count = effectiveCount(effect.particleCount, progress, quality, smallScreen);
-  const { x: ox, y: oy } = effectOrigin(effect.origin, playerX, playerY);
+  const ox = effectOriginX(effect.origin, playerX);
+  const oy = effectOriginY(effect.origin, playerY);
   const motion = reducedMotion ? 0 : progress;
   const alpha = reducedMotion ? 0.66 : Math.sin(Math.min(1, progress * 2) * Math.PI) * 0.9;
 
@@ -1724,7 +1734,8 @@ function drawPackageParticles(
   smallScreen: boolean,
 ): void {
   const count = effectiveCount(effect.particleCount, progress, quality, smallScreen);
-  const { x: ox, y: oy } = effectOrigin(effect.origin, playerX, playerY);
+  const ox = effectOriginX(effect.origin, playerX);
+  const oy = effectOriginY(effect.origin, playerY);
   const motion = reducedMotion ? 0 : progress;
   const alpha = reducedMotion ? 0.66 : Math.sin(Math.min(1, progress * 1.5) * Math.PI) * 0.85;
 
@@ -1755,7 +1766,8 @@ function drawCoinParticles(
   smallScreen: boolean,
 ): void {
   const count = effectiveCount(effect.particleCount, progress, quality, smallScreen);
-  const { x: ox, y: oy } = effectOrigin(effect.origin, 0, 0);
+  const ox = effectOriginX(effect.origin, 0);
+  const oy = effectOriginY(effect.origin, 0);
   const motion = reducedMotion ? 0 : progress;
   const alpha = reducedMotion ? 0.66 : Math.sin(Math.min(1, progress * 1.5) * Math.PI) * 0.85;
 
@@ -1787,6 +1799,7 @@ function drawScreenFlash(
   progress: number,
   reducedMotion: boolean,
   quality: "full" | "reduced" | undefined,
+  gradient: CanvasGradient
 ): void {
   if (reducedMotion || quality === "reduced") return;
 
@@ -1795,10 +1808,6 @@ function drawScreenFlash(
 
   context.save();
   context.globalAlpha = alpha;
-  const gradient = context.createLinearGradient(200, 0, 760, 0);
-  gradient.addColorStop(0, COLORS.orange);
-  gradient.addColorStop(0.5, COLORS.white);
-  gradient.addColorStop(1, COLORS.redDark);
   context.fillStyle = gradient;
   context.fillRect(180, 40, 600, 150);
   context.restore();
@@ -1807,6 +1816,7 @@ function drawScreenFlash(
 function drawCelebrationEffects(
   context: CanvasRenderingContext2D,
   scene: Readonly<RenderScene>,
+  resources: RendererResourceCache
 ): void {
   const celebration = scene.celebration;
   if (celebration === null || celebration === undefined) return;
@@ -1837,7 +1847,7 @@ function drawCelebrationEffects(
         drawCoinParticles(context, effect, progress, scene.reducedMotion, scene.decorationQuality, smallScreen);
         break;
       case "screen-flash":
-        drawScreenFlash(context, progress, scene.reducedMotion, scene.decorationQuality);
+        drawScreenFlash(context, progress, scene.reducedMotion, scene.decorationQuality, resources.screenFlashGradient);
         break;
     }
   }
@@ -1926,10 +1936,10 @@ export class WarehouseRenderer {
         scene.reducedMotion,
         theme
       );
-      drawNarrativeVignette(context, scene, theme);
+      drawNarrativeVignette(context, scene, theme, resources);
     }
     drawGameplayRoute(context, resources.routeGradient);
-    drawCelebrationEffects(context, scene);
+    drawCelebrationEffects(context, scene, resources);
     drawForkliftBoss(
       context,
       scene.boss,

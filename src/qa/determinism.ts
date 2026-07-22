@@ -35,14 +35,25 @@ export function withinTolerance(expected: number, actual: number, tolerance: num
 
 function toleranceFor(path: string): number | null {
   const key = path.toLowerCase();
-  if (key.endsWith("x") || key.endsWith("y") || key.includes("position")) return NUMERIC_TOLERANCES.positionPx;
   if (key.includes("velocity")) return NUMERIC_TOLERANCES.velocityPxPerSecond;
   if (key.includes("distance")) return NUMERIC_TOLERANCES.distancePx;
   if (key.includes("seconds") || key.includes("timer") || key.includes("remaining")) return NUMERIC_TOLERANCES.timerSeconds;
+  if (key.endsWith("x") || key.endsWith("y") || key.includes("position")) return NUMERIC_TOLERANCES.positionPx;
   return null;
 }
 
-export function compareSemanticState(expected: unknown, actual: unknown): DeterminismResult {
+export interface CanonicalScenarioEvent { type: string; slotId?: number; generation?: number; worldIndex?: number; stepIndex: number; }
+
+function eventIdentity(event: CanonicalScenarioEvent): string {
+  return `${event.type}:${event.slotId ?? "-"}:${event.generation ?? "-"}:${event.worldIndex ?? "-"}`;
+}
+
+export function compareSemanticState(
+  expected: unknown,
+  actual: unknown,
+  expectedEvents: readonly CanonicalScenarioEvent[] = [],
+  actualEvents: readonly CanonicalScenarioEvent[] = []
+): DeterminismResult {
   const numericDeltas: Record<string, NumericDifference> = {};
   const discreteMismatches: { path: string; expected: unknown; actual: unknown }[] = [];
   const visit = (left: unknown, right: unknown, path: string): void => {
@@ -72,5 +83,29 @@ export function compareSemanticState(expected: unknown, actual: unknown): Determ
     if (!Object.is(left, right)) discreteMismatches.push({ path, expected: left, actual: right });
   };
   visit(expected, actual, "");
-  return { semanticMatch: discreteMismatches.length === 0, maxEventStepDelta: 0, numericDeltas, discreteMismatches, eventMismatches: [] };
+  const actualByIdentity = new Map<string, CanonicalScenarioEvent>();
+  for (const event of actualEvents) actualByIdentity.set(eventIdentity(event), event);
+  const eventMismatches: { eventId: string; expectedStep: number; actualStep: number }[] = [];
+  let maxEventStepDelta = 0;
+  for (const event of expectedEvents) {
+    const id = eventIdentity(event);
+    const match = actualByIdentity.get(id);
+    const delta = match ? Math.abs(event.stepIndex - match.stepIndex) : Number.POSITIVE_INFINITY;
+    if (Number.isFinite(delta)) maxEventStepDelta = Math.max(maxEventStepDelta, delta);
+    if (!match || delta > 1) eventMismatches.push({
+      eventId: id,
+      expectedStep: event.stepIndex,
+      actualStep: match?.stepIndex ?? -1
+    });
+  }
+  if (actualEvents.length !== expectedEvents.length && eventMismatches.length === 0) {
+    eventMismatches.push({ eventId: "event-count", expectedStep: expectedEvents.length, actualStep: actualEvents.length });
+  }
+  return {
+    semanticMatch: discreteMismatches.length === 0 && eventMismatches.length === 0,
+    maxEventStepDelta,
+    numericDeltas,
+    discreteMismatches,
+    eventMismatches
+  };
 }

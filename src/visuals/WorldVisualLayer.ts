@@ -32,9 +32,11 @@ export interface DecodedWorldAsset {
 /** One decoded image object per world, retained for the complete campaign session. */
 export class WorldAssetStore {
   private readonly store: DecodedImageStore;
+  private readonly ownsStore: boolean;
   private readonly promises = new Map<string, Promise<DecodedWorldAsset>>();
 
   public constructor(source: DecodedImageStore | (() => HTMLImageElement) = () => new Image()) {
+    this.ownsStore = !(source instanceof DecodedImageStore);
     this.store = source instanceof DecodedImageStore
       ? source
       : new DecodedImageStore({ imageFactory: source });
@@ -54,6 +56,11 @@ export class WorldAssetStore {
     this.promises.set(path, promise);
     return promise;
   }
+
+  public destroy(): void {
+    this.promises.clear();
+    if (this.ownsStore) this.store.destroy();
+  }
 }
 
 function requiredElement<T extends Element>(root: ParentNode, selector: string): T {
@@ -72,6 +79,7 @@ export class WorldVisualLayer {
   private pendingAsset: DecodedWorldAsset | null = null;
   private queuedAsset: DecodedWorldAsset | null = null;
   private pendingPanelPrepared = false;
+  private pendingPanelPreparing = false;
   private transitionMode: WorldTransitionMode = "story-linked";
   private transitionStartDistance = 0;
   private lastDistance = 0;
@@ -168,7 +176,8 @@ export class WorldVisualLayer {
     const progress = (this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH;
     return {
       panelBoundarySafe: this.pendingAsset === null && (progress <= 0.001 || progress >= 0.999),
-      assetSwapComplete: this.pendingAsset === null && this.queuedAsset === null && !this.pendingPanelPrepared
+      assetSwapComplete: this.pendingAsset === null && this.queuedAsset === null &&
+        !this.pendingPanelPrepared && !this.pendingPanelPreparing
     };
   }
 
@@ -178,12 +187,14 @@ export class WorldVisualLayer {
     this.pendingAsset = null;
     this.queuedAsset = null;
     this.pendingPanelPrepared = false;
+    this.pendingPanelPreparing = false;
     for (const panel of this.panels) {
       panel.onload = null;
       panel.onerror = null;
       panel.removeAttribute("src");
       panel.remove();
     }
+    this.assets.destroy();
   }
 
   public setParallaxDistance(
@@ -216,9 +227,10 @@ export class WorldVisualLayer {
     this.lastParallaxCycle = cycle;
 
     if (this.pendingAsset !== null) {
+      if (!this.pendingPanelPrepared) this.preparePendingPanel();
       if (!this.pendingPanelPrepared) {
-        this.drawPanel(this.panels[1], this.pendingAsset);
-        this.pendingPanelPrepared = true;
+        this.placePanels((distance % WORLD_WIDTH) / WORLD_WIDTH);
+        return;
       }
       const transition = Math.max(0, (distance - this.transitionStartDistance) / WORLD_WIDTH);
       if (transition >= 1 - Number.EPSILON * 8) {
@@ -252,8 +264,7 @@ export class WorldVisualLayer {
         if (this.pendingPanelPrepared) {
           this.commitPendingAsset(false);
         } else {
-          this.drawPanel(this.panels[1], this.pendingAsset);
-          this.pendingPanelPrepared = true;
+          this.preparePendingPanel();
         }
       }
     } else {
@@ -261,8 +272,7 @@ export class WorldVisualLayer {
       this.placePanels(progress);
       if (previousCycle === null && progress <= Number.EPSILON * 8 &&
           this.pendingAsset !== null && !this.pendingPanelPrepared) {
-        this.drawPanel(this.panels[1], this.pendingAsset);
-        this.pendingPanelPrepared = true;
+        this.preparePendingPanel();
       }
     }
     this.lastParallaxCycle = cycle;
@@ -292,14 +302,15 @@ export class WorldVisualLayer {
   private resynchronizePanels(progress: number): void {
     this.setPanelMotion(false);
     if (this.currentAsset !== null && this.pendingPanelPrepared) {
-      this.drawPanel(this.panels[0], this.currentAsset);
-      this.drawPanel(this.panels[1], this.currentAsset);
+      void this.drawPanel(this.panels[0], this.currentAsset);
+      void this.drawPanel(this.panels[1], this.currentAsset);
     }
     if (this.queuedAsset !== null) {
       this.pendingAsset = this.queuedAsset;
       this.queuedAsset = null;
     }
     this.pendingPanelPrepared = false;
+    this.pendingPanelPreparing = false;
     this.placePanels(progress);
   }
 
@@ -314,8 +325,15 @@ export class WorldVisualLayer {
         this.pendingAsset = null;
         this.queuedAsset = null;
         this.pendingPanelPrepared = false;
-        this.drawPanel(this.panels[0], decodedAsset);
-        this.drawPanel(this.panels[1], decodedAsset);
+        this.pendingPanelPreparing = false;
+        void Promise.all([
+          this.drawPanel(this.panels[0], decodedAsset),
+          this.drawPanel(this.panels[1], decodedAsset)
+        ]).then((ready) => {
+          if (this.currentAsset === decodedAsset && ready.every(Boolean)) {
+            this.host.dataset.assetState = "loaded";
+          }
+        });
         this.prepareNextWorld(decodedAsset.path);
       } else if (this.transitionMode === "offscreen" &&
           this.pendingAsset !== null && this.pendingPanelPrepared) {
@@ -326,9 +344,10 @@ export class WorldVisualLayer {
         this.pendingAsset = decodedAsset;
         this.queuedAsset = null;
         this.pendingPanelPrepared = false;
+        this.pendingPanelPreparing = false;
         this.transitionStartDistance = this.lastDistance - this.lastDistance % WORLD_WIDTH;
       }
-      this.host.dataset.assetState = "loaded";
+      if (this.currentAsset !== decodedAsset) this.host.dataset.assetState = "loaded";
     }).catch(() => {
       if (this.requestedAssetPath !== assetPath) return;
       if (this.transitionMode === "offscreen" &&
@@ -341,6 +360,7 @@ export class WorldVisualLayer {
       this.pendingAsset = null;
       this.queuedAsset = null;
       this.pendingPanelPrepared = false;
+      this.pendingPanelPreparing = false;
       if (this.currentAsset === null) {
         this.clearPanels();
         this.host.dataset.assetState = "fallback";
@@ -357,8 +377,9 @@ export class WorldVisualLayer {
     this.pendingAsset = this.queuedAsset;
     this.queuedAsset = null;
     this.pendingPanelPrepared = false;
-    if (redrawVisiblePanel) this.drawPanel(this.panels[0], this.currentAsset);
-    this.drawPanel(this.panels[1], this.currentAsset);
+    this.pendingPanelPreparing = false;
+    if (redrawVisiblePanel) void this.drawPanel(this.panels[0], this.currentAsset);
+    void this.drawPanel(this.panels[1], this.currentAsset);
     if (redrawVisiblePanel) {
       this.placePanels((this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH);
     }
@@ -371,20 +392,38 @@ export class WorldVisualLayer {
     if (next !== undefined) void this.assets.load(next.assetPath).catch(() => undefined);
   }
 
-  private drawPanel(panel: HTMLImageElement, asset: DecodedWorldAsset): void {
+  private preparePendingPanel(): void {
+    const asset = this.pendingAsset;
+    if (asset === null || this.pendingPanelPrepared || this.pendingPanelPreparing) return;
+    this.pendingPanelPreparing = true;
+    void this.drawPanel(this.panels[1], asset).then((ready) => {
+      if (this.pendingAsset !== asset) return;
+      this.pendingPanelPreparing = false;
+      this.pendingPanelPrepared = ready;
+      this.host.dataset.assetState = ready ? "loaded" : "failed";
+    });
+  }
+
+  private async drawPanel(panel: HTMLImageElement, asset: DecodedWorldAsset): Promise<boolean> {
     const assignment = (this.panelAssignmentRevisions.get(panel) ?? 0) + 1;
     this.panelAssignmentRevisions.set(panel, assignment);
     panel.hidden = true;
     panel.width = WORLD_ARTWORK_CONTRACT.artWidth;
     panel.height = WORLD_ARTWORK_CONTRACT.artHeight;
     panel.dataset.assetPath = asset.path;
-    panel.src = asset.path;
-    void panel.decode().then(() => {
-      if (assignment !== this.panelAssignmentRevisions.get(panel) || panel.src !== new URL(asset.path, document.baseURI).href) return;
+    // Presentation elements intentionally share the canonical source while keeping
+    // their own DOM decode readiness; they never create a second retry lifecycle.
+    panel.src = asset.image.currentSrc || asset.image.src || asset.path;
+    try {
+      await panel.decode();
+      const expectedSource = new URL(asset.image.currentSrc || asset.image.src || asset.path, document.baseURI).href;
+      if (assignment !== this.panelAssignmentRevisions.get(panel) || panel.src !== expectedSource) return false;
       panel.hidden = false;
-    }).catch(() => {
+      return true;
+    } catch {
       if (assignment === this.panelAssignmentRevisions.get(panel)) panel.hidden = true;
-    });
+      return false;
+    }
   }
 
   private clearPanels(): void {

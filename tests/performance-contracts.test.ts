@@ -5,9 +5,10 @@ import { FrameWindowTelemetry } from "../src/performance/frame-window-telemetry"
 import { VisualQualityCoordinator } from "../src/performance/visual-quality-coordinator";
 import { resolveVisualPolicy } from "../src/performance/visual-policy";
 import { compareSemanticState, exactDeterminismArtifact } from "../src/qa/determinism";
-import { PERFORMANCE_REFERENCE_V1 } from "../src/qa/performance-reference-v1";
+import { PERFORMANCE_REFERENCE_V1, validateScenarioRun } from "../src/qa/performance-reference-v1";
 import { DecodedImageStore } from "../src/assets/DecodedImageStore";
 import { evaluatePerformanceReleaseGate } from "../src/qa/release-gate";
+import { validateVisualFixture, visualBaselineKey, type VisualRegressionFixture } from "../src/qa/visual-regression";
 
 describe("performance contracts", () => {
   it("strictly parses an ephemeral performance URL", () => {
@@ -90,6 +91,64 @@ describe("performance contracts", () => {
     expect(PERFORMANCE_REFERENCE_V1.durationSteps).toBe(7200);
     expect(PERFORMANCE_REFERENCE_V1.inputs.length).toBeGreaterThan(0);
     expect(PERFORMANCE_REFERENCE_V1.requiredCoverage.map(({ type }) => type)).toContain("world-change");
+    expect(PERFORMANCE_REFERENCE_V1.inputs).toEqual([...PERFORMANCE_REFERENCE_V1.inputs]
+      .sort((left, right) => left.stepIndex - right.stepIndex || left.sequence - right.sequence));
+  });
+
+  it("does not auto-approve a missing scenario digest", () => {
+    const coverage = Object.fromEntries(PERFORMANCE_REFERENCE_V1.requiredCoverage.map((requirement) => [
+      requirement.type === "power-up" ? `power-up:${requirement.id}` : requirement.type,
+      "minCount" in requirement ? requirement.minCount : requirement.minDurationSteps
+    ]));
+    const result = validateScenarioRun(PERFORMANCE_REFERENCE_V1, {
+      completedThroughStep: 7199,
+      checkpointResults: [{ completedThroughStep: -1, passed: true }],
+      coverage,
+      finalDigest: "fnv1a32:12345678",
+      expectedFinalDigest: null,
+      inputQueueOverflows: 0
+    });
+    expect(result.passed).toBe(false);
+    expect(result.reasons).toContain("expected-digest-unapproved");
+  });
+
+  it("records quality request, cancellation and commit diagnostics", () => {
+    const quality = new VisualQualityCoordinator("full");
+    quality.observe({ classification: "slow", sampledDurationMs: 2_000 }, 1, 1);
+    quality.observe({ classification: "slow", sampledDurationMs: 2_000 }, 2, 2);
+    quality.observe({ classification: "stable", sampledDurationMs: 15_000 }, 3, 3);
+    expect(quality.diagnostics.map(({ type }) => type)).toEqual([
+      "quality-requested", "quality-request-cancelled"
+    ]);
+    quality.observe({ classification: "slow", sampledDurationMs: 2_000 }, 4, 4);
+    quality.observe({ classification: "slow", sampledDurationMs: 2_000 }, 5, 5);
+    expect(quality.tryCommit({
+      panelBoundarySafe: true,
+      assetSwapComplete: true,
+      celebrationActive: false,
+      cutsceneOverlayActive: false
+    }, 6, 6)).toBe(true);
+    expect(quality.diagnostics.at(-1)?.type).toBe("quality-committed");
+  });
+
+  it("validates protected visual regions and configuration-specific baseline keys", () => {
+    const fixture: VisualRegressionFixture = {
+      id: "shield",
+      completedThroughStep: 100,
+      interpolationAlpha: 0.5,
+      viewport: { width: 960, height: 540 },
+      effectiveDpr: 2,
+      motionPreference: "reduced-motion",
+      qualityLevel: "reduced",
+      protectedRegions: [{
+        id: "runner-shield", rect: { x: 0, y: 0, width: 100, height: 100 },
+        requiredElements: ["runner", "shield"]
+      }]
+    };
+    expect(visualBaselineKey(fixture, "chrome-127-linux")).toContain("alpha-0.5");
+    expect(validateVisualFixture(fixture, {
+      presentElements: ["runner"], semanticOcclusionViolations: [], panelCanvasSynchronized: true
+    })).toMatchObject({ passed: false, reasons: ["missing:runner-shield:shield"] });
   });
 
   it("deduplicates the canonical image decode promise", async () => {
@@ -111,6 +170,36 @@ describe("performance contracts", () => {
       requiredCoveragePassed: true,
       reportMetadataComplete: true,
       minimumProfileDeviceAvailable: false
-    })).toMatchObject({ status: "incomplete", reasons: ["minimum-profile-device-unavailable"] });
+    })).toMatchObject({ status: "incomplete" });
+    expect(evaluatePerformanceReleaseGate({
+      checkpointsPassed: true,
+      digestPassed: true,
+      inputQueueOverflows: 0,
+      requiredCoveragePassed: true,
+      reportMetadataComplete: true,
+      minimumProfileDeviceAvailable: false
+    }).reasons).toContain("minimum-profile-device-unavailable");
+  });
+
+  it("passes the integrated gate only with every automated and physical evidence field", () => {
+    expect(evaluatePerformanceReleaseGate({
+      checkpointsPassed: true,
+      digestPassed: true,
+      inputQueueOverflows: 0,
+      requiredCoveragePassed: true,
+      reportMetadataComplete: true,
+      minimumProfileDeviceAvailable: true,
+      configurationPassed: true,
+      consoleErrorCount: 0,
+      autonomicHtmlSizeMb: 23.5,
+      visualRegressionPassed: true,
+      coldStartEvidenceAvailable: true,
+      worldTransitionEvidenceAvailable: true,
+      onePlusReportAvailable: true,
+      nokiaReportAvailable: true,
+      iphoneSafariReportAvailable: true,
+      androidMemoryMb: 210,
+      androidCycleGrowthMb: 8
+    })).toEqual({ status: "pass", reasons: [] });
   });
 });

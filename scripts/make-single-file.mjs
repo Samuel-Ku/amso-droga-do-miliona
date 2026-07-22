@@ -56,6 +56,7 @@ function inlineCampaignImageAssets(document) {
 
   let inlinedDocument = document;
   let inlinedReferenceCount = 0;
+  const embeddedAssets = {};
 
   for (const assetPath of imagePaths) {
     const assetRelativePath = path
@@ -81,20 +82,25 @@ function inlineCampaignImageAssets(document) {
       );
     }
     const sourceVariants = [`.${publicPath}`, publicPath, assetRelativePath];
+    const token = `__AMSO_EMBEDDED_ASSET_${Object.keys(embeddedAssets).length}__`;
+    let assetUsed = false;
 
     for (const source of sourceVariants) {
       const occurrenceCount = inlinedDocument.split(source).length - 1;
       if (occurrenceCount === 0) continue;
 
-      inlinedDocument = inlinedDocument.replaceAll(source, dataUri);
+      inlinedDocument = inlinedDocument.replaceAll(source, token);
       inlinedReferenceCount += occurrenceCount;
+      assetUsed = true;
     }
+    if (assetUsed) embeddedAssets[token] = dataUri;
   }
 
   return {
     html: inlinedDocument,
     assetCount: imagePaths.length,
     referenceCount: inlinedReferenceCount,
+    embeddedAssets,
   };
 }
 
@@ -124,7 +130,7 @@ for (const scriptMatch of scriptMatches) {
     // Vite's entry bundle contains no imports. Defer it until the campaign root
     // exists and convert it to a classic script for reliable file:// execution.
     html = html.replace(scriptMatch[0], "");
-    deferredScripts.push(inlineScript);
+    deferredScripts.push(script);
   } else {
     // Preserve the watchdog after the parsed fallback and before the deferred app.
     html = html.replace(scriptMatch[0], inlineScript);
@@ -137,7 +143,7 @@ if (deferredScripts.length === 0) {
 
 html = html.replace(
   "</body>",
-  () => `${deferredScripts.join("\n")}\n</body>`,
+  () => `<script type="application/json" id="amso-deferred-scripts">${JSON.stringify(deferredScripts).replace(/<\/script/giu, "<\\/script")}</script>\n</body>`,
 );
 html = html.replace(styleMatch[0], () => `<style>\n${style}\n</style>`);
 
@@ -174,6 +180,8 @@ html = html.replace(
 // so it remains complete when opened directly via file:// without a web server.
 const inlineResult = inlineCampaignImageAssets(html);
 html = inlineResult.html;
+const assetBootstrap = `<script>(()=>{const assets=${JSON.stringify(inlineResult.embeddedAssets)};const replace=(value)=>typeof value==="string"?value.replace(/__AMSO_EMBEDDED_ASSET_\\d+__/g,(token)=>assets[token]||token):value;const resolve=(value)=>{if(Array.isArray(value)){for(let i=0;i<value.length;i+=1)value[i]=resolve(value[i]);return value}if(value&&typeof value==="object"){for(const key of Object.keys(value))value[key]=resolve(value[key]);return value}return replace(value)};window.__RUNNER_CONFIG__=resolve(window.__RUNNER_CONFIG__);window.__RUNNER_MODULE__=replace(window.__RUNNER_MODULE__);window.__RUNNER_STYLE__=replace(window.__RUNNER_STYLE__);const holder=document.getElementById("amso-deferred-scripts");const sources=holder?JSON.parse(holder.textContent||"[]"):[];holder?.remove();for(const source of sources){const script=document.createElement("script");script.text=replace(source);document.body.appendChild(script)}})();</script>`;
+html = html.replace("</body>", `${assetBootstrap}\n</body>`);
 html = html.replace(/^[\t ]+$/gmu, "");
 
 fs.writeFileSync(outputPath, html, "utf8");

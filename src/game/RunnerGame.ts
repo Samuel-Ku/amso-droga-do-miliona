@@ -263,7 +263,9 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     worldId: "first-mile" as CampaignWorldId,
     stateId: "story.first_package",
     nextStateId: "story.first_package",
-    progress: 0
+    progress: 0,
+    worldIndex: 0,
+    transitionPending: false
   };
   private accumulator = 0;
   private lastFrameTime: number | null = null;
@@ -453,7 +455,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     this.impactSeconds = 0;
     this.crouchHeld = false;
     this.crouchInputHeld = false;
-    this.inputQueue.clear();
+    this.inputQueue.reset();
     this.setState("running");
     this.emitStorySignals(true);
     this.emitSnapshot();
@@ -487,8 +489,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     if (this.qaScenarioActive) return;
     this.controlMethod = controlMethod;
     if (!this.inputQueue.push(this.nextStepIndex, "jump", true, controlMethod)) {
-      this.replayValid = false;
-      if (this.qaScenarioActive) this.onQaAbort?.("input-queue-overflow");
+      this.abortQaForInputOverflow();
     }
   }
 
@@ -508,8 +509,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     if (this.crouchInputHeld === active) return;
     this.crouchInputHeld = active;
     if (!this.inputQueue.push(this.nextStepIndex, "crouch", active, controlMethod)) {
-      this.replayValid = false;
-      if (this.qaScenarioActive) this.onQaAbort?.("input-queue-overflow");
+      this.abortQaForInputOverflow();
     }
   }
 
@@ -518,6 +518,10 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     this.cancelFrame();
     this.lastFrameTime = null;
     this.celebrationManager.cancel();
+    this.inputQueue.recover(false);
+    this.crouchHeld = false;
+    this.crouchInputHeld = false;
+    this.runner.crouching = false;
     this.setState("paused");
     this.render();
   }
@@ -597,7 +601,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     this.bossStarted = false;
     this.crouchHeld = false;
     this.crouchInputHeld = false;
-    this.inputQueue.clear();
+    this.inputQueue.reset();
     this.nextStepIndex = 0;
     this.replayInputCursor = 0;
     this.replayValid = true;
@@ -767,8 +771,8 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       if (!event || event.stepIndex > this.nextStepIndex) break;
       if (event.stepIndex === this.nextStepIndex) {
         if (!this.inputQueue.push(event.stepIndex, event.action, event.active, event.controlMethod)) {
-          this.replayValid = false;
-          this.onQaAbort?.("input-queue-overflow");
+          this.abortQaForInputOverflow();
+          return;
         }
       }
       this.replayInputCursor += 1;
@@ -793,6 +797,14 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       this.setState("paused");
       this.onScenarioComplete?.(this.nextStepIndex - 1);
     }
+  }
+
+  private abortQaForInputOverflow(): void {
+    this.replayValid = false;
+    if (!this.qaScenarioActive) return;
+    this.cancelFrame();
+    this.setState("paused");
+    this.onQaAbort?.("input-queue-overflow");
   }
 
   private snapInterpolationHistory(): void {
@@ -2252,54 +2264,59 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
   } {
     if (this.mode === "challenge") {
       const challenge = this.challengeWorldDirector.snapshot;
-      return {
-        worldId: challenge.worldId,
-        stateId: challenge.stateId,
-        nextStateId: challenge.stateId,
-        progress: Math.min(1, challenge.worldElapsedSeconds / 45),
-        worldIndex: challenge.worldIndex,
-        transitionPending: challenge.transitionPending
-      };
+      return this.setWorldVisual(
+        challenge.worldId,
+        challenge.stateId,
+        challenge.stateId,
+        Math.min(1, challenge.worldElapsedSeconds / 45),
+        challenge.worldIndex,
+        challenge.transitionPending
+      );
     }
 
     const story = this.storyTimeline?.snapshot;
     if (story?.scene) {
       const state = sceneVisualState(story.scene.id);
-      return {
-        worldId: state.worldId,
-        stateId: state.stateId,
-        nextStateId: state.stateId,
-        progress: state.worldProgress,
-        worldIndex: CAMPAIGN_WORLD_IDS.indexOf(state.worldId),
-        transitionPending: false
-      };
+      return this.setWorldVisual(
+        state.worldId, state.stateId, state.stateId, state.worldProgress,
+        CAMPAIGN_WORLD_IDS.indexOf(state.worldId), false
+      );
     }
     if (story?.playSegment) {
       const sectionProgress = story.sectionDurationSeconds <= 0
         ? 0
         : story.sectionElapsedSeconds / story.sectionDurationSeconds;
       const play = resolvePlaySegmentVisual(story.playSegment.id, sectionProgress);
-      return {
-        worldId: play.worldId,
-        stateId: play.fromStateId,
-        nextStateId: play.toStateId,
-        progress: play.progress,
-        worldIndex: CAMPAIGN_WORLD_IDS.indexOf(play.worldId),
-        transitionPending: false
-      };
+      return this.setWorldVisual(
+        play.worldId, play.fromStateId, play.toStateId, play.progress,
+        CAMPAIGN_WORLD_IDS.indexOf(play.worldId), false
+      );
     }
 
     const fallback = sceneVisualState(
       story?.completed ? "story.million_finale" : "story.first_package"
     );
-    return {
-      worldId: fallback.worldId,
-      stateId: fallback.stateId,
-      nextStateId: fallback.stateId,
-      progress: fallback.worldProgress,
-      worldIndex: CAMPAIGN_WORLD_IDS.indexOf(fallback.worldId),
-      transitionPending: false
-    };
+    return this.setWorldVisual(
+      fallback.worldId, fallback.stateId, fallback.stateId, fallback.worldProgress,
+      CAMPAIGN_WORLD_IDS.indexOf(fallback.worldId), false
+    );
+  }
+
+  private setWorldVisual(
+    worldId: CampaignWorldId,
+    stateId: string,
+    nextStateId: string,
+    progress: number,
+    worldIndex: number,
+    transitionPending: boolean
+  ): typeof this.renderWorldVisual {
+    this.renderWorldVisual.worldId = worldId;
+    this.renderWorldVisual.stateId = stateId;
+    this.renderWorldVisual.nextStateId = nextStateId;
+    this.renderWorldVisual.progress = progress;
+    this.renderWorldVisual.worldIndex = worldIndex;
+    this.renderWorldVisual.transitionPending = transitionPending;
+    return this.renderWorldVisual;
   }
 
   private emitSnapshot(): void {

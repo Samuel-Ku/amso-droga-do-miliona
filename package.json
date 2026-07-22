@@ -8,6 +8,7 @@
     "build": "npm run typecheck && vite build && vite build --config vite.loader.config.ts",
     "build:demo": "vite build --config vite.demo.config.ts",
     "build:single": "npm run build:demo && node scripts/make-single-file.mjs",
+    "check:performance-release": "node scripts/check-performance-release.mjs",
     "build:copydeck": "node scripts/make-marketing-copydeck-csv.mjs",
     "build:frames": "node scripts/make-comprehension-frame-review.mjs",
     "build:all": "npm run build && npm run build:single && npm run build:copydeck && npm run build:frames",
