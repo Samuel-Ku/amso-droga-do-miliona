@@ -749,6 +749,12 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
         nextStory.playSegment?.id ?? null,
         nextStory.playSegment?.durationSeconds
       );
+      if (previousStory.sectionId !== nextStory.sectionId ||
+          previousStory.state !== nextStory.state) {
+        // Keep shell visuals on the same state boundary: the final scene must
+        // never open while the last published counter still reads below one million.
+        this.emitSnapshot();
+      }
       this.emitStorySignals();
       storyCompletedThisStep = nextStory.completed;
     }

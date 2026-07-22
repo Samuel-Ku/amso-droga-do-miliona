@@ -79,6 +79,7 @@ function createGameHarness(
   if (!config) throw new Error("production config should parse");
   const snapshots: GameSnapshot[] = [];
   const storyUpdates: StoryTimelineSnapshot[] = [];
+  const storyUpdateCounters: Array<number | undefined> = [];
   const modeChanges: string[] = [];
   const milestoneCelebrations: MilestoneCelebrationEvent[] = [];
   const milestoneModes: string[] = [];
@@ -94,7 +95,10 @@ function createGameHarness(
         gameOvers += 1;
         outcome = result.outcome;
       },
-      onStoryUpdate: (snapshot) => storyUpdates.push(snapshot),
+      onStoryUpdate: (snapshot) => {
+        storyUpdates.push(snapshot);
+        storyUpdateCounters.push(snapshots.at(-1)?.millionCounterValue);
+      },
       onModeChange: (mode) => modeChanges.push(mode),
       onMilestoneCelebration: (celebration) => {
         milestoneCelebrations.push(celebration);
@@ -163,6 +167,7 @@ function createGameHarness(
     game,
     snapshots,
     storyUpdates,
+    storyUpdateCounters,
     modeChanges,
     milestoneCelebrations,
     milestoneModes,
@@ -394,6 +399,10 @@ describe("campaign collision contract", () => {
     expect(harness.gameOvers).toBe(0);
     expect(harness.storyCompletions).toBe(1);
     expect(harness.modeChanges).toEqual(["challenge"]);
+    const finaleStoryUpdateIndex = harness.storyUpdates.findIndex(({ scene }) =>
+      scene?.id === "story.million_finale");
+    expect(finaleStoryUpdateIndex).toBeGreaterThanOrEqual(0);
+    expect(harness.storyUpdateCounters[finaleStoryUpdateIndex]).toBe(1_000_000);
     expect(harness.milestoneCelebrations.length).toBeGreaterThan(0);
     expect(harness.milestoneCelebrations[0]).toMatchObject({
       threshold: 10,
