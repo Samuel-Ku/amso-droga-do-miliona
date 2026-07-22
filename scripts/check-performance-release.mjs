@@ -36,15 +36,24 @@ if (process.exitCode === undefined && process.argv.includes("--require-evidence"
       "onePlusReportPassed", "nokiaReportPassed", "iphoneSafariReportPassed",
       "minimumProfileReportPassed", "reportMetadataComplete"
     ];
-    const failed = requiredPassFields.filter((field) => evidence[field] !== true);
-    if (evidence.minimumProfileDeviceAvailable !== true) failed.push("minimumProfileDeviceAvailable");
-    if (evidence.consoleErrorCount !== 0) failed.push("consoleErrorCount");
-    if (evidence.inputQueueOverflows !== 0) failed.push("inputQueueOverflows");
-    if (!(Number.isFinite(evidence.androidMemoryMb) && evidence.androidMemoryMb <= 220)) failed.push("androidMemoryMb");
-    if (!(Number.isFinite(evidence.androidCycleGrowthMb) && evidence.androidCycleGrowthMb <= 10)) failed.push("androidCycleGrowthMb");
+    const missing = requiredPassFields.filter((field) => evidence[field] === undefined);
+    const failed = requiredPassFields.filter((field) => evidence[field] === false);
+    if (evidence.minimumProfileDeviceAvailable === undefined) missing.push("minimumProfileDeviceAvailable");
+    else if (evidence.minimumProfileDeviceAvailable !== true) failed.push("minimumProfileDeviceAvailable");
+    if (evidence.consoleErrorCount === undefined) missing.push("consoleErrorCount");
+    else if (evidence.consoleErrorCount !== 0) failed.push("consoleErrorCount");
+    if (evidence.inputQueueOverflows === undefined) missing.push("inputQueueOverflows");
+    else if (evidence.inputQueueOverflows !== 0) failed.push("inputQueueOverflows");
+    if (evidence.androidMemoryMb === undefined) missing.push("androidMemoryMb");
+    else if (!(Number.isFinite(evidence.androidMemoryMb) && evidence.androidMemoryMb <= 220)) failed.push("androidMemoryMb");
+    if (evidence.androidCycleGrowthMb === undefined) missing.push("androidCycleGrowthMb");
+    else if (!(Number.isFinite(evidence.androidCycleGrowthMb) && evidence.androidCycleGrowthMb <= 10)) failed.push("androidCycleGrowthMb");
     if (failed.length > 0) {
       console.error(`release gate failed or incomplete: ${failed.join(", ")}`);
       process.exitCode = 1;
+    } else if (missing.length > 0) {
+      console.error(`release gate incomplete: ${missing.join(", ")}`);
+      process.exitCode = 2;
     } else {
       console.log("integrated performance release gate passed");
     }

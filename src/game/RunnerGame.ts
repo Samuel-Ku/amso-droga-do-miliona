@@ -2399,11 +2399,19 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     if (this._state === "destroyed" || !this.geometryAvailable) return;
     const worldVisual = this.currentWorldVisual();
     this.visualFrameSequence += 1;
-    const qualityContext = this.qualityCommitContext?.() ?? {
+    const presentationQualityContext = this.qualityCommitContext?.() ?? {
       panelBoundarySafe: !worldVisual.transitionPending,
       assetSwapComplete: !worldVisual.transitionPending,
-      celebrationActive: this.celebrationManager.getState() !== null,
-      cutsceneOverlayActive: this.cutscene !== null
+      celebrationActive: false,
+      cutsceneOverlayActive: false
+    };
+    const qualityContext = {
+      panelBoundarySafe: presentationQualityContext.panelBoundarySafe,
+      assetSwapComplete: presentationQualityContext.assetSwapComplete,
+      celebrationActive: presentationQualityContext.celebrationActive ||
+        this.celebrationManager.getState() !== null,
+      cutsceneOverlayActive: presentationQualityContext.cutsceneOverlayActive ||
+        this.cutscene !== null
     };
     this.decorationQuality.tryCommit(
       qualityContext,

@@ -153,7 +153,7 @@ export class WorldVisualLayer {
     this.host.style.setProperty("--world-reading-origin-x", `${state.readingCamera.x * 100}%`);
     this.host.style.setProperty("--world-reading-origin-y", `${state.readingCamera.y * 100}%`);
 
-    if (worldChanged) {
+    if (worldChanged || (this.currentAsset === null && this.requestedAssetPath === null)) {
       this.loadWorldAsset(world.assetPath);
     }
     if (worldChanged || stateChanged) {
@@ -387,6 +387,7 @@ export class WorldVisualLayer {
       this.pendingPanelPrepared = false;
       this.pendingPanelPreparing = false;
       if (this.currentAsset === null) {
+        this.requestedAssetPath = null;
         this.clearPanels();
         this.host.dataset.assetState = "fallback";
         this.rejectCurrentPresentation?.(new Error("world_asset_decode_failed"));
@@ -467,6 +468,8 @@ export class WorldVisualLayer {
       await panel.decode();
       const expectedSource = new URL(asset.image.currentSrc || asset.image.src || asset.path, document.baseURI).href;
       if (assignment !== this.panelAssignmentRevisions.get(panel) || panel.src !== expectedSource) return false;
+      if (asset.image.naturalWidth !== WORLD_ARTWORK_CONTRACT.artWidth ||
+          asset.image.naturalHeight !== WORLD_ARTWORK_CONTRACT.artHeight) return false;
       panel.hidden = false;
       return true;
     } catch {

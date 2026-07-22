@@ -33,6 +33,7 @@ function imageHarness(): {
       if (event.type === "load") {
         this.complete = true;
         this.naturalWidth = 1780;
+        Object.defineProperty(this, "naturalHeight", { configurable: true, value: 941 });
         this.resolveDecode?.();
         this.onload?.(event);
       }
@@ -378,5 +379,10 @@ describe("edge-to-edge gameplay background", () => {
     images[0]!.dispatchEvent(new Event("error"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("fallback"));
     expect(host.dataset.worldId).toBe("first-mile");
+
+    layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "game" });
+    expect(images).toHaveLength(2);
+    images[1]!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
   });
 });

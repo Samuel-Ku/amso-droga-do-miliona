@@ -29,6 +29,8 @@ describe("performance contracts", () => {
   it("fails closed when performance parameters are invalid", () => {
     expect(() => parseQaBootConfig(new URL("https://example.test/?qa=performance&scenario=performance-reference-v1&quality=low&motion=system&audio=enabled&dpr=3")))
       .toThrow(QaBootConfigError);
+    expect(() => parseQaBootConfig(new URL("https://example.test/?qa=performnce")))
+      .toThrow(QaBootConfigError);
     expect(parseQaBootConfig(new URL("https://example.test/?quality=force-full")))
       .toEqual({ kind: "production" });
   });

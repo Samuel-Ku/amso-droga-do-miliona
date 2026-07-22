@@ -562,7 +562,7 @@ export class CampaignController {
       scenarioValidation: this.scenarioValidation,
       releaseGate: evaluatePerformanceReleaseGate({
         inputQueueOverflows: session.inputQueueOverflows,
-        reportMetadataComplete: true,
+        reportMetadataComplete: false,
         minimumProfileDeviceAvailable: false,
         checkpointsPassed: this.scenarioValidation?.checkpointsPassed,
         digestPassed: this.scenarioValidation?.digestPassed,

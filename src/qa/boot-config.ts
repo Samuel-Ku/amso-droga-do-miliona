@@ -28,7 +28,9 @@ function oneOf<T extends string>(value: string | null, values: readonly T[], fie
 
 /** Read once during boot. The result is never persisted or observed again. */
 export function parseQaBootConfig(url: URL): QaBootResult {
-  if (url.searchParams.get("qa") !== "performance") return { kind: "production" };
+  const qaMode = url.searchParams.get("qa");
+  if (qaMode === null) return { kind: "production" };
+  if (qaMode !== "performance") throw new QaBootConfigError("qa");
   const scenarioId = oneOf(url.searchParams.get("scenario"), ["performance-reference-v1"] as const, "scenario");
   const quality = oneOf(url.searchParams.get("quality"), ["auto", "force-full", "force-reduced"] as const, "quality");
   const motion = oneOf(url.searchParams.get("motion"), ["system", "full", "reduced"] as const, "motion");
