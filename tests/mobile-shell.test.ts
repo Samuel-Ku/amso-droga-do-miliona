@@ -58,9 +58,9 @@ describe("mobile campaign shell", () => {
   it("accepts a wide Android landscape viewport while preserving minimums", () => {
     expect(isCampaignViewportTooNarrow(960, 315)).toBe(false);
     expect(isCampaignViewportTooNarrow(640, 280)).toBe(false);
-    expect(isCampaignViewportTooNarrow(639, 315)).toBe(true);
-    expect(isCampaignViewportTooNarrow(960, 279)).toBe(true);
-    expect(isCampaignViewportTooNarrow(389, 844)).toBe(true);
+    expect(isCampaignViewportTooNarrow(479, 320)).toBe(true);
+    expect(isCampaignViewportTooNarrow(960, 219)).toBe(true);
+    expect(isCampaignViewportTooNarrow(279, 844)).toBe(true);
     expect(isCampaignViewportTooNarrow(390, 844)).toBe(false);
   });
 

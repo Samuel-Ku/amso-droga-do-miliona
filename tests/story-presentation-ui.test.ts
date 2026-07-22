@@ -271,11 +271,11 @@ describe("player-paced story presentation", () => {
     expect(campaignCss).toContain('[data-phase="story"] .amso-world-visual__image-stack');
   });
 
-  it("enforces 390 px portrait width and a separate landscape minimum", () => {
-    expect(isCampaignViewportTooNarrow(389, 844)).toBe(true);
-    expect(isCampaignViewportTooNarrow(390, 844)).toBe(false);
+  it("enforces a minimum viewport for the game container", () => {
+    expect(isCampaignViewportTooNarrow(279, 844)).toBe(true);
+    expect(isCampaignViewportTooNarrow(280, 844)).toBe(false);
     expect(isCampaignViewportTooNarrow(844, 315)).toBe(false);
-    expect(isCampaignViewportTooNarrow(844, 279)).toBe(true);
+    expect(isCampaignViewportTooNarrow(844, 219)).toBe(true);
     expect(campaignShellSource).toContain("this.callbacks.onPause(\"layout_change\")");
     expect(campaignShellSource).toContain('activeView === "story_reframe"');
     expect(campaignShellSource).toContain("!this.tooNarrowActive");

@@ -429,6 +429,11 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
+  padding:
+    max(0px, env(safe-area-inset-top))
+    max(0px, env(safe-area-inset-right))
+    max(0px, env(safe-area-inset-bottom))
+    max(0px, env(safe-area-inset-left));
   pointer-events: none;
   transition: opacity 180ms ease;
 }
@@ -915,6 +920,13 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   line-height: 1.45;
 }
 
+.amso-campaign__landing-cta-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 570px;
+}
+
 .amso-campaign__landing-actions {
   display: flex;
   max-width: 570px;
@@ -1322,7 +1334,9 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   .amso-campaign__hud-stats {
     position: static;
     grid-area: stats;
-    justify-self: start;
+    justify-self: center;
+    width: fit-content;
+    max-width: 100%;
     min-height: 39px;
     padding: 5px 9px;
     gap: 12px;
@@ -1443,21 +1457,8 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 
 @media (orientation: portrait) and (max-width: 600px) {
   .amso-campaign__stage {
-    border-radius: 18px;
+    border-radius: 0;
   }
-
-  .amso-campaign__canvas {
-    height: 68%;
-    top: 10%;
-  }
-
-  .amso-campaign[data-view="landing"] .amso-campaign__canvas,
-  .amso-campaign[data-view="story_result"] .amso-campaign__canvas,
-  .amso-campaign[data-view="challenge_result"] .amso-campaign__canvas {
-    height: 100%;
-    top: 0;
-  }
-
 }
 
 @media (max-height: 520px) and (min-width: 600px) {
@@ -1578,6 +1579,241 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   .amso-campaign__result-grid strong,
   .amso-campaign__result-grid i {
     font-size: 1rem;
+  }
+}
+
+/* ---- Niski viewport (portrait) — redukcja odstępów, nie ukrywanie treści ---- */
+@media (max-height: 700px) and (max-width: 820px) and (orientation: portrait) {
+  .amso-campaign__header {
+    min-height: 48px;
+    padding-block: 4px;
+  }
+
+  .amso-campaign__footer {
+    min-height: 28px;
+    padding-block: 3px;
+  }
+
+  .amso-campaign__screen--landing {
+    padding: clamp(10px, 2.5vh, 16px) clamp(12px, 3vw, 20px);
+  }
+
+  .amso-campaign__landing-copy {
+    padding: clamp(10px, 2.5vh, 16px) clamp(12px, 3vw, 18px);
+    border-radius: 14px;
+  }
+
+  .amso-campaign__landing-copy h1 {
+    font-size: clamp(1.6rem, 4vh + 1vw, 2.8rem);
+  }
+
+  .amso-campaign__lead {
+    margin: 6px auto 4px;
+    font-size: clamp(0.78rem, 1.6vh + 0.3vw, 0.92rem);
+    line-height: 1.4;
+  }
+
+  .amso-campaign__meta {
+    margin-bottom: 6px;
+    font-size: 0.62rem;
+  }
+
+  .amso-campaign__how-to summary {
+    padding: 8px 12px;
+    font-size: 0.78rem;
+  }
+
+  .amso-campaign__how-to div {
+    padding: 0 12px 10px;
+    gap: 4px;
+  }
+
+  .amso-campaign__how-to p {
+    font-size: 0.72rem;
+  }
+
+  .amso-campaign__landing-actions .amso-campaign__button {
+    min-height: 40px;
+    font-size: 0.78rem;
+  }
+
+  .amso-campaign__landing-milestone {
+    margin-block: 0.3rem 0.2rem;
+    padding: clamp(0.2rem, 1vh, 0.5rem) clamp(0.5rem, 2vw, 1rem);
+  }
+
+  .amso-campaign__landing-milestone-value {
+    font-size: clamp(1rem, 4vh + 1vw, 1.8rem);
+  }
+
+  .amso-campaign__landing-milestone-label {
+    font-size: clamp(0.45rem, 1vh + 0.3vw, 0.65rem);
+  }
+
+  .amso-campaign__story-presentation {
+    padding:
+      max(6px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right))
+      max(6px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+  }
+
+  .amso-campaign__story-scene-card {
+    padding: 10px clamp(16px, 3.5vw, 28px);
+    border-radius: 16px;
+  }
+
+  .amso-campaign__story-scene-card h2 {
+    font-size: clamp(1.3rem, 5vh, 2rem);
+  }
+
+  .amso-campaign__story-scene-body {
+    font-size: clamp(0.88rem, 2.2vh, 1rem);
+    line-height: 1.42;
+  }
+
+  .amso-campaign__story-continue {
+    min-height: 40px;
+    margin-top: 8px;
+  }
+
+  .amso-campaign__story-countdown p {
+    font-size: 0.82rem;
+  }
+
+  .amso-campaign__story-countdown strong {
+    font-size: clamp(3.5rem, 34vh, 7rem);
+  }
+}
+
+/* ---- Niski viewport (landscape + min-width 600px) ---- */
+@media (max-height: 520px) and (min-width: 600px) {
+  .amso-campaign__header {
+    min-height: 40px;
+    padding-block: 3px;
+  }
+
+  .amso-campaign__footer {
+    min-height: 22px;
+    padding-block: 2px;
+  }
+}
+
+/* ---- Wąski viewport ---- */
+@media (max-width: 390px) {
+  .amso-campaign__screen--landing {
+    padding: 10px 8px;
+  }
+
+  .amso-campaign__landing-copy {
+    padding: 12px 10px;
+  }
+
+  .amso-campaign__landing-copy h1 {
+    font-size: clamp(1.5rem, 10vw, 2rem);
+  }
+
+  .amso-campaign__lead {
+    font-size: 0.82rem;
+    margin: 8px auto 4px;
+  }
+
+  .amso-campaign__meta {
+    font-size: 0.6rem;
+    margin-bottom: 6px;
+  }
+
+  .amso-campaign__landing-actions .amso-campaign__button {
+    min-height: 40px;
+    font-size: 0.78rem;
+  }
+
+  .amso-campaign__landing-milestone {
+    padding: 0.2rem 0.6rem;
+    border-width: 2px;
+  }
+
+  .amso-campaign__landing-milestone-value {
+    font-size: clamp(1.1rem, 8vw, 1.4rem);
+  }
+
+  .amso-campaign__landing-milestone-label {
+    font-size: 0.45rem;
+  }
+
+  .amso-campaign__hud-context {
+    min-height: 30px;
+    padding: 2px 5px;
+  }
+
+  .amso-campaign__hud-context strong {
+    font-size: 0.55rem;
+  }
+
+  .amso-campaign__hud-stats {
+    min-height: 28px;
+    padding: 2px 5px;
+    gap: 6px;
+    font-size: 0.5rem;
+  }
+
+  .amso-campaign__hud-stats strong {
+    font-size: 0.7rem;
+  }
+
+  .amso-campaign__pause-button {
+    min-height: 30px;
+    padding: 0 6px;
+    font-size: 0.6rem;
+  }
+}
+
+/* ---- Landscape mobile — zwarty HUD ---- */
+@media (orientation: landscape) and (max-height: 500px) {
+  .amso-campaign__hud {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: "context stats pause";
+    top: clamp(4px, 1vh, 10px);
+    right: clamp(4px, 1vh, 10px);
+    left: clamp(4px, 1vh, 10px);
+    gap: 6px;
+  }
+
+  .amso-campaign__hud-context {
+    grid-area: context;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    padding: 3px 8px;
+  }
+
+  .amso-campaign__hud-context strong {
+    font-size: 0.6rem;
+  }
+
+  .amso-campaign__hud-context span {
+    font-size: 0.55rem;
+  }
+
+  .amso-campaign__hud-stats {
+    grid-area: stats;
+    justify-self: center;
+    min-height: 32px;
+    padding: 3px 8px;
+    gap: 8px;
+    font-size: 0.55rem;
+  }
+
+  .amso-campaign__hud-stats strong {
+    font-size: 0.75rem;
+  }
+
+  .amso-campaign__pause-button {
+    grid-area: pause;
+    min-height: 32px;
+    padding: 0 8px;
+    font-size: 0.65rem;
   }
 }
 
@@ -1989,6 +2225,42 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   transform: rotate(-1.5deg);
 }
 
+.amso-campaign__landing-milestone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: fit-content;
+  margin: clamp(0.5rem, 2vw, 0.75rem) auto 0;
+  padding: clamp(0.35rem, 1.6vh + 0.3rem, 0.9rem) clamp(0.8rem, 4vw, 2rem);
+  border: clamp(2px, 0.4vw, 3px) solid var(--campaign-black);
+  border-radius: clamp(10px, 1.6vw, 14px);
+  background: var(--campaign-cream);
+  box-shadow: 0.35rem 0.4rem 0 rgba(23, 23, 23, 0.14);
+  flex-shrink: 0;
+}
+
+.amso-campaign__landing-milestone-value {
+  font-size: clamp(1.3rem, 6vw + 1vh, 3rem);
+  font-weight: 950;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+}
+
+.amso-campaign__landing-milestone-label {
+  font-size: clamp(0.55rem, 1.4vw + 0.3vh, 0.85rem);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #655f58;
+}
+
+.amso-campaign__landing-campaign-link {
+  display: block;
+  width: fit-content;
+  margin: 0.5rem auto 0;
+}
+
 .amso-campaign__screen--dialog,
 .amso-campaign__screen--result {
   background: rgb(23 23 23 / 40%);
@@ -2106,6 +2378,127 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   color: var(--campaign-black);
 }
 
+/* ---- Orientation hint (landing page, under CTA) ---- */
+.amso-campaign__orientation-hint {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  margin: 8px 0 0;
+  color: #6c6863;
+  font-size: clamp(0.72rem, 2.6vw, 0.82rem);
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.amso-campaign__orientation-hint span:first-child {
+  font-size: 1.15em;
+}
+
+@media (hover: none) and (pointer: coarse) and (orientation: portrait) {
+  .amso-campaign__orientation-hint {
+    display: flex;
+  }
+}
+
+/* ---- Orientation prompt (overlay, forces rotation) ---- */
+.amso-campaign__orientation-prompt {
+  position: absolute;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding:
+    max(24px, env(safe-area-inset-top))
+    max(24px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom))
+    max(24px, env(safe-area-inset-left));
+  background: rgb(23 23 23 / 92%);
+  color: var(--campaign-paper);
+  text-align: center;
+  pointer-events: auto;
+}
+
+.amso-campaign__orientation-prompt[hidden] {
+  display: none;
+}
+
+.amso-campaign__orientation-prompt-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 320px;
+}
+
+.amso-campaign__orientation-prompt-content h2 {
+  margin: 0;
+  font-size: clamp(1.3rem, 5vw, 1.7rem);
+  font-weight: 950;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.amso-campaign__orientation-prompt-content p {
+  margin: 0;
+  color: rgb(255 255 255 / 72%);
+  font-size: clamp(0.88rem, 2.8vw, 1rem);
+  line-height: 1.5;
+}
+
+/* ---- Orientation icon ---- */
+.amso-campaign__orientation-icon {
+  width: clamp(72px, 22vw, 110px);
+  height: auto;
+  color: #fff;
+}
+
+.amso-campaign__orientation-icon__group {
+  transform-origin: 60px 60px;
+  animation: amso-rotate-phone 1.8s ease-in-out infinite;
+}
+
+.amso-campaign__orientation-arrow,
+.amso-campaign__orientation-arrow-head {
+  animation: amso-rotate-arrow-fade 1.8s ease-in-out infinite;
+}
+
+@keyframes amso-rotate-phone {
+  0%, 18% {
+    transform: rotate(0deg);
+  }
+  50%, 72% {
+    transform: rotate(90deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes amso-rotate-arrow-fade {
+  0%, 18% {
+    opacity: 0.7;
+  }
+  50%, 72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .amso-campaign__orientation-icon__group {
+    animation: none;
+  }
+
+  .amso-campaign__orientation-arrow,
+  .amso-campaign__orientation-arrow-head {
+    animation: none;
+    opacity: 0.8;
+  }
+}
+
 @media (max-width: 820px) {
   .amso-campaign__screen--landing {
     text-align: left;
@@ -2175,17 +2568,26 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 
   .amso-campaign__screen--landing {
     display: flex;
-    padding: clamp(18px, 4.5vw, 26px);
-    align-items: flex-end;
-    justify-content: center;
-    background: linear-gradient(180deg, transparent 0 34%, rgb(250 247 240 / 78%) 45%, rgb(250 247 240 / 98%) 58% 100%);
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: clamp(16px, 4vw, 28px);
+    background: transparent;
     text-align: center;
   }
 
   .amso-campaign__landing-copy {
     z-index: 2;
     width: 100%;
+    max-width: 600px;
     margin-inline: auto;
+    padding: clamp(16px, 4vw, 24px);
+    border-radius: 20px;
+    background: rgb(250 247 240 / 94%);
+    flex-shrink: 0;
   }
 
   .amso-campaign__landing-copy h1 {
@@ -2203,24 +2605,28 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     margin-bottom: 14px;
   }
 
+  .amso-campaign__landing-cta-group {
+    margin-inline: auto;
+    align-items: center;
+  }
+
   .amso-campaign__landing-actions {
     margin-inline: auto;
   }
 
   .amso-campaign__landing-art {
-    position: absolute;
-    z-index: 1;
-    top: 2%;
-    right: 3%;
-    left: 3%;
-    height: 43%;
+    position: relative;
+    z-index: 0;
+    inset: auto;
+    height: auto;
     min-height: 0;
     opacity: 1;
   }
 
   .amso-campaign__main-lockup {
     width: min(82%, 27rem);
-    max-height: 100%;
+    max-height: 42vh;
+    margin: 0 auto 8px;
   }
 
   .amso-campaign__story-presentation,
@@ -2325,13 +2731,98 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   }
 
   .amso-campaign__screen--landing {
-    grid-template-columns: minmax(0, 48%) minmax(0, 52%);
-    padding: 12px 26px;
-    background: linear-gradient(90deg, rgb(250 247 240 / 98%) 0 43%, rgb(250 247 240 / 66%) 51%, transparent 72%);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+    padding: 10px 20px;
+    align-items: start;
+    gap: clamp(16px, 3vw, 32px);
+    background: rgb(250 247 240 / 98%);
   }
 
+  .amso-campaign__landing-copy {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    max-width: none;
+    padding: clamp(10px, 2vh, 16px) clamp(12px, 2vw, 20px);
+    align-items: start;
+    gap: clamp(8px, 1.5vw, 16px);
+    border-radius: 16px;
+  }
+
+  .amso-campaign__landing-copy h1 {
+    grid-column: 1;
+    font-size: clamp(1.7rem, 5vh, 2.4rem);
+  }
+
+  .amso-campaign__eyebrow {
+    grid-column: 1;
+    margin-bottom: 4px;
+    font-size: 0.6rem;
+  }
+
+  .amso-campaign__lead {
+    grid-column: 1;
+    margin: 4px 0 4px;
+    font-size: clamp(0.75rem, 1.6vh, 0.84rem);
+    line-height: 1.35;
+  }
+
+  .amso-campaign__meta {
+    grid-column: 1;
+    margin-bottom: 6px;
+    font-size: 0.62rem;
+  }
+
+  .amso-campaign__how-to {
+    display: none;
+  }
+
+  .amso-campaign__landing-cta-group {
+    grid-column: 1;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .amso-campaign__landing-actions {
+    width: 100%;
+  }
+
+  .amso-campaign__landing-actions .amso-campaign__button {
+    width: 100%;
+    min-height: 40px;
+    font-size: 0.78rem;
+  }
+
+  [data-campaign-landing-records] {
+    grid-column: 2;
+    grid-row: 1 / span 6;
+    margin-top: 0;
+    align-self: start;
+  }
+
+  .amso-campaign__landing-milestone {
+    grid-column: 2;
+    margin-top: 0;
+    margin-bottom: 0.3rem;
+    padding: 0.25rem 0.7rem;
+    border-width: 2px;
+  }
+
+  .amso-campaign__landing-milestone-value {
+    font-size: clamp(1rem, 2.8vh, 1.4rem);
+  }
+
+  .amso-campaign__landing-milestone-label {
+    font-size: 0.45rem;
+  }
+
+  .amso-campaign__landing-campaign-link {
+    display: none;
+  }
+
+  .amso-campaign__landing-art,
   .amso-campaign__main-lockup {
-    max-height: 78vh;
+    display: none;
   }
 
   .amso-campaign__compact-lockup,
@@ -2363,6 +2854,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 @media (max-width: 756px) and (orientation: landscape) {
   .amso-world-visual__panel {
     background-position: var(--world-position-landscape, 50% 50%);
+    background-size: cover;
     object-position: var(--world-position-landscape, 50% 50%);
   }
 }

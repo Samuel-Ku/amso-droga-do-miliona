@@ -5,7 +5,6 @@ import { WorldVisualLayer } from "../visuals/WorldVisualLayer";
 import { sceneVisualState } from "../visuals/scene-manifest";
 import { milestoneLayoutForViewport } from "./milestone-layout";
 import {
-  fullscreenPreferenceFromElement,
   formatAuthoredWaveHud,
   formatPowerUpHud,
   formatStoryControlsHud,
@@ -82,12 +81,7 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   startStory: "Rozpocznij historię",
   choosePath: "Wybierz swoją drogę",
   replayStory: "Pełna historia i instrukcja",
-  orientationEyebrow: "Szerszy kadr",
-  orientationTitle: "Chcesz zobaczyć więcej historii?",
-  orientationBody: "Obróć telefon i włącz pełny ekran. Możesz też grać pionowo.",
-  orientationFullscreen: "Włącz pełny ekran",
   orientationFocus: "Włącz tryb gry",
-  orientationPortrait: "Zostań w pionie",
   loading: "Przygotowujemy pierwszą paczkę…",
   errorEyebrow: "Trasa chwilowo niedostępna",
   errorTitle: "Nie udało się przygotować gry.",
@@ -135,6 +129,11 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   instagram: "Instagram",
   narrowTitle: "Potrzebujemy trochę więcej miejsca.",
   narrowBody: "Obróć urządzenie, żeby rozpocząć grę.",
+  orientationHint: "Do gry potrzebny jest tryb poziomy",
+  orientationPromptTitle: "Obróć telefon, aby zagrać",
+  orientationPromptBody: "Gra „Droga do Miliona” działa w trybie poziomym.",
+  milestoneValue: "1 000 000",
+  milestoneLabel: "zamówień",
   footerTagline: "AMSO. Sprzęt z przeszłością. Na przyszłość.",
   footerCampaign: "Strona kampanii",
 } as const;
@@ -142,6 +141,12 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
 export type CampaignShellCopy = {
   [Key in keyof typeof DEFAULT_CAMPAIGN_SHELL_COPY]: string;
 };
+
+type CampaignOrientationState =
+  | { phase: "idle" }
+  | { phase: "blocked-before-start"; request: CampaignStartRequest }
+  | { phase: "playing" }
+  | { phase: "paused-by-orientation" };
 
 export interface CampaignShellCallbacks {
   onStart(request: CampaignStartRequest): void;
@@ -206,8 +211,8 @@ export function campaignVisualStateAtProgress(
 
 export function isCampaignViewportTooNarrow(width: number, height: number): boolean {
   const landscape = width > height;
-  if (landscape) return width < 640 || height < 280;
-  return width < 390;
+  if (landscape) return width < 480 || height < 220;
+  return width < 280 || height < 400;
 }
 
 function requiredElement<T extends Element>(root: ParentNode, selector: string): T {
@@ -228,14 +233,6 @@ function canonicalPageUrl(): string {
   url.search = "";
   url.hash = "";
   return url.href;
-}
-
-function isMobileLayout(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  const coarsePointer = window.matchMedia?.("(pointer: coarse)").matches ?? false;
-  return coarsePointer || navigator.maxTouchPoints > 0;
 }
 
 function loadShareCardLockup(): Promise<HTMLImageElement | null> {
@@ -474,7 +471,7 @@ export class CampaignShell {
   private readonly worldVisualLayer: WorldVisualLayer;
   private readonly landingScreen: HTMLElement;
   private readonly landingActions: HTMLElement;
-  private readonly orientationScreen: HTMLElement;
+  private readonly orientationPrompt: HTMLElement;
   private readonly loadingScreen: HTMLElement;
   private readonly loadingText: HTMLElement;
   private readonly loadingProgress: HTMLProgressElement;
@@ -522,9 +519,8 @@ export class CampaignShell {
   private readonly fullStoryUrl: string;
   private readonly copy: CampaignShellCopy;
   private activeMode: CampaignMode | null = null;
-  private pendingStart: CampaignStartRequest | null = null;
-  private fullscreenPromptSeen = false;
-  private fullscreenPreference: "fullscreen" | "portrait" | null = null;
+  private orientationState: CampaignOrientationState = { phase: "idle" };
+  private orientationDebounceTimer: ReturnType<typeof setTimeout> | undefined;
   private muted = false;
   private lastWaveFeedbackKey = "";
   private paused = false;
@@ -614,32 +610,47 @@ export class CampaignShell {
                   <p><strong>Urządzenia i paczki realizują zamówienia.</strong> Bonus zawsze pokazuje swoje działanie, a kolejne czyste akcje budują <strong>SERIĘ ×N</strong>.</p>
                 </div>
               </details>
-              <div class="amso-campaign__landing-actions" data-campaign-landing-actions></div>
+              <div class="amso-campaign__landing-cta-group">
+                <div class="amso-campaign__landing-actions" data-campaign-landing-actions></div>
+                <p class="amso-campaign__orientation-hint" aria-hidden="true">
+                  <span aria-hidden="true">↻</span>
+                  <span data-campaign-copy="orientationHint">Do gry potrzebny jest tryb poziomy</span>
+                </p>
+              </div>
               <div data-campaign-landing-records></div>
+              <div class="amso-campaign__landing-milestone" data-campaign-landing-milestone>
+                <span class="amso-campaign__landing-milestone-value" data-campaign-copy="milestoneValue">1 000 000</span>
+                <span class="amso-campaign__landing-milestone-label" data-campaign-copy="milestoneLabel">zamówień</span>
+              </div>
+              <a class="amso-campaign__text-link amso-campaign__landing-campaign-link" data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
             </div>
             <div class="amso-campaign__landing-art" aria-hidden="true">
               <img class="amso-campaign__main-lockup" src="${MAIN_LOCKUP_PATH}" alt="" width="1600" height="1460" />
             </div>
           </section>
 
-          <section
-            class="amso-campaign__screen amso-campaign__screen--dialog"
-            data-campaign-orientation
+          <div
+            class="amso-campaign__orientation-prompt"
+            data-campaign-orientation-prompt
             role="dialog"
             aria-modal="true"
             aria-labelledby="amso-campaign-orientation-title"
+            aria-describedby="amso-campaign-orientation-desc"
             hidden
           >
-            <div class="amso-campaign__card">
-              <p class="amso-campaign__eyebrow" data-campaign-copy="orientationEyebrow">Szerszy kadr</p>
-              <h2 id="amso-campaign-orientation-title" data-campaign-copy="orientationTitle">Chcesz zobaczyć więcej historii?</h2>
-              <p data-campaign-copy="orientationBody">Obróć telefon i włącz pełny ekran. Możesz też grać pionowo.</p>
-              <div class="amso-campaign__actions">
-                <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-enter-fullscreen data-campaign-copy="orientationFullscreen">Włącz pełny ekran</button>
-                <button class="amso-campaign__button amso-campaign__button--secondary" type="button" data-campaign-stay-portrait data-campaign-copy="orientationPortrait">Zostań w pionie</button>
-              </div>
+            <div class="amso-campaign__orientation-prompt-content">
+              <svg class="amso-campaign__orientation-icon" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <g class="amso-campaign__orientation-icon__group">
+                  <rect x="35" y="10" width="50" height="100" rx="10" fill="none" stroke="currentColor" stroke-width="3"/>
+                  <rect x="40" y="18" width="40" height="84" rx="4" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+                </g>
+                <path d="M104 85 A48 48 0 0 0 104 35" fill="none" stroke="var(--campaign-orange)" stroke-width="4" stroke-linecap="round" class="amso-campaign__orientation-arrow"/>
+                <polygon points="108,33 100,39 106,27" fill="var(--campaign-orange)" class="amso-campaign__orientation-arrow-head"/>
+              </svg>
+              <h2 id="amso-campaign-orientation-title" data-campaign-copy="orientationPromptTitle">Obróć telefon, aby zagrać</h2>
+              <p id="amso-campaign-orientation-desc" data-campaign-copy="orientationPromptBody">Gra „Droga do Miliona” działa w trybie poziomym.</p>
             </div>
-          </section>
+          </div>
 
           <section class="amso-campaign__screen amso-campaign__screen--dialog" data-campaign-loading hidden>
             <div class="amso-campaign__card amso-campaign__card--loading">
@@ -789,7 +800,7 @@ export class CampaignShell {
     this.canvas = requiredElement<HTMLCanvasElement>(this.root, "[data-campaign-canvas]");
     this.landingScreen = requiredElement(this.root, "[data-campaign-landing]");
     this.landingActions = requiredElement(this.root, "[data-campaign-landing-actions]");
-    this.orientationScreen = requiredElement(this.root, "[data-campaign-orientation]");
+    this.orientationPrompt = requiredElement(this.root, "[data-campaign-orientation-prompt]");
     this.loadingScreen = requiredElement(this.root, "[data-campaign-loading]");
     this.loadingText = requiredElement(this.root, "[data-campaign-loading-text]");
     this.loadingProgress = requiredElement(this.root, "[data-campaign-loading-progress]");
@@ -863,8 +874,7 @@ export class CampaignShell {
     if (this.destroyed) return;
     this.activeMode = null;
     this.challengeResult = null;
-    this.fullscreenPreference = options.fullscreenPreference;
-    this.fullscreenPromptSeen = options.fullscreenPreference !== null;
+    this.orientationState = { phase: "idle" };
     this.setMuted(options.muted, false);
     this.applyWorldVisual("first-mile", "story.first_package", "landing");
     this.setView("landing", this.landingScreen);
@@ -1263,6 +1273,9 @@ export class CampaignShell {
   public destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    if (this.orientationDebounceTimer !== undefined) {
+      window.clearTimeout(this.orientationDebounceTimer);
+    }
     document.removeEventListener("keydown", this.handleKeydown, true);
     document.removeEventListener("keyup", this.handleKeyup, true);
     document.removeEventListener("visibilitychange", this.handleVisibilityChange);
@@ -1327,33 +1340,13 @@ export class CampaignShell {
   }
 
   private queueStart(request: CampaignStartRequest): void {
-    if (!this.fullscreenPromptSeen && isMobileLayout()) {
-      this.fullscreenPromptSeen = true;
-      this.pendingStart = request;
-      this.setView("orientation", this.orientationScreen);
-      requiredElement<HTMLButtonElement>(this.orientationScreen, "[data-campaign-enter-fullscreen]").focus({ preventScroll: true });
+    if (this.orientationQuery?.matches) {
+      this.orientationState = { phase: "playing" };
+      this.callbacks.onStart(request);
       return;
     }
-    if (this.fullscreenPreference === "fullscreen" && isMobileLayout() &&
-        document.fullscreenElement === null) {
-      void this.enterFullscreen().finally(() => this.callbacks.onStart(request));
-      return;
-    }
-    this.callbacks.onStart(request);
-  }
-
-  private dispatchPendingStart(choice: "fullscreen" | "portrait"): void {
-    this.rememberFullscreenPreference(choice);
-    const request = this.pendingStart;
-    this.pendingStart = null;
-    if (request !== null) this.callbacks.onStart(request);
-  }
-
-  private rememberFullscreenPreference(choice: "fullscreen" | "portrait"): void {
-    const changed = !this.fullscreenPromptSeen || this.fullscreenPreference !== choice;
-    this.fullscreenPromptSeen = true;
-    this.fullscreenPreference = choice;
-    if (changed) this.callbacks.onFullscreenPreferenceChange(choice);
+    this.orientationState = { phase: "blocked-before-start", request };
+    this.showOrientationPrompt();
   }
 
   private fullscreenApiAvailable(): boolean {
@@ -1367,6 +1360,17 @@ export class CampaignShell {
     this.updateFullscreenControl();
   }
 
+  private showOrientationPrompt(): void {
+    this.orientationPrompt.hidden = false;
+    this.orientationPrompt.focus({ preventScroll: true });
+    this.setScreenModal(this.orientationPrompt);
+  }
+
+  private hideOrientationPrompt(): void {
+    this.orientationPrompt.hidden = true;
+    this.setScreenModal(null);
+  }
+
   private updateFullscreenControl(): void {
     const fullscreen = document.fullscreenElement === this.root;
     const cssGameMode = this.root.dataset.cssGameMode === "true";
@@ -1378,13 +1382,6 @@ export class CampaignShell {
         : this.fullscreenApiAvailable()
           ? this.copy.fullscreenEnter
           : this.copy.cssGameModeEnter;
-    const orientationAction = requiredElement<HTMLElement>(
-      this.orientationScreen,
-      "[data-campaign-enter-fullscreen]"
-    );
-    orientationAction.textContent = this.fullscreenApiAvailable()
-      ? this.copy.orientationFullscreen
-      : this.copy.orientationFocus;
   }
 
   private async enterFullscreen(): Promise<void> {
@@ -1411,11 +1408,6 @@ export class CampaignShell {
       } else {
         await this.enterFullscreen();
       }
-      if (document.fullscreenElement != null || this.fullscreenApiAvailable()) {
-        this.rememberFullscreenPreference(
-          fullscreenPreferenceFromElement(document.fullscreenElement, this.root)
-        );
-      }
       this.updateFullscreenControl();
     })();
   }
@@ -1424,7 +1416,6 @@ export class CampaignShell {
     this.setScreenModal(null);
     [
       this.landingScreen,
-      this.orientationScreen,
       this.loadingScreen,
       this.errorScreen,
       this.pauseScreen,
@@ -1443,7 +1434,7 @@ export class CampaignShell {
     this.trustCorridor = false;
     this.canvas.tabIndex = -1;
     this.canvas.setAttribute("aria-hidden", "true");
-    if (visibleScreen === this.orientationScreen) this.setScreenModal(visibleScreen);
+    if (visibleScreen === this.orientationPrompt) this.setScreenModal(visibleScreen);
   }
 
   private hideStoryPresentation(): void {
@@ -1468,7 +1459,11 @@ export class CampaignShell {
   }
 
   private applyModalInertState(): void {
-    const screen = this.tooNarrowActive ? this.tooNarrow : this.activeModalScreen;
+    const screen = this.tooNarrowActive
+      ? this.tooNarrow
+      : !this.orientationPrompt.hidden
+        ? this.orientationPrompt
+        : this.activeModalScreen;
     const active = screen !== null;
     for (const region of this.presentationBackground) region.inert = active;
     for (const child of this.stage.children) {
@@ -1479,7 +1474,7 @@ export class CampaignShell {
 
   private activeKeyboardDialog(): HTMLElement | null {
     if (!this.pauseScreen.hidden) return this.pauseScreen;
-    if (!this.orientationScreen.hidden) return this.orientationScreen;
+    if (!this.orientationPrompt.hidden) return this.orientationPrompt;
     return null;
   }
 
@@ -1534,12 +1529,6 @@ export class CampaignShell {
       this.setMuted(!this.muted);
     } else if (target.matches("[data-campaign-fullscreen]")) {
       this.toggleFullscreen();
-    } else if (target.matches("[data-campaign-enter-fullscreen]")) {
-      void this.enterFullscreen().finally(() => this.dispatchPendingStart(
-        fullscreenPreferenceFromElement(document.fullscreenElement, this.root)
-      ));
-    } else if (target.matches("[data-campaign-stay-portrait]")) {
-      this.dispatchPendingStart("portrait");
     } else if (target.matches("[data-campaign-pause]")) {
       this.callbacks.onPause("user");
     } else if (target.matches("[data-campaign-resume]")) {
@@ -1701,9 +1690,6 @@ export class CampaignShell {
     const fullscreen = document.fullscreenElement === this.root;
     if (fullscreen) this.setCssGameMode(false);
     this.updateFullscreenControl();
-    this.rememberFullscreenPreference(
-      fullscreenPreferenceFromElement(document.fullscreenElement, this.root)
-    );
     if (this.canControl()) {
       this.paused = true;
       this.callbacks.onPause("layout_change");
@@ -1711,10 +1697,32 @@ export class CampaignShell {
   };
 
   private readonly handleOrientationChange = (): void => {
-    if (this.canControl()) {
-      this.paused = true;
-      this.callbacks.onPause("layout_change");
+    const isLandscape = this.orientationQuery?.matches ?? true;
+    if (!isLandscape) {
+      if (this.orientationState.phase === "blocked-before-start" ||
+          this.orientationState.phase === "playing") {
+        if (this.orientationState.phase === "playing" && this.canControl()) {
+          this.orientationState = { phase: "paused-by-orientation" };
+          this.callbacks.onPause("layout_change");
+        }
+        this.showOrientationPrompt();
+      }
+      return;
     }
+    window.clearTimeout(this.orientationDebounceTimer);
+    this.orientationDebounceTimer = setTimeout(() => {
+      this.hideOrientationPrompt();
+      if (this.orientationState.phase === "blocked-before-start") {
+        const request = this.orientationState.request;
+        this.orientationState = { phase: "playing" };
+        this.callbacks.onStart(request);
+        return;
+      }
+      if (this.orientationState.phase === "paused-by-orientation") {
+        this.orientationState = { phase: "playing" };
+        this.callbacks.onResume();
+      }
+    }, 300);
   };
 
   private readonly handleResize = (): void => {
