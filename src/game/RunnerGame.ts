@@ -835,11 +835,9 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       this.scenarioWorldChangeCount += 1;
       this.scenarioLastWorldIndex = worldIndex;
     }
-    let activeObstacles = 0;
-    for (const obstacle of this.obstacles) if (obstacle.active) activeObstacles += 1;
-    let activePackages = 0;
-    for (const parcel of this.packages) if (parcel.active) activePackages += 1;
-    if (activeObstacles >= 4 && activePackages >= 8) this.scenarioMaxDensitySteps += 1;
+    if (this.logisticWaveDirector.snapshot.phase === "running") {
+      this.scenarioMaxDensitySteps += 1;
+    }
     this.nextStepIndex += 1;
     if (this.scenarioDurationSteps !== null && this.nextStepIndex >= this.scenarioDurationSteps) {
       this.cancelFrame();
