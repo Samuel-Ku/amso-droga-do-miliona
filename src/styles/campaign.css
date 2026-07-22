@@ -747,12 +747,6 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   margin-top: 0.8em;
 }
 
-.amso-campaign__story-scene-body:focus-visible {
-  border-radius: 8px;
-  outline: 2px solid #ffad70;
-  outline-offset: 2px;
-}
-
 .amso-campaign__story-continue {
   min-width: min(100%, 12rem);
   margin: clamp(18px, 3vmin, 30px) auto 0;
@@ -2243,12 +2237,10 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   box-shadow: 0 0 0 6px rgb(244 113 0 / 40%);
 }
 
-/* The story copy receives programmatic focus for screen readers and scroll
-   reset. Keep that focus visible without making static prose look like a form. */
+/* Programmatic focus resets scroll and supports screen readers. The permanent
+   magenta border is the only visible contour in every input mode. */
 .amso-campaign__story-scene-body:focus-visible {
-  border-radius: 8px;
-  outline: 2px solid rgb(235 50 164 / 58%);
-  outline-offset: 2px;
+  outline: none;
   box-shadow: none;
 }
 

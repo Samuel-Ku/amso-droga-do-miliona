@@ -23,5 +23,11 @@ describe("story body outline", () => {
     expect(computed.borderTopWidth).toBe("2px");
     expect(computed.borderTopStyle).toBe("solid");
     expect(computed.borderTopColor).toMatch(/235[^\d]+50[^\d]+164/u);
+
+    body.tabIndex = 0;
+    body.focus();
+    const focused = getComputedStyle(body);
+    expect(focused.outlineStyle).toBe("none");
+    expect(focused.borderTopWidth).toBe("2px");
   });
 });
