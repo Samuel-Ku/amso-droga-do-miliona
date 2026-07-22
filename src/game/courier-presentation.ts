@@ -75,9 +75,9 @@ export function courierShieldAnimation(
   if (activationSecondsRemaining > 0) {
     const progress = clamp01(1 - activationSecondsRemaining / SHIELD_APPEAR_SECONDS);
     const scale = progress <= 0.7
-      ? 0.72 + (1.08 - 0.72) * progress / 0.7
-      : 1.08 + (1 - 1.08) * (progress - 0.7) / 0.3;
-    const alpha = progress * progress * (3 - 2 * progress);
+      ? 0.9 + (1.03 - 0.9) * progress / 0.7
+      : 1.03 + (1 - 1.03) * (progress - 0.7) / 0.3;
+    const alpha = 0.77 * progress * progress * (3 - 2 * progress);
     return {
       scale,
       alpha,
@@ -88,8 +88,8 @@ export function courierShieldAnimation(
 
   const wave = Math.sin(elapsedSeconds * Math.PI * 2 / SHIELD_BREATH_SECONDS);
   return {
-    scale: 1.025 + wave * 0.025,
-    alpha: 0.9 + wave * 0.1,
+    scale: 1 + wave * 0.01,
+    alpha: 0.77 + wave * 0.05,
     meshRotationRadians: elapsedSeconds * SHIELD_ROTATION_RADIANS_PER_SECOND,
     breakingProgress: 0
   };

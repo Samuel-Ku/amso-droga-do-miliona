@@ -1196,8 +1196,7 @@ function drawWarrantyShield(
   context.globalAlpha = animation.alpha;
   context.setLineDash([]);
 
-  const isWarranty = scene.activePowerUps.includes("gwarancja_48");
-  const bubbleColor = isWarranty ? "235,50,164" : "244,113,0";
+  const bubbleColor = "244,113,0";
 
   const fillGradient = context.createRadialGradient(
     -radiusX * 0.3,
@@ -1230,9 +1229,7 @@ function drawWarrantyShield(
     -Math.PI * 0.7,
     Math.PI * 0.22
   );
-  context.fillStyle = `rgba(255,255,255,${isWarranty ? 0.12 : 0.09})`;
-  context.fill();
-  context.strokeStyle = `rgba(255,255,255,${isWarranty ? 0.5 : 0.4})`;
+  context.strokeStyle = "rgba(255,255,255,0.4)";
   context.lineWidth = 3;
   context.stroke();
   context.restore();
