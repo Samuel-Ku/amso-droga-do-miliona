@@ -140,7 +140,7 @@ export class RunnerArtwork {
   private readonly courierJump: HTMLImageElement | null;
   private readonly obstacles: Readonly<Record<ObstacleKind, HTMLImageElement | null>>;
   private readonly overheadVariants: readonly (HTMLImageElement | null)[];
-  private readonly parcelFrames: readonly (HTMLImageElement | null)[];
+  private readonly parcelFrames: (HTMLImageElement | null)[];
 
   public constructor(source: ArtworkImageFactory | RunnerArtworkAssets = {}) {
     const factory = typeof source === "function" ? source : undefined;
@@ -160,8 +160,18 @@ export class RunnerArtwork {
       this.obstacles.overhead,
       ...(factory ? OVERHEAD_VARIANT_ASSET_PATHS.slice(1).map((path) => loadImage(path, factory)) : [])
     ];
-    this.parcelFrames = assets?.parcelFrames ??
-      (factory ? PARCEL_CELEBRATION_FRAME_PATHS.map((path) => loadImage(path, factory)) : []);
+    this.parcelFrames = assets?.parcelFrames !== undefined
+      ? [...assets.parcelFrames]
+      : (factory ? PARCEL_CELEBRATION_FRAME_PATHS.map((path) => loadImage(path, factory)) : []);
+    while (this.parcelFrames.length < PARCEL_CELEBRATION_FRAME_PATHS.length) {
+      this.parcelFrames.push(null);
+    }
+  }
+
+  /** Installs a non-critical frame decoded later by the session asset queue. */
+  public installParcelFrame(index: number, image: HTMLImageElement): void {
+    if (!Number.isInteger(index) || index < 0 || index >= this.parcelFrames.length) return;
+    this.parcelFrames[index] = image;
   }
 
   public hasOverheadArtwork(visualVariant: number): boolean {

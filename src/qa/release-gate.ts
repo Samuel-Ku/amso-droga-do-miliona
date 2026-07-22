@@ -11,11 +11,12 @@ export interface ReleaseEvidence {
   consoleErrorCount?: number;
   autonomicHtmlSizeMb?: number;
   visualRegressionPassed?: boolean;
-  coldStartEvidenceAvailable?: boolean;
-  worldTransitionEvidenceAvailable?: boolean;
-  onePlusReportAvailable?: boolean;
-  nokiaReportAvailable?: boolean;
-  iphoneSafariReportAvailable?: boolean;
+  coldStartPassed?: boolean;
+  worldTransitionsPassed?: boolean;
+  onePlusReportPassed?: boolean;
+  nokiaReportPassed?: boolean;
+  iphoneSafariReportPassed?: boolean;
+  minimumProfileReportPassed?: boolean;
   androidMemoryMb?: number;
   androidCycleGrowthMb?: number;
 }
@@ -35,11 +36,16 @@ export function evaluatePerformanceReleaseGate(evidence: ReleaseEvidence): { sta
   else if (evidence.autonomicHtmlSizeMb > AUTONOMIC_HTML_BUDGET_MB) failures.push("autonomic-html-over-24mb");
   if (evidence.visualRegressionPassed === undefined) missing.push("visual-regression-evidence-unavailable");
   else if (!evidence.visualRegressionPassed) failures.push("visual-regression-failed");
-  if (!evidence.coldStartEvidenceAvailable) missing.push("cold-start-evidence-unavailable");
-  if (!evidence.worldTransitionEvidenceAvailable) missing.push("world-transition-evidence-unavailable");
-  if (!evidence.onePlusReportAvailable) missing.push("oneplus-report-unavailable");
-  if (!evidence.nokiaReportAvailable) missing.push("nokia-report-unavailable");
-  if (!evidence.iphoneSafariReportAvailable) missing.push("iphone-safari-report-unavailable");
+  const requirePassed = (value: boolean | undefined, unavailable: string, failed: string): void => {
+    if (value === undefined) missing.push(unavailable);
+    else if (!value) failures.push(failed);
+  };
+  requirePassed(evidence.coldStartPassed, "cold-start-evidence-unavailable", "cold-start-failed");
+  requirePassed(evidence.worldTransitionsPassed, "world-transition-evidence-unavailable", "world-transition-failed");
+  requirePassed(evidence.onePlusReportPassed, "oneplus-report-unavailable", "oneplus-report-failed");
+  requirePassed(evidence.nokiaReportPassed, "nokia-report-unavailable", "nokia-report-failed");
+  requirePassed(evidence.iphoneSafariReportPassed, "iphone-safari-report-unavailable", "iphone-safari-report-failed");
+  requirePassed(evidence.minimumProfileReportPassed, "minimum-profile-report-unavailable", "minimum-profile-report-failed");
   if (evidence.checkpointsPassed === undefined) missing.push("scenario-checkpoint-evidence-unavailable");
   else if (!evidence.checkpointsPassed) failures.push("scenario-checkpoint-failed");
   if (evidence.digestPassed === undefined) missing.push("determinism-digest-evidence-unavailable");

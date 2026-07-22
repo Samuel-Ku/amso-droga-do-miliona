@@ -97,6 +97,8 @@ export interface BossModel {
   phaseSecondsRemaining: number;
   x: number;
   y: number;
+  previousX?: number;
+  previousY?: number;
   width: number;
   height: number;
 }

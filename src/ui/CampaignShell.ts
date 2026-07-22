@@ -923,6 +923,10 @@ export class CampaignShell {
     this.announce(loadingLabel);
   }
 
+  public waitForWorldPresentation(): Promise<void> {
+    return this.worldVisualLayer.waitForCurrentPresentation();
+  }
+
   public showError(message?: string): void {
     if (this.destroyed) return;
     const errorMessage = message ?? this.copy.errorBody;

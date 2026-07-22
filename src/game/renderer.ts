@@ -1,6 +1,7 @@
 import { BACKGROUND, BOSS, GAMEPLAY, GROUND_Y, WORLD_HEIGHT, WORLD_WIDTH } from "./constants";
 import type {
   BossModel,
+  ObstacleKind,
   ObstacleModel,
   PackageModel,
   RenderScene,
@@ -48,6 +49,13 @@ const COLORS = {
 } as const;
 
 export const DEFAULT_VISUAL_OVERSCAN = 64;
+const OBSTACLE_VISUAL_BLEED: Readonly<Record<ObstacleKind, number>> = {
+  "box-stack": 18,
+  pallet: 18,
+  trolley: 24,
+  overhead: 96
+};
+const PACKAGE_VISUAL_BLEED = 20;
 
 const SHIELD_SPARK_ANGLES = new Float32Array([-1.03, -0.32, 0.46, 2.65]);
 
@@ -987,14 +995,17 @@ function drawForkliftBoss(
   context: CanvasRenderingContext2D,
   boss: Readonly<BossModel>,
   elapsedSeconds: number,
-  reducedMotion: boolean
+  reducedMotion: boolean,
+  alpha: number
 ): void {
   if (boss.phase === "inactive" || boss.phase === "pending") return;
 
   drawBossStatus(context, boss);
   const bob = reducedMotion ? 0 : Math.sin(elapsedSeconds * 5.2) * 2;
-  const x = reducedMotion ? WORLD_WIDTH - 160 : boss.x;
-  const y = boss.y + bob;
+  const previousX = boss.previousX ?? boss.x;
+  const previousY = boss.previousY ?? boss.y;
+  const x = reducedMotion ? WORLD_WIDTH - 160 : previousX + (boss.x - previousX) * alpha;
+  const y = previousY + (boss.y - previousY) * alpha + bob;
 
   context.save();
   if (boss.phase === "warning") {
@@ -1036,7 +1047,8 @@ function drawForkliftBoss(
   context.fill();
 
   context.fillStyle = COLORS.ink;
-  for (const wheelX of [x + 64, x + 132]) {
+  for (let wheel = 0; wheel < 2; wheel += 1) {
+    const wheelX = x + (wheel === 0 ? 64 : 132);
     context.beginPath();
     context.arc(wheelX, y + 154, 19, 0, Math.PI * 2);
     context.fill();
@@ -1940,13 +1952,14 @@ export class WarehouseRenderer {
     }
     drawGameplayRoute(context, resources.routeGradient);
     drawCelebrationEffects(context, scene, resources);
+    const alpha = scene.interpolationAlpha ?? 1;
     drawForkliftBoss(
       context,
       scene.boss,
       scene.elapsedSeconds,
-      scene.reducedMotion
+      scene.reducedMotion,
+      alpha
     );
-    const alpha = scene.interpolationAlpha ?? 1;
     for (const parcel of scene.packages) {
       if (!parcel.active) continue;
       const slotId = parcel.slotId ?? -1;
@@ -1960,8 +1973,13 @@ export class WarehouseRenderer {
       const renderX = continuous
         ? (parcel.previousX ?? parcel.x) + (parcel.x - (parcel.previousX ?? parcel.x)) * alpha
         : parcel.x;
-      if (renderX + parcel.size < -DEFAULT_VISUAL_OVERSCAN ||
-          renderX > WORLD_WIDTH + DEFAULT_VISUAL_OVERSCAN) continue;
+      const renderY = continuous
+        ? (parcel.previousY ?? parcel.y) + (parcel.y - (parcel.previousY ?? parcel.y)) * alpha
+        : parcel.y;
+      if (renderX + parcel.size + PACKAGE_VISUAL_BLEED < -DEFAULT_VISUAL_OVERSCAN ||
+          renderX - PACKAGE_VISUAL_BLEED > WORLD_WIDTH + DEFAULT_VISUAL_OVERSCAN ||
+          renderY + parcel.size + PACKAGE_VISUAL_BLEED < -DEFAULT_VISUAL_OVERSCAN ||
+          renderY - PACKAGE_VISUAL_BLEED > WORLD_HEIGHT + DEFAULT_VISUAL_OVERSCAN) continue;
       if (continuous) drawParcel(context, parcel, scene, this.artwork);
       else {
         const interpolatedX = (parcel.previousX ?? parcel.x) + (parcel.x - (parcel.previousX ?? parcel.x)) * alpha;
@@ -1988,14 +2006,18 @@ export class WarehouseRenderer {
       const renderY = continuous
         ? (obstacle.previousY ?? obstacle.y) + (obstacle.y - (obstacle.previousY ?? obstacle.y)) * alpha
         : obstacle.y;
-      if (renderX + obstacle.width < -DEFAULT_VISUAL_OVERSCAN ||
-          renderX > WORLD_WIDTH + DEFAULT_VISUAL_OVERSCAN) continue;
+      const bleed = OBSTACLE_VISUAL_BLEED[obstacle.kind];
+      if (renderX + obstacle.width + bleed < -DEFAULT_VISUAL_OVERSCAN ||
+          renderX - bleed > WORLD_WIDTH + DEFAULT_VISUAL_OVERSCAN ||
+          renderY + obstacle.height + bleed < -DEFAULT_VISUAL_OVERSCAN ||
+          renderY - bleed > WORLD_HEIGHT + DEFAULT_VISUAL_OVERSCAN) continue;
       context.save();
       context.translate(renderX - obstacle.x, renderY - obstacle.y);
       if (!this.artwork.drawObstacle(context, obstacle, ceilingY)) drawObstacle(context, obstacle, ceilingY);
       context.restore();
     }
-    for (const transformation of scene.obstacleTransformations ?? []) {
+    const transformations = scene.obstacleTransformations;
+    if (transformations !== undefined) for (const transformation of transformations) {
       drawTransformedObstacle(context, transformation, scene.reducedMotion);
     }
     const runnerRenderX = (scene.runner.previousX ?? scene.runner.x) +

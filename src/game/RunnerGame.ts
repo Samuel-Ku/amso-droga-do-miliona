@@ -181,6 +181,16 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
   private challengeStartScore = 0;
   private challengeStartOrders = 0;
   private personalRecordCelebrated = false;
+  private celebrationCount = 0;
+  private scenarioJumpCount = 0;
+  private scenarioCrouchCount = 0;
+  private scenarioWorldChangeCount = 0;
+  private scenarioMaxDensitySteps = 0;
+  private scenarioLastWorldIndex = 0;
+  private readonly scenarioPowerUpCounts: Record<PowerUpKind, number> = {
+    gwarancja_48: 0,
+    podwojny_wynik: 0
+  };
   private recordEmphasisRemaining = 0;
   private bossesDefeated = 0;
   private speed = getDifficulty(0).speed;
@@ -394,7 +404,21 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       powerUps: this.activePowerUps.statuses(),
       collisionCount: this.collisions,
       pickupCount: this.packagesCollected,
-      celebrationCount: this.milestoneCelebrationDirector.snapshot === null ? 0 : 1
+      celebrationCount: this.celebrationCount
+    };
+  }
+
+  /** Allocated only when the QA run finishes. */
+  public scenarioCoverage(): Readonly<Record<string, number>> {
+    return {
+      jump: this.scenarioJumpCount,
+      crouch: this.scenarioCrouchCount,
+      pickup: this.packagesCollected,
+      "power-up:gwarancja_48": this.scenarioPowerUpCounts.gwarancja_48,
+      celebration: this.celebrationCount,
+      guarantee: this.scenarioPowerUpCounts.gwarancja_48 + this.warrantySaves,
+      "world-change": this.scenarioWorldChangeCount,
+      "max-approved-density": this.scenarioMaxDensitySteps
     };
   }
 
@@ -421,6 +445,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     this.geometryAvailable = true;
     this.accumulator = 0;
     this.lastFrameTime = null;
+    this.snapInterpolationHistory();
     this.render();
     return resized;
   }
@@ -430,6 +455,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     this.geometryAvailable = false;
     this.accumulator = 0;
     this.lastFrameTime = null;
+    this.snapInterpolationHistory();
   }
 
   start(controlMethod: ControlMethod = "keyboard"): void {
@@ -530,6 +556,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     if (this._state !== "paused") return;
     this.accumulator = 0;
     this.lastFrameTime = null;
+    this.snapInterpolationHistory();
     this.setState("running");
     this.render();
     this.scheduleFrame();
@@ -580,6 +607,14 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     this.challengeStartScore = 0;
     this.challengeStartOrders = 0;
     this.personalRecordCelebrated = false;
+    this.celebrationCount = 0;
+    this.scenarioJumpCount = 0;
+    this.scenarioCrouchCount = 0;
+    this.scenarioWorldChangeCount = 0;
+    this.scenarioMaxDensitySteps = 0;
+    this.scenarioLastWorldIndex = 0;
+    this.scenarioPowerUpCounts.gwarancja_48 = 0;
+    this.scenarioPowerUpCounts.podwojny_wynik = 0;
     this.recordEmphasisRemaining = 0;
     this.bossesDefeated = 0;
     this.bossDirector.reset();
@@ -784,13 +819,27 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     const stepInput = this.inputQueue.consume(this.nextStepIndex);
     this.controlMethod = stepInput.controlMethod;
     if (stepInput.jumpPressed) {
+      this.scenarioJumpCount += 1;
       this.crouchHeld = false;
       this.runner.crouching = false;
       queueJump(this.runner);
     } else {
       this.crouchHeld = stepInput.crouchHeld;
     }
+    if (stepInput.crouchChanged && stepInput.crouchHeld) this.scenarioCrouchCount += 1;
+    this.bossDirector.model.previousX = this.bossDirector.model.x;
+    this.bossDirector.model.previousY = this.bossDirector.model.y;
     this.update(GAMEPLAY.fixedStepSeconds);
+    const worldIndex = this.currentWorldVisual().worldIndex;
+    if (worldIndex !== this.scenarioLastWorldIndex) {
+      this.scenarioWorldChangeCount += 1;
+      this.scenarioLastWorldIndex = worldIndex;
+    }
+    let activeObstacles = 0;
+    for (const obstacle of this.obstacles) if (obstacle.active) activeObstacles += 1;
+    let activePackages = 0;
+    for (const parcel of this.packages) if (parcel.active) activePackages += 1;
+    if (activeObstacles >= 4 && activePackages >= 8) this.scenarioMaxDensitySteps += 1;
     this.nextStepIndex += 1;
     if (this.scenarioDurationSteps !== null && this.nextStepIndex >= this.scenarioDurationSteps) {
       this.cancelFrame();
@@ -809,6 +858,10 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
 
   private snapInterpolationHistory(): void {
     this.previousVisualDistancePixels = this.visualDistancePixels;
+    this.runner.previousX = this.runner.x;
+    this.runner.previousY = this.runner.y;
+    this.bossDirector.model.previousX = this.bossDirector.model.x;
+    this.bossDirector.model.previousY = this.bossDirector.model.y;
     for (const obstacle of this.obstacles) {
       obstacle.previousX = obstacle.x;
       obstacle.previousY = obstacle.y;
@@ -1426,6 +1479,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
         ));
       }
       for (const celebration of celebrations) {
+        this.celebrationCount += 1;
         try {
           this.callbacks.onMilestoneCelebration?.(celebration);
         } catch {
@@ -1817,6 +1871,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     const wasProtected = kind === "gwarancja_48" &&
       this.activePowerUps.has("gwarancja_48");
     const activated = this.activePowerUps.activate(kind);
+    if (activated) this.scenarioPowerUpCounts[kind] += 1;
     if (activated && kind === "gwarancja_48" && !wasProtected) {
       this.shieldActivationSeconds = SHIELD_APPEAR_SECONDS;
     }

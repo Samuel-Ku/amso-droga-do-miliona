@@ -193,11 +193,12 @@ describe("performance contracts", () => {
       consoleErrorCount: 0,
       autonomicHtmlSizeMb: 23.5,
       visualRegressionPassed: true,
-      coldStartEvidenceAvailable: true,
-      worldTransitionEvidenceAvailable: true,
-      onePlusReportAvailable: true,
-      nokiaReportAvailable: true,
-      iphoneSafariReportAvailable: true,
+      coldStartPassed: true,
+      worldTransitionsPassed: true,
+      onePlusReportPassed: true,
+      nokiaReportPassed: true,
+      iphoneSafariReportPassed: true,
+      minimumProfileReportPassed: true,
       androidMemoryMb: 210,
       androidCycleGrowthMb: 8
     })).toEqual({ status: "pass", reasons: [] });

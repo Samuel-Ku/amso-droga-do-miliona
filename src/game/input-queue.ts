@@ -7,6 +7,7 @@ export interface StepInput {
   readonly jumpPressed: boolean;
   readonly crouchHeld: boolean;
   readonly appliedCrouch: boolean;
+  readonly crouchChanged: boolean;
   readonly controlMethod: ControlMethod;
 }
 /** Allocation-free bounded ring buffer. consume() returns one stable mutable view. */
@@ -21,7 +22,7 @@ export class GameplayInputQueue {
   private size = 0;
   private sequence = 0;
   private crouchHeld = false;
-  private readonly stepView = { jumpPressed: false, crouchHeld: false, appliedCrouch: false, controlMethod: "keyboard" as ControlMethod };
+  private readonly stepView = { jumpPressed: false, crouchHeld: false, appliedCrouch: false, crouchChanged: false, controlMethod: "keyboard" as ControlMethod };
   public overflowed = false;
   public overflowIncidents = 0;
   public droppedEvents = 0;
@@ -57,6 +58,7 @@ export class GameplayInputQueue {
 
   public consume(step: number): StepInput {
     let jumpPressed = false;
+    let crouchChanged = false;
     let method: ControlMethod = "keyboard";
     while (this.size > 0 && (this.targetSteps[this.head] ?? Infinity) <= step) {
       const index = this.head;
@@ -65,6 +67,7 @@ export class GameplayInputQueue {
         jumpPressed = true;
         method = eventMethod;
       } else if (this.actions[index] === 2) {
+        crouchChanged = this.crouchHeld !== (this.active[index] === 1);
         this.crouchHeld = this.active[index] === 1;
         method = eventMethod;
       }
@@ -74,6 +77,7 @@ export class GameplayInputQueue {
     this.stepView.jumpPressed = jumpPressed;
     this.stepView.crouchHeld = this.crouchHeld;
     this.stepView.appliedCrouch = !jumpPressed && this.crouchHeld;
+    this.stepView.crouchChanged = crouchChanged;
     this.stepView.controlMethod = method;
     return this.stepView;
   }

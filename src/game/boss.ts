@@ -29,6 +29,8 @@ function inactiveModel(): BossModel {
     phaseSecondsRemaining: 0,
     x: WORLD_WIDTH + 80,
     y: GROUND_Y - 176,
+    previousX: WORLD_WIDTH + 80,
+    previousY: GROUND_Y - 176,
     width: 164,
     height: 176
   };

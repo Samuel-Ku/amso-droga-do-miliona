@@ -85,6 +85,10 @@ export class WorldVisualLayer {
   private lastDistance = 0;
   private lastParallaxCycle: number | null = null;
   private readonly panelAssignmentRevisions = new WeakMap<HTMLImageElement, number>();
+  private scheduledPreloadPath: string | null = null;
+  private currentPresentationReady: Promise<void> = Promise.resolve();
+  private resolveCurrentPresentation: (() => void) | null = null;
+  private rejectCurrentPresentation: ((error: Error) => void) | null = null;
 
   public constructor(
     private readonly host: HTMLElement,
@@ -172,6 +176,10 @@ export class WorldVisualLayer {
     this.host.dataset.phase = phase;
   }
 
+  public waitForCurrentPresentation(): Promise<void> {
+    return this.currentPresentationReady;
+  }
+
   public get qualityBoundaryState(): { panelBoundarySafe: boolean; assetSwapComplete: boolean } {
     const progress = (this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH;
     return {
@@ -188,6 +196,9 @@ export class WorldVisualLayer {
     this.queuedAsset = null;
     this.pendingPanelPrepared = false;
     this.pendingPanelPreparing = false;
+    this.scheduledPreloadPath = null;
+    this.resolveCurrentPresentation = null;
+    this.rejectCurrentPresentation = null;
     for (const panel of this.panels) {
       panel.onload = null;
       panel.onerror = null;
@@ -318,6 +329,13 @@ export class WorldVisualLayer {
     if (this.requestedAssetPath === assetPath) return;
     this.requestedAssetPath = assetPath;
     this.host.dataset.assetState = "loading";
+    if (this.currentAsset === null) {
+      this.currentPresentationReady = new Promise<void>((resolve, reject) => {
+        this.resolveCurrentPresentation = resolve;
+        this.rejectCurrentPresentation = reject;
+      });
+      void this.currentPresentationReady.catch(() => undefined);
+    }
     void this.assets.load(assetPath).then((decodedAsset) => {
       if (this.requestedAssetPath !== assetPath) return;
       if (this.currentAsset === null) {
@@ -332,6 +350,13 @@ export class WorldVisualLayer {
         ]).then((ready) => {
           if (this.currentAsset === decodedAsset && ready.every(Boolean)) {
             this.host.dataset.assetState = "loaded";
+            this.resolveCurrentPresentation?.();
+            this.resolveCurrentPresentation = null;
+            this.rejectCurrentPresentation = null;
+          } else if (this.currentAsset === decodedAsset) {
+            this.rejectCurrentPresentation?.(new Error("world_panel_decode_failed"));
+            this.resolveCurrentPresentation = null;
+            this.rejectCurrentPresentation = null;
           }
         });
         this.prepareNextWorld(decodedAsset.path);
@@ -364,6 +389,9 @@ export class WorldVisualLayer {
       if (this.currentAsset === null) {
         this.clearPanels();
         this.host.dataset.assetState = "fallback";
+        this.rejectCurrentPresentation?.(new Error("world_asset_decode_failed"));
+        this.resolveCurrentPresentation = null;
+        this.rejectCurrentPresentation = null;
       } else {
         this.requestedAssetPath = this.currentAsset.path;
         this.host.dataset.assetState = "loaded";
@@ -389,7 +417,20 @@ export class WorldVisualLayer {
   private prepareNextWorld(assetPath: string): void {
     const index = CAMPAIGN_WORLDS.findIndex(({ assetPath: candidate }) => candidate === assetPath);
     const next = CAMPAIGN_WORLDS[index + 1];
-    if (next !== undefined) void this.assets.load(next.assetPath).catch(() => undefined);
+    if (next === undefined || this.scheduledPreloadPath === next.assetPath) return;
+    this.scheduledPreloadPath = next.assetPath;
+    const run = (): void => {
+      if (this.scheduledPreloadPath !== next.assetPath) return;
+      void this.assets.load(next.assetPath).catch(() => undefined).finally(() => {
+        if (this.scheduledPreloadPath === next.assetPath) this.scheduledPreloadPath = null;
+      });
+    };
+    const view = this.host.ownerDocument.defaultView;
+    if (typeof view?.requestIdleCallback === "function") {
+      view.requestIdleCallback(run, { timeout: 1_000 });
+    } else {
+      view?.setTimeout(run, 50);
+    }
   }
 
   private preparePendingPanel(): void {

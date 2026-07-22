@@ -46,7 +46,12 @@ import {
   OVERHEAD_VARIANT_ASSET_PATHS,
   RunnerArtwork
 } from "./game/runner-artwork";
-import { PERFORMANCE_REFERENCE_V1 } from "./qa/performance-reference-v1";
+import {
+  PERFORMANCE_REFERENCE_V1,
+  checkpointMatches,
+  validateScenarioRun,
+  type ScenarioValidationResult
+} from "./qa/performance-reference-v1";
 import { exactDeterminismArtifact, type ExactDeterminismArtifact } from "./qa/determinism";
 import { evaluatePerformanceReleaseGate } from "./qa/release-gate";
 
@@ -141,6 +146,8 @@ export class CampaignController {
   private startToken = 0;
   private destroyed = false;
   private scenarioArtifact: ExactDeterminismArtifact<Readonly<Record<string, unknown>>> | null = null;
+  private scenarioValidation: ScenarioValidationResult | null = null;
+  private scenarioInitialCheckpointPassed = false;
 
   public constructor(
     host: HTMLElement,
@@ -271,6 +278,7 @@ export class CampaignController {
         }
       });
       const runnerArtwork = await this.loadRunnerArtwork();
+      await this.shell.waitForWorldPresentation();
       // The page shell is already present; this paint is the real hand-off from
       // resource readiness to Canvas/context readiness.
       await nextPaint();
@@ -320,11 +328,28 @@ export class CampaignController {
               this.scenarioArtifact = exactDeterminismArtifact(
                 this.game.canonicalDeterministicState()
               );
+              this.scenarioValidation = validateScenarioRun(PERFORMANCE_REFERENCE_V1, {
+                completedThroughStep: PERFORMANCE_REFERENCE_V1.durationSteps - 1,
+                checkpointResults: [{
+                  completedThroughStep: -1,
+                  passed: this.scenarioInitialCheckpointPassed
+                }],
+                coverage: this.game.scenarioCoverage(),
+                finalDigest: this.scenarioArtifact.digest,
+                expectedFinalDigest: PERFORMANCE_REFERENCE_V1.expectedFinalDigest,
+                inputQueueOverflows: 0
+              });
             }
             this.shell.announce("QA Performance Scenario complete.");
           }
         } : {})
       });
+      if (qaScenario) {
+        const initial = PERFORMANCE_REFERENCE_V1.expectedCheckpoints[0];
+        this.scenarioInitialCheckpointPassed = initial !== undefined &&
+          checkpointMatches(initial, this.game.canonicalDeterministicState());
+      }
+      this.scheduleCelebrationArtworkWarmup(runnerArtwork, token);
       const game = this.game;
       this.detachGameGeometry = this.shell.attachGameGeometry(game, () => {
         if (this.destroyed || token !== this.startToken || this.game !== game) return;
@@ -421,13 +446,6 @@ export class CampaignController {
     const overhead = await load("obstacle-overhead", OBSTACLE_ASSET_PATHS.overhead);
     const overheadDoor = await load("obstacle-overhead-door", OVERHEAD_VARIANT_ASSET_PATHS[1]!);
     const overheadConveyor = await load("obstacle-overhead-conveyor", OVERHEAD_VARIANT_ASSET_PATHS[2]!);
-    const parcelFrames: HTMLImageElement[] = [];
-    for (let index = 0; index < PARCEL_CELEBRATION_FRAME_PATHS.length; index += 1) {
-      parcelFrames.push(await load(
-        `parcel-celebration-${index + 1}`,
-        PARCEL_CELEBRATION_FRAME_PATHS[index]!
-      ));
-    }
     if (!orders || !powerUps || !courier || !courierCrouch || !courierJump || !boxStack ||
         !pallet || !trolley || !overhead || !overheadDoor || !overheadConveyor) {
       throw new Error("critical_runner_artwork_missing");
@@ -440,8 +458,33 @@ export class CampaignController {
       courierJump,
       obstacles: { "box-stack": boxStack, pallet, trolley, overhead },
       overheadVariants: [overhead, overheadDoor, overheadConveyor],
-      parcelFrames
+      parcelFrames: []
     });
+  }
+
+  private scheduleCelebrationArtworkWarmup(artwork: RunnerArtwork, token: number): void {
+    let index = 0;
+    const scheduleNext = (): void => {
+      if (this.destroyed || token !== this.startToken || index >= PARCEL_CELEBRATION_FRAME_PATHS.length) return;
+      const run = (): void => {
+        if (this.destroyed || token !== this.startToken) return;
+        const current = index++;
+        void this.decodedImageStore.load(
+          `parcel-celebration-${current + 1}`,
+          PARCEL_CELEBRATION_FRAME_PATHS[current]!
+        ).then(({ image }) => {
+          if (this.destroyed || token !== this.startToken) return;
+          artwork.installParcelFrame(current, image);
+          scheduleNext();
+        }).catch(() => scheduleNext());
+      };
+      if (typeof window.requestIdleCallback === "function") {
+        window.requestIdleCallback(run, { timeout: 1_000 });
+      } else {
+        window.setTimeout(run, 50);
+      }
+    };
+    scheduleNext();
   }
 
   private handleSnapshot(snapshot: GameSnapshot): void {
@@ -508,10 +551,14 @@ export class CampaignController {
       },
       session,
       scenarioArtifact: this.scenarioArtifact,
+      scenarioValidation: this.scenarioValidation,
       releaseGate: evaluatePerformanceReleaseGate({
         inputQueueOverflows: session.inputQueueOverflows,
         reportMetadataComplete: true,
-        minimumProfileDeviceAvailable: false
+        minimumProfileDeviceAvailable: false,
+        checkpointsPassed: this.scenarioValidation?.checkpointsPassed,
+        digestPassed: this.scenarioValidation?.digestPassed,
+        requiredCoveragePassed: this.scenarioValidation?.coveragePassed
       })
     }, null, 2);
   }

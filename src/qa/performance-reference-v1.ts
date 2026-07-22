@@ -7,7 +7,7 @@ export type ScenarioCoverageRequirement =
   | { readonly type: "power-up"; readonly id: string; readonly minCount: number }
   | { readonly type: "max-approved-density"; readonly minDurationSteps: number };
 export interface ScenarioCheckpoint { readonly completedThroughStep: number; readonly expected: Readonly<Record<string, unknown>>; }
-export interface PerformanceScenarioManifest { readonly id: "performance-reference-v1"; readonly durationSteps: 7200; readonly seed: number; readonly mode: "challenge"; readonly configVersion: string; readonly inputs: readonly ReplayInputEvent[]; readonly expectedCheckpoints: readonly ScenarioCheckpoint[]; readonly requiredCoverage: readonly ScenarioCoverageRequirement[]; }
+export interface PerformanceScenarioManifest { readonly id: "performance-reference-v1"; readonly durationSteps: 7200; readonly seed: number; readonly mode: "challenge"; readonly configVersion: string; readonly inputs: readonly ReplayInputEvent[]; readonly expectedCheckpoints: readonly ScenarioCheckpoint[]; readonly requiredCoverage: readonly ScenarioCoverageRequirement[]; readonly expectedFinalDigest: string | null; }
 export interface ScenarioRunEvidence {
   readonly completedThroughStep: number;
   readonly checkpointResults: readonly { completedThroughStep: number; passed: boolean }[];
@@ -48,8 +48,20 @@ export const PERFORMANCE_REFERENCE_V1: PerformanceScenarioManifest = Object.free
   configVersion: "runner-config-v4",
   inputs: Object.freeze(inputs),
   expectedCheckpoints: Object.freeze([{ completedThroughStep: -1, expected: Object.freeze({ score: 0, collisionCount: 0, pickupCount: 0, worldIndex: 0 }) }]),
-  requiredCoverage: Object.freeze(requiredCoverage)
+  requiredCoverage: Object.freeze(requiredCoverage),
+  // Deliberately null until the first canonical artifact receives explicit gameplay approval.
+  expectedFinalDigest: null
 });
+
+export function checkpointMatches(
+  checkpoint: ScenarioCheckpoint,
+  canonicalState: Readonly<Record<string, unknown>>
+): boolean {
+  for (const [key, expected] of Object.entries(checkpoint.expected)) {
+    if (!Object.is(canonicalState[key], expected)) return false;
+  }
+  return true;
+}
 
 function coverageKey(requirement: ScenarioCoverageRequirement): string {
   return requirement.type === "power-up" ? `power-up:${requirement.id}` : requirement.type;
