@@ -350,7 +350,7 @@ describe("difficulty and responsive canvas", () => {
     expect(oversized.width * oversized.height).toBeLessThanOrEqual(2_100_000);
   });
 
-  it("centers the complete game world on the contained background plane", () => {
+  it("centers gameplay and starts overhead supports at the visible background plate", () => {
     const translations: Array<[number, number]> = [];
     const fillRects: Array<[number, number, number, number]> = [];
     const contextTarget: Record<PropertyKey, unknown> = {
@@ -404,7 +404,8 @@ describe("difficulty and responsive canvas", () => {
     });
 
     expect(translations[0]).toEqual([0, 210]);
-    expect(fillRects.some(([x, y, width]) => x === 412 && y === 0 && width === 10)).toBe(true);
+    const leftSupport = fillRects.find(([x, , width]) => x === 412 && width === 10);
+    expect(leftSupport?.[1]).toBeCloseTo(16.247, 3);
   });
 
   it("leaves pause dimming to the full-stage DOM overlay", () => {

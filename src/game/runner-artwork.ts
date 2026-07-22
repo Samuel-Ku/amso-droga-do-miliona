@@ -159,7 +159,8 @@ export class RunnerArtwork {
 
   public drawObstacle(
     context: CanvasRenderingContext2D,
-    obstacle: Readonly<ObstacleModel>
+    obstacle: Readonly<ObstacleModel>,
+    ceilingY = 0
   ): boolean {
     if (!obstacle.active) return true;
     const image = obstacle.kind === "overhead"
@@ -184,9 +185,9 @@ export class RunnerArtwork {
       context.strokeStyle = "#2d343b";
       context.lineWidth = 5;
       context.beginPath();
-      context.moveTo(drawX + railInset, 0);
+      context.moveTo(drawX + railInset, ceilingY);
       context.lineTo(drawX + railInset, drawY + drawHeight * 0.28);
-      context.moveTo(drawX + drawWidth - railInset, 0);
+      context.moveTo(drawX + drawWidth - railInset, ceilingY);
       context.lineTo(drawX + drawWidth - railInset, drawY + drawHeight * 0.28);
       context.stroke();
       context.drawImage(image, drawX, drawY, drawWidth, drawHeight);

@@ -25,7 +25,8 @@ import {
   WORLD_ROUTE_BASE_OFFSET_Y,
   WORLD_ROUTE_BASE_WIDTH,
   WORLD_ROUTE_GRADIENT_STOPS,
-  WORLD_ROUTE_Y
+  WORLD_ROUTE_Y,
+  WORLD_PLATE_TOP_Y
 } from "../visuals/world-route";
 import { RunnerArtwork } from "./runner-artwork";
 
@@ -1096,13 +1097,17 @@ function drawTrolley(context: CanvasRenderingContext2D, obstacle: Readonly<Obsta
   context.fill();
 }
 
-function drawOverhead(context: CanvasRenderingContext2D, obstacle: Readonly<ObstacleModel>): void {
+function drawOverhead(
+  context: CanvasRenderingContext2D,
+  obstacle: Readonly<ObstacleModel>,
+  ceilingY: number
+): void {
   const { x, y, width, height } = obstacle;
   context.fillStyle = "rgba(23,49,59,0.16)";
   context.fillRect(x - 7, y - 6, width + 14, 6);
   context.fillStyle = COLORS.ink;
-  context.fillRect(x - 8, 0, 10, y + 8);
-  context.fillRect(x + width - 2, 0, 10, y + 8);
+  context.fillRect(x - 8, ceilingY, 10, y + 8 - ceilingY);
+  context.fillRect(x + width - 2, ceilingY, 10, y + 8 - ceilingY);
   fillRoundedRectangle(context, x, y, width, height, 8, COLORS.inkSoft);
   context.fillStyle = COLORS.orange;
   context.fillRect(x + 6, y + 12, width - 12, 7);
@@ -1118,7 +1123,11 @@ function drawOverhead(context: CanvasRenderingContext2D, obstacle: Readonly<Obst
   context.stroke();
 }
 
-function drawObstacle(context: CanvasRenderingContext2D, obstacle: Readonly<ObstacleModel>): void {
+function drawObstacle(
+  context: CanvasRenderingContext2D,
+  obstacle: Readonly<ObstacleModel>,
+  ceilingY: number
+): void {
   if (!obstacle.active) return;
   switch (obstacle.kind) {
     case "box-stack":
@@ -1131,7 +1140,7 @@ function drawObstacle(context: CanvasRenderingContext2D, obstacle: Readonly<Obst
       drawTrolley(context, obstacle);
       break;
     case "overhead":
-      drawOverhead(context, obstacle);
+      drawOverhead(context, obstacle, ceilingY);
       break;
   }
 }
@@ -1901,6 +1910,7 @@ export class WarehouseRenderer {
       : scene.themeIndex >= 0 && scene.themeIndex < BACKGROUND_THEMES.length
         ? BACKGROUND_THEMES[scene.themeIndex]!
         : selectBackgroundTheme(scene.distancePixels, BACKGROUND.zonePixels);
+    const ceilingY = externalWorldVisual ? WORLD_PLATE_TOP_Y : 0;
 
     if (!externalWorldVisual) {
       drawWarehouse(
@@ -1922,8 +1932,8 @@ export class WarehouseRenderer {
     );
     for (const parcel of scene.packages) drawParcel(context, parcel, scene, this.artwork);
     for (const obstacle of scene.obstacles) {
-      if (!this.artwork.drawObstacle(context, obstacle)) {
-        drawObstacle(context, obstacle);
+      if (!this.artwork.drawObstacle(context, obstacle, ceilingY)) {
+        drawObstacle(context, obstacle, ceilingY);
       }
     }
     for (const transformation of scene.obstacleTransformations ?? []) {

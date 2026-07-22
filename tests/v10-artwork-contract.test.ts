@@ -88,6 +88,41 @@ describe("v10 production artwork contract", () => {
     expect(visibleUndersideY).toBe(344);
   });
 
+  it("starts raster overhead rails at the visible world plate ceiling", () => {
+    const moveTo = vi.fn();
+    const context = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo,
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      drawImage: vi.fn()
+    } as unknown as CanvasRenderingContext2D;
+    const factory = () => ({
+      complete: true,
+      naturalWidth: 768,
+      naturalHeight: 185,
+      decoding: "async",
+      src: ""
+    }) as unknown as HTMLImageElement;
+    const artwork = new RunnerArtwork(factory);
+    const ceilingY = 16.247;
+
+    artwork.drawObstacle(context, {
+      active: true,
+      kind: "overhead",
+      source: "normal",
+      x: 420,
+      y: 200,
+      width: 76,
+      height: 178,
+      visualVariant: 0
+    }, ceilingY);
+
+    expect(moveTo.mock.calls.map(([, y]) => y)).toEqual([ceilingY, ceilingY]);
+  });
+
   it("ships the selected Todd courier and preserves pose-state timing", () => {
     expect(existsSync(new URL(
       "../public/assets/milion-runner/courier/courier-reference.svg",
