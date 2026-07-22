@@ -137,8 +137,6 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   orientationHint: "Do gry potrzebny jest tryb poziomy",
   orientationPromptTitle: "Obróć telefon, aby zagrać",
   orientationPromptBody: "Gra „Droga do Miliona” działa w trybie poziomym.",
-  milestoneValue: "1 000 000",
-  milestoneLabel: "zamówień",
   footerTagline: "AMSO. Sprzęt z przeszłością. Na przyszłość.",
   footerCampaign: "Strona kampanii",
 } as const;
@@ -624,10 +622,6 @@ export class CampaignShell {
                 </p>
               </div>
               <div data-campaign-landing-records></div>
-              <div class="amso-campaign__landing-milestone" data-campaign-landing-milestone>
-                <span class="amso-campaign__landing-milestone-value" data-campaign-copy="milestoneValue">1 000 000</span>
-                <span class="amso-campaign__landing-milestone-label" data-campaign-copy="milestoneLabel">zamówień</span>
-              </div>
               <a class="amso-campaign__text-link amso-campaign__landing-campaign-link" data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
             </div>
             <div class="amso-campaign__landing-art" aria-hidden="true">

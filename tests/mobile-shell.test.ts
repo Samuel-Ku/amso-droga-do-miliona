@@ -36,6 +36,13 @@ describe("mobile campaign shell", () => {
     });
   });
 
+  it("does not duplicate the million badge below the landing records", () => {
+    const shell = createShell();
+
+    expect(document.querySelector("[data-campaign-landing-milestone]")).toBeNull();
+    shell.destroy();
+  });
+
   it("hides the contextual HUD panel while keeping gameplay stats available", () => {
     const shell = createShell();
     const context = document.querySelector<HTMLElement>(".amso-campaign__hud-context")!;
