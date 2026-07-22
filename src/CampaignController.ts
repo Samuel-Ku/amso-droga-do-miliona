@@ -33,6 +33,25 @@ import {
   storyPageVisualStateId,
   type CampaignWorldId
 } from "./visuals/scene-manifest";
+import type { QaBootConfig } from "./qa/boot-config";
+import { DecodedImageStore } from "./assets/DecodedImageStore";
+import {
+  COURIER_CROUCH_SPRITE_PATH,
+  COURIER_JUMP_SPRITE_PATH,
+  COURIER_SPRITE_PATH,
+  OBSTACLE_ASSET_PATHS,
+  ORDER_ATLAS_PATH,
+  PARCEL_CELEBRATION_FRAME_PATHS,
+  POWER_UP_ATLAS_PATH,
+  OVERHEAD_VARIANT_ASSET_PATHS,
+  RunnerArtwork
+} from "./game/runner-artwork";
+import { PERFORMANCE_REFERENCE_V1 } from "./qa/performance-reference-v1";
+import { exactDeterminismArtifact, type ExactDeterminismArtifact } from "./qa/determinism";
+
+export interface CampaignRuntimeOptions {
+  readonly qa?: QaBootConfig;
+}
 
 type AnalyticsConsentWindow = Window & { AMSOAnalyticsConsent?: boolean };
 
@@ -105,6 +124,7 @@ export class CampaignController {
   private readonly shell: CampaignShell;
   private readonly audio: CampaignAudio;
   private readonly assetLoader: AssetBundleLoader;
+  private readonly decodedImageStore = new DecodedImageStore();
   private game: RunnerGame | null = null;
   private detachGameGeometry: (() => void) | null = null;
   private lastSnapshot: GameSnapshot | null = null;
@@ -119,21 +139,29 @@ export class CampaignController {
   private pendingStart: CampaignStartRequest | null = null;
   private startToken = 0;
   private destroyed = false;
+  private scenarioArtifact: ExactDeterminismArtifact<Readonly<Record<string, unknown>>> | null = null;
 
   public constructor(
     host: HTMLElement,
     private readonly config: RunnerConfig,
     profile = new PlayerProfileStore(),
-    assetLoader = new AssetBundleLoader(config.assets.bundles)
+    assetLoader?: AssetBundleLoader,
+    private readonly runtime: CampaignRuntimeOptions = {}
   ) {
     this.profile = profile;
-    this.recordsClient = new RecordsClient(config.recordsApi ?? "/api/records");
+    this.recordsClient = new RecordsClient(config.recordsApi ?? "/api/records", {
+      writesEnabled: runtime.qa === undefined
+    });
     this.tracker = new DataLayerTracker({
       gameVersion: config.gameVersion,
-      consentGranted: hasAnalyticsConsent
+      consentGranted: runtime.qa === undefined && hasAnalyticsConsent
     });
-    this.audio = new CampaignAudio({ muted: profile.snapshot.soundMuted });
-    this.assetLoader = assetLoader;
+    this.audio = new CampaignAudio({
+      muted: runtime.qa?.audio === "muted" || profile.snapshot.soundMuted
+    });
+    this.assetLoader = assetLoader ?? new AssetBundleLoader(config.assets.bundles, {
+      decodedImageStore: this.decodedImageStore
+    });
     this.shell = new CampaignShell(host, {
       onStart: (request) => {
         void this.startRun(request);
@@ -176,7 +204,12 @@ export class CampaignController {
         ...config.ui,
         startChallenge: config.cta.challengeLabel,
         fullStory: config.cta.campaignLabel
-      }
+      },
+      ...(runtime.qa === undefined ? {} : {
+        qaDpr: runtime.qa.dpr,
+        qaBadgeText: `QA PERFORMANCE\n${runtime.qa.scenarioId}\n${runtime.qa.quality.toUpperCase()} · ${runtime.qa.motion.toUpperCase()} · AUDIO ${runtime.qa.audio.toUpperCase()} · DPR ${runtime.qa.dpr}`
+      }),
+      decodedImageStore: this.decodedImageStore
     });
 
     this.showLanding();
@@ -188,6 +221,7 @@ export class CampaignController {
     this.startToken += 1;
     this.destroyGame();
     this.shell.destroy();
+    this.decodedImageStore.destroy();
     void this.audio.destroy();
   }
 
@@ -202,9 +236,11 @@ export class CampaignController {
 
   private async startRun(request: CampaignStartRequest): Promise<void> {
     if (this.destroyed) return;
-    const safeRequest = request.mode === "challenge" && !this.profile.snapshot.storyCompleted
+    const qaScenario = this.runtime.qa !== undefined;
+    const requested = qaScenario ? { mode: "challenge" as const, restartStory: false } : request;
+    const safeRequest = requested.mode === "challenge" && !this.profile.snapshot.storyCompleted && !qaScenario
       ? { mode: "story" as const, restartStory: false }
-      : request;
+      : requested;
     this.pendingStart = safeRequest;
     const token = ++this.startToken;
     this.destroyGame();
@@ -218,7 +254,7 @@ export class CampaignController {
     this.shownPowerUpHints.clear();
     this.shell.showLoading(undefined);
 
-    if (this.config.audio.enabled) void this.audio.start();
+    if (this.config.audio.enabled && this.runtime.qa?.audio !== "disabled") void this.audio.start();
 
     try {
       const requiredBundles = requiredStartAssetBundles(safeRequest.mode);
@@ -233,13 +269,19 @@ export class CampaignController {
           );
         }
       });
+      const runnerArtwork = await this.loadRunnerArtwork();
       // The page shell is already present; this paint is the real hand-off from
       // resource readiness to Canvas/context readiness.
       await nextPaint();
       if (this.destroyed || token !== this.startToken) return;
       const callbacks = this.createGameCallbacks();
+      const reducedMotion = this.runtime.qa?.motion === "reduced"
+        ? true
+        : this.runtime.qa?.motion === "full"
+          ? false
+          : prefersReducedMotion();
       this.game = new RunnerGame(this.shell.canvas, callbacks, {
-        reducedMotion: prefersReducedMotion(),
+        reducedMotion,
         mode: safeRequest.mode,
         story: safeRequest.mode === "story" ? this.config.story : null,
         challenge: this.config.challenge,
@@ -255,7 +297,32 @@ export class CampaignController {
             this.uiCopy("parcelSecondLifeLine1", "2×"),
             this.uiCopy("parcelSecondLifeLine2", "PUNKTY")
           ]
-        }
+        },
+        visualFrameSink: (visualDistancePixels, interpolationAlpha) => {
+          this.shell.updateVisualFrame(
+            visualDistancePixels,
+            interpolationAlpha,
+            reducedMotion
+          );
+        },
+        qualityCommitContext: () => this.shell.qualityCommitContext(),
+        qualityMode: this.runtime.qa?.quality ?? "auto",
+        runnerArtwork,
+        ...(qaScenario ? {
+          seed: PERFORMANCE_REFERENCE_V1.seed,
+          qaScenarioActive: true,
+          replayInputs: PERFORMANCE_REFERENCE_V1.inputs,
+          scenarioDurationSteps: PERFORMANCE_REFERENCE_V1.durationSteps,
+          onQaAbort: () => this.shell.showError("QA Scenario failed: input queue overflow."),
+          onScenarioComplete: () => {
+            if (this.game?.isReplayValid) {
+              this.scenarioArtifact = exactDeterminismArtifact(
+                this.game.canonicalDeterministicState()
+              );
+            }
+            this.shell.announce("QA Performance Scenario complete.");
+          }
+        } : {})
       });
       const game = this.game;
       this.detachGameGeometry = this.shell.attachGameGeometry(game, () => {
@@ -338,6 +405,41 @@ export class CampaignController {
     };
   }
 
+  private async loadRunnerArtwork(): Promise<RunnerArtwork> {
+    const load = (assetId: string, source: string) =>
+      this.decodedImageStore.load(assetId, source).then(({ image }) => image);
+    const [orders, powerUps, courier, courierCrouch, courierJump, boxStack, pallet, trolley,
+      overhead, overheadDoor, overheadConveyor, ...parcelFrames] = await Promise.all([
+      load("order-atlas", ORDER_ATLAS_PATH),
+      load("power-up-atlas", POWER_UP_ATLAS_PATH),
+      load("courier-run-sheet", COURIER_SPRITE_PATH),
+      load("courier-crouch", COURIER_CROUCH_SPRITE_PATH),
+      load("courier-jump-sheet", COURIER_JUMP_SPRITE_PATH),
+      load("obstacle-box-stack", OBSTACLE_ASSET_PATHS["box-stack"]),
+      load("obstacle-pallet", OBSTACLE_ASSET_PATHS.pallet),
+      load("obstacle-trolley", OBSTACLE_ASSET_PATHS.trolley),
+      load("obstacle-overhead", OBSTACLE_ASSET_PATHS.overhead),
+      load("obstacle-overhead-door", OVERHEAD_VARIANT_ASSET_PATHS[1]!),
+      load("obstacle-overhead-conveyor", OVERHEAD_VARIANT_ASSET_PATHS[2]!),
+      ...PARCEL_CELEBRATION_FRAME_PATHS.map((source, index) =>
+        load(`parcel-celebration-${index + 1}`, source))
+    ]);
+    if (!orders || !powerUps || !courier || !courierCrouch || !courierJump || !boxStack ||
+        !pallet || !trolley || !overhead || !overheadDoor || !overheadConveyor) {
+      throw new Error("critical_runner_artwork_missing");
+    }
+    return new RunnerArtwork({
+      orders,
+      powerUps,
+      courier,
+      courierCrouch,
+      courierJump,
+      obstacles: { "box-stack": boxStack, pallet, trolley, overhead },
+      overheadVariants: [overhead, overheadDoor, overheadConveyor],
+      parcelFrames
+    });
+  }
+
   private handleSnapshot(snapshot: GameSnapshot): void {
     this.qaReport.record(snapshot);
     const authoredAudio = authoredAudioFeedback(snapshot);
@@ -382,7 +484,26 @@ export class CampaignController {
   }
 
   public qaReportText(): string {
-    return this.qaReport.text(this.shell.geometryDiagnostics);
+    if (this.runtime.qa === undefined) return this.qaReport.text(this.shell.geometryDiagnostics);
+    return JSON.stringify({
+      qaRunConfiguration: {
+        qaMode: "performance",
+        scenarioId: this.runtime.qa.scenarioId,
+        scenarioConfigVersion: PERFORMANCE_REFERENCE_V1.configVersion,
+        qualityRequest: this.runtime.qa.quality,
+        motionRequest: this.runtime.qa.motion,
+        resolvedMotionPreference: this.runtime.qa.motion === "reduced" ||
+          (this.runtime.qa.motion === "system" && prefersReducedMotion())
+          ? "reduced-motion"
+          : "full-motion",
+        audioMode: this.runtime.qa.audio,
+        requestedDpr: this.runtime.qa.dpr,
+        effectiveDpr: this.runtime.qa.dpr,
+        externalWritesDisabled: true
+      },
+      session: this.qaReport.snapshot(this.shell.geometryDiagnostics),
+      scenarioArtifact: this.scenarioArtifact
+    }, null, 2);
   }
 
   private handleStoryUpdate(update: StoryTimelineSnapshot): void {
@@ -480,7 +601,7 @@ export class CampaignController {
     if (this.game?.state !== "paused") return;
     this.game.resume();
     this.shell.setPaused(false);
-    if (this.config.audio.enabled) void this.audio.start();
+    if (this.config.audio.enabled && this.runtime.qa?.audio !== "disabled") void this.audio.start();
   }
 
   private returnToMenu(): void {

@@ -1,46 +1,45 @@
-export type DecorationQualityLevel = "full" | "reduced";
+import { FrameWindowTelemetry } from "../performance/frame-window-telemetry";
+import {
+  VisualQualityCoordinator,
+  type QualityCommitContext,
+  type QualityLevel,
+  type QualityMode
+} from "../performance/visual-quality-coordinator";
 
-/** Sustained frame-budget observer. It owns decoration only, never simulation. */
+export type DecorationQualityLevel = QualityLevel;
+
+/** Raw-rAF p95 observer. It requests decoration changes but never touches simulation. */
 export class AdaptiveDecorationQuality {
-  private sampleSeconds = 0;
-  private sampleFrames = 0;
-  private goodSeconds = 0;
-  private current: DecorationQualityLevel = "full";
+  private telemetry = new FrameWindowTelemetry();
+  private coordinator = new VisualQualityCoordinator("full");
+  private windowDurationMs = 0;
+  private windowSequence = 0;
 
-  public get level(): DecorationQualityLevel {
-    return this.current;
+  public get level(): DecorationQualityLevel { return this.coordinator.snapshot.committed; }
+  public get pending(): QualityLevel | null { return this.coordinator.snapshot.pending?.target ?? null; }
+
+  public observe(deltaSeconds: number, simulationStep = 0, visualFrame = 0): void {
+    if (!Number.isFinite(deltaSeconds) || deltaSeconds <= 0) return;
+    const intervalMs = deltaSeconds * 1_000;
+    this.telemetry.observe(intervalMs);
+    this.windowDurationMs += intervalMs;
+    if (this.windowDurationMs < 2_000) return;
+    this.coordinator.observe(this.telemetry.closeWindow(), simulationStep, visualFrame || ++this.windowSequence);
+    this.windowDurationMs = 0;
   }
 
-  public observe(deltaSeconds: number): void {
-    if (!Number.isFinite(deltaSeconds) || deltaSeconds <= 0) return;
-    if (this.current === "reduced") {
-      this.goodSeconds = deltaSeconds <= 1 / 58
-        ? this.goodSeconds + deltaSeconds
-        : 0;
-      if (this.goodSeconds >= 4.8) {
-        this.current = "full";
-        this.goodSeconds = 0;
-        this.sampleSeconds = 0;
-        this.sampleFrames = 0;
-        return;
-      }
-    }
-    this.sampleSeconds += Math.min(deltaSeconds, 0.25);
-    this.sampleFrames += 1;
-    if (this.sampleSeconds < 2) return;
-    const fps = this.sampleFrames / this.sampleSeconds;
-    if (this.current === "full" && fps < 52) {
-      this.current = "reduced";
-      this.goodSeconds = 0;
-    }
-    this.sampleSeconds = 0;
-    this.sampleFrames = 0;
+  public tryCommit(context: QualityCommitContext, simulationStep = 0, visualFrame = 0): boolean {
+    return this.coordinator.tryCommit(context, simulationStep, visualFrame);
+  }
+
+  public setMode(mode: QualityMode, simulationStep = 0, visualFrame = 0): void {
+    this.coordinator.setMode(mode, simulationStep, visualFrame);
   }
 
   public reset(): void {
-    this.sampleSeconds = 0;
-    this.sampleFrames = 0;
-    this.goodSeconds = 0;
-    this.current = "full";
+    this.telemetry = new FrameWindowTelemetry();
+    this.windowDurationMs = 0;
+    this.windowSequence = 0;
+    this.coordinator = new VisualQualityCoordinator("full");
   }
 }

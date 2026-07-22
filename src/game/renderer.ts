@@ -1,4 +1,4 @@
-import { BACKGROUND, BOSS, GROUND_Y, WORLD_HEIGHT, WORLD_WIDTH } from "./constants";
+import { BACKGROUND, BOSS, GAMEPLAY, GROUND_Y, WORLD_HEIGHT, WORLD_WIDTH } from "./constants";
 import type {
   BossModel,
   ObstacleModel,
@@ -47,13 +47,13 @@ const COLORS = {
   blue: "#eb32a4"
 } as const;
 
-let warrantyShieldMesh: Path2D | null | undefined;
+export const DEFAULT_VISUAL_OVERSCAN = 64;
 
-function getWarrantyShieldMesh(): Path2D | null {
-  if (warrantyShieldMesh !== undefined) return warrantyShieldMesh;
+const SHIELD_SPARK_ANGLES = new Float32Array([-1.03, -0.32, 0.46, 2.65]);
+
+function createWarrantyShieldMesh(): Path2D | null {
   if (typeof Path2D === "undefined") {
-    warrantyShieldMesh = null;
-    return warrantyShieldMesh;
+    return null;
   }
   const mesh = new Path2D();
   const hexRadius = 11;
@@ -73,8 +73,21 @@ function getWarrantyShieldMesh(): Path2D | null {
       mesh.closePath();
     }
   }
-  warrantyShieldMesh = mesh;
-  return warrantyShieldMesh;
+  return mesh;
+}
+
+export class RendererResourceCache {
+  public readonly routeGradient: CanvasGradient;
+  public readonly warrantyShieldMesh = createWarrantyShieldMesh();
+  public constructor(readonly context: CanvasRenderingContext2D) {
+    this.routeGradient = context.createLinearGradient(0, 0, WORLD_WIDTH, 0);
+    for (const { offset, color } of WORLD_ROUTE_GRADIENT_STOPS) {
+      this.routeGradient.addColorStop(offset, color);
+    }
+  }
+  public destroy(): void {
+    // Dropping the renderer releases its context-bound resources as one unit.
+  }
 }
 
 const INTEGER_FORMATTER = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
@@ -806,8 +819,9 @@ function drawParcel(
   const bob = scene.reducedMotion
     ? 0
     : Math.sin(scene.elapsedSeconds * 4.4 + parcel.phase) * 3;
-  const x = parcel.x;
-  const y = parcel.y + bob;
+  const alpha = scene.interpolationAlpha ?? 1;
+  const x = (parcel.previousX ?? parcel.x) + (parcel.x - (parcel.previousX ?? parcel.x)) * alpha;
+  const y = (parcel.previousY ?? parcel.y) + (parcel.y - (parcel.previousY ?? parcel.y)) * alpha + bob;
   const size = parcel.size;
 
   if (parcel.kind === "standard") {
@@ -1179,7 +1193,8 @@ function drawFirstAmsoParcel(
 function drawWarrantyShield(
   context: CanvasRenderingContext2D,
   runner: Readonly<RunnerModel>,
-  scene: Readonly<RenderScene>
+  scene: Readonly<RenderScene>,
+  resources: RendererResourceCache
 ): void {
   const presentation = courierProtectionPresentation(
     runner,
@@ -1253,7 +1268,7 @@ function drawWarrantyShield(
   context.rotate(animation.meshRotationRadians);
   context.strokeStyle = `rgba(${bubbleColor},0.2)`;
   context.lineWidth = 1;
-  const mesh = getWarrantyShieldMesh();
+  const mesh = resources.warrantyShieldMesh;
   if (mesh !== null) context.stroke(mesh);
   context.restore();
 
@@ -1306,7 +1321,8 @@ function drawWarrantyShield(
     context.shadowBlur = 12;
     context.strokeStyle = "rgba(255,255,255,0.95)";
     context.lineWidth = 3;
-    for (const angle of [-1.03, -0.32, 0.46, 2.65]) {
+    for (let angleIndex = 0; angleIndex < SHIELD_SPARK_ANGLES.length; angleIndex += 1) {
+      const angle = SHIELD_SPARK_ANGLES[angleIndex] ?? 0;
       const innerX = Math.cos(angle) * radiusX * 0.72;
       const innerY = Math.sin(angle) * radiusY * 0.72;
       context.beginPath();
@@ -1511,7 +1527,10 @@ function drawCourier(
  * Draws the gameplay route in world coordinates (inside the world-space clip).
  * Used when no external CSS world visual is present.
  */
-function drawGameplayRoute(context: CanvasRenderingContext2D): void {
+function drawGameplayRoute(
+  context: CanvasRenderingContext2D,
+  routeGradient: CanvasGradient
+): void {
   context.save();
   context.lineCap = "round";
   context.strokeStyle = WORLD_ROUTE_BASE_COLOR;
@@ -1521,10 +1540,6 @@ function drawGameplayRoute(context: CanvasRenderingContext2D): void {
   context.lineTo(WORLD_WIDTH + 12, WORLD_ROUTE_Y + WORLD_ROUTE_BASE_OFFSET_Y);
   context.stroke();
 
-  const routeGradient = context.createLinearGradient(0, 0, WORLD_WIDTH, 0);
-  for (const { offset, color } of WORLD_ROUTE_GRADIENT_STOPS) {
-    routeGradient.addColorStop(offset, color);
-  }
   context.strokeStyle = routeGradient;
   context.lineWidth = WORLD_ROUTE_ACCENT_WIDTH;
   context.beginPath();
@@ -1831,10 +1846,15 @@ function drawCelebrationEffects(
 export class WarehouseRenderer {
   private geometry: Readonly<WorldPlateTransform> | null = null;
   private viewport: Readonly<WorldGeometryViewport> | null = null;
+  private readonly obstacleSeenGeneration = new Float64Array(GAMEPLAY.obstaclePoolSize).fill(-1);
+  private readonly obstacleSeenRevision = new Float64Array(GAMEPLAY.obstaclePoolSize).fill(-1);
+  private readonly packageSeenGeneration = new Float64Array(GAMEPLAY.packagePoolSize).fill(-1);
+  private readonly packageSeenRevision = new Float64Array(GAMEPLAY.packagePoolSize).fill(-1);
+  private resources: RendererResourceCache | null = null;
 
   public constructor(
     _brandArtwork: CourierBrandArtwork = DEFAULT_COURIER_BRAND_ARTWORK,
-    private readonly artwork: RunnerArtwork = new RunnerArtwork()
+    private readonly artwork: RunnerArtwork = new RunnerArtwork({})
   ) {}
 
   public applyGeometry(
@@ -1851,6 +1871,11 @@ export class WarehouseRenderer {
     pixelHeight: number,
     scene: Readonly<RenderScene>
   ): void {
+    if (this.resources === null || this.resources.context !== context) {
+      this.resources?.destroy();
+      this.resources = new RendererResourceCache(context);
+    }
+    const resources = this.resources;
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.globalAlpha = 1;
     const externalWorldVisual = scene.worldVisual !== undefined;
@@ -1903,7 +1928,7 @@ export class WarehouseRenderer {
       );
       drawNarrativeVignette(context, scene, theme);
     }
-    drawGameplayRoute(context);
+    drawGameplayRoute(context, resources.routeGradient);
     drawCelebrationEffects(context, scene);
     drawForkliftBoss(
       context,
@@ -1911,19 +1936,67 @@ export class WarehouseRenderer {
       scene.elapsedSeconds,
       scene.reducedMotion
     );
-    for (const parcel of scene.packages) drawParcel(context, parcel, scene, this.artwork);
-    for (const obstacle of scene.obstacles) {
-      if (!this.artwork.drawObstacle(context, obstacle, ceilingY)) {
-        drawObstacle(context, obstacle, ceilingY);
+    const alpha = scene.interpolationAlpha ?? 1;
+    for (const parcel of scene.packages) {
+      if (!parcel.active) continue;
+      const slotId = parcel.slotId ?? -1;
+      const continuous = slotId >= 0 &&
+        this.packageSeenGeneration[slotId] === (parcel.generation ?? 0) &&
+        this.packageSeenRevision[slotId] === (parcel.motionRevision ?? 0);
+      if (slotId >= 0) {
+        this.packageSeenGeneration[slotId] = parcel.generation ?? 0;
+        this.packageSeenRevision[slotId] = parcel.motionRevision ?? 0;
       }
+      const renderX = continuous
+        ? (parcel.previousX ?? parcel.x) + (parcel.x - (parcel.previousX ?? parcel.x)) * alpha
+        : parcel.x;
+      if (renderX + parcel.size < -DEFAULT_VISUAL_OVERSCAN ||
+          renderX > WORLD_WIDTH + DEFAULT_VISUAL_OVERSCAN) continue;
+      if (continuous) drawParcel(context, parcel, scene, this.artwork);
+      else {
+        const interpolatedX = (parcel.previousX ?? parcel.x) + (parcel.x - (parcel.previousX ?? parcel.x)) * alpha;
+        const interpolatedY = (parcel.previousY ?? parcel.y) + (parcel.y - (parcel.previousY ?? parcel.y)) * alpha;
+        context.save();
+        context.translate(parcel.x - interpolatedX, parcel.y - interpolatedY);
+        drawParcel(context, parcel, scene, this.artwork);
+        context.restore();
+      }
+    }
+    for (const obstacle of scene.obstacles) {
+      if (!obstacle.active) continue;
+      const slotId = obstacle.slotId ?? -1;
+      const continuous = slotId >= 0 &&
+        this.obstacleSeenGeneration[slotId] === (obstacle.generation ?? 0) &&
+        this.obstacleSeenRevision[slotId] === (obstacle.motionRevision ?? 0);
+      if (slotId >= 0) {
+        this.obstacleSeenGeneration[slotId] = obstacle.generation ?? 0;
+        this.obstacleSeenRevision[slotId] = obstacle.motionRevision ?? 0;
+      }
+      const renderX = continuous
+        ? (obstacle.previousX ?? obstacle.x) + (obstacle.x - (obstacle.previousX ?? obstacle.x)) * alpha
+        : obstacle.x;
+      const renderY = continuous
+        ? (obstacle.previousY ?? obstacle.y) + (obstacle.y - (obstacle.previousY ?? obstacle.y)) * alpha
+        : obstacle.y;
+      if (renderX + obstacle.width < -DEFAULT_VISUAL_OVERSCAN ||
+          renderX > WORLD_WIDTH + DEFAULT_VISUAL_OVERSCAN) continue;
+      context.save();
+      context.translate(renderX - obstacle.x, renderY - obstacle.y);
+      if (!this.artwork.drawObstacle(context, obstacle, ceilingY)) drawObstacle(context, obstacle, ceilingY);
+      context.restore();
     }
     for (const transformation of scene.obstacleTransformations ?? []) {
       drawTransformedObstacle(context, transformation, scene.reducedMotion);
     }
-    drawWarrantyShield(context, scene.runner, scene);
-    if (!this.artwork.drawCourier(context, scene.runner, scene)) {
-      drawCourier(context, scene.runner, scene);
-    }
+    const runnerRenderX = (scene.runner.previousX ?? scene.runner.x) +
+      (scene.runner.x - (scene.runner.previousX ?? scene.runner.x)) * alpha;
+    const runnerRenderY = (scene.runner.previousY ?? scene.runner.y) +
+      (scene.runner.y - (scene.runner.previousY ?? scene.runner.y)) * alpha;
+    context.save();
+    context.translate(runnerRenderX - scene.runner.x, runnerRenderY - scene.runner.y);
+    drawWarrantyShield(context, scene.runner, scene, resources);
+    if (!this.artwork.drawCourier(context, scene.runner, scene)) drawCourier(context, scene.runner, scene);
+    context.restore();
 
     if (scene.cutscene) {
       context.fillStyle = "rgba(17,39,48,0.86)";
@@ -1942,5 +2015,10 @@ export class WarehouseRenderer {
     }
 
     context.restore();
+  }
+
+  public destroy(): void {
+    this.resources?.destroy();
+    this.resources = null;
   }
 }

@@ -37,7 +37,7 @@ describe("world visual continuity", () => {
     expect(worldLayer).toContain('<img class="amso-world-visual__panel"');
     expect(worldLayer).not.toContain("context.drawImage(asset.image");
     expect(renderer).not.toContain("drawFullWidthGameplayRoute");
-    expect(renderer).toContain("drawGameplayRoute(context)");
+    expect(renderer).toContain("drawGameplayRoute(context, resources.routeGradient)");
     expect(WORLD_ROUTE_Y).toBe(GROUND_Y);
     expect(WORLD_ROUTE_BASE_WIDTH).toBe(18);
     expect(WORLD_ROUTE_ACCENT_WIDTH).toBe(7);

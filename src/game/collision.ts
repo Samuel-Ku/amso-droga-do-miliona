@@ -59,7 +59,21 @@ export function collidesWithObstacle(
   runner: Readonly<RunnerModel>,
   obstacle: Readonly<ObstacleModel>
 ): boolean {
-  return obstacle.active && rectanglesOverlap(runnerHitbox(runner), obstacleHitbox(obstacle));
+  if (!obstacle.active) return false;
+  const runnerLeft = runner.x + 12;
+  const runnerTop = runner.y + 9 + (runner.crouching ? CROUCH.hitboxDrop : 0);
+  const runnerRight = runnerLeft + runner.width - 23;
+  const runnerBottom = runnerTop + runner.height - 12 - (runner.crouching ? CROUCH.hitboxDrop : 0);
+  const horizontalInset = obstacle.kind === "overhead" ? 4 : obstacle.kind === "pallet" ? 8 : 5;
+  const topInset = obstacle.kind === "overhead" ? 6 : obstacle.kind === "trolley" ? 6 : 3;
+  const obstacleLeft = obstacle.x + horizontalInset;
+  const obstacleRight = obstacle.x + obstacle.width - horizontalInset;
+  if (obstacleRight <= runnerLeft || obstacleLeft >= runnerRight) return false;
+  const obstacleTop = obstacle.y + topInset;
+  const obstacleBottom = obstacle.kind === "overhead"
+    ? obstacle.y + obstacle.height
+    : obstacle.y + obstacle.height;
+  return runnerBottom > obstacleTop && runnerTop < obstacleBottom;
 }
 
 /**
@@ -89,10 +103,14 @@ export function collectsPackage(
   // Equipment uses a semantic pickup zone 115% of the parcel zone. This is
   // independent of transparent artwork margins and makes premium routes fair.
   const inset = collectiblePickupInset(parcel.size, parcel.collectibleClass);
-  return rectanglesOverlap(runnerPickupBox(runner), {
-    x: parcel.x + inset,
-    y: parcel.y + inset,
-    width: parcel.size - inset * 2,
-    height: parcel.size - inset * 2
-  });
+  const runnerLeft = runner.x + 12;
+  const runnerRight = runnerLeft + runner.width - 23;
+  const parcelLeft = parcel.x + inset;
+  const parcelRight = parcel.x + parcel.size - inset;
+  if (parcelRight <= runnerLeft || parcelLeft >= runnerRight) return false;
+  const runnerTop = runner.y;
+  const runnerBottom = runner.y + runner.height - 3;
+  const parcelTop = parcel.y + inset;
+  const parcelBottom = parcel.y + parcel.size - inset;
+  return runnerBottom > parcelTop && runnerTop < parcelBottom;
 }

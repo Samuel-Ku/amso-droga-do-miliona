@@ -756,16 +756,20 @@ describe("direct slide control", () => {
     const harness = createGameHarness("challenge");
     const internals = harness.game as unknown as {
       powerUpDemoRemaining: number;
-      runner: { grounded: boolean; jumpBufferRemaining: number; crouching: boolean };
+      runner: { grounded: boolean; jumpBufferRemaining: number; crouching: boolean; velocityY: number };
     };
     harness.game.start("keyboard");
     internals.powerUpDemoRemaining = 1;
 
     harness.game.jump("keyboard");
-    expect(internals.runner.jumpBufferRemaining).toBeGreaterThan(0);
+    harness.advance(0.02);
+    expect(internals.runner.velocityY).toBeLessThan(0);
 
     internals.runner.jumpBufferRemaining = 0;
     harness.game.crouch(true, "keyboard");
+    harness.advance(0.02);
+    expect(internals.runner.crouching).toBe(false);
+    harness.advance(1);
     expect(internals.runner.crouching).toBe(true);
     harness.game.destroy();
   });
@@ -778,16 +782,20 @@ describe("direct slide control", () => {
     harness.game.start("keyboard");
 
     harness.game.crouch(true, "keyboard");
+    harness.advance(0.02);
     expect(runner.crouching).toBe(true);
     harness.advance(0.1);
     expect(runner.crouchElapsedSeconds).toBeGreaterThan(0);
     harness.game.crouch(false, "keyboard");
+    harness.advance(0.02);
     expect(runner.crouching).toBe(false);
     expect(runner.crouchElapsedSeconds).toBe(0);
 
     harness.game.crouch(true, "touch");
+    harness.advance(0.02);
     expect(runner.crouching).toBe(true);
     harness.game.crouch(false, "touch");
+    harness.advance(0.02);
     expect(runner.crouching).toBe(false);
     harness.game.destroy();
   });

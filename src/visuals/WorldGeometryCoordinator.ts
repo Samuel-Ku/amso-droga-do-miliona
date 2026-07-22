@@ -67,7 +67,8 @@ export class WorldGeometryCoordinator {
   public constructor(
     stage: HTMLElement,
     private readonly visualLayer: WorldVisualLayer,
-    private readonly metadata: Readonly<WorldArtworkMeta> = WORLD_ARTWORK_CONTRACT
+    private readonly metadata: Readonly<WorldArtworkMeta> = WORLD_ARTWORK_CONTRACT,
+    private readonly dprOverride: 1 | 2 | null = null
   ) {
     this.view = stage.ownerDocument.defaultView;
     this.observer = new ResizeObserver(this.handleMeasurements);
@@ -221,6 +222,6 @@ export class WorldGeometryCoordinator {
   }
 
   private currentDpr(): number {
-    return Math.max(1, this.view?.devicePixelRatio || globalThis.devicePixelRatio || 1);
+    return this.dprOverride ?? Math.min(2, Math.max(1, this.view?.devicePixelRatio || globalThis.devicePixelRatio || 1));
   }
 }

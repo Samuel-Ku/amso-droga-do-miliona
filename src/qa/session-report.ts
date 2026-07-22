@@ -41,6 +41,9 @@ export interface QaSessionSnapshot {
   frameRate: number;
   lowestFrameRate: number | null;
   droppedFrames: number;
+  longFrames: number;
+  inputQueueOverflows: number;
+  replayValid: boolean;
   lastCollisionType: string | null;
   challengePressureAxis: GameSnapshot["challengePressureAxis"];
   retries: number;
@@ -144,6 +147,9 @@ export class QaSessionReportCollector {
       frameRate: latest?.frameRate ?? 0,
       lowestFrameRate: this.lowestFrameRate,
       droppedFrames: latest?.droppedFrames ?? 0,
+      longFrames: latest?.longFrames ?? 0,
+      inputQueueOverflows: latest?.inputQueueOverflows ?? 0,
+      replayValid: latest?.replayValid ?? true,
       lastCollisionType: latest?.lastCollisionType ?? null,
       challengePressureAxis: latest?.challengePressureAxis ?? null,
       retries,

@@ -13,9 +13,11 @@ export interface BoardResponse {
 
 export class RecordsClient {
   private readonly endpoint: string;
+  private readonly writesEnabled: boolean;
 
-  public constructor(endpoint: string = DEFAULT_ENDPOINT) {
+  public constructor(endpoint: string = DEFAULT_ENDPOINT, options: { writesEnabled?: boolean } = {}) {
     this.endpoint = endpoint;
+    this.writesEnabled = options.writesEnabled !== false;
   }
 
   public async fetchBoard(signal?: AbortSignal): Promise<RecordBoardEntry[]> {
@@ -56,6 +58,7 @@ export class RecordsClient {
     const name = profile.playerName;
     const score = Math.round(challengeScore);
     if (!name) return { board: [], submitted: false };
+    if (!this.writesEnabled) return { board: await this.fetchBoard(signal), submitted: false };
     if (score <= profile.submittedBestScore) {
       return { board: await this.fetchBoard(signal), submitted: false };
     }

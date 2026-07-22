@@ -89,6 +89,8 @@ import {
   challengePressureAt
 } from "./challenge-pressure";
 import { AdaptiveDecorationQuality } from "./adaptive-decoration-quality";
+import { GameplayInputQueue } from "./input-queue";
+import { assertSafeCounter } from "./pool-motion";
 import {
   SHIELD_APPEAR_SECONDS,
   SHIELD_BREAK_SECONDS
@@ -134,7 +136,7 @@ function round(value: number, precision: number): number {
 export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
   private _state: GameState = "ready";
   private readonly context: CanvasRenderingContext2D;
-  private readonly renderer = new WarehouseRenderer();
+  private readonly renderer: WarehouseRenderer;
   private readonly callbacks: RunnerGameCallbacks;
   private readonly document: Document;
   private readonly view: Window | null;
@@ -172,6 +174,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
   private challengeElapsedSeconds = 0;
   private distancePixels = 0;
   private visualDistancePixels = 0;
+  private previousVisualDistancePixels = 0;
   private packagesCollected = 0;
   private ordersCollected = 0;
   private bonusScore = 0;
@@ -240,6 +243,28 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
   private factEngine: FactEngine | null = null;
   private crouchHeld = false;
   private crouchInputHeld = false;
+  private readonly inputQueue = new GameplayInputQueue();
+  private nextStepIndex = 0;
+  private replayValid = true;
+  private readonly qaScenarioActive: boolean;
+  private readonly onQaAbort: RunnerGameOptions["onQaAbort"];
+  private readonly visualFrameSink: RunnerGameOptions["visualFrameSink"];
+  private readonly qualityCommitContext: RunnerGameOptions["qualityCommitContext"];
+  private readonly qualityMode: NonNullable<RunnerGameOptions["qualityMode"]>;
+  private longFrameCount = 0;
+  private visualFrameSequence = 0;
+  private readonly replayInputs: NonNullable<RunnerGameOptions["replayInputs"]>;
+  private replayInputCursor = 0;
+  private readonly scenarioDurationSteps: number | null;
+  private readonly onScenarioComplete: RunnerGameOptions["onScenarioComplete"];
+  private renderScene: RenderScene | null = null;
+  private readonly renderPowerUps: PowerUpKind[] = [];
+  private readonly renderWorldVisual = {
+    worldId: "first-mile" as CampaignWorldId,
+    stateId: "story.first_package",
+    nextStateId: "story.first_package",
+    progress: 0
+  };
   private accumulator = 0;
   private lastFrameTime: number | null = null;
   private performanceFrameCount = 0;
@@ -267,6 +292,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     if (!context) throw new Error("RunnerGame requires a Canvas 2D context.");
 
     this.context = context;
+    this.renderer = new WarehouseRenderer(undefined, options.runnerArtwork ?? undefined);
     this.bufferWidth = canvas.width;
     this.bufferHeight = canvas.height;
     this.callbacks = callbacks;
@@ -282,6 +308,14 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     );
     this.awardStoryCompletionBonus = options.awardStoryCompletionBonus ?? true;
     this.powerUpCopy = options.powerUpCopy ?? {};
+    this.qaScenarioActive = options.qaScenarioActive === true;
+    this.onQaAbort = options.onQaAbort;
+    this.visualFrameSink = options.visualFrameSink;
+    this.qualityCommitContext = options.qualityCommitContext;
+    this.qualityMode = options.qualityMode ?? "auto";
+    this.replayInputs = options.replayInputs ?? [];
+    this.scenarioDurationSteps = options.scenarioDurationSteps ?? null;
+    this.onScenarioComplete = options.onScenarioComplete;
     this.logisticWaveDirector = new LogisticWaveDirector(
       this.challenge?.logisticWaveMinSeconds ?? 45,
       this.challenge?.logisticWaveMaxSeconds ?? 60
@@ -308,6 +342,58 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
 
   get state(): GameState {
     return this._state;
+  }
+
+  /** Local QA signal; an overflowed trace must never be used for determinism checks. */
+  public get isReplayValid(): boolean {
+    return this.replayValid;
+  }
+
+  /** Allocated only on explicit QA capture, never from the frame loop. */
+  public canonicalDeterministicState(): Readonly<Record<string, unknown>> {
+    return {
+      schemaVersion: "runner-canonical-v1",
+      simulationStep: this.nextStepIndex,
+      rngState: [this.spawner.rngState, this.challengeRewards.rngState],
+      runner: {
+        x: this.runner.x,
+        y: this.runner.y,
+        velocityY: this.runner.velocityY,
+        grounded: this.runner.grounded,
+        crouching: this.runner.crouching,
+        coyoteRemaining: this.runner.coyoteRemaining,
+        jumpBufferRemaining: this.runner.jumpBufferRemaining
+      },
+      score: calculateScore(this.distancePixels, this.ordersCollected, this.bonusScore),
+      distance: this.distancePixels,
+      worldIndex: this.currentWorldVisual().worldIndex,
+      obstacles: this.obstacles.map((obstacle) => ({
+        slotId: obstacle.slotId,
+        generation: obstacle.generation,
+        active: obstacle.active,
+        kind: obstacle.kind,
+        x: obstacle.x,
+        y: obstacle.y,
+        width: obstacle.width,
+        height: obstacle.height,
+        source: obstacle.source,
+        objectiveCredited: obstacle.objectiveCredited === true
+      })),
+      packages: this.packages.map((parcel) => ({
+        slotId: parcel.slotId,
+        generation: parcel.generation,
+        active: parcel.active,
+        kind: parcel.kind,
+        x: parcel.x,
+        y: parcel.y,
+        packageType: parcel.packageType,
+        collectibleClass: parcel.collectibleClass
+      })),
+      powerUps: this.activePowerUps.statuses(),
+      collisionCount: this.collisions,
+      pickupCount: this.packagesCollected,
+      celebrationCount: this.milestoneCelebrationDirector.snapshot === null ? 0 : 1
+    };
   }
 
   public applyGeometry(
@@ -361,11 +447,13 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     this.estimatedFrameRate = 0;
     this.droppedFrames = 0;
     this.decorationQuality.reset();
+    this.decorationQuality.setMode(this.qualityMode, this.nextStepIndex, this.visualFrameSequence);
     this.lastCollisionType = null;
     this.impact = false;
     this.impactSeconds = 0;
     this.crouchHeld = false;
     this.crouchInputHeld = false;
+    this.inputQueue.clear();
     this.setState("running");
     this.emitStorySignals(true);
     this.emitSnapshot();
@@ -396,11 +484,12 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     }
     if (this._state !== "running") return;
     if (this.storyTimeline?.snapshot.trustCorridor) return;
+    if (this.qaScenarioActive) return;
     this.controlMethod = controlMethod;
-    this.crouchHeld = false;
-    this.crouchInputHeld = false;
-    this.runner.crouching = false;
-    queueJump(this.runner);
+    if (!this.inputQueue.push(this.nextStepIndex, "jump", true, controlMethod)) {
+      this.replayValid = false;
+      if (this.qaScenarioActive) this.onQaAbort?.("input-queue-overflow");
+    }
   }
 
   crouch(active: boolean, controlMethod: ControlMethod): void {
@@ -409,23 +498,18 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     }
     if (this._state === "ready") this.start(controlMethod);
     if (this._state !== "running") return;
+    if (this.qaScenarioActive) return;
     if (this.storyTimeline?.snapshot.trustCorridor) {
       this.crouchHeld = false;
       this.crouchInputHeld = false;
       return;
     }
     this.controlMethod = controlMethod;
+    if (this.crouchInputHeld === active) return;
     this.crouchInputHeld = active;
-    if (active) {
-      if (this.runner.grounded) {
-        if (!this.runner.crouching) this.runner.crouchElapsedSeconds = 0;
-        this.crouchHeld = true;
-        this.runner.crouching = true;
-      }
-    } else {
-      this.crouchHeld = false;
-      this.runner.crouching = false;
-      this.runner.crouchElapsedSeconds = 0;
+    if (!this.inputQueue.push(this.nextStepIndex, "crouch", active, controlMethod)) {
+      this.replayValid = false;
+      if (this.qaScenarioActive) this.onQaAbort?.("input-queue-overflow");
     }
   }
 
@@ -469,6 +553,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     this.setState("destroyed");
     this.context.setTransform(1, 0, 0, 1, 0, 0);
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.renderer.destroy();
   }
 
   private resetModels(): void {
@@ -484,6 +569,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     this.challengeWorldDirector.reset("direct");
     this.distancePixels = 0;
     this.visualDistancePixels = 0;
+    this.previousVisualDistancePixels = 0;
     this.packagesCollected = 0;
     this.ordersCollected = 0;
     this.bonusScore = 0;
@@ -511,6 +597,11 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     this.bossStarted = false;
     this.crouchHeld = false;
     this.crouchInputHeld = false;
+    this.inputQueue.clear();
+    this.nextStepIndex = 0;
+    this.replayInputCursor = 0;
+    this.replayValid = true;
+    this.longFrameCount = 0;
     this.accumulator = 0;
     this.lastFrameTime = null;
     this.performanceFrameCount = 0;
@@ -635,11 +726,15 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
         steps < GAMEPLAY.maxFixedStepsPerFrame &&
         this._state === "running"
       ) {
-        this.update(GAMEPLAY.fixedStepSeconds);
+        this.fixedUpdate();
         this.accumulator -= GAMEPLAY.fixedStepSeconds;
         steps += 1;
       }
-      if (steps === GAMEPLAY.maxFixedStepsPerFrame) this.accumulator = 0;
+      if (steps === GAMEPLAY.maxFixedStepsPerFrame) {
+        this.accumulator = Math.min(this.accumulator, GAMEPLAY.fixedStepSeconds);
+        this.longFrameCount += 1;
+        this.snapInterpolationHistory();
+      }
     }
 
     this.render();
@@ -648,7 +743,12 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
 
   private observeFramePerformance(deltaSeconds: number): void {
     if (deltaSeconds <= 0) return;
-    this.decorationQuality.observe(deltaSeconds);
+    const shouldSample = this.document.visibilityState === "visible" &&
+      (typeof this.document.hasFocus !== "function" || this.document.hasFocus()) &&
+      this._state === "running" && this.geometryAvailable &&
+      (this.storyTimeline === null || this.storyTimeline.snapshot.state === "play");
+    if (!shouldSample) return;
+    this.decorationQuality.observe(deltaSeconds, this.nextStepIndex, this.visualFrameSequence);
     this.performanceFrameCount += 1;
     this.performanceSampleSeconds += deltaSeconds;
     const frameBudgetSeconds = 1 / 60;
@@ -659,6 +759,52 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     this.estimatedFrameRate = this.performanceFrameCount / this.performanceSampleSeconds;
     this.performanceFrameCount = 0;
     this.performanceSampleSeconds = 0;
+  }
+
+  private fixedUpdate(): void {
+    while (this.replayInputCursor < this.replayInputs.length) {
+      const event = this.replayInputs[this.replayInputCursor];
+      if (!event || event.stepIndex > this.nextStepIndex) break;
+      if (event.stepIndex === this.nextStepIndex) {
+        if (!this.inputQueue.push(event.stepIndex, event.action, event.active, event.controlMethod)) {
+          this.replayValid = false;
+          this.onQaAbort?.("input-queue-overflow");
+        }
+      }
+      this.replayInputCursor += 1;
+    }
+    if (this.inputQueue.overflowed) {
+      this.inputQueue.recover(this.crouchInputHeld);
+      this.crouchHeld = this.crouchInputHeld;
+    }
+    const stepInput = this.inputQueue.consume(this.nextStepIndex);
+    this.controlMethod = stepInput.controlMethod;
+    if (stepInput.jumpPressed) {
+      this.crouchHeld = false;
+      this.runner.crouching = false;
+      queueJump(this.runner);
+    } else {
+      this.crouchHeld = stepInput.crouchHeld;
+    }
+    this.update(GAMEPLAY.fixedStepSeconds);
+    this.nextStepIndex += 1;
+    if (this.scenarioDurationSteps !== null && this.nextStepIndex >= this.scenarioDurationSteps) {
+      this.cancelFrame();
+      this.setState("paused");
+      this.onScenarioComplete?.(this.nextStepIndex - 1);
+    }
+  }
+
+  private snapInterpolationHistory(): void {
+    this.previousVisualDistancePixels = this.visualDistancePixels;
+    for (const obstacle of this.obstacles) {
+      obstacle.previousX = obstacle.x;
+      obstacle.previousY = obstacle.y;
+    }
+    for (const parcel of this.packages) {
+      parcel.previousX = parcel.x;
+      parcel.previousY = parcel.y;
+    }
   }
 
   private update(deltaSeconds: number): void {
@@ -887,6 +1033,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     const worldScale = this.storyTimeline?.snapshot.worldSpeedScale ?? 1;
     const effectiveDeltaSeconds = activeDeltaSeconds > 0 ? activeDeltaSeconds * worldScale : deltaSeconds * worldScale;
     const visualTravelledPixels = this.speed * effectiveDeltaSeconds;
+    this.previousVisualDistancePixels = this.visualDistancePixels;
     this.visualDistancePixels += visualTravelledPixels;
     const travelledPixels = this.speed * effectiveDeltaSeconds;
     this.distancePixels += travelledPixels;
@@ -911,6 +1058,8 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
 
     for (const obstacle of this.obstacles) {
       if (!obstacle.active) continue;
+      obstacle.previousX = obstacle.x;
+      obstacle.previousY = obstacle.y;
       obstacle.x -= travelledPixels;
       if (!obstacle.objectiveCredited && obstacle.x + obstacle.width < this.runner.x) {
         obstacle.objectiveCredited = true;
@@ -929,6 +1078,8 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     }
     for (const parcel of this.packages) {
       if (!parcel.active) continue;
+      parcel.previousX = parcel.x;
+      parcel.previousY = parcel.y;
       parcel.x -= travelledPixels;
       if (parcel.x + parcel.size < -40) parcel.active = false;
     }
@@ -1396,17 +1547,23 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       const startX = authoredRewardSpawnX(this.speed, STORY_CLIMAX_SPAWN_X, reactionSeconds);
       const heights = [28, 78, 118, 78, 28];
       free.forEach((parcel, index) => {
-        parcel.active = true;
+        parcel.active = false;
+        parcel.generation = (parcel.generation ?? 0) + 1;
+        assertSafeCounter(parcel.generation);
+        parcel.motionRevision = 0;
         parcel.kind = "standard";
         parcel.collectibleClass = "parcel";
         parcel.x = startX + index * 66;
         parcel.y = GROUND_Y - parcel.size - (heights[index] ?? 28);
+        parcel.previousX = parcel.x;
+        parcel.previousY = parcel.y;
         parcel.phase = index * 0.72;
         parcel.packageType = "notebook";
         parcel.orderVisualType = "parcel";
         parcel.weightKg = 0;
         parcel.storyRewardPattern = true;
         parcel.authoredWaveId = wave.id;
+        parcel.active = true;
       });
       this.authoredActionSpawned = true;
       return;
@@ -1492,7 +1649,10 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     const kind = this.pendingPowerUpReward;
     const parcel = this.packages.find(({ active }) => !active);
     if (!kind || !parcel) return;
-    parcel.active = true;
+    parcel.active = false;
+    parcel.generation = (parcel.generation ?? 0) + 1;
+    assertSafeCounter(parcel.generation);
+    parcel.motionRevision = 0;
     parcel.kind = kind;
     parcel.collectibleClass = "parcel";
     let spawnX = authoredRewardSpawnX(this.speed, STORY_CLIMAX_SPAWN_X, 1.6);
@@ -1503,12 +1663,15 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     }
     parcel.x = spawnX;
     parcel.y = GROUND_Y - parcel.size - 12;
+    parcel.previousX = parcel.x;
+    parcel.previousY = parcel.y;
     parcel.phase = 0;
     parcel.packageType = "notebook";
     parcel.orderVisualType = "parcel";
     parcel.weightKg = 0;
     parcel.storyRewardPattern = true;
     parcel.authoredWaveId = "safe-power-up";
+    parcel.active = true;
   }
 
   private resetChallengeRunState(): void {
@@ -2037,6 +2200,10 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       durationSeconds: round(this.elapsedSeconds, 2),
       frameRate: round(this.estimatedFrameRate, 1),
       droppedFrames: this.droppedFrames,
+      longFrames: this.longFrameCount,
+      inputQueueOverflows: this.inputQueue.overflowIncidents,
+      replayValid: this.replayValid,
+      nextStepIndex: this.nextStepIndex,
       lastCollisionType: this.lastCollisionType,
       difficultyLevel: this.difficultyLevel,
       speed: round(this.speed, 1),
@@ -2161,47 +2328,68 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
   private render(): void {
     if (this._state === "destroyed" || !this.geometryAvailable) return;
     const worldVisual = this.currentWorldVisual();
-    const scene: RenderScene = {
-      state: this._state,
-      runner: this.runner,
-      obstacles: this.obstacles,
-      packages: this.packages,
-      boss: this.bossDirector.model,
-      elapsedSeconds: this.visualElapsedSeconds,
-      distancePixels: this.visualDistancePixels,
-      speed: this.speed,
-      reducedMotion: this.reducedMotion,
-      decorationQuality: this.decorationQuality.level,
-      impact: this.impact,
-      epochIndex: this.currentEpoch,
-      epochName: this.narrative?.epochs[this.currentEpoch]?.name ?? "",
-      epochYear: this.narrative?.epochs[this.currentEpoch]?.year ?? "",
-      themeIndex: this.narrative?.epochs[this.currentEpoch]?.themeIndex ?? -1,
-      worldVisual: {
-        worldId: worldVisual.worldId,
-        stateId: worldVisual.stateId,
-        nextStateId: worldVisual.nextStateId,
-        progress: worldVisual.progress
-      },
-      cutscene: this.cutscene,
-      activePowerUps: this.activePowerUps.keys(),
-      powerUpCopy: this.powerUpCopy,
-      mode: this.mode,
-      trustCorridor: this.storyTimeline?.snapshot.trustCorridor ?? false,
-      combo: this.combo,
-      recoverySeconds: this.recoverySeconds,
-      startProtectionSeconds: this.startProtectionSeconds,
-      warrantyBreakSeconds: this.warrantyBreakSeconds,
-      shieldActivationSeconds: this.shieldActivationSeconds,
-      storyPhase: this.storyTimeline?.snapshot.phase ?? null,
-      storyProgress: this.storyTimeline?.snapshot.progress ?? 0,
-      storyObjectives: this.storyObjectiveDirector.snapshot,
-      storyClimax: this.storyClimaxDirector.model,
-      obstacleTransformations: this.storyObstacleTransformer.models,
-      milestoneCelebration: this.milestoneCelebrationDirector.snapshot,
-      celebration: this.celebrationManager.getState(),
-      authoredWave: this.authoredWaveDirector?.snapshot ?? null
+    this.visualFrameSequence += 1;
+    const qualityContext = this.qualityCommitContext?.() ?? {
+      panelBoundarySafe: !worldVisual.transitionPending,
+      assetSwapComplete: !worldVisual.transitionPending,
+      celebrationActive: this.celebrationManager.getState() !== null,
+      cutsceneOverlayActive: this.cutscene !== null
     };
+    this.decorationQuality.tryCommit(
+      qualityContext,
+      this.nextStepIndex,
+      this.visualFrameSequence
+    );
+    const alpha = Math.min(1, Math.max(0, this.accumulator / GAMEPLAY.fixedStepSeconds));
+    const interpolatedVisualDistance = this.previousVisualDistancePixels +
+      (this.visualDistancePixels - this.previousVisualDistancePixels) * alpha;
+    try {
+      this.visualFrameSink?.(backgroundTravelPixels(interpolatedVisualDistance), alpha);
+    } catch {
+      // Presentation consumers cannot interrupt authoritative simulation.
+    }
+    this.activePowerUps.writeKeys(this.renderPowerUps);
+    this.renderWorldVisual.worldId = worldVisual.worldId;
+    this.renderWorldVisual.stateId = worldVisual.stateId;
+    this.renderWorldVisual.nextStateId = worldVisual.nextStateId;
+    this.renderWorldVisual.progress = worldVisual.progress;
+    const scene = this.renderScene ?? (this.renderScene = {
+      state: this._state, runner: this.runner, obstacles: this.obstacles, packages: this.packages,
+      boss: this.bossDirector.model, elapsedSeconds: 0, distancePixels: 0, speed: 0,
+      reducedMotion: false, impact: false, epochIndex: 0, epochName: "", epochYear: "",
+      themeIndex: -1, worldVisual: this.renderWorldVisual, cutscene: null,
+      activePowerUps: this.renderPowerUps, powerUpCopy: this.powerUpCopy
+    });
+    scene.state = this._state;
+    scene.runner = this.runner;
+    scene.boss = this.bossDirector.model;
+    scene.elapsedSeconds = this.visualElapsedSeconds;
+    scene.distancePixels = interpolatedVisualDistance;
+    scene.speed = this.speed;
+    scene.interpolationAlpha = alpha;
+    scene.reducedMotion = this.reducedMotion;
+    scene.decorationQuality = this.decorationQuality.level;
+    scene.impact = this.impact;
+    scene.epochIndex = this.currentEpoch;
+    scene.epochName = this.narrative?.epochs[this.currentEpoch]?.name ?? "";
+    scene.epochYear = this.narrative?.epochs[this.currentEpoch]?.year ?? "";
+    scene.themeIndex = this.narrative?.epochs[this.currentEpoch]?.themeIndex ?? -1;
+    scene.cutscene = this.cutscene;
+    scene.mode = this.mode;
+    scene.trustCorridor = this.storyTimeline?.snapshot.trustCorridor ?? false;
+    scene.combo = this.combo;
+    scene.recoverySeconds = this.recoverySeconds;
+    scene.startProtectionSeconds = this.startProtectionSeconds;
+    scene.warrantyBreakSeconds = this.warrantyBreakSeconds;
+    scene.shieldActivationSeconds = this.shieldActivationSeconds;
+    scene.storyPhase = this.storyTimeline?.snapshot.phase ?? null;
+    scene.storyProgress = this.storyTimeline?.snapshot.progress ?? 0;
+    scene.storyObjectives = this.storyObjectiveDirector.snapshot;
+    scene.storyClimax = this.storyClimaxDirector.model;
+    scene.obstacleTransformations = this.storyObstacleTransformer.models;
+    scene.milestoneCelebration = this.milestoneCelebrationDirector.snapshot;
+    scene.celebration = this.celebrationManager.getState();
+    scene.authoredWave = this.authoredWaveDirector?.snapshot ?? null;
     this.renderer.render(this.context, this.canvas.width, this.canvas.height, scene);
   }
 

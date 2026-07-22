@@ -2957,3 +2957,17 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   justify-content: flex-end;
   gap: 0.6rem;
 }
+.amso-campaign__qa-badge {
+  position: fixed;
+  z-index: 2147483647;
+  inset: 8px 8px auto auto;
+  max-width: min(360px, calc(100vw - 16px));
+  padding: 7px 10px;
+  border: 1px solid #ffb000;
+  border-radius: 4px;
+  background: rgb(20 20 20 / 94%);
+  color: #fff;
+  font: 700 11px/1.35 ui-monospace, monospace;
+  white-space: pre-line;
+  pointer-events: none;
+}

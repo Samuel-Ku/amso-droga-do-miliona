@@ -12,6 +12,7 @@ import {
   WORLD_ARTWORK_CONTRACT,
   type WorldPlateTransform
 } from "./world-plate-transform";
+import { DecodedImageStore } from "../assets/DecodedImageStore";
 
 export type WorldVisualPhase = "landing" | "story" | "game" | "result";
 export type WorldTransitionMode = "story-linked" | "offscreen";
@@ -23,18 +24,6 @@ export interface WorldVisualSelection {
   readonly transitionMode?: WorldTransitionMode;
 }
 
-type WorldImageFactory = () => HTMLImageElement;
-
-function defaultImageFactory(): HTMLImageElement {
-  return new Image();
-}
-
-interface WorldAssetEntry {
-  readonly path: string;
-  readonly image: HTMLImageElement;
-  readonly promise: Promise<DecodedWorldAsset>;
-}
-
 export interface DecodedWorldAsset {
   readonly path: string;
   readonly image: HTMLImageElement;
@@ -42,45 +31,27 @@ export interface DecodedWorldAsset {
 
 /** One decoded image object per world, retained for the complete campaign session. */
 export class WorldAssetStore {
-  private readonly entries = new Map<string, WorldAssetEntry>();
+  private readonly store: DecodedImageStore;
+  private readonly promises = new Map<string, Promise<DecodedWorldAsset>>();
 
-  public constructor(private readonly imageFactory: WorldImageFactory = defaultImageFactory) {}
+  public constructor(source: DecodedImageStore | (() => HTMLImageElement) = () => new Image()) {
+    this.store = source instanceof DecodedImageStore
+      ? source
+      : new DecodedImageStore({ imageFactory: source });
+  }
 
   public load(path: string): Promise<DecodedWorldAsset> {
-    const cached = this.entries.get(path);
-    if (cached !== undefined) return cached.promise;
-
-    const image = this.imageFactory();
-    let attempts = 0;
-    const promise = new Promise<DecodedWorldAsset>((resolve, reject) => {
-      const failAttempt = (): void => {
-        if (attempts < 2) {
-          queueMicrotask(startAttempt);
-          return;
-        }
-        image.onload = null;
-        image.onerror = null;
-        reject(new Error("world_asset_decode_failed"));
-      };
-      const startAttempt = (): void => {
-        attempts += 1;
-        image.onload = async () => {
-          image.onload = null;
-          image.onerror = null;
-          try {
-            await image.decode?.();
-            resolve({ path, image });
-          } catch {
-            failAttempt();
-          }
-        };
-        image.onerror = failAttempt;
-        image.src = path;
-        if (image.complete && image.naturalWidth > 0) image.onload?.(new Event("load"));
-      };
-      startAttempt();
-    });
-    this.entries.set(path, { path, image, promise });
+    const pending = this.promises.get(path);
+    if (pending) return pending;
+    const match = /\/world-\d{2}-(.+)\.webp$/u.exec(path);
+    const canonicalAssetId = match?.[1] ? `world-${match[1]}` : `world:${path}`;
+    const promise = this.store.load(canonicalAssetId, path)
+      .then(({ image }) => ({ path, image }))
+      .catch((error: unknown) => {
+        this.promises.delete(path);
+        throw error;
+      });
+    this.promises.set(path, promise);
     return promise;
   }
 }
@@ -105,6 +76,7 @@ export class WorldVisualLayer {
   private transitionStartDistance = 0;
   private lastDistance = 0;
   private lastParallaxCycle: number | null = null;
+  private readonly panelAssignmentRevisions = new WeakMap<HTMLImageElement, number>();
 
   public constructor(
     private readonly host: HTMLElement,
@@ -190,6 +162,28 @@ export class WorldVisualLayer {
 
   public setPhase(phase: WorldVisualPhase): void {
     this.host.dataset.phase = phase;
+  }
+
+  public get qualityBoundaryState(): { panelBoundarySafe: boolean; assetSwapComplete: boolean } {
+    const progress = (this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH;
+    return {
+      panelBoundarySafe: this.pendingAsset === null && (progress <= 0.001 || progress >= 0.999),
+      assetSwapComplete: this.pendingAsset === null && this.queuedAsset === null && !this.pendingPanelPrepared
+    };
+  }
+
+  public destroy(): void {
+    this.requestedAssetPath = null;
+    this.currentAsset = null;
+    this.pendingAsset = null;
+    this.queuedAsset = null;
+    this.pendingPanelPrepared = false;
+    for (const panel of this.panels) {
+      panel.onload = null;
+      panel.onerror = null;
+      panel.removeAttribute("src");
+      panel.remove();
+    }
   }
 
   public setParallaxDistance(
@@ -283,12 +277,10 @@ export class WorldVisualLayer {
   }
 
   private setPanelMotion(currentSmooth: boolean, nextSmooth = currentSmooth): void {
-    this.panels[0].style.transition = currentSmooth
-      ? "transform 140ms linear"
-      : "none";
-    this.panels[1].style.transition = nextSmooth
-      ? "transform 140ms linear"
-      : "none";
+    void currentSmooth;
+    void nextSmooth;
+    this.panels[0].style.transition = "none";
+    this.panels[1].style.transition = "none";
   }
 
   private recyclePanels(): void {
@@ -380,10 +372,19 @@ export class WorldVisualLayer {
   }
 
   private drawPanel(panel: HTMLImageElement, asset: DecodedWorldAsset): void {
+    const assignment = (this.panelAssignmentRevisions.get(panel) ?? 0) + 1;
+    this.panelAssignmentRevisions.set(panel, assignment);
+    panel.hidden = true;
     panel.width = WORLD_ARTWORK_CONTRACT.artWidth;
     panel.height = WORLD_ARTWORK_CONTRACT.artHeight;
     panel.dataset.assetPath = asset.path;
     panel.src = asset.path;
+    void panel.decode().then(() => {
+      if (assignment !== this.panelAssignmentRevisions.get(panel) || panel.src !== new URL(asset.path, document.baseURI).href) return;
+      panel.hidden = false;
+    }).catch(() => {
+      if (assignment === this.panelAssignmentRevisions.get(panel)) panel.hidden = true;
+    });
   }
 
   private clearPanels(): void {

@@ -1,7 +1,7 @@
 import "../styles/campaign.css";
 import { AMSO_LOGO_DATA_URI } from "./brandLogo";
 import type { ControlMethod, GameSnapshot } from "../game/contracts";
-import { WorldVisualLayer } from "../visuals/WorldVisualLayer";
+import { WorldAssetStore, WorldVisualLayer } from "../visuals/WorldVisualLayer";
 import {
   WorldGeometryCoordinator,
   type GeometryDiagnostics,
@@ -23,6 +23,8 @@ import { RecordBoard } from "./record-board";
 import { NamePrompt } from "./name-prompt";
 import { RecordsClient } from "../records-client";
 import type { PlayerProfileStore } from "../profile";
+import type { QualityCommitContext } from "../performance/visual-quality-coordinator";
+import { DecodedImageStore } from "../assets/DecodedImageStore";
 
 export type { CampaignStoryScene, CampaignStorySceneInput } from "./story-presentation";
 
@@ -173,6 +175,9 @@ export interface CampaignShellOptions {
   copy?: Partial<CampaignShellCopy>;
   recordsClient?: RecordsClient;
   profile?: PlayerProfileStore;
+  qaDpr?: 1 | 2;
+  qaBadgeText?: string;
+  decodedImageStore?: DecodedImageStore;
 }
 
 export interface CampaignShareCardOptions {
@@ -794,12 +799,22 @@ export class CampaignShell {
 
     this.stage = requiredElement(this.root, "[data-campaign-stage]");
     this.worldVisualLayer = new WorldVisualLayer(
-      requiredElement(this.root, "[data-campaign-world-visual]")
+      requiredElement(this.root, "[data-campaign-world-visual]"),
+      options.decodedImageStore ? new WorldAssetStore(options.decodedImageStore) : undefined
     );
     this.worldGeometryCoordinator = new WorldGeometryCoordinator(
       this.stage,
-      this.worldVisualLayer
+      this.worldVisualLayer,
+      undefined,
+      options.qaDpr ?? null
     );
+    if (options.qaBadgeText) {
+      const badge = document.createElement("aside");
+      badge.className = "amso-campaign__qa-badge";
+      badge.dataset.qaBadge = "performance";
+      badge.textContent = options.qaBadgeText;
+      this.root.append(badge);
+    }
     this.canvas = requiredElement<HTMLCanvasElement>(this.root, "[data-campaign-canvas]");
     this.landingScreen = requiredElement(this.root, "[data-campaign-landing]");
     this.landingActions = requiredElement(this.root, "[data-campaign-landing-actions]");
@@ -1090,11 +1105,6 @@ export class CampaignShell {
       this.activeMode === "challenge" ? "offscreen" : "story-linked"
     );
     this.worldVisualLayer.setCounterValue(snapshot.millionCounterValue);
-    this.worldVisualLayer.setParallaxDistance(
-      snapshot.backgroundTravelPixels ?? 0,
-      this.root.dataset.view === "game" && !this.paused,
-      snapshot.reducedMotion === true
-    );
     this.showMilestoneCelebration(
       snapshot.milestoneCelebration ?? null,
       snapshot.reducedMotion === true
@@ -1139,6 +1149,29 @@ export class CampaignShell {
           formatStoryObjectiveHud(snapshot.storyObjectives, snapshot.activeStoryOrderTypes)
       );
     }
+  }
+
+  /** Hot-path DOM write driven by RunnerGame's sole visual clock. */
+  public updateVisualFrame(
+    visualDistancePixels: number,
+    _interpolationAlpha: number,
+    reducedMotion: boolean
+  ): void {
+    if (this.destroyed) return;
+    this.worldVisualLayer.setParallaxDistance(
+      visualDistancePixels,
+      this.root.dataset.view === "game" && !this.paused,
+      reducedMotion
+    );
+  }
+
+  public qualityCommitContext(): QualityCommitContext {
+    const world = this.worldVisualLayer.qualityBoundaryState;
+    return {
+      ...world,
+      celebrationActive: !this.milestoneMessage.hidden,
+      cutsceneOverlayActive: this.root.dataset.view === "story_scene"
+    };
   }
 
   public showMilestoneCelebration(
@@ -1285,6 +1318,7 @@ export class CampaignShell {
     if (this.destroyed) return;
     this.destroyed = true;
     this.worldGeometryCoordinator.destroy();
+    this.worldVisualLayer.destroy();
     if (this.orientationDebounceTimer !== undefined) {
       window.clearTimeout(this.orientationDebounceTimer);
     }

@@ -1,5 +1,6 @@
 import "./styles/campaign.css";
 import { CampaignController } from "./CampaignController";
+import type { CampaignRuntimeOptions } from "./CampaignController";
 import { RUNNER_SCHEMA_VERSION } from "./config/defaults";
 import type {
   RunnerConfig,
@@ -38,11 +39,12 @@ function browserNavigate(path: string): void {
  */
 export function mountCampaign(
   configValue: RunnerConfig,
-  host: HTMLElement
+  host: HTMLElement,
+  runtime: CampaignRuntimeOptions = {}
 ): CampaignMountApi {
   const config = requireEnabledConfig(configValue);
   mountedCampaign?.destroy();
-  const controller = new CampaignController(host, config);
+  const controller = new CampaignController(host, config, undefined, undefined, runtime);
   mountedCampaign = controller;
 
   return {

@@ -24,6 +24,8 @@ export type BossPhase = "inactive" | "pending" | "warning" | "attacking" | "rewa
 export interface RunnerModel {
   x: number;
   y: number;
+  previousX?: number;
+  previousY?: number;
   width: number;
   height: number;
   velocityY: number;
@@ -36,11 +38,16 @@ export interface RunnerModel {
 }
 
 export interface ObstacleModel {
+  readonly slotId?: number;
+  generation?: number;
+  motionRevision?: number;
   active: boolean;
   kind: ObstacleKind;
   source: ObstacleSource;
   x: number;
   y: number;
+  previousX?: number;
+  previousY?: number;
   width: number;
   height: number;
   /** Stable authored look for mechanically identical overhead obstacles. */
@@ -54,12 +61,17 @@ export interface ObstacleModel {
 }
 
 export interface PackageModel {
+  readonly slotId?: number;
+  generation?: number;
+  motionRevision?: number;
   active: boolean;
   kind: PackageKind;
   /** Gameplay class; independent from the transparent bounds of its artwork. */
   collectibleClass: CollectibleClass;
   x: number;
   y: number;
+  previousX?: number;
+  previousY?: number;
   size: number;
   phase: number;
   /** Product category used by fact triggers (typed collectibles). */
@@ -103,6 +115,7 @@ export interface RenderScene {
   elapsedSeconds: number;
   distancePixels: number;
   speed: number;
+  interpolationAlpha?: number;
   reducedMotion: boolean;
   decorationQuality?: "full" | "reduced";
   impact: boolean;

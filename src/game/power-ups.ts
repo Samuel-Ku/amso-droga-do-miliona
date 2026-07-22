@@ -84,6 +84,11 @@ export class ActivePowerUps {
     return [...this.remainingSeconds.keys()];
   }
 
+  public writeKeys(target: PowerUpKind[]): void {
+    target.length = 0;
+    for (const kind of this.remainingSeconds.keys()) target.push(kind);
+  }
+
   public statuses(): ActivePowerUpStatus[] {
     return [...this.remainingSeconds].map(([kind, remainingSeconds]) => ({
       kind,

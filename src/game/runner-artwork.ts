@@ -103,6 +103,17 @@ export function courierCrouchFrameOffsetX(frame: number): number {
 
 type ArtworkImageFactory = () => HTMLImageElement;
 
+export interface RunnerArtworkAssets {
+  readonly orders?: HTMLImageElement;
+  readonly powerUps?: HTMLImageElement;
+  readonly courier?: HTMLImageElement;
+  readonly courierCrouch?: HTMLImageElement;
+  readonly courierJump?: HTMLImageElement;
+  readonly obstacles?: Partial<Readonly<Record<ObstacleKind, HTMLImageElement>>>;
+  readonly overheadVariants?: readonly HTMLImageElement[];
+  readonly parcelFrames?: readonly HTMLImageElement[];
+}
+
 function browserImageFactory(): HTMLImageElement | null {
   const Constructor = globalThis.Image;
   return typeof Constructor === "function" ? new Constructor() : null;
@@ -131,23 +142,26 @@ export class RunnerArtwork {
   private readonly overheadVariants: readonly (HTMLImageElement | null)[];
   private readonly parcelFrames: readonly (HTMLImageElement | null)[];
 
-  public constructor(factory?: ArtworkImageFactory) {
-    this.orders = loadImage(ORDER_ATLAS_PATH, factory);
-    this.powerUps = loadImage(POWER_UP_ATLAS_PATH, factory);
-    this.courier = loadImage(COURIER_SPRITE_PATH, factory);
-    this.courierCrouch = loadImage(COURIER_CROUCH_SPRITE_PATH, factory);
-    this.courierJump = loadImage(COURIER_JUMP_SPRITE_PATH, factory);
+  public constructor(source: ArtworkImageFactory | RunnerArtworkAssets = {}) {
+    const factory = typeof source === "function" ? source : undefined;
+    const assets = typeof source === "function" ? undefined : source;
+    this.orders = assets?.orders ?? (factory ? loadImage(ORDER_ATLAS_PATH, factory) : null);
+    this.powerUps = assets?.powerUps ?? (factory ? loadImage(POWER_UP_ATLAS_PATH, factory) : null);
+    this.courier = assets?.courier ?? (factory ? loadImage(COURIER_SPRITE_PATH, factory) : null);
+    this.courierCrouch = assets?.courierCrouch ?? (factory ? loadImage(COURIER_CROUCH_SPRITE_PATH, factory) : null);
+    this.courierJump = assets?.courierJump ?? (factory ? loadImage(COURIER_JUMP_SPRITE_PATH, factory) : null);
     this.obstacles = {
-      "box-stack": loadImage(OBSTACLE_ASSET_PATHS["box-stack"], factory),
-      pallet: loadImage(OBSTACLE_ASSET_PATHS.pallet, factory),
-      trolley: loadImage(OBSTACLE_ASSET_PATHS.trolley, factory),
-      overhead: loadImage(OBSTACLE_ASSET_PATHS.overhead, factory)
+      "box-stack": assets?.obstacles?.["box-stack"] ?? (factory ? loadImage(OBSTACLE_ASSET_PATHS["box-stack"], factory) : null),
+      pallet: assets?.obstacles?.pallet ?? (factory ? loadImage(OBSTACLE_ASSET_PATHS.pallet, factory) : null),
+      trolley: assets?.obstacles?.trolley ?? (factory ? loadImage(OBSTACLE_ASSET_PATHS.trolley, factory) : null),
+      overhead: assets?.obstacles?.overhead ?? (factory ? loadImage(OBSTACLE_ASSET_PATHS.overhead, factory) : null)
     };
-    this.overheadVariants = [
+    this.overheadVariants = assets?.overheadVariants ?? [
       this.obstacles.overhead,
-      ...OVERHEAD_VARIANT_ASSET_PATHS.slice(1).map((path) => loadImage(path, factory))
+      ...(factory ? OVERHEAD_VARIANT_ASSET_PATHS.slice(1).map((path) => loadImage(path, factory)) : [])
     ];
-    this.parcelFrames = PARCEL_CELEBRATION_FRAME_PATHS.map((path) => loadImage(path, factory));
+    this.parcelFrames = assets?.parcelFrames ??
+      (factory ? PARCEL_CELEBRATION_FRAME_PATHS.map((path) => loadImage(path, factory)) : []);
   }
 
   public hasOverheadArtwork(visualVariant: number): boolean {

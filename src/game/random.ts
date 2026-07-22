@@ -13,6 +13,8 @@ export class SeededRandom {
     this.value = normalizeSeed(seed);
   }
 
+  public get state(): number { return this.value; }
+
   next(): number {
     this.value = (this.value + 0x6d2b79f5) >>> 0;
     let value = this.value;

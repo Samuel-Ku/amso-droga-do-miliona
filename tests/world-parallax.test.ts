@@ -22,11 +22,24 @@ function imageHarness(): {
     public src = "";
     public complete = false;
     public naturalWidth = 0;
-    public decode = vi.fn(async () => undefined);
+    private resolveDecode: (() => void) | null = null;
+    private rejectDecode: ((error: Error) => void) | null = null;
+    public decode = vi.fn(() => new Promise<void>((resolve, reject) => {
+      this.resolveDecode = resolve;
+      this.rejectDecode = reject;
+    }));
 
     public override dispatchEvent(event: Event): boolean {
-      if (event.type === "load") this.onload?.(event);
-      if (event.type === "error") this.onerror?.(event);
+      if (event.type === "load") {
+        this.complete = true;
+        this.naturalWidth = 1780;
+        this.resolveDecode?.();
+        this.onload?.(event);
+      }
+      if (event.type === "error") {
+        this.rejectDecode?.(new Error("world_asset_decode_failed"));
+        this.onerror?.(event);
+      }
       return super.dispatchEvent(event);
     }
   }
@@ -57,13 +70,15 @@ describe("mobile-safe world assets", () => {
     const { store, images } = imageHarness();
     const loading = store.load("data:image/webp;base64,BBB");
     images[0]!.dispatchEvent(new Event("error"));
-    await Promise.resolve();
+    await vi.waitFor(() => expect(images[0]!.decode).toHaveBeenCalledTimes(2));
     images[0]!.dispatchEvent(new Event("load"));
     await expect(loading).resolves.toMatchObject({ path: "data:image/webp;base64,BBB" });
 
     const failed = store.load("data:image/webp;base64,CCC");
     images[1]!.dispatchEvent(new Event("error"));
-    await Promise.resolve();
+    await vi.waitFor(() => expect(images[1]!.decode).toHaveBeenCalledTimes(2));
+    images[1]!.dispatchEvent(new Event("error"));
+    await vi.waitFor(() => expect(images[1]!.decode).toHaveBeenCalledTimes(3));
     images[1]!.dispatchEvent(new Event("error"));
     await expect(failed).rejects.toThrow("world_asset_decode_failed");
   });
@@ -114,19 +129,14 @@ describe("edge-to-edge gameplay background", () => {
 
     layer.setParallaxDistance(240, true);
     layer.setParallaxDistance(260, true);
-    expect(panels.every((panel) => panel.style.transition === "transform 140ms linear"))
-      .toBe(true);
+    expect(panels.every((panel) => panel.style.transition === "none")).toBe(true);
 
     layer.setParallaxDistance(959, true);
     layer.setParallaxDistance(961, true);
-    expect(panels.filter((panel) => panel.style.transition === "none"))
-      .toHaveLength(1);
-    expect(panels.filter((panel) => panel.style.transition === "transform 140ms linear"))
-      .toHaveLength(1);
+    expect(panels.filter((panel) => panel.style.transition === "none")).toHaveLength(2);
 
     layer.setParallaxDistance(970, true);
-    expect(panels.every((panel) => panel.style.transition === "transform 140ms linear"))
-      .toBe(true);
+    expect(panels.every((panel) => panel.style.transition === "none")).toBe(true);
   });
 
   it("preserves absolute phase across world, story and challenge changes", () => {
@@ -295,8 +305,7 @@ describe("edge-to-edge gameplay background", () => {
     const layer = new WorldVisualLayer(host, store);
     layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "story" });
     images[0]!.dispatchEvent(new Event("load"));
-    await Promise.resolve();
-    await Promise.resolve();
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
     layer.setParallaxDistance(240, false);
     const panels = [...host.querySelectorAll<HTMLElement>("[data-world-panel]")];
     expect(panels.map(({ style }) => style.transform)).toEqual([
@@ -319,8 +328,10 @@ describe("edge-to-edge gameplay background", () => {
       "translate3d(-25%, 0, 0)",
       "translate3d(75%, 0, 0)"
     ]);
-    expect(panels.every(({ dataset }) => dataset.assetPath?.includes("world-01")))
-      .toBe(true);
+    expect(panels.map(({ dataset }) => dataset.assetPath)).toEqual([
+      expect.stringContaining("world-01"),
+      expect.stringContaining("world-01")
+    ]);
     layer.setParallaxDistance(960, true);
     expect(panels.every(({ dataset }) => dataset.assetPath?.includes("world-02")))
       .toBe(true);
@@ -334,7 +345,9 @@ describe("edge-to-edge gameplay background", () => {
     const layer = new WorldVisualLayer(host, store);
     layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "game" });
     images[0]!.dispatchEvent(new Event("error"));
-    await Promise.resolve();
+    await vi.waitFor(() => expect(images[0]!.decode).toHaveBeenCalledTimes(2));
+    images[0]!.dispatchEvent(new Event("error"));
+    await vi.waitFor(() => expect(images[0]!.decode).toHaveBeenCalledTimes(3));
     images[0]!.dispatchEvent(new Event("error"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("fallback"));
     expect(host.dataset.worldId).toBe("first-mile");

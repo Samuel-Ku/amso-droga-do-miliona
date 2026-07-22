@@ -19,6 +19,8 @@ export function createRunnerModel(): RunnerModel {
   return {
     x: RUNNER_X,
     y: GROUND_Y - RUNNER_HEIGHT,
+    previousX: RUNNER_X,
+    previousY: GROUND_Y - RUNNER_HEIGHT,
     width: RUNNER_WIDTH,
     height: RUNNER_HEIGHT,
     velocityY: 0,
@@ -44,6 +46,8 @@ export function stepRunnerPhysics(
   config: PhysicsConfig = DEFAULT_PHYSICS
 ): void {
   const delta = Math.max(0, deltaSeconds);
+  runner.previousX = runner.x;
+  runner.previousY = runner.y;
   runner.jumpBufferRemaining = Math.max(0, runner.jumpBufferRemaining - delta);
 
   if (runner.grounded) {

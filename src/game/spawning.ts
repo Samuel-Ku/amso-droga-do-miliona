@@ -22,6 +22,7 @@ import type {
 import type { CollectibleClass, OrderVisualType, PackageType } from "../shared/types";
 import type { SemanticObstacleVariant } from "./semantic-obstacle";
 import { collectibleClassForVisual } from "./collectibles";
+import { assertSafeCounter } from "./pool-motion";
 import {
   collectiblePickupInset,
   obstacleHitbox,
@@ -111,9 +112,11 @@ export class ChallengeRewardDirector {
   private readonly equipmentBag: ShuffleBag<PackageType>;
   private waveIndex = 0;
 
-  public constructor(random: SeededRandom) {
+  public constructor(private readonly random: SeededRandom) {
     this.equipmentBag = new ShuffleBag(PACKAGE_TYPE_VALUES, random);
   }
+
+  public get rngState(): number { return this.random.state; }
 
   public createWave(
     options: Omit<AuthoredRewardWaveOptions, "rewards"> & { packageCount: number }
@@ -554,24 +557,34 @@ export function calculateSpawnGap(
 }
 
 export function createObstaclePool(size: number = GAMEPLAY.obstaclePoolSize): ObstacleModel[] {
-  return Array.from({ length: Math.max(1, Math.floor(size)) }, () => ({
+  return Array.from({ length: Math.max(1, Math.floor(size)) }, (_, slotId) => ({
+    slotId,
+    generation: 0,
+    motionRevision: 0,
     active: false,
     kind: "box-stack" as const,
     source: "normal" as const,
     x: 0,
     y: 0,
+    previousX: 0,
+    previousY: 0,
     width: 0,
     height: 0
   }));
 }
 
 export function createPackagePool(size: number = GAMEPLAY.packagePoolSize): PackageModel[] {
-  return Array.from({ length: Math.max(1, Math.floor(size)) }, () => ({
+  return Array.from({ length: Math.max(1, Math.floor(size)) }, (_, slotId) => ({
+    slotId,
+    generation: 0,
+    motionRevision: 0,
     active: false,
     kind: "standard" as const,
     collectibleClass: "equipment" as const,
     x: 0,
     y: 0,
+    previousX: 0,
+    previousY: 0,
     size: PACKAGE_MODEL_SIZE,
     phase: 0,
     packageType: "notebook" as PackageType,
@@ -711,6 +724,8 @@ export class FairSpawner {
       : OBSTACLE_PATTERN_CATALOG;
     this.patternBag = new ShuffleBag(this.obstaclePatterns, this.random);
   }
+
+  public get rngState(): number { return this.random.state; }
 
   advance(
     travelledPixels: number,
@@ -871,12 +886,17 @@ export function activateTutorialPackages(packages: PackageModel[]): void {
     const parcel = packages[index];
     const x = positions[index];
     if (!parcel || x === undefined) continue;
-    parcel.active = true;
+    parcel.active = false;
+    parcel.generation = (parcel.generation ?? 0) + 1;
+    assertSafeCounter(parcel.generation);
+    parcel.motionRevision = 0;
     parcel.kind = "standard";
     parcel.orderVisualType = index === 3 ? "notebook" : "parcel";
     parcel.collectibleClass = collectibleClassForVisual(parcel.orderVisualType);
     parcel.x = x;
     parcel.y = GROUND_Y - parcel.size - 17;
+    parcel.previousX = parcel.x;
+    parcel.previousY = parcel.y;
     parcel.phase = index * 0.9;
     parcel.packageType = parcel.orderVisualType === "parcel"
       ? "notebook"
@@ -885,6 +905,7 @@ export function activateTutorialPackages(packages: PackageModel[]): void {
     parcel.storyRewardPattern = false;
     parcel.authoredWaveId = "challenge-onboarding";
     delete parcel.storyOrder;
+    parcel.active = true;
   }
 }
 
@@ -897,11 +918,16 @@ export function activateWave(
   const freePackages = packages.filter((candidate) => !candidate.active);
   if (!obstacle || freePackages.length < wave.packages.length) return false;
 
-  obstacle.active = true;
+  obstacle.active = false;
+  obstacle.generation = (obstacle.generation ?? 0) + 1;
+  assertSafeCounter(obstacle.generation);
+  obstacle.motionRevision = 0;
   obstacle.kind = wave.kind;
   obstacle.source = wave.source;
   obstacle.x = wave.x;
   obstacle.y = wave.y;
+  obstacle.previousX = obstacle.x;
+  obstacle.previousY = obstacle.y;
   obstacle.width = wave.width;
   obstacle.height = wave.height;
   if (wave.kind === "overhead") {
@@ -921,6 +947,7 @@ export function activateWave(
   else delete obstacle.authoredActionIndex;
   if (wave.semanticVariant) obstacle.semanticVariant = wave.semanticVariant;
   else delete obstacle.semanticVariant;
+  obstacle.active = true;
 
   for (let index = 0; index < wave.packages.length; index += 1) {
     const spawn = wave.packages[index];
@@ -934,11 +961,16 @@ export function activateWave(
         Math.abs(existing.y - spawn.y) < PACKAGE_MODEL_SIZE * 0.75
     );
     if (overlapsExisting) continue;
-    parcel.active = true;
+    parcel.active = false;
+    parcel.generation = (parcel.generation ?? 0) + 1;
+    assertSafeCounter(parcel.generation);
+    parcel.motionRevision = 0;
     parcel.kind = spawn.kind;
     parcel.collectibleClass = spawn.collectibleClass;
     parcel.x = spawn.x;
     parcel.y = spawn.y;
+    parcel.previousX = parcel.x;
+    parcel.previousY = parcel.y;
     parcel.phase = spawn.phase;
     parcel.packageType = spawn.packageType;
     parcel.orderVisualType = spawn.orderVisualType;
@@ -948,6 +980,7 @@ export function activateWave(
     else delete parcel.authoredWaveId;
     if (spawn.storyOrder === true) parcel.storyOrder = true;
     else delete parcel.storyOrder;
+    parcel.active = true;
   }
   return true;
 }

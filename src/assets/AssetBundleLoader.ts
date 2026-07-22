@@ -3,6 +3,7 @@ import type {
   AssetBundleId,
   AssetResourceConfig
 } from "../shared/types";
+import { DecodedImageStore } from "./DecodedImageStore";
 
 export interface AssetLoadProgress {
   readyCritical: number;
@@ -21,6 +22,7 @@ export interface AssetBundleLoadResult {
 
 export interface AssetBundleLoaderOptions {
   loadResource?: (resource: AssetResourceConfig) => Promise<void>;
+  decodedImageStore?: DecodedImageStore;
 }
 
 interface BundleResult {
@@ -84,7 +86,13 @@ export class AssetBundleLoader {
     options: AssetBundleLoaderOptions = {}
   ) {
     for (const bundle of bundles) this.bundles.set(bundle.id, bundle);
-    this.loadResource = options.loadResource ?? loadCampaignAsset;
+    const imageStore = options.decodedImageStore;
+    this.loadResource = options.loadResource ?? ((resource) => {
+      if (resource.type === "image" && imageStore) {
+        return imageStore.load(resource.id, resource.source).then(() => undefined);
+      }
+      return loadCampaignAsset(resource);
+    });
   }
 
   public isBundleReady(bundleId: AssetBundleId): boolean {
