@@ -580,7 +580,7 @@ export class CampaignShell {
           ></canvas>
           <div class="amso-campaign__milestone-message" data-campaign-milestone-message hidden aria-hidden="true"></div>
           <section class="amso-campaign__hud" data-campaign-hud hidden aria-label="Wynik biegu">
-            <div class="amso-campaign__hud-context">
+            <div class="amso-campaign__hud-context" hidden>
               <strong data-campaign-hud-mode></strong>
               <span data-campaign-hud-epoch></span>
               <span data-campaign-hud-objective hidden></span>

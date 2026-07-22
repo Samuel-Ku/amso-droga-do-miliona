@@ -36,6 +36,16 @@ describe("mobile campaign shell", () => {
     });
   });
 
+  it("hides the contextual HUD panel while keeping gameplay stats available", () => {
+    const shell = createShell();
+    const context = document.querySelector<HTMLElement>(".amso-campaign__hud-context")!;
+    const stats = document.querySelector<HTMLElement>(".amso-campaign__hud-stats")!;
+
+    expect(context.hidden).toBe(true);
+    expect(stats.hidden).toBe(false);
+    shell.destroy();
+  });
+
   it("keeps a newer identical pickup notice visible for its own full lifetime", () => {
     vi.useFakeTimers();
     const shell = createShell();
