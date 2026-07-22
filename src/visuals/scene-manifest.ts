@@ -1,4 +1,9 @@
 import type { AssetBundleId, StoryChapterId } from "../shared/types";
+import {
+  WORLD_ARTWORK_CONTRACT,
+  assertWorldArtworkContract,
+  type WorldArtworkMeta
+} from "./world-plate-transform";
 
 export const CAMPAIGN_WORLD_IDS = [
   "first-mile",
@@ -63,6 +68,7 @@ export interface CampaignWorldDefinition {
   readonly assetPath: string;
   readonly fallbackId: string;
   readonly palette: "campaign-light";
+  readonly artwork: Readonly<WorldArtworkMeta>;
 }
 
 export interface CampaignSceneVisualState {
@@ -99,51 +105,60 @@ export const CAMPAIGN_WORLDS: readonly CampaignWorldDefinition[] = Object.freeze
     bundleId: "prologue",
     assetPath: "/assets/milion-runner/worlds/world-01-first-mile-v2.webp",
     fallbackId: "fallback-first-mile",
-    palette: "campaign-light"
+    palette: "campaign-light",
+    artwork: WORLD_ARTWORK_CONTRACT
   },
   {
     worldId: "order-process",
     bundleId: "epoch_1",
     assetPath: "/assets/milion-runner/worlds/world-02-order-process-v2.webp",
     fallbackId: "fallback-order-process",
-    palette: "campaign-light"
+    palette: "campaign-light",
+    artwork: WORLD_ARTWORK_CONTRACT
   },
   {
     worldId: "quality-service",
     bundleId: "epoch_2",
     assetPath: "/assets/milion-runner/worlds/world-03-quality-service-v2.webp",
     fallbackId: "fallback-quality-service",
-    palette: "campaign-light"
+    palette: "campaign-light",
+    artwork: WORLD_ARTWORK_CONTRACT
   },
   {
     worldId: "client-paths",
     bundleId: "epoch_3",
     assetPath: "/assets/milion-runner/worlds/world-04-client-paths-v2.webp",
     fallbackId: "fallback-client-paths",
-    palette: "campaign-light"
+    palette: "campaign-light",
+    artwork: WORLD_ARTWORK_CONTRACT
   },
   {
     worldId: "scale-logistics",
     bundleId: "epoch_4",
     assetPath: "/assets/milion-runner/worlds/world-05-scale-logistics-v2.webp",
     fallbackId: "fallback-scale-logistics",
-    palette: "campaign-light"
+    palette: "campaign-light",
+    artwork: WORLD_ARTWORK_CONTRACT
   },
   {
     worldId: "million-approach",
     bundleId: "epoch_5",
     assetPath: "/assets/milion-runner/worlds/world-06-million-approach-v2.webp",
     fallbackId: "fallback-million-approach",
-    palette: "campaign-light"
+    palette: "campaign-light",
+    artwork: WORLD_ARTWORK_CONTRACT
   },
   {
     worldId: "million-finale",
     bundleId: "finale",
     assetPath: "/assets/milion-runner/worlds/world-07-million-finale-v2.webp",
     fallbackId: "fallback-million-finale",
-    palette: "campaign-light"
+    palette: "campaign-light",
+    artwork: WORLD_ARTWORK_CONTRACT
   }
 ]);
+
+assertWorldArtworkContract(CAMPAIGN_WORLDS);
 
 const WORLD_STATE_MANIFEST: readonly CampaignSceneVisualState[] = Object.freeze([
   {
