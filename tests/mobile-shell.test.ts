@@ -43,6 +43,16 @@ describe("mobile campaign shell", () => {
     shell.destroy();
   });
 
+  it("uses the header logo instead of a duplicate landing campaign link", () => {
+    const shell = createShell();
+
+    expect(document.querySelector(".amso-campaign__landing-campaign-link")).toBeNull();
+    expect(document.querySelector<HTMLAnchorElement>(
+      ".amso-campaign__brand[data-campaign-link]"
+    )?.getAttribute("href")).toBe("/milion");
+    shell.destroy();
+  });
+
   it("hides the contextual HUD panel while keeping gameplay stats available", () => {
     const shell = createShell();
     const context = document.querySelector<HTMLElement>(".amso-campaign__hud-context")!;

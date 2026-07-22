@@ -622,7 +622,6 @@ export class CampaignShell {
                 </p>
               </div>
               <div data-campaign-landing-records></div>
-              <a class="amso-campaign__text-link amso-campaign__landing-campaign-link" data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
             </div>
             <div class="amso-campaign__landing-art" aria-hidden="true">
               <img class="amso-campaign__main-lockup" src="${MAIN_LOCKUP_PATH}" alt="" width="1600" height="1460" />

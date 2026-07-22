@@ -2206,12 +2206,6 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   transform: rotate(-1.5deg);
 }
 
-.amso-campaign__landing-campaign-link {
-  display: block;
-  width: fit-content;
-  margin: 0.5rem auto 0;
-}
-
 .amso-campaign__screen--dialog,
 .amso-campaign__screen--result {
   background: rgb(23 23 23 / 40%);
@@ -2740,10 +2734,6 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     grid-row: 1 / span 6;
     margin-top: 0;
     align-self: start;
-  }
-
-  .amso-campaign__landing-campaign-link {
-    display: none;
   }
 
   .amso-campaign__landing-art,
