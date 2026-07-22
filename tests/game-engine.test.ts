@@ -350,7 +350,7 @@ describe("difficulty and responsive canvas", () => {
     expect(oversized.width * oversized.height).toBeLessThanOrEqual(2_100_000);
   });
 
-  it("anchors the complete game world and hanging supports at stage y=0", () => {
+  it("centers the complete game world on the contained background plane", () => {
     const translations: Array<[number, number]> = [];
     const fillRects: Array<[number, number, number, number]> = [];
     const contextTarget: Record<PropertyKey, unknown> = {
@@ -378,7 +378,7 @@ describe("difficulty and responsive canvas", () => {
     overhead.width = 76;
     overhead.height = 178;
 
-    new WarehouseRenderer().render(context, 960, 560, {
+    new WarehouseRenderer().render(context, 960, 960, {
       state: "running",
       runner: createRunnerModel(),
       obstacles: [overhead],
@@ -403,7 +403,7 @@ describe("difficulty and responsive canvas", () => {
       }
     });
 
-    expect(translations[0]).toEqual([0, 0]);
+    expect(translations[0]).toEqual([0, 210]);
     expect(fillRects.some(([x, y, width]) => x === 412 && y === 0 && width === 10)).toBe(true);
   });
 

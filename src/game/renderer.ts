@@ -1877,8 +1877,9 @@ export class WarehouseRenderer {
 
     const scale = Math.min(pixelWidth / WORLD_WIDTH, pixelHeight / WORLD_HEIGHT);
     const viewportWidth = WORLD_WIDTH * scale;
+    const viewportHeight = WORLD_HEIGHT * scale;
     const offsetX = (pixelWidth - viewportWidth) / 2;
-    const offsetY = 0;
+    const offsetY = (pixelHeight - viewportHeight) / 2;
 
     context.save();
     context.translate(offsetX, offsetY);
