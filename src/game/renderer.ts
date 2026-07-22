@@ -1096,43 +1096,6 @@ function drawTrolley(context: CanvasRenderingContext2D, obstacle: Readonly<Obsta
   context.fill();
 }
 
-/**
- * Draws the vertical support posts of an overhead obstacle from the canvas
- * top edge (ceilingY) down to the beam top — called *before* the world-space
- * clip so the posts extend above y=0 and visually reach the CSS ceiling beam.
- * Uses 5 px stroked lines (matching the artwork path) when raster artwork is
- * available, and 10 px filled rects (matching the vector fallback) otherwise.
- */
-function drawOverheadPostsCeiling(
-  context: CanvasRenderingContext2D,
-  obstacle: Readonly<ObstacleModel>,
-  ceilingY: number,
-  hasOverheadArtwork: boolean
-): void {
-  const { x, y, width } = obstacle;
-  const postEnd = y + 8;
-  if (postEnd <= ceilingY) return;
-
-  if (hasOverheadArtwork) {
-    const drawWidth = width + 18;
-    const railInset = drawWidth * 0.095;
-    const leftX = x - (drawWidth - width) / 2 + railInset;
-    const rightX = x - (drawWidth - width) / 2 + drawWidth - railInset;
-    context.strokeStyle = "#2d343b";
-    context.lineWidth = 5;
-    context.beginPath();
-    context.moveTo(leftX, ceilingY);
-    context.lineTo(leftX, postEnd);
-    context.moveTo(rightX, ceilingY);
-    context.lineTo(rightX, postEnd);
-    context.stroke();
-  } else {
-    context.fillStyle = COLORS.ink;
-    context.fillRect(x - 8, ceilingY, 10, postEnd - ceilingY);
-    context.fillRect(x + width - 2, ceilingY, 10, postEnd - ceilingY);
-  }
-}
-
 function drawOverhead(context: CanvasRenderingContext2D, obstacle: Readonly<ObstacleModel>): void {
   const { x, y, width, height } = obstacle;
   context.fillStyle = "rgba(23,49,59,0.16)";
@@ -1917,13 +1880,8 @@ export class WarehouseRenderer {
 
     const scale = Math.min(pixelWidth / WORLD_WIDTH, pixelHeight / WORLD_HEIGHT);
     const viewportWidth = WORLD_WIDTH * scale;
-    const viewportHeight = WORLD_HEIGHT * scale;
     const offsetX = (pixelWidth - viewportWidth) / 2;
-    const rawOffsetY = (pixelHeight - viewportHeight) / 2;
-    const cssPixelScale = pixelHeight / (globalThis.innerHeight || pixelHeight);
-    const hudBottomCss = 102;
-    const hudGap = Math.min(Math.round(hudBottomCss * cssPixelScale / 2), rawOffsetY);
-    const offsetY = rawOffsetY + hudGap;
+    const offsetY = 0;
 
     context.save();
     context.translate(offsetX, offsetY);
@@ -1933,18 +1891,6 @@ export class WarehouseRenderer {
        clip so it spans edge-to-edge on every aspect ratio (not just 16:9). */
     if (externalWorldVisual) {
       drawFullWidthGameplayRoute(context, pixelWidth, offsetX, scale);
-    }
-
-    /* Never extend overhead posts above y=0 (world ceiling / start of drawn
-       scene). The background image is letterboxed with contain, so y=0 aligns
-       with the top of the visible background. */
-    const ceilingY = Math.max(0, -offsetY / scale);
-    if (ceilingY < 0) {
-      for (const obstacle of scene.obstacles) {
-        if (obstacle.kind === "overhead" && obstacle.active) {
-          drawOverheadPostsCeiling(context, obstacle, ceilingY, this.artwork.hasOverheadArtwork(obstacle.visualVariant ?? 0));
-        }
-      }
     }
 
     context.beginPath();
@@ -2001,13 +1947,6 @@ export class WarehouseRenderer {
       context.font = "800 46px system-ui, sans-serif";
       context.fillText(scene.cutscene.title, WORLD_WIDTH / 2, WORLD_HEIGHT / 2 + 28);
       context.textAlign = "start";
-    } else if (scene.state === "paused") {
-      context.fillStyle = "rgba(17,39,48,0.22)";
-      context.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-      fillRoundedRectangle(context, WORLD_WIDTH / 2 - 31, WORLD_HEIGHT / 2 - 31, 62, 62, 12, "rgba(255,255,255,0.9)");
-      context.fillStyle = COLORS.ink;
-      context.fillRect(WORLD_WIDTH / 2 - 13, WORLD_HEIGHT / 2 - 14, 9, 28);
-      context.fillRect(WORLD_WIDTH / 2 + 5, WORLD_HEIGHT / 2 - 14, 9, 28);
     } else if (scene.state === "game_over") {
       context.fillStyle = "rgba(227,6,19,0.08)";
       context.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);

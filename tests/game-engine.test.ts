@@ -349,6 +349,113 @@ describe("difficulty and responsive canvas", () => {
     expect(oversized.height).toBeLessThanOrEqual(2_048);
     expect(oversized.width * oversized.height).toBeLessThanOrEqual(2_100_000);
   });
+
+  it("anchors the complete game world and hanging supports at stage y=0", () => {
+    const translations: Array<[number, number]> = [];
+    const fillRects: Array<[number, number, number, number]> = [];
+    const contextTarget: Record<PropertyKey, unknown> = {
+      createLinearGradient: () => ({ addColorStop(): void {} }),
+      translate: (x: number, y: number) => translations.push([x, y]),
+      fillRect: (x: number, y: number, width: number, height: number) => {
+        fillRects.push([x, y, width, height]);
+      }
+    };
+    const context = new Proxy(contextTarget, {
+      get(target, key) {
+        if (key in target) return target[key];
+        return (): void => {};
+      },
+      set(target, key, value) {
+        target[key] = value;
+        return true;
+      }
+    }) as unknown as CanvasRenderingContext2D;
+    const overhead = createObstaclePool(1)[0]!;
+    overhead.active = true;
+    overhead.kind = "overhead";
+    overhead.x = 420;
+    overhead.y = 200;
+    overhead.width = 76;
+    overhead.height = 178;
+
+    new WarehouseRenderer().render(context, 960, 560, {
+      state: "running",
+      runner: createRunnerModel(),
+      obstacles: [overhead],
+      packages: [],
+      boss: new BossDirector().model,
+      elapsedSeconds: 1,
+      distancePixels: 100,
+      speed: 280,
+      reducedMotion: false,
+      impact: false,
+      epochIndex: 0,
+      epochName: "",
+      epochYear: "",
+      themeIndex: 0,
+      cutscene: null,
+      activePowerUps: [],
+      worldVisual: {
+        worldId: "first-mile",
+        stateId: "story.first_package",
+        nextStateId: "story.first_package",
+        progress: 0
+      }
+    });
+
+    expect(translations[0]).toEqual([0, 0]);
+    expect(fillRects.some(([x, y, width]) => x === 412 && y === 0 && width === 10)).toBe(true);
+  });
+
+  it("leaves pause dimming to the full-stage DOM overlay", () => {
+    const dimRects: Array<[number, number, number, number]> = [];
+    const contextTarget: Record<PropertyKey, unknown> = {
+      fillStyle: "",
+      createLinearGradient: () => ({ addColorStop(): void {} }),
+      fillRect(x: number, y: number, width: number, height: number): void {
+        if (contextTarget.fillStyle === "rgba(17,39,48,0.22)") {
+          dimRects.push([x, y, width, height]);
+        }
+      }
+    };
+    const context = new Proxy(contextTarget, {
+      get(target, key) {
+        if (key in target) return target[key];
+        return (): void => {};
+      },
+      set(target, key, value) {
+        target[key] = value;
+        return true;
+      }
+    }) as unknown as CanvasRenderingContext2D;
+
+    new WarehouseRenderer().render(context, 960, 560, {
+      state: "paused",
+      runner: createRunnerModel(),
+      obstacles: [],
+      packages: [],
+      boss: new BossDirector().model,
+      elapsedSeconds: 1,
+      distancePixels: 100,
+      speed: 280,
+      reducedMotion: false,
+      impact: false,
+      epochIndex: 0,
+      epochName: "",
+      epochYear: "",
+      themeIndex: 0,
+      cutscene: null,
+      activePowerUps: [],
+      worldVisual: {
+        worldId: "first-mile",
+        stateId: "story.first_package",
+        nextStateId: "story.first_package",
+        progress: 0
+      }
+    });
+
+    expect(dimRects).toEqual([]);
+  });
 });
 
 describe("boss rendering", () => {

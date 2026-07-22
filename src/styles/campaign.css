@@ -1006,6 +1006,12 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   backdrop-filter: blur(10px);
 }
 
+.amso-campaign__screen[data-campaign-pause-screen] {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+}
+
 .amso-campaign__card,
 .amso-campaign__result-card {
   width: min(100%, 650px);
