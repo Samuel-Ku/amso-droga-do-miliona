@@ -300,7 +300,8 @@ describe("edge-to-edge gameplay background", () => {
 
     layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "game" });
     images[0]!.dispatchEvent(new Event("load"));
-    await vi.waitFor(() => expect(images).toHaveLength(2));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    expect(images).toHaveLength(1);
 
     layer.show({ worldId: "order-process", stateId: "epoch_1.challenge", phase: "game" });
     images[1]!.dispatchEvent(new Event("load"));
@@ -314,6 +315,7 @@ describe("edge-to-edge gameplay background", () => {
       expect(panel?.hidden).toBe(false);
     });
     layer.setParallaxDistance(961, true);
+    layer.setPhase("story");
     await vi.waitFor(() => expect(images).toHaveLength(3));
   });
 

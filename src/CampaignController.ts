@@ -479,9 +479,17 @@ export class CampaignController {
         }).catch(() => scheduleNext());
       };
       if (typeof window.requestIdleCallback === "function") {
-        window.requestIdleCallback(run, { timeout: 1_000 });
+        window.requestIdleCallback(() => run());
       } else {
-        window.setTimeout(run, 50);
+        const runWhenPaused = (): void => {
+          if (this.destroyed || token !== this.startToken) return;
+          if (this.game?.state === "running") {
+            window.setTimeout(runWhenPaused, 250);
+            return;
+          }
+          run();
+        };
+        window.setTimeout(runWhenPaused, 50);
       }
     };
     scheduleNext();

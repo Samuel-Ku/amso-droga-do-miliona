@@ -427,9 +427,17 @@ export class WorldVisualLayer {
     };
     const view = this.host.ownerDocument.defaultView;
     if (typeof view?.requestIdleCallback === "function") {
-      view.requestIdleCallback(run, { timeout: 1_000 });
+      view.requestIdleCallback(() => run());
     } else {
-      view?.setTimeout(run, 50);
+      const runWhenPresentationPaused = (): void => {
+        if (this.scheduledPreloadPath !== next.assetPath) return;
+        if (this.host.dataset.phase === "game") {
+          view?.setTimeout(runWhenPresentationPaused, 250);
+          return;
+        }
+        run();
+      };
+      view?.setTimeout(runWhenPresentationPaused, 50);
     }
   }
 
