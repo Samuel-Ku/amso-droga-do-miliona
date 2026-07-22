@@ -4,6 +4,10 @@ import {
   EMBEDDED_AVIF_MAX_LENGTH,
   EMBEDDED_WEBP_MAX_LENGTH
 } from "../src/config/schema";
+import {
+  WORLD_ARTWORK_CONTRACT,
+  calculateWorldPlateTransform
+} from "../src/visuals/world-plate-transform";
 
 const qaPreview = readFileSync(
   new URL("../droga-do-miliona-qa.html", import.meta.url),
@@ -150,5 +154,52 @@ describe("single-file QA artwork", () => {
       embedded.millionThreshold ?? embedded.story?.millionThreshold;
     expect(threshold).toBeTruthy();
     expect(threshold.orderTarget ?? threshold.counterTarget).toBeGreaterThan(0);
+  });
+
+  it("contains the same canonical geometry runtime as the development build", () => {
+    const assignment = "window.__RUNNER_MODULE__=";
+    const assignmentStart = qaPreview.indexOf(assignment);
+    const valueStart = assignmentStart + assignment.length;
+    const valueEnd = qaPreview.indexOf("</script>", valueStart);
+    const moduleSource = JSON.parse(qaPreview.slice(valueStart, valueEnd)) as string;
+    const metadataIndex = moduleSource.indexOf("artWidth: 1780");
+    const sectionEnd = moduleSource.indexOf("//#endregion", metadataIndex);
+    const geometrySection = moduleSource.slice(metadataIndex - 100, sectionEnd);
+    const metadataMatch = geometrySection.match(
+      /([A-Za-z_$][\w$]*)\s*=\s*Object\.freeze\((\{\s*artWidth:\s*1780,\s*artHeight:\s*941,\s*artGroundY:\s*771\s*\})\);/u
+    );
+    const calculateMatch = geometrySection.match(
+      /(function\s+([A-Za-z_$][\w$]*)\(e, t, n\)\s*\{\s*if\s*\(!Number\.isFinite[\s\S]*\n\})\s*$/u
+    );
+    expect(metadataMatch).not.toBeNull();
+    expect(calculateMatch).not.toBeNull();
+    const metadataName = metadataMatch![1]!;
+    const calculateName = calculateMatch![2]!;
+    const artifact = new Function(
+      `const ${metadataName} = Object.freeze(${metadataMatch![2]});` +
+      `${calculateMatch![1]};` +
+      `return { metadata: ${metadataName}, calculate: ${calculateName} };`
+    )() as {
+      metadata: typeof WORLD_ARTWORK_CONTRACT;
+      calculate: typeof calculateWorldPlateTransform;
+    };
+
+    expect(artifact.metadata).toEqual(WORLD_ARTWORK_CONTRACT);
+    for (const [width, height] of [
+      [390, 844],
+      [844, 390],
+      [1024, 1024],
+      [1440, 900],
+      [2560, 1080]
+    ] as const) {
+      expect(artifact.calculate(width, height, artifact.metadata)).toEqual(
+        calculateWorldPlateTransform(width, height, WORLD_ARTWORK_CONTRACT)
+      );
+    }
+    expect(artifact.calculate(0, 900, artifact.metadata)).toBeNull();
+    expect(moduleSource).toContain("world_geometry_coordinator_destroyed");
+    expect(moduleSource).toContain("data-world-plate");
+    expect(moduleSource).toContain("measurementsReceived");
+    expect(moduleSource).not.toContain("drawFullWidthGameplayRoute");
   });
 });

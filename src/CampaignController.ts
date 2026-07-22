@@ -106,6 +106,7 @@ export class CampaignController {
   private readonly audio: CampaignAudio;
   private readonly assetLoader: AssetBundleLoader;
   private game: RunnerGame | null = null;
+  private detachGameGeometry: (() => void) | null = null;
   private lastSnapshot: GameSnapshot | null = null;
   private lastTrustCorridor = false;
   private lastStorySegmentId = "";
@@ -185,8 +186,7 @@ export class CampaignController {
     if (this.destroyed) return;
     this.destroyed = true;
     this.startToken += 1;
-    this.game?.destroy();
-    this.game = null;
+    this.destroyGame();
     this.shell.destroy();
     void this.audio.destroy();
   }
@@ -207,8 +207,7 @@ export class CampaignController {
       : request;
     this.pendingStart = safeRequest;
     const token = ++this.startToken;
-    this.game?.destroy();
-    this.game = null;
+    this.destroyGame();
     this.lastSnapshot = null;
     this.lastTrustCorridor = false;
     this.lastStorySegmentId = "";
@@ -258,12 +257,15 @@ export class CampaignController {
           ]
         }
       });
-      this.shell.showGame(safeRequest.mode);
-      this.game.start("pointer");
-      this.tracker.track("game_started", { mode: safeRequest.mode });
+      const game = this.game;
+      this.detachGameGeometry = this.shell.attachGameGeometry(game, () => {
+        if (this.destroyed || token !== this.startToken || this.game !== game) return;
+        this.shell.showGame(safeRequest.mode);
+        game.start("pointer");
+        this.tracker.track("game_started", { mode: safeRequest.mode });
+      });
     } catch (error: unknown) {
-      this.game?.destroy();
-      this.game = null;
+      this.destroyGame();
       this.tracker.loadFailed(
         error instanceof AssetBundleLoadError ? error.code : "runtime_init_failed"
       );
@@ -380,7 +382,7 @@ export class CampaignController {
   }
 
   public qaReportText(): string {
-    return this.qaReport.text();
+    return this.qaReport.text(this.shell.geometryDiagnostics);
   }
 
   private handleStoryUpdate(update: StoryTimelineSnapshot): void {
@@ -483,10 +485,16 @@ export class CampaignController {
 
   private returnToMenu(): void {
     this.startToken += 1;
-    this.game?.destroy();
-    this.game = null;
+    this.destroyGame();
     this.audio.stop();
     this.showLanding();
+  }
+
+  private destroyGame(): void {
+    this.detachGameGeometry?.();
+    this.detachGameGeometry = null;
+    this.game?.destroy();
+    this.game = null;
   }
 
   /**

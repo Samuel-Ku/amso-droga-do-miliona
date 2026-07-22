@@ -4,6 +4,7 @@ import { SHIELD_BREAK_SECONDS } from "../src/game/courier-presentation";
 import { createRunnerModel } from "../src/game/physics";
 import { WarehouseRenderer } from "../src/game/renderer";
 import type { RenderScene } from "../src/game/types";
+import { renderWorld } from "./helpers/render-world";
 
 interface ShieldRenderTrace {
   readonly alphas: readonly number[];
@@ -104,7 +105,7 @@ function renderShieldTrace(
     }
   }) as unknown as CanvasRenderingContext2D;
 
-  new WarehouseRenderer().render(context, 960, 540, createShieldScene(kind, overrides));
+  renderWorld(new WarehouseRenderer(), context, 960, 540, createShieldScene(kind, overrides));
   return {
     alphas,
     colors: colors.filter((color) => color.includes("244,113,0") || color.includes("235,50,164")),

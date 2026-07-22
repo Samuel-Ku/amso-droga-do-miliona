@@ -6,6 +6,7 @@ import {
 } from "../src/game/courier-brand";
 import { createRunnerModel } from "../src/game/physics";
 import { WarehouseRenderer } from "../src/game/renderer";
+import { renderWorld } from "./helpers/render-world";
 
 describe("AMSO courier artwork", () => {
   it("uses the approved courier palette with an orange belt", () => {
@@ -86,11 +87,11 @@ describe("AMSO courier artwork", () => {
       activePowerUps: []
     };
 
-    renderer.render(context, 960, 540, scene);
+    renderWorld(renderer, context, 960, 540, scene);
     runner.grounded = false;
-    renderer.render(context, 960, 540, scene);
+    renderWorld(renderer, context, 960, 540, scene);
     runner.crouching = true;
-    renderer.render(context, 960, 540, scene);
+    renderWorld(renderer, context, 960, 540, scene);
 
     expect(fill.mock.calls.length).toBeGreaterThanOrEqual(3);
   });

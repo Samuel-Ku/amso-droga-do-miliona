@@ -2,6 +2,11 @@ import "../styles/campaign.css";
 import { AMSO_LOGO_DATA_URI } from "./brandLogo";
 import type { ControlMethod, GameSnapshot } from "../game/contracts";
 import { WorldVisualLayer } from "../visuals/WorldVisualLayer";
+import {
+  WorldGeometryCoordinator,
+  type GeometryDiagnostics,
+  type WorldGeometryConsumer
+} from "../visuals/WorldGeometryCoordinator";
 import { sceneVisualState } from "../visuals/scene-manifest";
 import { milestoneLayoutForViewport } from "./milestone-layout";
 import {
@@ -469,6 +474,7 @@ export class CampaignShell {
   private readonly root: HTMLElement;
   private readonly stage: HTMLElement;
   private readonly worldVisualLayer: WorldVisualLayer;
+  private readonly worldGeometryCoordinator: WorldGeometryCoordinator;
   private readonly landingScreen: HTMLElement;
   private readonly landingActions: HTMLElement;
   private readonly orientationPrompt: HTMLElement;
@@ -796,6 +802,10 @@ export class CampaignShell {
     this.stage = requiredElement(this.root, "[data-campaign-stage]");
     this.worldVisualLayer = new WorldVisualLayer(
       requiredElement(this.root, "[data-campaign-world-visual]")
+    );
+    this.worldGeometryCoordinator = new WorldGeometryCoordinator(
+      this.stage,
+      this.worldVisualLayer
     );
     this.canvas = requiredElement<HTMLCanvasElement>(this.root, "[data-campaign-canvas]");
     this.landingScreen = requiredElement(this.root, "[data-campaign-landing]");
@@ -1270,9 +1280,18 @@ export class CampaignShell {
     if (!this.destroyed) this.liveRegion.textContent = message;
   }
 
+  public attachGameGeometry(game: WorldGeometryConsumer, onReady?: () => void): () => void {
+    return this.worldGeometryCoordinator.attachGame(game, onReady);
+  }
+
+  public get geometryDiagnostics(): Readonly<GeometryDiagnostics> {
+    return this.worldGeometryCoordinator.diagnostics;
+  }
+
   public destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.worldGeometryCoordinator.destroy();
     if (this.orientationDebounceTimer !== undefined) {
       window.clearTimeout(this.orientationDebounceTimer);
     }

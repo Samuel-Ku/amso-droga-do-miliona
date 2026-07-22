@@ -1,10 +1,6 @@
 import routeData from "./world-route-data.json";
 
 export const WORLD_ROUTE_Y = routeData.y;
-export const WORLD_PLATE_TOP_Y = Math.max(
-  0,
-  (routeData.height - routeData.width * routeData.plateHeight / routeData.plateWidth) / 2
-);
 export const WORLD_ROUTE_BASE_OFFSET_Y = routeData.baseOffsetY;
 export const WORLD_ROUTE_BASE_WIDTH = routeData.baseWidth;
 export const WORLD_ROUTE_ACCENT_WIDTH = routeData.accentWidth;

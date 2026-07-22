@@ -11,6 +11,10 @@ import {
 } from "../src/game/story-timeline";
 import type { StoryConfig } from "../src/shared/types";
 import type { PackageModel } from "../src/game/types";
+import {
+  WORLD_ARTWORK_CONTRACT,
+  calculateWorldPlateTransform
+} from "../src/visuals/world-plate-transform";
 
 function createGameHarness(
   mode: "story" | "challenge",
@@ -66,11 +70,10 @@ function createGameHarness(
   const canvas = {
     width: 960,
     height: 540,
-    clientWidth: 960,
-    clientHeight: 540,
+    style: { width: "", height: "" },
     ownerDocument: documentMock,
     getContext: () => context,
-    getBoundingClientRect: () => ({ width: 960, height: 540 })
+    getBoundingClientRect: () => { throw new Error("gameplay_dom_read"); }
   } as unknown as HTMLCanvasElement;
   const config = parseRunnerConfig(productionConfig);
   if (!config) throw new Error("production config should parse");
@@ -108,6 +111,10 @@ function createGameHarness(
       challenge: config.challenge,
       awardStoryCompletionBonus
     }
+  );
+  game.applyGeometry(
+    calculateWorldPlateTransform(960, 540, WORLD_ARTWORK_CONTRACT)!,
+    { width: 960, height: 540, dpr: 1 }
   );
   let jumpedObstacle: object | null = null;
   const avoidObstacles = (): void => {

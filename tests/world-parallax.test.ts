@@ -67,6 +67,19 @@ describe("mobile-safe world assets", () => {
     images[1]!.dispatchEvent(new Event("error"));
     await expect(failed).rejects.toThrow("world_asset_decode_failed");
   });
+
+  it("retains every decoded world for the complete session", async () => {
+    const { store, images } = imageHarness();
+    const paths = Array.from({ length: 7 }, (_, index) => `world-${index + 1}.webp`);
+    for (const [index, path] of paths.entries()) {
+      const loading = store.load(path);
+      images[index]!.dispatchEvent(new Event("load"));
+      await loading;
+    }
+
+    await store.load(paths[0]!);
+    expect(images).toHaveLength(7);
+  });
 });
 
 describe("edge-to-edge gameplay background", () => {
@@ -157,23 +170,7 @@ describe("edge-to-edge gameplay background", () => {
     const { store, images } = imageHarness();
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host, store);
-    const panelDraws = new Map<HTMLCanvasElement, ReturnType<typeof vi.fn>>();
-    const drawPositions: string[] = [];
-    host.querySelectorAll<HTMLCanvasElement>("[data-world-panel]").forEach((panel) => {
-      const drawImage = vi.fn();
-      panelDraws.set(panel, drawImage);
-      Object.defineProperty(panel, "getContext", {
-        value: () => ({
-          clearRect: vi.fn(),
-          drawImage: (...args: unknown[]) => {
-            drawPositions.push(panel.style.transform);
-            drawImage(...args);
-          }
-        })
-      });
-    });
-    const totalDraws = (): number => [...panelDraws.values()]
-      .reduce((total, drawImage) => total + drawImage.mock.calls.length, 0);
+    const panels = [...host.querySelectorAll<HTMLImageElement>("[data-world-panel]")];
 
     layer.show({
       worldId: "first-mile",
@@ -195,14 +192,16 @@ describe("edge-to-edge gameplay background", () => {
     expect(qualityImage).toBeDefined();
     qualityImage!.dispatchEvent(new Event("load"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
-    const drawsBeforeSeam = totalDraws();
+    expect(panels.filter(({ dataset }) => dataset.assetPath?.includes("world-03")))
+      .toHaveLength(0);
 
     layer.setParallaxDistance(600, true);
-    expect(totalDraws()).toBe(drawsBeforeSeam);
+    expect(panels.filter(({ dataset }) => dataset.assetPath?.includes("world-03")))
+      .toHaveLength(0);
 
     layer.setParallaxDistance(961, true);
-    expect(totalDraws()).toBe(drawsBeforeSeam + 1);
-    expect(drawPositions.at(-1)).toBe("translate3d(99.89583333333333%, 0, 0)");
+    const qualityPanel = panels.find(({ dataset }) => dataset.assetPath?.includes("world-03"));
+    expect(qualityPanel?.style.transform).toBe("translate3d(99.89583333333333%, 0, 0)");
   });
 
   it("resynchronizes skipped cycles and distance resets without an animated swap", () => {
@@ -236,12 +235,6 @@ describe("edge-to-edge gameplay background", () => {
     const { store, images } = imageHarness();
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host, store);
-    const drawImage = vi.fn();
-    host.querySelectorAll<HTMLCanvasElement>("[data-world-panel]").forEach((panel) => {
-      Object.defineProperty(panel, "getContext", {
-        value: () => ({ clearRect: vi.fn(), drawImage })
-      });
-    });
     const showOffscreen = (
       worldId: WorldVisualSelection["worldId"],
       stateId: string
@@ -266,14 +259,15 @@ describe("edge-to-edge gameplay background", () => {
     expect(clientImage).toBeDefined();
     clientImage!.dispatchEvent(new Event("load"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
-    const callsBeforeCommit = drawImage.mock.calls.length;
 
     layer.setParallaxDistance(1_921, true);
-    expect(drawImage).toHaveBeenCalledTimes(callsBeforeCommit + 1);
-    expect(drawImage.mock.calls.at(-1)?.[0]).toBe(qualityImage);
+    expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
+      ?.dataset.assetPath).toContain("world-03-quality-service");
 
     layer.setParallaxDistance(2_881, true);
-    expect(drawImage.mock.calls.at(-1)?.[0]).toBe(clientImage);
+    expect([...host.querySelectorAll<HTMLImageElement>("[data-world-panel]")]
+      .some(({ dataset }) => dataset.assetPath?.includes("world-04-client-paths")))
+      .toBe(true);
   });
 
   it("preloads the following world only after the pending world is committed", async () => {
@@ -299,12 +293,6 @@ describe("edge-to-edge gameplay background", () => {
     const { store, images } = imageHarness();
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host, store);
-    const drawImage = vi.fn();
-    host.querySelectorAll<HTMLCanvasElement>("[data-world-panel]").forEach((panel) => {
-      Object.defineProperty(panel, "getContext", {
-        value: () => ({ clearRect: vi.fn(), drawImage })
-      });
-    });
     layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "story" });
     images[0]!.dispatchEvent(new Event("load"));
     await Promise.resolve();
@@ -331,9 +319,11 @@ describe("edge-to-edge gameplay background", () => {
       "translate3d(-25%, 0, 0)",
       "translate3d(75%, 0, 0)"
     ]);
-    expect(drawImage).toHaveBeenCalledTimes(2);
+    expect(panels.every(({ dataset }) => dataset.assetPath?.includes("world-01")))
+      .toBe(true);
     layer.setParallaxDistance(960, true);
-    expect(drawImage).toHaveBeenCalledTimes(5);
+    expect(panels.every(({ dataset }) => dataset.assetPath?.includes("world-02")))
+      .toBe(true);
     expect(host.dataset.assetState).toBe("loaded");
     vi.useRealTimers();
   });

@@ -25,10 +25,11 @@ import {
   WORLD_ROUTE_BASE_OFFSET_Y,
   WORLD_ROUTE_BASE_WIDTH,
   WORLD_ROUTE_GRADIENT_STOPS,
-  WORLD_ROUTE_Y,
-  WORLD_PLATE_TOP_Y
+  WORLD_ROUTE_Y
 } from "../visuals/world-route";
 import { RunnerArtwork } from "./runner-artwork";
+import type { WorldGeometryViewport } from "../visuals/WorldGeometryCoordinator";
+import type { WorldPlateTransform } from "../visuals/world-plate-transform";
 
 const COLORS = {
   ink: "#171717",
@@ -1539,41 +1540,6 @@ function drawGameplayRoute(context: CanvasRenderingContext2D): void {
  * aspect ratio.  Called *before* the world-space clip in render(), inside
  * the translate/scale transform — all coordinates are in world space.
  */
-function drawFullWidthGameplayRoute(
-  context: CanvasRenderingContext2D,
-  canvasWidth: number,
-  offsetX: number,
-  scale: number
-): void {
-  context.save();
-  context.lineCap = "round";
-
-  const leftX = -offsetX / scale;
-  const rightX = (canvasWidth - offsetX) / scale;
-  const baseY = WORLD_ROUTE_Y + WORLD_ROUTE_BASE_OFFSET_Y;
-  const accentY = WORLD_ROUTE_Y;
-
-  context.strokeStyle = WORLD_ROUTE_BASE_COLOR;
-  context.lineWidth = WORLD_ROUTE_BASE_WIDTH;
-  context.beginPath();
-  context.moveTo(leftX, baseY);
-  context.lineTo(rightX, baseY);
-  context.stroke();
-
-  const routeGradient = context.createLinearGradient(leftX, 0, rightX, 0);
-  for (const { offset, color } of WORLD_ROUTE_GRADIENT_STOPS) {
-    routeGradient.addColorStop(offset, color);
-  }
-  context.strokeStyle = routeGradient;
-  context.lineWidth = WORLD_ROUTE_ACCENT_WIDTH;
-  context.beginPath();
-  context.moveTo(leftX, accentY);
-  context.lineTo(rightX, accentY);
-  context.stroke();
-
-  context.restore();
-}
-
 function effectOrigin(
   origin: EffectConfig["origin"],
   playerX: number,
@@ -1863,10 +1829,21 @@ function drawCelebrationEffects(
 }
 
 export class WarehouseRenderer {
+  private geometry: Readonly<WorldPlateTransform> | null = null;
+  private viewport: Readonly<WorldGeometryViewport> | null = null;
+
   public constructor(
     _brandArtwork: CourierBrandArtwork = DEFAULT_COURIER_BRAND_ARTWORK,
     private readonly artwork: RunnerArtwork = new RunnerArtwork()
   ) {}
+
+  public applyGeometry(
+    snapshot: Readonly<WorldPlateTransform>,
+    viewport: Readonly<WorldGeometryViewport>
+  ): void {
+    this.geometry = snapshot;
+    this.viewport = viewport;
+  }
 
   render(
     context: CanvasRenderingContext2D,
@@ -1883,26 +1860,30 @@ export class WarehouseRenderer {
       context.fillStyle = COLORS.ink;
       context.fillRect(0, 0, pixelWidth, pixelHeight);
     }
+    const geometry = this.geometry;
+    const viewport = this.viewport;
+    if (geometry === null || viewport === null) return;
 
-    const scale = Math.min(pixelWidth / WORLD_WIDTH, pixelHeight / WORLD_HEIGHT);
-    const viewportWidth = WORLD_WIDTH * scale;
-    const viewportHeight = WORLD_HEIGHT * scale;
-    const offsetX = (pixelWidth - viewportWidth) / 2;
-    const offsetY = (pixelHeight - viewportHeight) / 2;
+    context.setTransform(
+      pixelWidth / viewport.width,
+      0,
+      0,
+      pixelHeight / viewport.height,
+      0,
+      0
+    );
 
     context.save();
-    context.translate(offsetX, offsetY);
-    context.scale(scale, scale);
-
-    /* Draw the gameplay track at full canvas width *before* the world-space
-       clip so it spans edge-to-edge on every aspect ratio (not just 16:9). */
-    if (externalWorldVisual) {
-      drawFullWidthGameplayRoute(context, pixelWidth, offsetX, scale);
-    }
-
     context.beginPath();
-    context.rect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    context.rect(
+      geometry.clipRect.x,
+      geometry.clipRect.y,
+      geometry.clipRect.width,
+      geometry.clipRect.height
+    );
     context.clip();
+    context.translate(geometry.worldOffsetX, geometry.worldOffsetY);
+    context.scale(geometry.worldScale, geometry.worldScale);
     context.imageSmoothingEnabled = false;
 
     const theme = scene.mode === "challenge"
@@ -1910,7 +1891,7 @@ export class WarehouseRenderer {
       : scene.themeIndex >= 0 && scene.themeIndex < BACKGROUND_THEMES.length
         ? BACKGROUND_THEMES[scene.themeIndex]!
         : selectBackgroundTheme(scene.distancePixels, BACKGROUND.zonePixels);
-    const ceilingY = externalWorldVisual ? WORLD_PLATE_TOP_Y : 0;
+    const ceilingY = 0;
 
     if (!externalWorldVisual) {
       drawWarehouse(
@@ -1921,8 +1902,8 @@ export class WarehouseRenderer {
         theme
       );
       drawNarrativeVignette(context, scene, theme);
-      drawGameplayRoute(context);
     }
+    drawGameplayRoute(context);
     drawCelebrationEffects(context, scene);
     drawForkliftBoss(
       context,

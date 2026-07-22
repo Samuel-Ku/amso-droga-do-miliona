@@ -41,6 +41,19 @@ describe("local QA session report", () => {
       firstAttemptRate: 0,
       lastCollisionType: "box-stack"
     });
+    expect(collector.snapshot({
+      measurementsReceived: 2,
+      validMeasurements: 1,
+      transformRecalculations: 1,
+      geometryApplications: 1,
+      canvasResizes: 1
+    }).geometry).toEqual({
+      measurementsReceived: 2,
+      validMeasurements: 1,
+      transformRecalculations: 1,
+      geometryApplications: 1,
+      canvasResizes: 1
+    });
     expect(collector.snapshot().segments).toEqual([expect.objectContaining({
       segmentId: "epoch_1.first_package",
       resolvedWaves: 1,

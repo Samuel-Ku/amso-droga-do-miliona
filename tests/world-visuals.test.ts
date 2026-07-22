@@ -17,7 +17,7 @@ import {
 import { GROUND_Y } from "../src/game/constants";
 
 describe("world visual continuity", () => {
-  it("keeps every generated background and the route on one contained 16:9 plane", () => {
+  it("keeps every generated background and the route on one canonical plate", () => {
     const css = readFileSync(new URL("../src/styles/campaign.css", import.meta.url), "utf8");
     const worldLayer = readFileSync(
       new URL("../src/visuals/WorldVisualLayer.ts", import.meta.url),
@@ -25,15 +25,19 @@ describe("world visual continuity", () => {
     );
     const renderer = readFileSync(new URL("../src/game/renderer.ts", import.meta.url), "utf8");
 
-    expect(css).toContain("object-fit: cover");
-    expect(css).toMatch(/\.amso-world-visual__panel\s*\{[^}]*object-fit:\s*cover/u);
+    expect(css).not.toMatch(/\.amso-world-visual__panel\s*\{[^}]*object-fit:/u);
+    expect(css).toMatch(/\.amso-world-visual__image-stack\s*\{[^}]*transition:\s*none/u);
     expect(css).toContain("--world-position-portrait");
     expect(css).toContain("--world-position-landscape");
     expect(css).not.toContain("--world-tile-blend-width");
     expect(css).not.toMatch(/\.amso-world-visual__panel\.is-leaving\s*\{/u);
     expect(worldLayer).toContain('this.host.style.setProperty("--world-overlap", "0px")');
-    expect(worldLayer).toContain("WORLD_ROUTE_SVG");
-    expect(renderer).toContain("drawFullWidthGameplayRoute");
+    expect(worldLayer).toContain("data-world-plate");
+    expect(worldLayer).toContain("public applyGeometry(");
+    expect(worldLayer).toContain('<img class="amso-world-visual__panel"');
+    expect(worldLayer).not.toContain("context.drawImage(asset.image");
+    expect(renderer).not.toContain("drawFullWidthGameplayRoute");
+    expect(renderer).toContain("drawGameplayRoute(context)");
     expect(WORLD_ROUTE_Y).toBe(GROUND_Y);
     expect(WORLD_ROUTE_BASE_WIDTH).toBe(18);
     expect(WORLD_ROUTE_ACCENT_WIDTH).toBe(7);
@@ -44,21 +48,27 @@ describe("world visual continuity", () => {
       { offset: 1, color: "#eb32a4" }
     ]);
     expect(renderer).toContain("WORLD_ROUTE_GRADIENT_STOPS");
-    expect(renderer).toContain("createLinearGradient(leftX, 0, rightX, 0)");
+    expect(renderer).toContain("createLinearGradient(0, 0, WORLD_WIDTH, 0)");
     expect(CAMPAIGN_WORLDS.every(({ assetPath }) => assetPath.endsWith("-v2.webp")))
       .toBe(true);
   });
 
-  it("keeps the shared route on the full gameplay plane at the 390 px breakpoint", () => {
+  it("does not override canonical plate geometry at the 390 px breakpoint", () => {
     const css = readFileSync(new URL("../src/styles/campaign.css", import.meta.url), "utf8");
     const mobileRules = css.slice(css.indexOf("@media (max-width: 756px)"));
 
-    expect(mobileRules).toMatch(
-      /\[data-phase="story"\]\s+\.amso-world-visual__image-stack\s*\{[^}]*height:\s*42%/su
+    expect(mobileRules).not.toContain("height: 42%");
+  });
+
+  it("keeps system UI and the input canvas full-stage", () => {
+    const css = readFileSync(new URL("../src/styles/campaign.css", import.meta.url), "utf8");
+    expect(css).toMatch(
+      /\.amso-campaign__canvas\s*\{[^}]*inset:\s*0;[^}]*width:\s*100%;[^}]*height:\s*100%/su
     );
-    expect(mobileRules).not.toMatch(
-      /\.amso-world-visual__image-stack,\s*\n\s*\.amso-campaign__world-visual\[data-phase="story"\]\s+\.amso-world-visual__route/su
+    expect(css).toMatch(
+      /\[data-campaign-pause-screen\]\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0/su
     );
+    expect(css).toMatch(/\.amso-world-visual__image-stack\s*\{[^}]*transition:\s*none/su);
   });
 
   it("uses generated plates without the removed semantic illustration layer", () => {

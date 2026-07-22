@@ -7,6 +7,7 @@ import {
 } from "../src/game/milestone-celebration";
 import { createRunnerModel } from "../src/game/physics";
 import { WarehouseRenderer } from "../src/game/renderer";
+import { renderWorld } from "./helpers/render-world";
 import { CelebrationManager } from "../src/game/celebration-manager";
 import type { RenderScene } from "../src/game/types";
 
@@ -150,8 +151,8 @@ describe("order milestone celebrations", () => {
       set(record, key, value) { record[key] = value; return true; }
     }) as unknown as CanvasRenderingContext2D;
 
-    renderer.render(animatedContext, 960, 540, animatedScene);
-    renderer.render(reducedContext, 960, 540, reducedScene);
+    renderWorld(renderer, animatedContext, 960, 540, animatedScene);
+    renderWorld(renderer, reducedContext, 960, 540, reducedScene);
 
     expect(rotate).toHaveBeenCalled();
     expect(reducedRotate).not.toHaveBeenCalled();

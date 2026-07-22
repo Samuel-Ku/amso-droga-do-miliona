@@ -1,6 +1,6 @@
 import { collidesWithObstacle, collectsPackage } from "./collision";
 import { BossDirector } from "./boss";
-import { BOSS, CANVAS_LIMITS, GAMEPLAY, GROUND_Y, WORLD_HEIGHT, WORLD_WIDTH } from "./constants";
+import { BOSS, CANVAS_LIMITS, GAMEPLAY, GROUND_Y, WORLD_WIDTH } from "./constants";
 import type {
   ControlMethod,
   GameResult,
@@ -93,6 +93,11 @@ import {
   SHIELD_APPEAR_SECONDS,
   SHIELD_BREAK_SECONDS
 } from "./courier-presentation";
+import type {
+  WorldGeometryConsumer,
+  WorldGeometryViewport
+} from "../visuals/WorldGeometryCoordinator";
+import type { WorldPlateTransform } from "../visuals/world-plate-transform";
 
 const CUTSCENE_SECONDS = 2.6;
 export const STORY_FINALE_CELEBRATION_SECONDS = 3.5;
@@ -126,7 +131,7 @@ function round(value: number, precision: number): number {
   return Math.round(value * factor) / factor;
 }
 
-export class RunnerGame implements RunnerGameApi {
+export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
   private _state: GameState = "ready";
   private readonly context: CanvasRenderingContext2D;
   private readonly renderer = new WarehouseRenderer();
@@ -250,7 +255,7 @@ export class RunnerGame implements RunnerGameApi {
   private reducedMotion: boolean;
   private bufferWidth = 1;
   private bufferHeight = 1;
-  private resizeObserver: ResizeObserver | null = null;
+  private geometryAvailable = false;
   private motionQuery: MediaQueryList | null = null;
 
   constructor(
@@ -262,6 +267,8 @@ export class RunnerGame implements RunnerGameApi {
     if (!context) throw new Error("RunnerGame requires a Canvas 2D context.");
 
     this.context = context;
+    this.bufferWidth = canvas.width;
+    this.bufferHeight = canvas.height;
     this.callbacks = callbacks;
     this.document = canvas.ownerDocument;
     this.view = this.document.defaultView;
@@ -296,12 +303,45 @@ export class RunnerGame implements RunnerGameApi {
 
     this.resetModels();
     this.installLifecycleListeners();
-    this.resizeCanvas();
     this.render();
   }
 
   get state(): GameState {
     return this._state;
+  }
+
+  public applyGeometry(
+    snapshot: Readonly<WorldPlateTransform>,
+    viewport: Readonly<WorldGeometryViewport>
+  ): boolean {
+    if (this._state === "destroyed") return false;
+    const buffer = calculateCanvasBuffer(
+      viewport.width,
+      viewport.height,
+      viewport.dpr,
+      CANVAS_LIMITS.maxPixels,
+      CANVAS_LIMITS.maxDimension
+    );
+    const resized = this.bufferWidth !== buffer.width || this.bufferHeight !== buffer.height;
+    this.bufferWidth = buffer.width;
+    this.bufferHeight = buffer.height;
+    this.canvas.style.width = `${viewport.width}px`;
+    this.canvas.style.height = `${viewport.height}px`;
+    this.applyCanvasBuffer();
+    this.renderer.applyGeometry(snapshot, viewport);
+    this.celebrationManager.setScreenWidth(viewport.width);
+    this.geometryAvailable = true;
+    this.accumulator = 0;
+    this.lastFrameTime = null;
+    this.render();
+    return resized;
+  }
+
+  public suspendForInvalidGeometry(): void {
+    if (this._state === "destroyed") return;
+    this.geometryAvailable = false;
+    this.accumulator = 0;
+    this.lastFrameTime = null;
   }
 
   start(controlMethod: ControlMethod = "keyboard"): void {
@@ -422,9 +462,6 @@ export class RunnerGame implements RunnerGameApi {
     if (this._state === "destroyed") return;
     this.cancelFrame();
     this.celebrationManager.reset();
-    this.resizeObserver?.disconnect();
-    this.resizeObserver = null;
-    this.view?.removeEventListener("resize", this.handleResize);
     this.view?.removeEventListener("blur", this.handleWindowBlur);
     this.document.removeEventListener("visibilitychange", this.handleVisibilityChange);
     this.motionQuery?.removeEventListener?.("change", this.handleMotionPreferenceChange);
@@ -574,6 +611,11 @@ export class RunnerGame implements RunnerGameApi {
   private readonly handleFrame = (timestamp: number): void => {
     this.frameId = null;
     if (this._state !== "running") return;
+    if (!this.geometryAvailable) {
+      this.lastFrameTime = null;
+      this.scheduleFrame();
+      return;
+    }
 
     if (this.lastFrameTime === null) {
       this.lastFrameTime = timestamp;
@@ -2111,8 +2153,7 @@ export class RunnerGame implements RunnerGameApi {
   }
 
   private render(): void {
-    if (this._state === "destroyed") return;
-    this.applyCanvasBuffer();
+    if (this._state === "destroyed" || !this.geometryAvailable) return;
     const worldVisual = this.currentWorldVisual();
     const scene: RenderScene = {
       state: this._state,
@@ -2161,39 +2202,6 @@ export class RunnerGame implements RunnerGameApi {
   private installLifecycleListeners(): void {
     this.document.addEventListener("visibilitychange", this.handleVisibilityChange);
     this.view?.addEventListener("blur", this.handleWindowBlur);
-
-    const ResizeObserverConstructor = globalThis.ResizeObserver;
-    if (typeof ResizeObserverConstructor === "function") {
-      const observer = new ResizeObserverConstructor(this.handleResize);
-      this.resizeObserver = observer;
-      observer.observe(this.canvas);
-    } else {
-      this.view?.addEventListener("resize", this.handleResize);
-    }
-  }
-
-  private readonly handleResize = (): void => {
-    if (this._state === "destroyed") return;
-    this.resizeCanvas();
-    this.celebrationManager.setScreenWidth(this.canvas.clientWidth || this.canvas.width || 960);
-    this.render();
-  };
-
-  private resizeCanvas(): void {
-    const bounds = this.canvas.getBoundingClientRect();
-    const cssWidth = bounds.width || this.canvas.clientWidth || this.canvas.width || WORLD_WIDTH;
-    const cssHeight = bounds.height || this.canvas.clientHeight || this.canvas.height || WORLD_HEIGHT;
-    const requestedDpr = this.view?.devicePixelRatio ?? 1;
-    const buffer = calculateCanvasBuffer(
-      cssWidth,
-      cssHeight,
-      requestedDpr,
-      CANVAS_LIMITS.maxPixels,
-      CANVAS_LIMITS.maxDimension
-    );
-    this.bufferWidth = buffer.width;
-    this.bufferHeight = buffer.height;
-    this.applyCanvasBuffer();
   }
 
   private applyCanvasBuffer(): void {

@@ -148,4 +148,33 @@ describe("mobile campaign shell", () => {
     shell.destroy();
     delete (HTMLElement.prototype as Partial<HTMLElement>).requestFullscreen;
   });
+
+  it("accepts gameplay input from the full canvas but blocks it under system UI", () => {
+    const onJump = vi.fn();
+    const shell = createShell({ onJump });
+    shell.showGame("challenge");
+    const canvas = document.querySelector<HTMLCanvasElement>("[data-campaign-canvas]")!;
+
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true,
+      button: 0,
+      isPrimary: true,
+      clientX: 2,
+      clientY: 2,
+      pointerType: "mouse"
+    }));
+    expect(onJump).toHaveBeenCalledWith("pointer");
+
+    shell.setPaused(true);
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true,
+      button: 0,
+      isPrimary: true,
+      clientX: 2,
+      clientY: 2,
+      pointerType: "mouse"
+    }));
+    expect(onJump).toHaveBeenCalledTimes(1);
+    shell.destroy();
+  });
 });

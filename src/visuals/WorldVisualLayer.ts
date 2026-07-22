@@ -6,8 +6,12 @@ import {
   type CampaignWorldId
 } from "./scene-manifest";
 import { WORLD_ROUTE_SVG } from "./world-route";
-import { WORLD_WIDTH } from "../game/constants";
+import { WORLD_HEIGHT, WORLD_WIDTH } from "../game/constants";
 import { reducedMotionBackgroundTravelPixels } from "./background-parallax";
+import {
+  WORLD_ARTWORK_CONTRACT,
+  type WorldPlateTransform
+} from "./world-plate-transform";
 
 export type WorldVisualPhase = "landing" | "story" | "game" | "result";
 export type WorldTransitionMode = "story-linked" | "offscreen";
@@ -36,7 +40,7 @@ export interface DecodedWorldAsset {
   readonly image: HTMLImageElement;
 }
 
-/** One decoded image object per world, with one bounded retry and a two-world window. */
+/** One decoded image object per world, retained for the complete campaign session. */
 export class WorldAssetStore {
   private readonly entries = new Map<string, WorldAssetEntry>();
 
@@ -77,11 +81,6 @@ export class WorldAssetStore {
       startAttempt();
     });
     this.entries.set(path, { path, image, promise });
-    while (this.entries.size > 2) {
-      const oldest = this.entries.keys().next().value as string | undefined;
-      if (oldest === undefined) break;
-      this.entries.delete(oldest);
-    }
     return promise;
   }
 }
@@ -94,7 +93,7 @@ function requiredElement<T extends Element>(root: ParentNode, selector: string):
 
 /** Two adjacent world panels share one absolute parallax phase. */
 export class WorldVisualLayer {
-  private panels: [HTMLCanvasElement, HTMLCanvasElement];
+  private panels: [HTMLImageElement, HTMLImageElement];
   private currentWorldId: CampaignWorldId | null = null;
   private currentStateId = "";
   private requestedAssetPath: string | null = null;
@@ -112,20 +111,38 @@ export class WorldVisualLayer {
     private readonly assets = new WorldAssetStore()
   ) {
     host.innerHTML = `
-      <div class="amso-world-visual__image-stack" aria-hidden="true">
-        <canvas class="amso-world-visual__panel" data-world-panel="current" width="1672" height="941"></canvas>
-        <canvas class="amso-world-visual__panel" data-world-panel="next" width="1672" height="941"></canvas>
+      <div class="amso-world-visual__image-stack" data-world-plate aria-hidden="true">
+        <img class="amso-world-visual__panel" data-world-panel="current" alt="" width="1780" height="941" draggable="false" />
+        <img class="amso-world-visual__panel" data-world-panel="next" alt="" width="1780" height="941" draggable="false" />
+        ${WORLD_ROUTE_SVG}
       </div>
-      ${WORLD_ROUTE_SVG}
       <div class="amso-world-visual__counter" aria-hidden="true">
         <span data-world-counter>999 970</span>
       </div>
     `;
     this.panels = [
-      requiredElement<HTMLCanvasElement>(host, '[data-world-panel="current"]'),
-      requiredElement<HTMLCanvasElement>(host, '[data-world-panel="next"]')
+      requiredElement<HTMLImageElement>(host, '[data-world-panel="current"]'),
+      requiredElement<HTMLImageElement>(host, '[data-world-panel="next"]')
     ];
     this.host.style.setProperty("--world-overlap", "0px");
+  }
+
+  public applyGeometry(snapshot: Readonly<WorldPlateTransform>): void {
+    const { x, y, width, height } = snapshot.plateRect;
+    const plate = requiredElement<HTMLElement>(this.host, "[data-world-plate]");
+    plate.style.left = `${x}px`;
+    plate.style.top = `${y}px`;
+    plate.style.width = `${width}px`;
+    plate.style.height = `${height}px`;
+    const route = requiredElement<SVGElement>(plate, ".amso-world-visual__route");
+    route.style.left = `${snapshot.worldOffsetX - x}px`;
+    route.style.top = `${snapshot.worldOffsetY - y}px`;
+    route.style.width = `${WORLD_WIDTH * snapshot.worldScale}px`;
+    route.style.height = `${WORLD_HEIGHT * snapshot.worldScale}px`;
+    this.host.style.setProperty("--plate-x", `${x}px`);
+    this.host.style.setProperty("--plate-y", `${y}px`);
+    this.host.style.setProperty("--plate-width", `${width}px`);
+    this.host.style.setProperty("--plate-height", `${height}px`);
   }
 
   public show(selection: WorldVisualSelection): CampaignSceneVisualState {
@@ -362,20 +379,17 @@ export class WorldVisualLayer {
     if (next !== undefined) void this.assets.load(next.assetPath).catch(() => undefined);
   }
 
-  private drawPanel(panel: HTMLCanvasElement, asset: DecodedWorldAsset): void {
-    const width = asset.image.naturalWidth || 1672;
-    const height = asset.image.naturalHeight || 941;
-    panel.width = width;
-    panel.height = height;
-    const context = panel.getContext("2d");
-    if (context === null) return;
-    context.clearRect(0, 0, width, height);
-    context.drawImage(asset.image, 0, 0, width, height);
+  private drawPanel(panel: HTMLImageElement, asset: DecodedWorldAsset): void {
+    panel.width = WORLD_ARTWORK_CONTRACT.artWidth;
+    panel.height = WORLD_ARTWORK_CONTRACT.artHeight;
+    panel.dataset.assetPath = asset.path;
+    panel.src = asset.path;
   }
 
   private clearPanels(): void {
     for (const panel of this.panels) {
-      panel.getContext("2d")?.clearRect(0, 0, panel.width, panel.height);
+      panel.removeAttribute("src");
+      delete panel.dataset.assetPath;
     }
   }
 }

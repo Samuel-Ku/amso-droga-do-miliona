@@ -3,6 +3,7 @@ import { CelebrationManager } from "../src/game/celebration-manager";
 import { WarehouseRenderer } from "../src/game/renderer";
 import { createRunnerModel } from "../src/game/physics";
 import type { RenderScene } from "../src/game/types";
+import { renderWorld } from "./helpers/render-world";
 
 function renderCelebration(
   threshold: number,
@@ -66,7 +67,7 @@ describe("celebration effects", () => {
   it("renders a Spark celebration without throwing", () => {
     const { context, scene } = renderCelebration(10);
     const renderer = new WarehouseRenderer();
-    expect(() => renderer.render(context, 960, 540, scene)).not.toThrow();
+    expect(() => renderWorld(renderer, context, 960, 540, scene)).not.toThrow();
   });
 
   it("renders all stages without throwing", () => {
@@ -74,7 +75,7 @@ describe("celebration effects", () => {
     for (const threshold of [10, 100, 500, 1000, 5000]) {
       for (const rm of [false, true]) {
         const { context, scene } = renderCelebration(threshold, false, rm);
-        expect(() => renderer.render(context, 960, 540, scene)).not.toThrow();
+        expect(() => renderWorld(renderer, context, 960, 540, scene)).not.toThrow();
       }
     }
   });
@@ -82,12 +83,12 @@ describe("celebration effects", () => {
   it("renders record celebration without throwing", () => {
     const { context, scene } = renderCelebration(10, true);
     const renderer = new WarehouseRenderer();
-    expect(() => renderer.render(context, 960, 540, scene)).not.toThrow();
+    expect(() => renderWorld(renderer, context, 960, 540, scene)).not.toThrow();
   });
 
   it("renders multiple effect types in a single celebration", () => {
     const { context, scene } = renderCelebration(5000); // Legendary has multi-effect phases
     const renderer = new WarehouseRenderer();
-    expect(() => renderer.render(context, 960, 540, scene)).not.toThrow();
+    expect(() => renderWorld(renderer, context, 960, 540, scene)).not.toThrow();
   });
 });

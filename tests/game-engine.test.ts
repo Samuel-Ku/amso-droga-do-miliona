@@ -6,6 +6,7 @@ import { getDifficulty, getStoryDifficulty } from "../src/game/difficulty";
 import { createRunnerModel, queueJump, stepRunnerPhysics } from "../src/game/physics";
 import { SeededRandom } from "../src/game/random";
 import { RunnerGame } from "../src/game/RunnerGame";
+import type { GameSnapshot } from "../src/game/contracts";
 import { WarehouseRenderer } from "../src/game/renderer";
 import { SEMANTIC_OBSTACLE_PRESENTATION } from "../src/game/semantic-obstacle";
 import { calculateScore, distanceInMeters, packageBonusScore } from "../src/game/scoring";
@@ -19,6 +20,11 @@ import {
 import type { SpawnWave } from "../src/game/spawning";
 import type { ObstacleModel, PackageModel } from "../src/game/types";
 import { calculateCanvasBuffer } from "../src/game/viewport";
+import { renderWorld } from "./helpers/render-world";
+import {
+  WORLD_ARTWORK_CONTRACT,
+  calculateWorldPlateTransform
+} from "../src/visuals/world-plate-transform";
 
 describe("game random and spawning", () => {
   it("produces repeatable seeded sequences", () => {
@@ -378,7 +384,7 @@ describe("difficulty and responsive canvas", () => {
     overhead.width = 76;
     overhead.height = 178;
 
-    new WarehouseRenderer().render(context, 960, 960, {
+    renderWorld(new WarehouseRenderer(), context, 960, 960, {
       state: "running",
       runner: createRunnerModel(),
       obstacles: [overhead],
@@ -403,9 +409,10 @@ describe("difficulty and responsive canvas", () => {
       }
     });
 
-    expect(translations[0]).toEqual([0, 210]);
+    expect(translations[0]?.[0]).toBe(0);
+    expect(translations[0]?.[1]).toBeCloseTo(210.067, 3);
     const leftSupport = fillRects.find(([x, , width]) => x === 412 && width === 10);
-    expect(leftSupport?.[1]).toBeCloseTo(16.247, 3);
+    expect(leftSupport?.[1]).toBe(0);
   });
 
   it("leaves pause dimming to the full-stage DOM overlay", () => {
@@ -430,7 +437,7 @@ describe("difficulty and responsive canvas", () => {
       }
     }) as unknown as CanvasRenderingContext2D;
 
-    new WarehouseRenderer().render(context, 960, 560, {
+    renderWorld(new WarehouseRenderer(), context, 960, 560, {
       state: "paused",
       runner: createRunnerModel(),
       obstacles: [],
@@ -503,7 +510,7 @@ describe("boss rendering", () => {
     parcel.x = 420;
     parcel.y = 380;
 
-    new WarehouseRenderer().render(context, 960, 540, {
+    renderWorld(new WarehouseRenderer(), context, 960, 540, {
       state: "running",
       runner: createRunnerModel(),
       obstacles,
@@ -550,7 +557,7 @@ describe("boss rendering", () => {
     parcel.x = 420;
     parcel.y = 380;
 
-    new WarehouseRenderer().render(context, 960, 540, {
+    renderWorld(new WarehouseRenderer(), context, 960, 540, {
       state: "running",
       runner: createRunnerModel(),
       obstacles: [],
@@ -600,7 +607,7 @@ describe("boss rendering", () => {
     const renderer = new WarehouseRenderer();
 
     for (const phase of ["warning", "attacking", "reward"] as const) {
-      expect(() => renderer.render(context, 960, 540, {
+      expect(() => renderWorld(renderer, context, 960, 540, {
         state: "running",
         runner: createRunnerModel(),
         obstacles: createObstaclePool(),
@@ -673,21 +680,24 @@ describe("RunnerGame lifecycle", () => {
     const canvas = {
       width: 960,
       height: 540,
-      clientWidth: 960,
-      clientHeight: 540,
+      style: { width: "", height: "" },
       ownerDocument: documentMock,
       getContext: () => context,
-      getBoundingClientRect: () => ({ width: 960, height: 540 })
+      getBoundingClientRect: () => { throw new Error("gameplay_dom_read"); }
     } as unknown as HTMLCanvasElement;
     const states: string[] = [];
-    const snapshots: number[] = [];
+    const snapshots: GameSnapshot[] = [];
     const game = new RunnerGame(
       canvas,
       {
         onStateChange: (state) => states.push(state),
-        onSnapshot: (snapshot) => snapshots.push(snapshot.score)
+        onSnapshot: (snapshot) => snapshots.push(snapshot)
       },
       { seed: 7, reducedMotion: true }
+    );
+    game.applyGeometry(
+      calculateWorldPlateTransform(960, 540, WORLD_ARTWORK_CONTRACT)!,
+      { width: 960, height: 540, dpr: 2 }
     );
 
     expect(game.state).toBe("ready");
@@ -695,6 +705,54 @@ describe("RunnerGame lifecycle", () => {
     game.start("pointer");
     expect(game.state).toBe("running");
     expect(frames.size).toBe(1);
+    const takeFrame = (timestamp: number): void => {
+      const entry = frames.entries().next().value as [number, FrameRequestCallback] | undefined;
+      if (entry === undefined) throw new Error("scheduled frame missing");
+      frames.delete(entry[0]);
+      entry[1](timestamp);
+    };
+    takeFrame(1_000);
+    const snapshotsBeforeResize = snapshots.length;
+    const runtime = game as unknown as {
+      runner: { x: number; y: number; velocityY: number };
+      obstacles: ObstacleModel[];
+      packages: PackageModel[];
+      currentEpoch: number;
+      distancePixels: number;
+      visualDistancePixels: number;
+      currentWorldVisual(): {
+        worldId: string;
+        stateId: string;
+        nextStateId: string;
+        progress: number;
+      };
+    };
+    const stateBeforeResize = structuredClone({
+      runner: runtime.runner,
+      obstacles: runtime.obstacles,
+      packages: runtime.packages,
+      currentEpoch: runtime.currentEpoch,
+      distancePixels: runtime.distancePixels,
+      visualDistancePixels: runtime.visualDistancePixels,
+      worldVisual: runtime.currentWorldVisual()
+    });
+    game.applyGeometry(
+      calculateWorldPlateTransform(844, 390, WORLD_ARTWORK_CONTRACT)!,
+      { width: 844, height: 390, dpr: 2 }
+    );
+    expect(structuredClone({
+      runner: runtime.runner,
+      obstacles: runtime.obstacles,
+      packages: runtime.packages,
+      currentEpoch: runtime.currentEpoch,
+      distancePixels: runtime.distancePixels,
+      visualDistancePixels: runtime.visualDistancePixels,
+      worldVisual: runtime.currentWorldVisual()
+    })).toEqual(stateBeforeResize);
+    takeFrame(100_000);
+    expect(snapshots).toHaveLength(snapshotsBeforeResize);
+    for (let frame = 1; frame <= 8; frame += 1) takeFrame(100_000 + frame * 1000 / 60);
+    expect(snapshots.at(-1)?.durationSeconds).toBeLessThanOrEqual(0.12);
     game.pause();
     expect(frames.size).toBe(0);
     game.resume();
