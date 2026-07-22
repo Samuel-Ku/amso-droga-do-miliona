@@ -2157,6 +2157,9 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 .amso-campaign__story-scene-body {
   width: 100%;
   margin-inline: 0;
+  padding: clamp(8px, 1.2vmin, 14px) clamp(10px, 1.4vmin, 16px);
+  border: 2px solid rgb(235 50 164 / 58%);
+  border-radius: clamp(10px, 1.2vw, 16px);
   color: #302e2b;
   font-size: clamp(1.02rem, 0.62vw + 0.78rem, 1.25rem);
   line-height: 1.55;
