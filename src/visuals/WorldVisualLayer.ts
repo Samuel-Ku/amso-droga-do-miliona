@@ -382,9 +382,13 @@ export class WorldVisualLayer {
             this.resolveCurrentPresentation = null;
             this.rejectCurrentPresentation = null;
           } else if (this.currentAsset === decodedAsset) {
-            this.rejectCurrentPresentation?.(new Error("world_panel_decode_failed"));
-            this.resolveCurrentPresentation = null;
-            this.rejectCurrentPresentation = null;
+            if (immediateStoryPresentation) {
+              this.presentImmediateFallback();
+            } else {
+              this.rejectCurrentPresentation?.(new Error("world_panel_decode_failed"));
+              this.resolveCurrentPresentation = null;
+              this.rejectCurrentPresentation = null;
+            }
           }
         });
         this.prepareNextWorld(decodedAsset.path);
@@ -420,18 +424,17 @@ export class WorldVisualLayer {
       }
       this.clearPendingTransition();
       if (this.currentAsset === null || immediateStoryPresentation) {
-        this.currentAsset = null;
-        this.requestedAssetPath = null;
-        this.clearPanels();
-        if (immediateStoryPresentation) this.setParallaxDistance(0, false);
-        this.host.dataset.assetState = "fallback";
         if (immediateStoryPresentation) {
-          this.resolveCurrentPresentation?.();
+          this.presentImmediateFallback();
         } else {
+          this.currentAsset = null;
+          this.requestedAssetPath = null;
+          this.clearPanels();
+          this.host.dataset.assetState = "fallback";
           this.rejectCurrentPresentation?.(new Error("world_asset_decode_failed"));
+          this.resolveCurrentPresentation = null;
+          this.rejectCurrentPresentation = null;
         }
-        this.resolveCurrentPresentation = null;
-        this.rejectCurrentPresentation = null;
       } else {
         this.requestedAssetPath = this.currentAsset.path;
         this.host.dataset.assetState = "loaded";
@@ -519,6 +522,24 @@ export class WorldVisualLayer {
     panel.dataset.worldId = worldId;
     panel.dataset.assetFallback = "true";
     panel.hidden = false;
+  }
+
+  private presentImmediateFallback(): void {
+    this.currentAsset = null;
+    this.requestedAssetPath = null;
+    this.clearPendingTransition();
+    const worldId = this.currentWorldId;
+    if (worldId !== null) {
+      this.assignFallback(this.panels[0], worldId);
+      this.assignFallback(this.panels[1], worldId);
+    } else {
+      this.clearPanels();
+    }
+    this.setParallaxDistance(0, false);
+    this.host.dataset.assetState = "fallback";
+    this.resolveCurrentPresentation?.();
+    this.resolveCurrentPresentation = null;
+    this.rejectCurrentPresentation = null;
   }
 
   private assignDecodedPanel(panel: HTMLImageElement, asset: DecodedWorldAsset): number {

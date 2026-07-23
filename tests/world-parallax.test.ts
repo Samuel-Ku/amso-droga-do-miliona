@@ -495,4 +495,38 @@ describe("edge-to-edge gameplay background", () => {
     images[1]!.dispatchEvent(new Event("load"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
   });
+
+  it("treats a story fallback as a ready first frame", async () => {
+    const { store, images } = imageHarness();
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+
+    layer.show({ worldId: "order-process", stateId: "epoch_1.challenge", phase: "story" });
+    const ready = layer.waitForCurrentPresentation();
+    images[0]!.dispatchEvent(new Event("error"));
+    await vi.waitFor(() => expect(images[0]!.decode).toHaveBeenCalledTimes(2));
+    images[0]!.dispatchEvent(new Event("error"));
+    await vi.waitFor(() => expect(images[0]!.decode).toHaveBeenCalledTimes(3));
+    images[0]!.dispatchEvent(new Event("error"));
+
+    await expect(ready).resolves.toBeUndefined();
+    expect(host.dataset.assetState).toBe("fallback");
+    expect(host.dataset.worldId).toBe("order-process");
+  });
+
+  it("falls back when a decoded story asset cannot be presented by its panels", async () => {
+    vi.spyOn(HTMLImageElement.prototype, "decode")
+      .mockRejectedValue(new Error("world_panel_decode_failed"));
+    const { store, images } = imageHarness();
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+
+    layer.show({ worldId: "order-process", stateId: "epoch_1.challenge", phase: "story" });
+    const ready = layer.waitForCurrentPresentation();
+    images[0]!.dispatchEvent(new Event("load"));
+
+    await expect(ready).resolves.toBeUndefined();
+    expect(host.dataset.assetState).toBe("fallback");
+    expect(host.dataset.worldId).toBe("order-process");
+  });
 });

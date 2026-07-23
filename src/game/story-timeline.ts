@@ -190,7 +190,7 @@ export class StoryTimeline {
       ? -1
       : this.story.scenes.findIndex(({ id }) => id === scene.id);
     const trustCorridor = this.state === "scene" || this.state === "reframe";
-    const activePlay = this.state === "play" || this.state === "countdown";
+    const activePlay = this.state === "play";
     const safety: StorySafetySnapshot = completed
       ? { kind: "completed_safe", hazardsEnabled: false, pickupsEnabled: false, controlsEnabled: false }
       : activePlay

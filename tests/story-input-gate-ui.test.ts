@@ -113,13 +113,14 @@ describe("story input safety gate", () => {
     document.body.replaceChildren();
   });
 
-  it("enables Dalej immediately without carrying a held gameplay Space into the story", () => {
+  it("enables Dalej after world readiness without carrying a held gameplay Space into the story", async () => {
     const { shell, onStoryContinue } = createShell();
     shell.showGame("story");
     document.dispatchEvent(new KeyboardEvent("keydown", {
       code: "Space", key: " ", bubbles: true
     }));
     const button = showScene(shell);
+    await shell.waitForWorldPresentation();
 
     expect(button.disabled).toBe(false);
     document.dispatchEvent(new KeyboardEvent("keydown", {
@@ -129,6 +130,38 @@ describe("story input safety gate", () => {
 
     button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(onStoryContinue).toHaveBeenCalledTimes(1);
+    expect(onStoryContinue).toHaveBeenCalledWith("story.client");
+    shell.destroy();
+  });
+
+  it("does not expose the story continuation before the new world is ready", async () => {
+    let resolveFirstDecode: () => void = () => {
+      throw new Error("first decode was not requested");
+    };
+    let firstDecode = true;
+    vi.spyOn(HTMLImageElement.prototype, "decode").mockImplementation(() => {
+      if (!firstDecode) return Promise.resolve();
+      firstDecode = false;
+      return new Promise<void>((resolve) => { resolveFirstDecode = resolve; });
+    });
+    const { shell, onStoryContinue } = createShell();
+    const button = showScene(shell);
+    const presentation = document.querySelector<HTMLElement>(
+      "[data-campaign-story-presentation]"
+    );
+
+    expect(button.disabled).toBe(true);
+    expect(presentation?.hidden).toBe(true);
+    button.click();
+    expect(onStoryContinue).not.toHaveBeenCalled();
+
+    resolveFirstDecode();
+    await shell.waitForWorldPresentation();
+    await Promise.resolve();
+
+    expect(button.disabled).toBe(false);
+    expect(presentation?.hidden).toBe(false);
+    button.click();
     expect(onStoryContinue).toHaveBeenCalledWith("story.client");
     shell.destroy();
   });
@@ -220,7 +253,7 @@ describe("story input safety gate", () => {
     shell.destroy();
   });
 
-  it("holds an authored story frame until the countdown starts the visual clock", () => {
+  it("holds the new world's first frame through countdown and resumes from its local origin", () => {
     const { shell } = createShell();
     const world = document.querySelector<HTMLElement>("[data-campaign-world-visual]");
     const panels = [...document.querySelectorAll<HTMLElement>("[data-world-panel]")];
@@ -249,22 +282,33 @@ describe("story input safety gate", () => {
 
     shell.showStoryCountdown(3);
     shell.updateVisualFrame(600, 0, false);
-    expect(world?.dataset.motionState).toBe("moving");
+    expect(world?.dataset.motionState).toBe("reading");
     expect(panels.map(({ style }) => style.transform)).toEqual([
-      "translate3d(-62.5%, 0, 0)",
-      "translate3d(37.5%, 0, 0)",
+      "translate3d(0%, 0, 0)",
+      "translate3d(100%, 0, 0)",
     ]);
 
     shell.showStoryCountdown(2);
-    shell.updateVisualFrame(650, 0, false);
+    shell.updateVisualFrame(600, 0, false);
     shell.showStoryCountdown(1);
-    shell.updateVisualFrame(700, 0, false);
+    shell.updateVisualFrame(600, 0, false);
+    expect(panels.map(({ style }) => style.transform)).toEqual([
+      "translate3d(0%, 0, 0)",
+      "translate3d(100%, 0, 0)",
+    ]);
+
     shell.returnToGame();
-    shell.updateVisualFrame(750, 0, false);
+    shell.updateVisualFrame(600, 0, false);
     expect(world?.dataset.motionState).toBe("moving");
     expect(panels.map(({ style }) => style.transform)).toEqual([
-      "translate3d(-78.125%, 0, 0)",
-      "translate3d(21.875%, 0, 0)",
+      "translate3d(0%, 0, 0)",
+      "translate3d(100%, 0, 0)",
+    ]);
+
+    shell.updateVisualFrame(650, 0, false);
+    expect(panels.map(({ style }) => style.transform)).toEqual([
+      "translate3d(-5.208333333333334%, 0, 0)",
+      "translate3d(94.79166666666667%, 0, 0)",
     ]);
     shell.destroy();
   });

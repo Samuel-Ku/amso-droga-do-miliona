@@ -132,7 +132,7 @@ describe("canonical game instructions", () => {
     }
   });
 
-  it("renders the resolved introduction and continues the authored scene", () => {
+  it("renders the resolved introduction and continues the authored scene", async () => {
     const parsed = parseRunnerConfig(productionConfig);
     if (parsed === null) throw new Error("Production config should parse");
     const firstScene = parsed.story.scenes[0];
@@ -160,6 +160,7 @@ describe("canonical game instructions", () => {
     )).toEqual(GAME_INTRODUCTION_COPY.body);
     const button = document.querySelector<HTMLButtonElement>("[data-campaign-story-continue]");
     expect(button?.textContent).toBe("Rozpocznij historię");
+    await shell.waitForWorldPresentation();
     button?.click();
     expect(onStoryContinue).toHaveBeenCalledExactlyOnceWith(firstScene.id);
 

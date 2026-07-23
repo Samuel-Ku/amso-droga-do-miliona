@@ -511,7 +511,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       return;
     }
     if (this._state !== "running") return;
-    if (this.storyTimeline?.snapshot.trustCorridor) return;
+    if (!(this.storyTimeline?.snapshot.controlsEnabled ?? true)) return;
     if (this.qaScenarioActive) return;
     this.controlMethod = controlMethod;
     if (!this.inputQueue.push(this.nextStepIndex, "jump", true, controlMethod)) {
@@ -526,7 +526,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     if (this._state === "ready") this.start(controlMethod);
     if (this._state !== "running") return;
     if (this.qaScenarioActive) return;
-    if (this.storyTimeline?.snapshot.trustCorridor) {
+    if (!(this.storyTimeline?.snapshot.controlsEnabled ?? true)) {
       this.crouchHeld = false;
       this.crouchInputHeld = false;
       return;
@@ -873,6 +873,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
   private update(deltaSeconds: number): void {
     let storyCompletedThisStep = false;
     let activeDeltaSeconds = deltaSeconds;
+    let storyCountdownActive = false;
     if (this.storyTimeline !== null) {
       const previousStory = this.storyTimeline.snapshot;
       const presentingMillion = this.finaleCelebrationRemaining > 0;
@@ -952,6 +953,9 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
         );
       }
       this.syncStorySection(previousStory, nextStory);
+      if (previousStory.state !== "countdown" && nextStory.state === "countdown") {
+        this.visualElapsedSeconds = 0;
+      }
       this.authoredWaveDirector?.advance(activeDeltaSeconds);
       this.beginFinaleRewardRunIfReady();
       this.storyObjectiveDirector.enterSegment(
@@ -966,7 +970,13 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       }
       this.emitStorySignals();
       storyCompletedThisStep = nextStory.completed;
+      storyCountdownActive = nextStory.state === "countdown";
     }
+
+    // The countdown owns wall-clock presentation time only. Keeping the game
+    // loop alive lets it publish 3–2–1, while every gameplay and visual clock
+    // below this boundary stays on the prepared first frame.
+    if (storyCountdownActive) return;
 
     if (this.recordEmphasisRemaining > 0) {
       this.recordEmphasisRemaining = Math.max(0, this.recordEmphasisRemaining - deltaSeconds);
@@ -982,10 +992,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       return;
     }
 
-    this.visualElapsedSeconds += deltaSeconds;
-    if (this.finaleCelebrationRemaining > 0) {
-      this.visualElapsedSeconds -= deltaSeconds;
-    }
+    this.visualElapsedSeconds += activeDeltaSeconds;
     if (this.powerUpDemoRemaining > 0) {
       this.powerUpDemoRemaining = Math.max(0, this.powerUpDemoRemaining - deltaSeconds);
     }
@@ -1005,7 +1012,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     );
     this.impactSeconds = Math.max(0, this.impactSeconds - activeDeltaSeconds);
     this.impact = this.impactSeconds > 0;
-    this.storyObstacleTransformer.advance(deltaSeconds);
+    this.storyObstacleTransformer.advance(activeDeltaSeconds);
     if (this.finaleRewardRunRemaining > 0) {
       this.finaleRewardRunRemaining = Math.max(
         0,
@@ -1094,7 +1101,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     }
 
     const worldScale = this.storyTimeline?.snapshot.worldSpeedScale ?? 1;
-    const effectiveDeltaSeconds = activeDeltaSeconds > 0 ? activeDeltaSeconds * worldScale : deltaSeconds * worldScale;
+    const effectiveDeltaSeconds = activeDeltaSeconds * worldScale;
     const visualTravelledPixels = this.speed * effectiveDeltaSeconds;
     this.previousVisualDistancePixels = this.visualDistancePixels;
     this.visualDistancePixels += visualTravelledPixels;

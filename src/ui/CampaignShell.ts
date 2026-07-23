@@ -538,6 +538,8 @@ export class CampaignShell {
   private pointerSwipedDown = false;
   private challengeResult: CampaignChallengeResult | null = null;
   private lastCountdownValue: CampaignStoryCountdownValue | null = null;
+  private storyVisualOriginDistance: number | null = null;
+  private latestVisualDistance = 0;
   private storyPresentationRevision = 0;
   private readonly storyContinuationGate = new StoryContinuationGate();
   private readonly orientationQuery: MediaQueryList | null;
@@ -918,6 +920,8 @@ export class CampaignShell {
     if (this.destroyed) return;
     this.activeMode = null;
     this.challengeResult = null;
+    this.storyVisualOriginDistance = null;
+    this.latestVisualDistance = 0;
     this.orientationState = { phase: "idle" };
     this.setMuted(options.muted, false);
     this.applyWorldVisual("first-mile", "story.first_package", "landing");
@@ -970,6 +974,8 @@ export class CampaignShell {
     this.lastWaveFeedbackKey = "";
     this.paused = false;
     this.challengeResult = null;
+    this.storyVisualOriginDistance = null;
+    this.latestVisualDistance = 0;
     this.hideScreens();
     this.root.dataset.view = "game";
     this.root.dataset.mode = mode;
@@ -999,6 +1005,7 @@ export class CampaignShell {
     if (wasGame) this.callbacks.onSlide(false, "keyboard");
 
     this.activeMode = "story";
+    this.storyVisualOriginDistance = null;
     this.root.dataset.mode = "story";
     this.root.dataset.view = "story_scene";
     const visualState = sceneVisualState(scene.visualStateId);
@@ -1012,6 +1019,7 @@ export class CampaignShell {
     this.hud.hidden = true;
     this.canvas.tabIndex = -1;
     this.canvas.setAttribute("aria-hidden", "true");
+    if (isNewScene) this.storyContinueButton.disabled = true;
 
     if (!isNewScene) return;
 
@@ -1032,13 +1040,13 @@ export class CampaignShell {
     this.storyContinueButton.textContent = scene.continueLabel;
     this.storyContinueButton.dataset.sceneId = scene.sceneId;
     this.storyContinueButton.dataset.presentationId = scene.presentationId;
-    this.storyContinueButton.disabled = false;
     const announcement = [
       scene.eyebrow, scene.title, ...scene.body, scene.action, scene.finalFrame
     ].filter(Boolean).join(". ");
     void this.worldVisualLayer.waitForCurrentPresentation().then(() => {
       if (this.destroyed || presentationRevision !== this.storyPresentationRevision ||
           this.root.dataset.view !== "story_scene") return;
+      this.storyContinueButton.disabled = false;
       this.storyPresentation.hidden = false;
       this.setScreenModal(this.storyPresentation);
       this.storySceneBody.focus({ preventScroll: true });
@@ -1075,6 +1083,9 @@ export class CampaignShell {
     label = this.copy.storyCountdownLabel
   ): void {
     if (this.destroyed) return;
+    if (this.storyVisualOriginDistance === null) {
+      this.storyVisualOriginDistance = this.latestVisualDistance;
+    }
     this.worldVisualLayer.setPhase("game");
     this.root.dataset.view = "story_countdown";
     this.storyPresentation.dataset.state = "countdown";
@@ -1200,11 +1211,19 @@ export class CampaignShell {
     reducedMotion: boolean
   ): void {
     if (this.destroyed) return;
+    this.latestVisualDistance = visualDistancePixels;
     const view = this.root.dataset.view;
-    const holdsAuthoredStoryFrame = view === "story_scene" || view === "story_reframe";
+    const holdsAuthoredStoryFrame =
+      view === "story_scene" || view === "story_reframe" || view === "story_countdown";
+    if (view === "story_countdown" && this.storyVisualOriginDistance === null) {
+      this.storyVisualOriginDistance = visualDistancePixels;
+    }
+    const localVisualDistance = this.storyVisualOriginDistance === null
+      ? visualDistancePixels
+      : Math.max(0, visualDistancePixels - this.storyVisualOriginDistance);
     this.worldVisualLayer.setParallaxDistance(
-      holdsAuthoredStoryFrame ? 0 : visualDistancePixels,
-      (view === "game" || view === "story_countdown") && !this.paused,
+      holdsAuthoredStoryFrame ? 0 : localVisualDistance,
+      view === "game" && !this.paused,
       reducedMotion
     );
   }

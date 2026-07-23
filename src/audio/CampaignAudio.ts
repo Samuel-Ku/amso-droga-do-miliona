@@ -371,6 +371,20 @@ export class CampaignAudio {
     });
   }
 
+  /** Keeps the UI countdown audible while gameplay and locomotion stay frozen. */
+  public playCountdownCue(value: 3 | 2 | 1): void {
+    const frequency = value === 3 ? 659.25 : value === 2 ? 523.25 : 392;
+    this.withCueOutput((destination) => {
+      this.playTone({
+        frequency,
+        duration: 0.11,
+        volume: 0.38,
+        type: "sine",
+        destination
+      });
+    });
+  }
+
   private withCueOutput(play: (destination: GainNode) => void): void {
     if (this._muted || !this._started || this.destroyed || this.context === null ||
         this.cueGain === null) return;

@@ -80,6 +80,7 @@ function createGameHarness(
   const snapshots: GameSnapshot[] = [];
   const storyUpdates: StoryTimelineSnapshot[] = [];
   const storyUpdateCounters: Array<number | undefined> = [];
+  const visualFrames: Array<{ distance: number; alpha: number }> = [];
   const modeChanges: string[] = [];
   const milestoneCelebrations: MilestoneCelebrationEvent[] = [];
   const milestoneModes: string[] = [];
@@ -113,6 +114,7 @@ function createGameHarness(
       mode,
       story: storyOverride ?? config.story,
       challenge: config.challenge,
+      visualFrameSink: (distance, alpha) => visualFrames.push({ distance, alpha }),
       awardStoryCompletionBonus
     }
   );
@@ -168,6 +170,7 @@ function createGameHarness(
     snapshots,
     storyUpdates,
     storyUpdateCounters,
+    visualFrames,
     modeChanges,
     milestoneCelebrations,
     milestoneModes,
@@ -825,6 +828,30 @@ describe("direct slide control", () => {
 });
 
 describe("story lifecycle pauses", () => {
+  it("keeps countdown controls and visual travel frozen until play resumes", () => {
+    const harness = createGameHarness("story");
+    harness.game.start("keyboard");
+    harness.continueCurrentSceneFully();
+    harness.advance(STORY_REFRAME_SECONDS + 0.05);
+
+    const countdownStart = harness.storyUpdates.at(-1);
+    expect(countdownStart?.state).toBe("countdown");
+    expect(countdownStart?.controlsEnabled).toBe(false);
+    const startDistance = harness.visualFrames.at(-1)?.distance;
+
+    harness.game.jump("keyboard");
+    harness.game.crouch(true, "keyboard");
+    harness.advance(1);
+
+    expect(harness.storyUpdates.at(-1)?.state).toBe("countdown");
+    expect(harness.visualFrames.at(-1)?.distance).toBe(startDistance);
+
+    harness.advance(2.1);
+    expect(harness.storyUpdates.at(-1)?.state).toBe("play");
+    expect(harness.visualFrames.at(-1)?.distance).toBeGreaterThan(startDistance ?? 0);
+    harness.game.destroy();
+  });
+
   it("ignores blur and visibility while a story scene or countdown owns focus", () => {
     const harness = createGameHarness("story");
     harness.game.start("keyboard");

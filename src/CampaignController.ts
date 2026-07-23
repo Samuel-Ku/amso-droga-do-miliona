@@ -612,6 +612,7 @@ export class CampaignController {
       return;
     }
     if (update.state === "countdown" && update.countdownValue !== null) {
+      this.audio.playCountdownCue(update.countdownValue as 3 | 2 | 1);
       this.shell.showStoryCountdown(update.countdownValue as 3 | 2 | 1);
       return;
     }
