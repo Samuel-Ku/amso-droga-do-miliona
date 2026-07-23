@@ -1,6 +1,8 @@
 // @vitest-environment happy-dom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DecodedImageStore } from "../src/assets/DecodedImageStore";
+import type { GameSnapshot } from "../src/game/contracts";
 import { CampaignShell, type CampaignShellCallbacks } from "../src/ui/CampaignShell";
 
 function createShell(): {
@@ -28,7 +30,24 @@ function createShell(): {
   };
   const host = document.createElement("div");
   document.body.append(host);
-  return { shell: new CampaignShell(host, callbacks), callbacks, onStoryContinue, onJump, onSlide };
+  const decodedImageStore = new DecodedImageStore({
+    imageFactory: () => {
+      const image = document.createElement("img");
+      Object.defineProperties(image, {
+        complete: { configurable: true, value: true },
+        naturalWidth: { configurable: true, value: 1780 },
+        naturalHeight: { configurable: true, value: 941 },
+      });
+      return image;
+    },
+  });
+  return {
+    shell: new CampaignShell(host, callbacks, { decodedImageStore }),
+    callbacks,
+    onStoryContinue,
+    onJump,
+    onSlide
+  };
 }
 
 function showScene(shell: CampaignShell, presentationId = "story.client:budget"): HTMLButtonElement {
@@ -48,9 +67,34 @@ function showScene(shell: CampaignShell, presentationId = "story.client:budget")
   return button;
 }
 
+function challengeSnapshot(
+  worldId: GameSnapshot["visualWorldId"],
+  stateId: string,
+): GameSnapshot {
+  return {
+    mode: "challenge",
+    visualWorldId: worldId,
+    visualStateId: stateId,
+    visualNextStateId: stateId,
+    visualProgress: 0,
+    visualWorldIndex: 0,
+    visualTransitionPending: false,
+    millionCounterValue: 0,
+    milestoneCelebration: null,
+    authoredWave: null,
+    packagesCollected: 0,
+    score: 0,
+    combo: 1,
+    activePowerUps: [],
+    activePowerUpStatuses: [],
+    storyObjectiveSegmentId: "",
+  } as unknown as GameSnapshot;
+}
+
 describe("story input safety gate", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.spyOn(HTMLImageElement.prototype, "decode").mockResolvedValue();
     document.body.replaceChildren();
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
@@ -64,6 +108,7 @@ describe("story input safety gate", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
     document.body.replaceChildren();
   });
@@ -88,9 +133,10 @@ describe("story input safety gate", () => {
     shell.destroy();
   });
 
-  it("lets a fresh Space continue the story immediately", () => {
+  it("lets a fresh Space continue the story immediately after its world is ready", async () => {
     const { shell, onStoryContinue } = createShell();
     showScene(shell);
+    await shell.waitForWorldPresentation();
 
     document.dispatchEvent(new KeyboardEvent("keydown", {
       code: "Space", key: " ", bubbles: true
@@ -171,6 +217,77 @@ describe("story input safety gate", () => {
       [false, "keyboard"],
       [false, "keyboard"],
     ]);
+    shell.destroy();
+  });
+
+  it("holds an authored story frame until the countdown starts the visual clock", () => {
+    const { shell } = createShell();
+    const world = document.querySelector<HTMLElement>("[data-campaign-world-visual]");
+    const panels = [...document.querySelectorAll<HTMLElement>("[data-world-panel]")];
+
+    shell.showGame("story");
+    shell.updateVisualFrame(480, 0, false);
+    expect(panels.map(({ style }) => style.transform)).toEqual([
+      "translate3d(-50%, 0, 0)",
+      "translate3d(50%, 0, 0)",
+    ]);
+
+    showScene(shell);
+    expect(world?.dataset.motionState).toBe("reading");
+    expect(panels.map(({ style }) => style.transform)).toEqual([
+      "translate3d(0%, 0, 0)",
+      "translate3d(100%, 0, 0)",
+    ]);
+
+    shell.showStoryReframe();
+    shell.updateVisualFrame(600, 0, false);
+    expect(world?.dataset.motionState).toBe("reading");
+    expect(panels.map(({ style }) => style.transform)).toEqual([
+      "translate3d(0%, 0, 0)",
+      "translate3d(100%, 0, 0)",
+    ]);
+
+    shell.showStoryCountdown(3);
+    shell.updateVisualFrame(600, 0, false);
+    expect(world?.dataset.motionState).toBe("moving");
+    expect(panels.map(({ style }) => style.transform)).toEqual([
+      "translate3d(-62.5%, 0, 0)",
+      "translate3d(37.5%, 0, 0)",
+    ]);
+
+    shell.showStoryCountdown(2);
+    shell.updateVisualFrame(650, 0, false);
+    shell.showStoryCountdown(1);
+    shell.updateVisualFrame(700, 0, false);
+    shell.returnToGame();
+    shell.updateVisualFrame(750, 0, false);
+    expect(world?.dataset.motionState).toBe("moving");
+    expect(panels.map(({ style }) => style.transform)).toEqual([
+      "translate3d(-78.125%, 0, 0)",
+      "translate3d(21.875%, 0, 0)",
+    ]);
+    shell.destroy();
+  });
+
+  it("shows a moving seam only when challenge panels belong to different worlds", async () => {
+    const { shell } = createShell();
+    const seam = document.querySelector<HTMLElement>("[data-world-seam-blur]");
+    const world = document.querySelector<HTMLElement>("[data-campaign-world-visual]");
+
+    shell.showGame("challenge");
+    shell.update(challengeSnapshot("first-mile", "story.first_package"));
+    await shell.waitForWorldPresentation();
+    shell.updateVisualFrame(240, 0, false);
+    expect(seam?.hidden).toBe(true);
+
+    shell.update(challengeSnapshot("quality-service", "epoch_2.resolve"));
+    await vi.waitFor(() => expect(world?.dataset.assetState).toBe("loaded"));
+    shell.updateVisualFrame(961, 0, false);
+    expect(seam?.hidden).toBe(false);
+    expect(seam?.dataset.betweenWorlds).toBe("first-mile:quality-service");
+
+    shell.updateVisualFrame(1_921, 0, false);
+    expect(seam?.hidden).toBe(true);
     shell.destroy();
   });
 });

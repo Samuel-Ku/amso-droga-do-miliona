@@ -1941,12 +1941,30 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   will-change: transform;
 }
 
+.amso-world-visual__seam-blur {
+  position: absolute;
+  /* Panels paint at level 0 before this node; the route stays sharp above it at level 1. */
+  z-index: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--world-seam-blur-width, clamp(48px, 10%, 112px));
+  pointer-events: none;
+  background: rgb(255 255 255 / 1%);
+  -webkit-backdrop-filter: blur(var(--world-seam-blur-radius, 8px));
+  backdrop-filter: blur(var(--world-seam-blur-radius, 8px));
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 42% 58%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 42% 58%, transparent);
+  transform: translateX(-50%);
+  will-change: left;
+}
+
 .amso-campaign__world-visual[data-phase="game"] .amso-world-visual__panel {
   opacity: 0.6;
   background-image: none;
 }
 
-.amso-campaign__world-visual[data-asset-state="fallback"] .amso-world-visual__panel {
+.amso-campaign__world-visual[data-asset-state="fallback"] .amso-world-visual__panel,
+.amso-world-visual__panel[data-asset-fallback="true"] {
   background-image:
     radial-gradient(circle at 20% 35%, rgb(244 113 0 / 22%), transparent 24%),
     radial-gradient(circle at 78% 42%, rgb(235 50 164 / 18%), transparent 26%),

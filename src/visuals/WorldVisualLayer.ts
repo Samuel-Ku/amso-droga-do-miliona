@@ -72,12 +72,14 @@ function requiredElement<T extends Element>(root: ParentNode, selector: string):
 /** Two adjacent world panels share one absolute parallax phase. */
 export class WorldVisualLayer {
   private panels: [HTMLImageElement, HTMLImageElement];
+  private readonly seamBlur: HTMLElement;
   private currentWorldId: CampaignWorldId | null = null;
   private currentStateId = "";
   private requestedAssetPath: string | null = null;
   private currentAsset: DecodedWorldAsset | null = null;
   private pendingAsset: DecodedWorldAsset | null = null;
   private queuedAsset: DecodedWorldAsset | null = null;
+  private pendingFallbackWorldId: CampaignWorldId | null = null;
   private pendingPanelPrepared = false;
   private pendingPanelPreparing = false;
   private transitionMode: WorldTransitionMode = "story-linked";
@@ -98,6 +100,7 @@ export class WorldVisualLayer {
       <div class="amso-world-visual__image-stack" data-world-plate aria-hidden="true">
         <img class="amso-world-visual__panel" data-world-panel="current" alt="" width="1780" height="941" draggable="false" />
         <img class="amso-world-visual__panel" data-world-panel="next" alt="" width="1780" height="941" draggable="false" />
+        <div class="amso-world-visual__seam-blur" data-world-seam-blur hidden></div>
         ${WORLD_ROUTE_SVG}
       </div>
       <div class="amso-world-visual__counter" aria-hidden="true">
@@ -108,6 +111,7 @@ export class WorldVisualLayer {
       requiredElement<HTMLImageElement>(host, '[data-world-panel="current"]'),
       requiredElement<HTMLImageElement>(host, '[data-world-panel="next"]')
     ];
+    this.seamBlur = requiredElement<HTMLElement>(host, "[data-world-seam-blur]");
     this.host.style.setProperty("--world-overlap", "0px");
   }
 
@@ -153,8 +157,9 @@ export class WorldVisualLayer {
     this.host.style.setProperty("--world-reading-origin-x", `${state.readingCamera.x * 100}%`);
     this.host.style.setProperty("--world-reading-origin-y", `${state.readingCamera.y * 100}%`);
 
+    if (selection.phase === "story") this.setParallaxDistance(0, false);
     if (worldChanged || (this.currentAsset === null && this.requestedAssetPath === null)) {
-      this.loadWorldAsset(world.assetPath);
+      this.loadWorldAsset(world.assetPath, selection.phase === "story");
     }
     if (worldChanged || stateChanged) {
       this.host.dataset.reveal = state.revealMotion;
@@ -183,8 +188,10 @@ export class WorldVisualLayer {
   public get qualityBoundaryState(): { panelBoundarySafe: boolean; assetSwapComplete: boolean } {
     const progress = (this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH;
     return {
-      panelBoundarySafe: this.pendingAsset === null && (progress <= 0.001 || progress >= 0.999),
+      panelBoundarySafe: this.pendingAsset === null && this.pendingFallbackWorldId === null &&
+        (progress <= 0.001 || progress >= 0.999),
       assetSwapComplete: this.pendingAsset === null && this.queuedAsset === null &&
+        this.pendingFallbackWorldId === null &&
         !this.pendingPanelPrepared && !this.pendingPanelPreparing
     };
   }
@@ -192,10 +199,7 @@ export class WorldVisualLayer {
   public destroy(): void {
     this.requestedAssetPath = null;
     this.currentAsset = null;
-    this.pendingAsset = null;
-    this.queuedAsset = null;
-    this.pendingPanelPrepared = false;
-    this.pendingPanelPreparing = false;
+    this.clearPendingTransition();
     this.scheduledPreloadPath = null;
     this.resolveCurrentPresentation = null;
     this.rejectCurrentPresentation = null;
@@ -277,6 +281,12 @@ export class WorldVisualLayer {
         } else {
           this.preparePendingPanel();
         }
+      } else if (this.pendingFallbackWorldId !== null) {
+        if (this.pendingPanelPrepared) {
+          this.commitPendingFallback();
+        } else {
+          this.preparePendingFallback();
+        }
       }
     } else {
       this.setPanelMotion(previousCycle !== null);
@@ -295,6 +305,26 @@ export class WorldVisualLayer {
     const nextX = 100 - travel;
     this.panels[0].style.transform = `translate3d(${currentX}%, 0, 0)`;
     this.panels[1].style.transform = `translate3d(${nextX}%, 0, 0)`;
+    this.updateSeamBlur(progress);
+  }
+
+  private updateSeamBlur(progress: number): void {
+    const currentWorldId = this.panels[0].dataset.worldId;
+    const nextWorldId = this.panels[1].dataset.worldId;
+    const betweenDifferentWorlds = this.transitionMode === "offscreen" &&
+      this.host.dataset.phase === "game" &&
+      progress > Number.EPSILON * 8 &&
+      progress < 1 - Number.EPSILON * 8 &&
+      currentWorldId !== undefined &&
+      nextWorldId !== undefined &&
+      currentWorldId !== nextWorldId;
+    this.seamBlur.hidden = !betweenDifferentWorlds;
+    if (!betweenDifferentWorlds) {
+      delete this.seamBlur.dataset.betweenWorlds;
+      return;
+    }
+    this.seamBlur.style.left = `${(1 - progress) * 100}%`;
+    this.seamBlur.dataset.betweenWorlds = `${currentWorldId}:${nextWorldId}`;
   }
 
   private setPanelMotion(currentSmooth: boolean, nextSmooth = currentSmooth): void {
@@ -325,11 +355,11 @@ export class WorldVisualLayer {
     this.placePanels(progress);
   }
 
-  private loadWorldAsset(assetPath: string): void {
+  private loadWorldAsset(assetPath: string, immediateStoryPresentation = false): void {
     if (this.requestedAssetPath === assetPath) return;
     this.requestedAssetPath = assetPath;
     this.host.dataset.assetState = "loading";
-    if (this.currentAsset === null) {
+    if (this.currentAsset === null || immediateStoryPresentation) {
       this.currentPresentationReady = new Promise<void>((resolve, reject) => {
         this.resolveCurrentPresentation = resolve;
         this.rejectCurrentPresentation = reject;
@@ -338,17 +368,15 @@ export class WorldVisualLayer {
     }
     void this.assets.load(assetPath).then((decodedAsset) => {
       if (this.requestedAssetPath !== assetPath) return;
-      if (this.currentAsset === null) {
+      if (this.currentAsset === null || immediateStoryPresentation) {
         this.currentAsset = decodedAsset;
-        this.pendingAsset = null;
-        this.queuedAsset = null;
-        this.pendingPanelPrepared = false;
-        this.pendingPanelPreparing = false;
+        this.clearPendingTransition();
         void Promise.all([
           this.drawPanel(this.panels[0], decodedAsset),
           this.drawPanel(this.panels[1], decodedAsset)
         ]).then((ready) => {
           if (this.currentAsset === decodedAsset && ready.every(Boolean)) {
+            if (immediateStoryPresentation) this.setParallaxDistance(0, false);
             this.host.dataset.assetState = "loaded";
             this.resolveCurrentPresentation?.();
             this.resolveCurrentPresentation = null;
@@ -368,6 +396,7 @@ export class WorldVisualLayer {
       } else {
         this.pendingAsset = decodedAsset;
         this.queuedAsset = null;
+        this.pendingFallbackWorldId = null;
         this.pendingPanelPrepared = false;
         this.pendingPanelPreparing = false;
         this.transitionStartDistance = this.lastDistance - this.lastDistance % WORLD_WIDTH;
@@ -382,15 +411,25 @@ export class WorldVisualLayer {
         this.host.dataset.assetState = "loaded";
         return;
       }
-      this.pendingAsset = null;
-      this.queuedAsset = null;
-      this.pendingPanelPrepared = false;
-      this.pendingPanelPreparing = false;
-      if (this.currentAsset === null) {
+      if (this.transitionMode === "offscreen" && this.currentAsset !== null) {
+        const failedWorld = CAMPAIGN_WORLDS.find(({ assetPath: path }) => path === assetPath);
+        this.clearPendingTransition();
+        this.pendingFallbackWorldId = failedWorld?.worldId ?? this.currentWorldId;
+        this.host.dataset.assetState = "fallback-pending";
+        return;
+      }
+      this.clearPendingTransition();
+      if (this.currentAsset === null || immediateStoryPresentation) {
+        this.currentAsset = null;
         this.requestedAssetPath = null;
         this.clearPanels();
+        if (immediateStoryPresentation) this.setParallaxDistance(0, false);
         this.host.dataset.assetState = "fallback";
-        this.rejectCurrentPresentation?.(new Error("world_asset_decode_failed"));
+        if (immediateStoryPresentation) {
+          this.resolveCurrentPresentation?.();
+        } else {
+          this.rejectCurrentPresentation?.(new Error("world_asset_decode_failed"));
+        }
         this.resolveCurrentPresentation = null;
         this.rejectCurrentPresentation = null;
       } else {
@@ -409,9 +448,7 @@ export class WorldVisualLayer {
     this.pendingPanelPreparing = false;
     if (redrawVisiblePanel) void this.drawPanel(this.panels[0], this.currentAsset);
     void this.drawPanel(this.panels[1], this.currentAsset);
-    if (redrawVisiblePanel) {
-      this.placePanels((this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH);
-    }
+    this.placePanels((this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH);
     this.prepareNextWorld(this.currentAsset.path);
   }
 
@@ -444,26 +481,65 @@ export class WorldVisualLayer {
 
   private preparePendingPanel(): void {
     const asset = this.pendingAsset;
-    if (asset === null || this.pendingPanelPrepared || this.pendingPanelPreparing) return;
-    this.pendingPanelPreparing = true;
-    void this.drawPanel(this.panels[1], asset).then((ready) => {
-      if (this.pendingAsset !== asset) return;
-      this.pendingPanelPreparing = false;
-      this.pendingPanelPrepared = ready;
-      this.host.dataset.assetState = ready ? "loaded" : "failed";
-    });
+    if (asset === null || this.pendingPanelPrepared) return;
+    this.assignDecodedPanel(this.panels[1], asset);
+    this.pendingPanelPreparing = false;
+    this.pendingPanelPrepared = true;
+    this.host.dataset.assetState = "loaded";
+    this.updateSeamBlur((this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH);
   }
 
-  private async drawPanel(panel: HTMLImageElement, asset: DecodedWorldAsset): Promise<boolean> {
+  private preparePendingFallback(): void {
+    const worldId = this.pendingFallbackWorldId;
+    if (worldId === null || this.pendingPanelPrepared) return;
+    this.assignFallback(this.panels[1], worldId);
+    this.pendingPanelPrepared = true;
+    this.host.dataset.assetState = "fallback";
+    this.updateSeamBlur((this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH);
+  }
+
+  private commitPendingFallback(): void {
+    const worldId = this.pendingFallbackWorldId;
+    if (worldId === null) return;
+    this.pendingFallbackWorldId = null;
+    this.pendingPanelPrepared = false;
+    this.pendingPanelPreparing = false;
+    this.assignFallback(this.panels[1], worldId);
+    this.host.dataset.assetState = "fallback";
+    this.placePanels((this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH);
+  }
+
+  private assignFallback(panel: HTMLImageElement, worldId: CampaignWorldId): void {
+    this.panelAssignmentRevisions.set(
+      panel,
+      (this.panelAssignmentRevisions.get(panel) ?? 0) + 1
+    );
+    panel.removeAttribute("src");
+    delete panel.dataset.assetPath;
+    panel.dataset.worldId = worldId;
+    panel.dataset.assetFallback = "true";
+    panel.hidden = false;
+  }
+
+  private assignDecodedPanel(panel: HTMLImageElement, asset: DecodedWorldAsset): number {
     const assignment = (this.panelAssignmentRevisions.get(panel) ?? 0) + 1;
     this.panelAssignmentRevisions.set(panel, assignment);
-    panel.hidden = true;
     panel.width = WORLD_ARTWORK_CONTRACT.artWidth;
     panel.height = WORLD_ARTWORK_CONTRACT.artHeight;
     panel.dataset.assetPath = asset.path;
+    delete panel.dataset.assetFallback;
+    const world = CAMPAIGN_WORLDS.find(({ assetPath }) => assetPath === asset.path);
+    if (world) panel.dataset.worldId = world.worldId;
+    panel.src = asset.image.currentSrc || asset.image.src || asset.path;
+    panel.hidden = false;
+    return assignment;
+  }
+
+  private async drawPanel(panel: HTMLImageElement, asset: DecodedWorldAsset): Promise<boolean> {
+    const assignment = this.assignDecodedPanel(panel, asset);
+    panel.hidden = true;
     // Presentation elements intentionally share the canonical source while keeping
     // their own DOM decode readiness; they never create a second retry lifecycle.
-    panel.src = asset.image.currentSrc || asset.image.src || asset.path;
     try {
       await panel.decode();
       const expectedSource = new URL(asset.image.currentSrc || asset.image.src || asset.path, document.baseURI).href;
@@ -482,6 +558,16 @@ export class WorldVisualLayer {
     for (const panel of this.panels) {
       panel.removeAttribute("src");
       delete panel.dataset.assetPath;
+      delete panel.dataset.worldId;
+      delete panel.dataset.assetFallback;
     }
+  }
+
+  private clearPendingTransition(): void {
+    this.pendingAsset = null;
+    this.queuedAsset = null;
+    this.pendingFallbackWorldId = null;
+    this.pendingPanelPrepared = false;
+    this.pendingPanelPreparing = false;
   }
 }

@@ -539,6 +539,7 @@ export class CampaignShell {
   private pointerSwipedDown = false;
   private challengeResult: CampaignChallengeResult | null = null;
   private lastCountdownValue: CampaignStoryCountdownValue | null = null;
+  private storyPresentationRevision = 0;
   private readonly storyContinuationGate = new StoryContinuationGate();
   private readonly orientationQuery: MediaQueryList | null;
 
@@ -966,6 +967,9 @@ export class CampaignShell {
     const scene = snapshotStoryScene(input);
     const wasGame = this.root.dataset.view === "game";
     const isNewScene = this.storyContinuationGate.arm(scene.presentationId);
+    const presentationRevision = isNewScene
+      ? ++this.storyPresentationRevision
+      : this.storyPresentationRevision;
     if (wasGame) this.callbacks.onSlide(false, "keyboard");
 
     this.activeMode = "story";
@@ -973,15 +977,15 @@ export class CampaignShell {
     this.root.dataset.view = "story_scene";
     const visualState = sceneVisualState(scene.visualStateId);
     this.applyWorldVisual(visualState.worldId, visualState.stateId, "story");
+    this.worldVisualLayer.setParallaxDistance(0, false);
     this.storyPresentation.dataset.state = "scene";
     this.storyPresentation.dataset.copyPlacement = visualState.copyPlacement;
-    this.storyPresentation.hidden = false;
+    if (isNewScene) this.storyPresentation.hidden = true;
     this.storySceneCard.hidden = false;
     this.storyCountdown.hidden = true;
     this.hud.hidden = true;
     this.canvas.tabIndex = -1;
     this.canvas.setAttribute("aria-hidden", "true");
-    this.setScreenModal(this.storyPresentation);
 
     if (!isNewScene) return;
 
@@ -1003,16 +1007,25 @@ export class CampaignShell {
     this.storyContinueButton.dataset.sceneId = scene.sceneId;
     this.storyContinueButton.dataset.presentationId = scene.presentationId;
     this.storyContinueButton.disabled = false;
-    this.storySceneBody.focus({ preventScroll: true });
-    this.announce([
+    const announcement = [
       scene.eyebrow, scene.title, ...scene.body, scene.action, scene.finalFrame
-    ].filter(Boolean).join(". "));
+    ].filter(Boolean).join(". ");
+    void this.worldVisualLayer.waitForCurrentPresentation().then(() => {
+      if (this.destroyed || presentationRevision !== this.storyPresentationRevision ||
+          this.root.dataset.view !== "story_scene") return;
+      this.storyPresentation.hidden = false;
+      this.setScreenModal(this.storyPresentation);
+      this.storySceneBody.focus({ preventScroll: true });
+      this.announce(announcement);
+    });
   }
 
   /** Gives the world camera its full 720 ms hand-off before the 3–2–1 starts. */
   public showStoryReframe(): void {
     if (this.destroyed) return;
+    this.storyPresentationRevision++;
     this.worldVisualLayer.setPhase("game");
+    this.worldVisualLayer.setParallaxDistance(0, false);
     this.root.dataset.view = "story_reframe";
     this.storyPresentation.dataset.state = "reframe";
     this.storyPresentation.hidden = false;
@@ -1161,9 +1174,11 @@ export class CampaignShell {
     reducedMotion: boolean
   ): void {
     if (this.destroyed) return;
+    const view = this.root.dataset.view;
+    const holdsAuthoredStoryFrame = view === "story_scene" || view === "story_reframe";
     this.worldVisualLayer.setParallaxDistance(
-      visualDistancePixels,
-      this.root.dataset.view === "game" && !this.paused,
+      holdsAuthoredStoryFrame ? 0 : visualDistancePixels,
+      (view === "game" || view === "story_countdown") && !this.paused,
       reducedMotion
     );
   }
