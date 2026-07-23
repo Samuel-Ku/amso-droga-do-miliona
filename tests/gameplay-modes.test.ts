@@ -80,6 +80,7 @@ function createGameHarness(
   const snapshots: GameSnapshot[] = [];
   const storyUpdates: StoryTimelineSnapshot[] = [];
   const storyUpdateSnapshots: Array<GameSnapshot | undefined> = [];
+  const storyUpdateRunnerStates: Array<Readonly<Record<string, unknown>> | undefined> = [];
   const storyUpdateCounters: Array<number | undefined> = [];
   const visualFrames: Array<{ distance: number; alpha: number }> = [];
   const modeChanges: string[] = [];
@@ -100,6 +101,11 @@ function createGameHarness(
       onStoryUpdate: (snapshot) => {
         storyUpdates.push(snapshot);
         storyUpdateSnapshots.push(snapshots.at(-1));
+        storyUpdateRunnerStates.push(
+          game.canonicalDeterministicState().runner as
+            | Readonly<Record<string, unknown>>
+            | undefined
+        );
         storyUpdateCounters.push(snapshots.at(-1)?.millionCounterValue);
       },
       onModeChange: (mode) => modeChanges.push(mode),
@@ -172,6 +178,7 @@ function createGameHarness(
     snapshots,
     storyUpdates,
     storyUpdateSnapshots,
+    storyUpdateRunnerStates,
     storyUpdateCounters,
     visualFrames,
     modeChanges,
@@ -865,6 +872,7 @@ describe("story lifecycle pauses", () => {
           storyObjectives: snapshot.storyObjectives,
           activePowerUps: snapshot.activePowerUps,
           activePowerUpStatuses: snapshot.activePowerUpStatuses,
+          powerUpDemoRemaining: snapshot.powerUpDemoRemaining,
           milestoneCelebration: snapshot.milestoneCelebration,
           authoredWave: snapshot.authoredWave
         };
@@ -903,6 +911,18 @@ describe("story lifecycle pauses", () => {
     attemptedInput.game.crouch(true, "keyboard");
     baseline.advance(2.1);
     attemptedInput.advance(2.1);
+    const baselinePlayIndex = baseline.storyUpdates.findIndex(({ state }) => state === "play");
+    const attemptedPlayIndex = attemptedInput.storyUpdates.findIndex(
+      ({ state }) => state === "play"
+    );
+    expect(attemptedInput.storyUpdateRunnerStates[attemptedPlayIndex])
+      .toEqual(baseline.storyUpdateRunnerStates[baselinePlayIndex]);
+    expect(attemptedInput.storyUpdateRunnerStates[attemptedPlayIndex]).toMatchObject({
+      grounded: true,
+      velocityY: 0,
+      crouching: false,
+      jumpBufferRemaining: 0
+    });
     baseline.advance(8);
     attemptedInput.advance(8);
 

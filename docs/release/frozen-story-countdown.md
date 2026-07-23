@@ -9,7 +9,7 @@ jego zakończeniu.
 
 ## Automatyczna walidacja
 
-- 57 plików testowych i 553 testy zakończone powodzeniem.
+- 57 plików testowych i 555 testów zakończonych powodzeniem.
 - TypeScript typecheck zakończony powodzeniem.
 - Produkcyjny build i build loadera zakończone powodzeniem.
 - Autonomiczny HTML zbudowany z 45 osadzonymi obrazami w 94 odwołaniach.
@@ -23,9 +23,13 @@ jego zakończeniu.
 - Test błędu assetu potwierdza, że semantyczny fallback kończy gotowość
   prezentacji zamiast blokować historię.
 - Porównanie dwóch przebiegów z tym samym seedem potwierdza, że jump i slide
-  wysłane podczas countdownu nie pozostawiają zbuforowanego skutku po starcie.
+  wysłane podczas countdownu nie pozostawiają zbuforowanego skutku w pierwszym
+  aktywnym snapshotcie ani w dalszym przebiegu.
 - Publiczne snapshoty na każdej cyfrze zachowują dystans, wynik, kolizje,
-  ochronę, recovery, trudność, cele, power-upy i stan authored wave.
+  ochronę, recovery, trudność, cele, power-upy wraz z ich timerem demo i stan
+  authored wave.
+- Testy audio potwierdzają pojedynczą sekwencję 3–2–1, malejącą wysokość
+  sygnałów oraz brak odtwarzania przed startem i po wyciszeniu.
 - Testy Paneli świata obejmują zwykły i ograniczony ruch, a także przejście
   między stanami tego samego świata i zmianę na inny świat.
 

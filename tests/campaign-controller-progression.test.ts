@@ -14,15 +14,21 @@ interface ControllerHarness {
     isBundleReady: (bundleId: AssetBundleId) => boolean;
     warmBundles: (bundleIds: readonly AssetBundleId[]) => Promise<unknown>;
   };
-  audio: { playCue: (cue: string) => void };
+  audio: {
+    playCue: (cue: string) => void;
+    playCountdownCue: (value: 3 | 2 | 1) => void;
+  };
   shell: {
     showStoryObjective: (copy: string | null) => void;
     showStoryScene: (scene: unknown) => void;
+    showStoryCountdown: (value: 3 | 2 | 1) => void;
+    returnToGame: () => void;
     announce: (copy: string) => void;
   };
   destroyed: boolean;
   lastTrustCorridor: boolean;
   lastStorySceneId: string;
+  lastStoryCountdownValue: 3 | 2 | 1 | null;
   lastVisualWorldId: CampaignWorldId | null;
   warmWorldAssetWindow: (worldId: CampaignWorldId) => void;
   handleStoryUpdate: (update: StoryTimelineSnapshot) => void;
@@ -34,10 +40,12 @@ function controllerHarness(options: {
 } = {}): {
   controller: ControllerHarness;
   playCue: ReturnType<typeof vi.fn>;
+  playCountdownCue: ReturnType<typeof vi.fn>;
   warmBundles: ReturnType<typeof vi.fn>;
 } {
   const ready = new Set(options.readyBundles ?? []);
   const playCue = vi.fn();
+  const playCountdownCue = vi.fn();
   const warmBundles = vi.fn(options.warmBundles ?? (async () => undefined));
   const controller = Object.create(CampaignController.prototype) as ControllerHarness;
   Object.assign(controller, {
@@ -45,18 +53,21 @@ function controllerHarness(options: {
       isBundleReady: (bundleId: AssetBundleId) => ready.has(bundleId),
       warmBundles
     },
-    audio: { playCue },
+    audio: { playCue, playCountdownCue },
     shell: {
       showStoryObjective: vi.fn(),
       showStoryScene: vi.fn(),
+      showStoryCountdown: vi.fn(),
+      returnToGame: vi.fn(),
       announce: vi.fn()
     },
     destroyed: false,
     lastTrustCorridor: true,
     lastStorySceneId: "",
+    lastStoryCountdownValue: null,
     lastVisualWorldId: null
   });
-  return { controller, playCue, warmBundles };
+  return { controller, playCue, playCountdownCue, warmBundles };
 }
 
 function sceneUpdate(scene: StorySceneConfig): StoryTimelineSnapshot {
@@ -134,6 +145,27 @@ describe("CampaignController world progression", () => {
 });
 
 describe("CampaignController semantic story sound", () => {
+  it("plays each published countdown digit once and resets for the next countdown", () => {
+    const { controller, playCountdownCue } = controllerHarness();
+    const update = sceneUpdate(configuredScene("story.first_package"));
+    const countdown = (value: 3 | 2 | 1): StoryTimelineSnapshot => ({
+      ...update,
+      state: "countdown",
+      scene: null,
+      countdownSecondsRemaining: value,
+      countdownValue: value
+    });
+
+    controller.handleStoryUpdate(countdown(3));
+    controller.handleStoryUpdate(countdown(3));
+    controller.handleStoryUpdate(countdown(2));
+    controller.handleStoryUpdate(countdown(1));
+    controller.handleStoryUpdate({ ...update, state: "play", scene: null });
+    controller.handleStoryUpdate(countdown(3));
+
+    expect(playCountdownCue.mock.calls).toEqual([[3], [2], [1], [3]]);
+  });
+
   it("plays one manifest cue per newly presented scene and warms its world", () => {
     const { controller, playCue, warmBundles } = controllerHarness({
       readyBundles: ["prologue"]

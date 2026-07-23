@@ -137,6 +137,7 @@ export class CampaignController {
   private lastTrustCorridor = false;
   private lastStorySegmentId = "";
   private lastStorySceneId = "";
+  private lastStoryCountdownValue: 3 | 2 | 1 | null = null;
   private lastVisualWorldId: CampaignWorldId | null = null;
   private lastLogisticPhase: GameSnapshot["logisticWavePhase"] = "inactive";
   private lastWaveAudioKey = "";
@@ -572,6 +573,9 @@ export class CampaignController {
   }
 
   private handleStoryUpdate(update: StoryTimelineSnapshot): void {
+    if (update.state !== "countdown") {
+      this.lastStoryCountdownValue = null;
+    }
     if (update.trustCorridor !== this.lastTrustCorridor) {
       this.audio.playCue(update.trustCorridor ? "corridor-enter" : "corridor-exit");
       if (!update.trustCorridor) {
@@ -612,8 +616,12 @@ export class CampaignController {
       return;
     }
     if (update.state === "countdown" && update.countdownValue !== null) {
-      this.audio.playCountdownCue(update.countdownValue as 3 | 2 | 1);
-      this.shell.showStoryCountdown(update.countdownValue as 3 | 2 | 1);
+      const countdownValue = update.countdownValue as 3 | 2 | 1;
+      if (countdownValue !== this.lastStoryCountdownValue) {
+        this.lastStoryCountdownValue = countdownValue;
+        this.audio.playCountdownCue(countdownValue);
+      }
+      this.shell.showStoryCountdown(countdownValue);
       return;
     }
     if (update.state === "play") {

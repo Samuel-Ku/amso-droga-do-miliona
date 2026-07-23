@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CampaignAudio, orderPickupFrequency } from "../src/audio/CampaignAudio";
 
-function audioHarness(): { context: AudioContext; oscillatorCount: () => number } {
+function audioHarness(): {
+  context: AudioContext;
+  oscillatorCount: () => number;
+  oscillatorFrequencies: () => readonly number[];
+} {
   let oscillators = 0;
+  const frequencies: number[] = [];
   const param = {
     value: 1,
     setValueAtTime(): void {},
@@ -20,7 +25,12 @@ function audioHarness(): { context: AudioContext; oscillatorCount: () => number 
       oscillators += 1;
       return {
         type: "sine",
-        frequency: { ...param },
+        frequency: {
+          ...param,
+          setValueAtTime(value: number): void {
+            frequencies.push(value);
+          }
+        },
         connect(): void {}, disconnect(): void {}, start(): void {}, stop(): void {},
         addEventListener(): void {}
       };
@@ -28,12 +38,41 @@ function audioHarness(): { context: AudioContext; oscillatorCount: () => number 
     resume: async () => undefined,
     close: async () => undefined
   } as unknown as AudioContext;
-  return { context, oscillatorCount: () => oscillators };
+  return {
+    context,
+    oscillatorCount: () => oscillators,
+    oscillatorFrequencies: () => frequencies
+  };
 }
 
 afterEach(() => vi.useRealTimers());
 
 describe("milestone audio", () => {
+  it("maps 3-2-1 to descending cues and respects not-started and muted guards", async () => {
+    vi.useFakeTimers();
+    const harness = audioHarness();
+    const audio = new CampaignAudio({ contextFactory: () => harness.context });
+
+    audio.playCountdownCue(3);
+    expect(harness.oscillatorCount()).toBe(0);
+
+    await audio.start();
+    const afterMusic = harness.oscillatorCount();
+    const afterMusicFrequencies = harness.oscillatorFrequencies().length;
+    audio.playCountdownCue(3);
+    audio.playCountdownCue(2);
+    audio.playCountdownCue(1);
+
+    expect(harness.oscillatorCount() - afterMusic).toBe(3);
+    expect(harness.oscillatorFrequencies().slice(afterMusicFrequencies))
+      .toEqual([659.25, 523.25, 392]);
+
+    audio.setMuted(true);
+    audio.playCountdownCue(3);
+    expect(harness.oscillatorCount() - afterMusic).toBe(3);
+    await audio.destroy();
+  });
+
   it("raises the order motif through exactly five steps and then caps it", () => {
     const frequencies = [1, 2, 3, 4, 5, 6, 20].map(orderPickupFrequency);
     expect(new Set(frequencies.slice(0, 5))).toHaveLength(5);
