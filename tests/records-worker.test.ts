@@ -3,7 +3,10 @@
 // Note: wrangler types are not installed, so we mock the minimal R2 surface.
 import { describe, expect, it } from "vitest";
 import { PLAYER_NAME_POLICY_VERSION } from "../src/moderation/player-name-policy";
-import { disallowedPlayerNames } from "./fixtures/player-name-moderation";
+import {
+  allowedPlayerNames,
+  disallowedPlayerNames
+} from "./fixtures/player-name-moderation";
 
 // @ts-expect-error - plain JS module without bundled declarations
 const worker = await import("../worker/src/index.js").then((m) => m.default);
@@ -48,6 +51,36 @@ describe("records worker", () => {
 
     expect(res.status).toBe(400);
     expect(records.store.has("records.json")).toBe(false);
+  });
+
+  it.each(allowedPlayerNames)("accepts the shared allowed fixture %s", async (name) => {
+    const env = { RECORDS: memoryR2() };
+    const res = await worker.fetch(jsonRequest({
+      name,
+      challengeScore: 10,
+      orders: 1
+    }), env, {});
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).entries[0].name).toBe(name);
+  });
+
+  it("shares frontend normalization and length outcomes", async () => {
+    const normalizedEnv = { RECORDS: memoryR2() };
+    const normalized = await worker.fetch(jsonRequest({
+      name: "  Jan   Kowalski  ",
+      challengeScore: 10
+    }), normalizedEnv, {});
+    expect(normalized.status).toBe(200);
+    expect((await normalized.json()).entries[0].name).toBe("Jan Kowalski");
+
+    const tooLongEnv = { RECORDS: memoryR2() };
+    const tooLong = await worker.fetch(jsonRequest({
+      name: "a".repeat(15),
+      challengeScore: 10
+    }), tooLongEnv, {});
+    expect(tooLong.status).toBe(400);
+    expect(tooLongEnv.RECORDS.store.has("records.json")).toBe(false);
   });
 
   it("stores a first record and returns top entries", async () => {

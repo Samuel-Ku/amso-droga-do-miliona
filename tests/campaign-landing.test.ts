@@ -98,4 +98,34 @@ describe("campaign landing composition", () => {
 
     shell.destroy();
   });
+
+  it("switches root geometry from the actual campaign container width", () => {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 1_200
+    });
+    class NarrowContainerObserver {
+      public constructor(
+        private readonly callback: ResizeObserverCallback
+      ) {}
+
+      public observe(target: Element): void {
+        this.callback([{
+          target,
+          contentRect: { width: 500 }
+        } as ResizeObserverEntry], this as unknown as ResizeObserver);
+      }
+
+      public disconnect(): void {}
+      public unobserve(): void {}
+    }
+    vi.stubGlobal("ResizeObserver", NarrowContainerObserver);
+
+    const shell = createShell();
+    const root = document.querySelector<HTMLElement>(".amso-campaign")!;
+    expect(root.dataset.mobileLayout).toBe("true");
+
+    shell.destroy();
+    vi.unstubAllGlobals();
+  });
 });

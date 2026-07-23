@@ -3217,30 +3217,28 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   display: none;
 }
 
-@media (max-width: 600px) {
-  .amso-campaign[data-view="landing"] {
-    height: auto;
-    min-height: 100dvh;
-    overflow-x: hidden;
-    overflow-y: auto;
-    grid-template-rows: auto auto auto;
-  }
+.amso-campaign[data-view="landing"][data-mobile-layout="true"] {
+  height: auto;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  grid-template-rows: auto auto auto;
+}
 
-  .amso-campaign[data-view="landing"] .amso-campaign__main {
-    display: block;
-    min-height: 0;
-  }
+.amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__main {
+  display: block;
+  min-height: 0;
+}
 
-  .amso-campaign[data-view="landing"] .amso-campaign__stage {
-    height: auto;
-    min-height: 0;
-    overflow: visible;
-    contain: none;
-  }
+.amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__stage {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  contain: none;
+}
 
-  .amso-campaign[data-view="landing"] .amso-campaign__screen--landing {
-    position: relative;
-  }
+.amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__screen--landing {
+  position: relative;
 }
 
 @container campaign (max-width: 600px) {

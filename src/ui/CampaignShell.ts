@@ -541,6 +541,7 @@ export class CampaignShell {
   private storyPresentationRevision = 0;
   private readonly storyContinuationGate = new StoryContinuationGate();
   private readonly orientationQuery: MediaQueryList | null;
+  private readonly layoutObserver: ResizeObserver | null;
 
   public constructor(
     host: HTMLElement,
@@ -887,6 +888,16 @@ export class CampaignShell {
       requiredElement(this.root, ".amso-campaign__footer")
     ];
     this.orientationQuery = window.matchMedia?.("(orientation: landscape)") ?? null;
+    this.updateResponsiveLayout(this.root.getBoundingClientRect().width || window.innerWidth);
+    if (typeof ResizeObserver === "function") {
+      this.layoutObserver = new ResizeObserver((entries) => {
+        const width = entries[0]?.contentRect.width;
+        if (width !== undefined) this.updateResponsiveLayout(width);
+      });
+      this.layoutObserver.observe(this.root);
+    } else {
+      this.layoutObserver = null;
+    }
 
     this.applyCopy();
     this.updateFullscreenControl();
@@ -1360,6 +1371,7 @@ export class CampaignShell {
   public destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.layoutObserver?.disconnect();
     this.worldGeometryCoordinator.destroy();
     this.worldVisualLayer.destroy();
     if (this.orientationDebounceTimer !== undefined) {
@@ -1814,9 +1826,18 @@ export class CampaignShell {
   };
 
   private readonly handleResize = (): void => {
+    this.updateResponsiveLayout(this.root.getBoundingClientRect().width || window.innerWidth);
     this.applyMilestoneLayout();
     this.updateNarrowState();
   };
+
+  private updateResponsiveLayout(width: number): void {
+    if (width <= 600) {
+      this.root.dataset.mobileLayout = "true";
+      return;
+    }
+    delete this.root.dataset.mobileLayout;
+  }
 
   private applyMilestoneLayout(): void {
     const layout = milestoneLayoutForViewport(window.innerWidth, window.innerHeight);

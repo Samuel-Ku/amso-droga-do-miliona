@@ -1,6 +1,5 @@
 import {
   PLAYER_NAME_BLOCKED_PHRASES,
-  PLAYER_NAME_COMPACT_ALIASES,
   PLAYER_NAME_EXCEPTIONS,
   PLAYER_NAME_HOMOGLYPHS,
   PLAYER_NAME_POLICY_VERSION,
@@ -138,9 +137,6 @@ function blockedCategory(forms: readonly ComparisonForm[]): PlayerNameModeration
     }
   }
 
-  if (forms.some((form) => PLAYER_NAME_COMPACT_ALIASES.includes(form.compact))) {
-    return "impersonation";
-  }
   return null;
 }
 

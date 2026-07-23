@@ -1,4 +1,4 @@
-export const PLAYER_NAME_POLICY_VERSION = "2026-07-23.1";
+export const PLAYER_NAME_POLICY_VERSION = "2026-07-23.2";
 
 export type PlayerNameModerationCategory =
   | "format"
@@ -114,21 +114,17 @@ export const PLAYER_NAME_BLOCKED_PHRASES: readonly PlayerNamePhraseCategory[] = 
   },
   {
     category: "advertising",
-    phrases: Object.freeze(["promocja", "kod rabatowy", "kup teraz", "buy now"])
+    phrases: Object.freeze([
+      "promocja",
+      "kod rabatowy",
+      "kup teraz",
+      "buy now",
+      "reklama",
+      "zakup",
+      "advertisement",
+      "purchase"
+    ])
   }
-]);
-
-export const PLAYER_NAME_COMPACT_ALIASES = Object.freeze([
-  "amso",
-  "amsopl",
-  "amsoteam",
-  "amsoofficial",
-  "agpl",
-  "xkom",
-  "xkompl",
-  "komputronikpl",
-  "mediaexpert",
-  "rtveuroagd"
 ]);
 
 export const PLAYER_NAME_ALLOWED_MANUFACTURERS = Object.freeze([
