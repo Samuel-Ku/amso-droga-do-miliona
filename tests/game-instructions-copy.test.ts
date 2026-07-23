@@ -1,11 +1,12 @@
 // @vitest-environment happy-dom
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import {
   GAME_INSTRUCTION_COPY,
   GAME_INTRODUCTION_COPY,
   GAME_INTRODUCTION_COPY_REF
-} from "../src/ui/game-instructions-copy";
+} from "../src/config/game-instructions-copy";
 import { CampaignShell, type CampaignShellCallbacks } from "../src/ui/CampaignShell";
 import productionConfig from "../public/assets/milion-runner/runner-config.json";
 import { parseRunnerConfig } from "../src/config/schema";
@@ -53,7 +54,7 @@ describe("canonical game instructions", () => {
     );
 
     expect(GAME_INTRODUCTION_COPY_REF).toBe("game-introduction");
-    expect(document.querySelector("[data-campaign-copy=\"landingLead\"]")?.textContent)
+    expect(document.querySelector("[data-campaign-landing-goal]")?.textContent)
       .toBe(GAME_INSTRUCTION_COPY.landingGoal);
     expect(howToParagraphs).toEqual([
       GAME_INSTRUCTION_COPY.storySafety,
@@ -61,7 +62,7 @@ describe("canonical game instructions", () => {
       GAME_INSTRUCTION_COPY.slide,
       GAME_INSTRUCTION_COPY.ordersAndCombo
     ]);
-    expect(document.querySelector("[data-campaign-copy=\"hudPackages\"]")?.textContent)
+    expect(document.querySelector("[data-campaign-hud-orders-label]")?.textContent)
       .toBe("Zamówienia");
     expect(document.querySelector("[data-campaign-canvas]")?.getAttribute("aria-label"))
       .toBe(`Pole gry. ${GAME_INSTRUCTION_COPY.jump} ${GAME_INSTRUCTION_COPY.slide}`);
@@ -105,6 +106,18 @@ describe("canonical game instructions", () => {
       copyRef: GAME_INTRODUCTION_COPY_REF,
       ...GAME_INTRODUCTION_COPY
     });
+
+    const rawCopy = structuredClone(productionConfig) as Record<string, unknown>;
+    const rawCopyScenes = (rawCopy.story as Record<string, unknown>)
+      .scenes as Array<Record<string, unknown>>;
+    const rawCopyIntro = (rawCopyScenes[0]?.steps as Array<Record<string, unknown>>)
+      .find(({ id }) => id === "game-purpose");
+    if (rawCopyIntro === undefined) throw new Error("Introduction should exist");
+    delete rawCopyIntro.copyRef;
+    rawCopyIntro.title = "Stary tytuł";
+    rawCopyIntro.body = ["Stary opis"];
+    rawCopyIntro.continueLabel = "Dalej";
+    expect(parseRunnerConfig(rawCopy)).toBeNull();
 
     for (const retiredKey of [
       "landingLead",
@@ -154,12 +167,19 @@ describe("canonical game instructions", () => {
   });
 
   it("rejects misleading general instructions without banning parcel-specific history", () => {
-    const canonicalInstructions = JSON.stringify(GAME_INSTRUCTION_COPY);
+    const generalInstructionSources = [
+      JSON.stringify(GAME_INSTRUCTION_COPY),
+      readFileSync("src/ui/CampaignShell.ts", "utf8"),
+      readFileSync("src/ui/story-presentation.ts", "utf8"),
+      JSON.stringify(productionConfig)
+    ];
     const authoredStory = JSON.stringify(productionConfig.story);
 
-    expect(canonicalInstructions).not.toMatch(/zebrać wszystkie paczki/iu);
-    expect(canonicalInstructions).not.toMatch(/<[^>]+>/u);
-    expect(canonicalInstructions).toContain("paczki i urządzenia");
+    for (const source of generalInstructionSources) {
+      expect(source).not.toMatch(/zebrać wszystkie paczki/iu);
+    }
+    expect(JSON.stringify(GAME_INSTRUCTION_COPY)).not.toMatch(/<[^>]+>/u);
+    expect(JSON.stringify(GAME_INSTRUCTION_COPY)).toContain("paczki i urządzenia");
     expect(authoredStory).toContain("Pierwsza paczka");
   });
 });

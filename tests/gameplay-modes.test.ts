@@ -533,6 +533,29 @@ describe("campaign collision contract", () => {
     harness.game.destroy();
   });
 
+  it("continues from the game-purpose CTA to the first authored story beat", () => {
+    const harness = createGameHarness("story");
+    harness.game.start("keyboard");
+
+    expect(harness.storyUpdates.at(-1)).toMatchObject({
+      state: "scene",
+      scene: { id: "story.first_package" },
+      scenePageId: "game-purpose",
+      controlsEnabled: false
+    });
+
+    expect(harness.game.continueStoryScene("story.first_package")).toBe(true);
+    expect(harness.storyUpdates.at(-1)).toMatchObject({
+      state: "scene",
+      scene: { id: "story.first_package" },
+      scenePageId: "first-hand-packed",
+      controlsEnabled: false
+    });
+    expect(harness.snapshots.at(-1)?.mode).toBe("story");
+
+    harness.game.destroy();
+  });
+
   it("adds the configured completion bonus only when the profile marks this as the first pass", () => {
     const config = parseRunnerConfig(productionConfig);
     if (!config) throw new Error("production config should parse");

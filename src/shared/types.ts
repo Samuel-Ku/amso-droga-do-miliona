@@ -1,3 +1,5 @@
+import type { GameInstructionCopyRef } from "../config/game-instructions-copy";
+
 export type RunnerSource = "homepage_logo" | "landing_hero" | "demo_logo" | "demo_hero" | string;
 
 export interface RunnerFact {
@@ -125,7 +127,7 @@ export interface StorySceneConfig {
 
 export interface StoryScenePageConfig {
   id: string;
-  copyRef?: "game-introduction";
+  copyRef?: GameInstructionCopyRef;
   title?: string;
   body: string[];
   continueLabel: string;

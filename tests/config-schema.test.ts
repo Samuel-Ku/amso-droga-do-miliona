@@ -15,7 +15,7 @@ import type { RunnerConfigValidationOptions } from "../src/config/types";
 import {
   GAME_INSTRUCTION_COPY,
   GAME_INTRODUCTION_COPY_REF
-} from "../src/ui/game-instructions-copy";
+} from "../src/config/game-instructions-copy";
 
 function validConfig(): Record<string, unknown> {
   return structuredClone(productionConfig) as Record<string, unknown>;

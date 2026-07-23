@@ -25,7 +25,7 @@ import { RecordsClient } from "../records-client";
 import type { PlayerProfileStore } from "../profile";
 import type { QualityCommitContext } from "../performance/visual-quality-coordinator";
 import { DecodedImageStore } from "../assets/DecodedImageStore";
-import { GAME_INSTRUCTION_COPY } from "./game-instructions-copy";
+import { GAME_INSTRUCTION_COPY } from "../config/game-instructions-copy";
 
 export type { CampaignStoryScene, CampaignStorySceneInput } from "./story-presentation";
 
@@ -596,7 +596,7 @@ export class CampaignShell {
               <span class="amso-campaign__hud-notice" data-campaign-hud-notice hidden role="status"></span>
             </div>
             <div class="amso-campaign__hud-stats">
-              <span><small data-campaign-copy="hudPackages">${GAME_INSTRUCTION_COPY.hudOrdersLabel}</small> <strong data-campaign-hud-packages>0</strong></span>
+              <span><small data-campaign-hud-orders-label>${GAME_INSTRUCTION_COPY.hudOrdersLabel}</small> <strong data-campaign-hud-packages>0</strong></span>
               <span><small data-campaign-copy="hudScore">Wynik</small> <strong data-campaign-hud-score>0</strong></span>
               <span><small>SERIA</small> <strong data-campaign-hud-combo>×1</strong></span>
             </div>
@@ -607,7 +607,7 @@ export class CampaignShell {
             <div class="amso-campaign__landing-copy">
               <p class="amso-campaign__eyebrow" data-campaign-copy="landingEyebrow">Jubileuszowa historia AMSO</p>
               <h1><span data-campaign-copy="landingTitleAccent">Droga do Miliona</span></h1>
-              <p class="amso-campaign__lead" data-campaign-copy="landingLead">${GAME_INSTRUCTION_COPY.landingGoal}</p>
+              <p class="amso-campaign__lead" data-campaign-landing-goal>${GAME_INSTRUCTION_COPY.landingGoal}</p>
               <p class="amso-campaign__meta" data-campaign-copy="landingMeta">Około 6 minut · historia w Twoim tempie · skok i ślizg</p>
               <details class="amso-campaign__how-to">
                 <summary>Jak działa gra?</summary>

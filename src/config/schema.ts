@@ -32,9 +32,11 @@ import type {
 } from "./types";
 import embeddedResourcePolicy from "./embedded-resource-policy.json";
 import {
-  GAME_INTRODUCTION_COPY,
-  GAME_INTRODUCTION_COPY_REF
-} from "../ui/game-instructions-copy";
+  GAME_INSTRUCTION_COPY_BY_REF,
+  GAME_INSTRUCTION_PAGE_ID_BY_REF,
+  GAME_INTRODUCTION_COPY_REF,
+  isGameInstructionCopyRef
+} from "./game-instructions-copy";
 
 const IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9_.-]{0,63}$/;
 const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$/;
@@ -285,14 +287,16 @@ function parseScenePage(value: unknown): StoryScenePageConfig | null {
       (value.action !== undefined && !isSafeText(value.action, 220)) ||
       (value.finalFrame !== undefined && !isSafeText(value.finalFrame, 220))) return null;
 
-  const hasSemanticCopy = value.copyRef !== undefined;
+  const copyRef = isGameInstructionCopyRef(value.copyRef) ? value.copyRef : null;
+  const hasSemanticCopy = copyRef !== null;
+  if (value.copyRef !== undefined && copyRef === null) return null;
   if (hasSemanticCopy) {
-    if (value.copyRef !== GAME_INTRODUCTION_COPY_REF ||
-        value.id !== "game-purpose" ||
+    if (value.id !== GAME_INSTRUCTION_PAGE_ID_BY_REF[copyRef] ||
         value.title !== undefined ||
         value.body !== undefined ||
         value.continueLabel !== undefined) return null;
   } else if (
+    value.id === GAME_INSTRUCTION_PAGE_ID_BY_REF[GAME_INTRODUCTION_COPY_REF] ||
     (value.title !== undefined && !isSafeText(value.title, 160)) ||
     !Array.isArray(value.body) ||
     value.body.length < 1 ||
@@ -305,9 +309,9 @@ function parseScenePage(value: unknown): StoryScenePageConfig | null {
 
   const resolvedCopy = hasSemanticCopy
     ? {
-        title: GAME_INTRODUCTION_COPY.title,
-        body: [...GAME_INTRODUCTION_COPY.body],
-        continueLabel: GAME_INTRODUCTION_COPY.continueLabel
+        title: GAME_INSTRUCTION_COPY_BY_REF[copyRef].title,
+        body: [...GAME_INSTRUCTION_COPY_BY_REF[copyRef].body],
+        continueLabel: GAME_INSTRUCTION_COPY_BY_REF[copyRef].continueLabel
       }
     : {
         ...(typeof value.title === "string" ? { title: value.title } : {}),
@@ -316,7 +320,7 @@ function parseScenePage(value: unknown): StoryScenePageConfig | null {
       };
   return {
     id: value.id,
-    ...(hasSemanticCopy ? { copyRef: GAME_INTRODUCTION_COPY_REF } : {}),
+    ...(hasSemanticCopy ? { copyRef } : {}),
     ...resolvedCopy,
     safe: true,
     ...(typeof value.fact === "string" ? { fact: value.fact } : {}),

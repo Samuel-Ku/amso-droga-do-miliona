@@ -1,7 +1,5 @@
 export const GAME_INTRODUCTION_COPY_REF = "game-introduction" as const;
 
-export type GameInstructionCopyRef = typeof GAME_INTRODUCTION_COPY_REF;
-
 export const GAME_INSTRUCTION_COPY = Object.freeze({
   landingGoal:
     "Pomóż kurierowi realizować zamówienia, zbierając paczki i urządzenia podczas biegu przez kolejne etapy historii AMSO aż do zamówienia nr 1 000 000.",
@@ -28,3 +26,18 @@ export const GAME_INTRODUCTION_COPY = Object.freeze({
   ]),
   continueLabel: GAME_INSTRUCTION_COPY.introCta
 });
+
+export const GAME_INSTRUCTION_COPY_BY_REF = Object.freeze({
+  [GAME_INTRODUCTION_COPY_REF]: GAME_INTRODUCTION_COPY
+});
+
+export const GAME_INSTRUCTION_PAGE_ID_BY_REF = Object.freeze({
+  [GAME_INTRODUCTION_COPY_REF]: "game-purpose"
+} as const);
+
+export type GameInstructionCopyRef = keyof typeof GAME_INSTRUCTION_COPY_BY_REF;
+
+export function isGameInstructionCopyRef(value: unknown): value is GameInstructionCopyRef {
+  return typeof value === "string" &&
+    Object.hasOwn(GAME_INSTRUCTION_COPY_BY_REF, value);
+}

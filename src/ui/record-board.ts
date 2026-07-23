@@ -1,6 +1,6 @@
 import { RecordsClient, sanitizePlayerName } from "../records-client";
 import type { RecordBoardEntry } from "../shared/types";
-import { GAME_INSTRUCTION_COPY } from "./game-instructions-copy";
+import { GAME_INSTRUCTION_COPY } from "../config/game-instructions-copy";
 
 function formatInt(n: number): string {
   return Math.round(n).toLocaleString("pl-PL");
