@@ -810,6 +810,16 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   color: var(--campaign-ink);
 }
 
+[data-campaign-pause-screen] .amso-campaign__actions {
+  margin-top: clamp(20px, 3vw, 28px);
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  [data-campaign-pause-screen] .amso-campaign__actions {
+    margin-top: 16px;
+  }
+}
+
 @keyframes campaign-countdown-three {
   from { opacity: 0.32; transform: scale(1.14); }
   to { opacity: 1; transform: scale(1); }

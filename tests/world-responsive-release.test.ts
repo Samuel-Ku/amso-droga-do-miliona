@@ -31,6 +31,18 @@ const campaignStyles = readFileSync(
   "src/styles/campaign.css",
   "utf8"
 );
+const PAUSE_ACTION_SELECTOR = "[data-campaign-pause-screen] .amso-campaign__actions";
+
+function isPauseActionRule(rule: CSSRule): rule is CSSStyleRule {
+  return rule instanceof CSSStyleRule && rule.selectorText === PAUSE_ACTION_SELECTOR;
+}
+
+function setTestViewport(width: number, height: number): void {
+  const happyDOM = (window as unknown as {
+    happyDOM: { setWindowSize(size: { width: number; height: number }): void };
+  }).happyDOM;
+  happyDOM.setWindowSize({ width, height });
+}
 
 function createShell(): CampaignShell {
   vi.stubGlobal("ResizeObserver", class {
@@ -96,6 +108,54 @@ function scene(state: "running" | "paused"): RenderScene {
 }
 
 describe("responsive world release contract", () => {
+  it("keeps pause actions visibly separated from bonuses across responsive layouts", () => {
+    const shell = createShell();
+    shell.showGame("challenge");
+    shell.setPaused(true);
+
+    const pauseScreen = document.querySelector<HTMLElement>("[data-campaign-pause-screen]")!;
+    const pauseActions = pauseScreen.querySelector<HTMLElement>(".amso-campaign__actions")!;
+    const pauseBonuses = pauseScreen.querySelector<HTMLElement>(".amso-campaign__pause-bonuses")!;
+    const buttons = [...pauseActions.querySelectorAll<HTMLButtonElement>("button")];
+    const rules = [...document.styleSheets].flatMap((sheet) => [...sheet.cssRules]);
+    const baseRule = rules.find(isPauseActionRule);
+    const compactMediaRule = rules.find((rule): rule is CSSMediaRule =>
+      rule instanceof CSSMediaRule &&
+      rule.conditionText === "(orientation: landscape) and (max-height: 520px)"
+    );
+    const compactRule = [...(compactMediaRule?.cssRules ?? [])].find(isPauseActionRule);
+    const initialViewport = [window.innerWidth, window.innerHeight] as const;
+
+    expect(pauseScreen.hidden).toBe(false);
+    expect(pauseScreen.querySelector("h2")?.textContent).toBe("Gra wstrzymana");
+    expect(pauseBonuses.querySelector("strong")?.textContent).toBe("Bonusy");
+    expect([...pauseBonuses.querySelectorAll("span")].map(({ textContent }) => textContent))
+      .toEqual([
+        "×2 WYNIK — przez 7 s podwaja punkty za zamówienia.",
+        "GWARANCJA AMSO CARE — uratuje jedną próbę w Trybie Wyzwania."
+      ]);
+    expect(buttons.map(({ textContent }) => textContent)).toEqual(["Wznów", "Wróć do menu"]);
+    expect(getComputedStyle(pauseActions).justifyContent).toBe("center");
+    expect(baseRule).toBeDefined();
+    expect(campaignStyles).toContain(
+      `${PAUSE_ACTION_SELECTOR} {\n` +
+      "  margin-top: clamp(20px, 3vw, 28px);\n" +
+      "}"
+    );
+    expect(compactRule?.style.marginTop).toBe("16px");
+    expect(rules.indexOf(compactMediaRule!)).toBeGreaterThan(rules.indexOf(baseRule!));
+
+    setTestViewport(1440, 900);
+    expect(window.matchMedia(compactMediaRule!.conditionText).matches).toBe(false);
+    setTestViewport(844, 390);
+    expect(window.matchMedia(compactMediaRule!.conditionText).matches).toBe(true);
+    setTestViewport(initialViewport[0], initialViewport[1]);
+
+    shell.destroy();
+    document.body.replaceChildren();
+    vi.unstubAllGlobals();
+  });
+
   it.each(MATRIX.flatMap(([width, height]) => [
     [width, height, 1] as const,
     [width, height, 2] as const
