@@ -121,9 +121,10 @@ describe("story input safety gate", () => {
     const { shell } = createShell();
     const canvas = document.querySelector<HTMLCanvasElement>("[data-campaign-canvas]");
 
-    expect(canvas?.getAttribute("aria-label")).toContain("W lub strzałka w górę");
-    expect(canvas?.getAttribute("aria-label")).toContain("Spacja lub tapnięcie");
-    expect(canvas?.getAttribute("aria-label")).toContain("S lub strzałka w dół");
+    expect(canvas?.getAttribute("aria-label")).toContain("Spacja, W lub ↑");
+    expect(canvas?.getAttribute("aria-label")).toContain("dotknij ekranu");
+    expect(canvas?.getAttribute("aria-label")).toContain("S lub ↓");
+    expect(canvas?.getAttribute("aria-label")).toContain("przesuń palcem w dół");
     shell.destroy();
   });
 

@@ -125,6 +125,7 @@ export interface StorySceneConfig {
 
 export interface StoryScenePageConfig {
   id: string;
+  copyRef?: "game-introduction";
   title?: string;
   body: string[];
   continueLabel: string;

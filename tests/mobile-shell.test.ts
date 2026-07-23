@@ -194,4 +194,33 @@ describe("mobile campaign shell", () => {
     expect(onJump).toHaveBeenCalledTimes(1);
     shell.destroy();
   });
+
+  it("maps a mobile tap to jump and a downward swipe to held slide", () => {
+    const onJump = vi.fn();
+    const onSlide = vi.fn();
+    const shell = createShell({ onJump, onSlide });
+    shell.showGame("challenge");
+    const canvas = document.querySelector<HTMLCanvasElement>("[data-campaign-canvas]")!;
+    const touch = (type: string, y: number) => new PointerEvent(type, {
+      bubbles: true,
+      button: 0,
+      isPrimary: true,
+      clientX: 20,
+      clientY: y,
+      pointerType: "touch"
+    });
+
+    canvas.dispatchEvent(touch("pointerdown", 20));
+    canvas.dispatchEvent(touch("pointerup", 20));
+    canvas.dispatchEvent(touch("pointerdown", 20));
+    canvas.dispatchEvent(touch("pointermove", 50));
+    canvas.dispatchEvent(touch("pointerup", 50));
+
+    expect(onJump).toHaveBeenCalledExactlyOnceWith("touch");
+    expect(onSlide.mock.calls).toEqual([
+      [true, "touch"],
+      [false, "touch"]
+    ]);
+    shell.destroy();
+  });
 });

@@ -11,7 +11,7 @@ npm run build
 npm run build:single
 ```
 
-Stan z 2026-07-15: typecheck, 177 testów, build produkcyjny, single-file build i eksport CSV zakończone powodzeniem.
+Stan z 2026-07-15: typecheck, 177 testów, build produkcyjny i single-file build zakończone powodzeniem.
 
 ## Macierz viewportów
 
@@ -65,7 +65,6 @@ Warunek odbioru: co najmniej 4 z 5 osób:
 
 ## Blokady publikacji
 
-- marketing musi wypełnić decyzje w `copydeck_droga_do_miliona_dla_marketingu_v1.md`;
 - porównanie 400 000 kg do pięciu Boeingów 737 pozostaje niezatwierdzone;
 - voice-over i rozszerzona analityka są poza release candidate;
 - dark mode został usunięty; wydanie jawnie używa wyłącznie light mode.

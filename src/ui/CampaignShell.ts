@@ -25,6 +25,7 @@ import { RecordsClient } from "../records-client";
 import type { PlayerProfileStore } from "../profile";
 import type { QualityCommitContext } from "../performance/visual-quality-coordinator";
 import { DecodedImageStore } from "../assets/DecodedImageStore";
+import { GAME_INSTRUCTION_COPY } from "./game-instructions-copy";
 
 export type { CampaignStoryScene, CampaignStorySceneInput } from "./story-presentation";
 
@@ -75,7 +76,6 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   fullscreenExit: "Wyjdź z pełnego",
   cssGameModeEnter: "Tryb gry",
   cssGameModeExit: "Wyjdź z trybu gry",
-  hudPackages: "Paczki",
   hudScore: "Wynik",
   pauseAction: "Pauza",
   storyMode: "Droga do Miliona",
@@ -83,7 +83,6 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   landingEyebrow: "Jubileuszowa historia AMSO",
   landingTitle: "AMSO —",
   landingTitleAccent: "Droga do Miliona",
-  landingLead: "Jedna paczka rozpoczęła historię. Przebiegnij z nami drogę do zamówienia nr 1 000 000.",
   landingMeta: "Około 6 minut · historia w Twoim tempie · skok i ślizg",
   startStory: "Rozpocznij historię",
   choosePath: "Wybierz swoją drogę",
@@ -119,7 +118,6 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   powerupWarranty: "GWARANCJA AMSO CARE — uratuje jedną próbę w Trybie Wyzwania.",
   powerupWarrantyHud: "GWARANCJA AMSO CARE ×1",
   warrantyConsumed: "GWARANCJA AMSO CARE zadziałała — próba trwa dalej.",
-  controlsHud: "Skok: W/↑/Spacja/tap · Ślizg: S/↓",
   retryChallenge: "Spróbuj jeszcze raz",
   shareResult: "Udostępnij wynik",
   shareLead: "Wybierz, gdzie chcesz udostępnić kartę wyniku.",
@@ -585,7 +583,7 @@ export class CampaignShell {
             height="540"
             tabindex="-1"
             aria-hidden="true"
-            aria-label="Pole gry. W lub strzałka w górę oraz Spacja lub tapnięcie wykonują skok. S lub strzałka w dół oraz przesunięcie w dół wykonują ślizg."
+            aria-label="Pole gry. ${GAME_INSTRUCTION_COPY.jump} ${GAME_INSTRUCTION_COPY.slide}"
           ></canvas>
           <div class="amso-campaign__milestone-message" data-campaign-milestone-message hidden aria-hidden="true"></div>
           <section class="amso-campaign__hud" data-campaign-hud hidden aria-label="Wynik biegu">
@@ -598,7 +596,7 @@ export class CampaignShell {
               <span class="amso-campaign__hud-notice" data-campaign-hud-notice hidden role="status"></span>
             </div>
             <div class="amso-campaign__hud-stats">
-              <span><small data-campaign-copy="hudPackages">Paczki</small> <strong data-campaign-hud-packages>0</strong></span>
+              <span><small data-campaign-copy="hudPackages">${GAME_INSTRUCTION_COPY.hudOrdersLabel}</small> <strong data-campaign-hud-packages>0</strong></span>
               <span><small data-campaign-copy="hudScore">Wynik</small> <strong data-campaign-hud-score>0</strong></span>
               <span><small>SERIA</small> <strong data-campaign-hud-combo>×1</strong></span>
             </div>
@@ -609,14 +607,15 @@ export class CampaignShell {
             <div class="amso-campaign__landing-copy">
               <p class="amso-campaign__eyebrow" data-campaign-copy="landingEyebrow">Jubileuszowa historia AMSO</p>
               <h1><span data-campaign-copy="landingTitleAccent">Droga do Miliona</span></h1>
-              <p class="amso-campaign__lead" data-campaign-copy="landingLead">Jedna paczka rozpoczęła historię. Przebiegnij z nami drogę do zamówienia nr 1 000 000.</p>
+              <p class="amso-campaign__lead" data-campaign-copy="landingLead">${GAME_INSTRUCTION_COPY.landingGoal}</p>
               <p class="amso-campaign__meta" data-campaign-copy="landingMeta">Około 6 minut · historia w Twoim tempie · skok i ślizg</p>
               <details class="amso-campaign__how-to">
                 <summary>Jak działa gra?</summary>
                 <div>
-                  <p><strong>Historia i bieg przeplatają się.</strong> Gdy pojawia się karta historii, trasa jest bezpieczna i niczego nie musisz omijać ani zbierać.</p>
-                  <p><strong>Skacz</strong> dotykiem lub Spacją. <strong>Ślizg</strong> wykonaj gestem w dół albo klawiszem ↓.</p>
-                  <p><strong>Urządzenia i paczki realizują zamówienia.</strong> Bonus zawsze pokazuje swoje działanie, a kolejne czyste akcje budują <strong>SERIĘ ×N</strong>.</p>
+                  <p>${GAME_INSTRUCTION_COPY.storySafety}</p>
+                  <p>${GAME_INSTRUCTION_COPY.jump}</p>
+                  <p>${GAME_INSTRUCTION_COPY.slide}</p>
+                  <p>${GAME_INSTRUCTION_COPY.ordersAndCombo}</p>
                 </div>
               </details>
               <div class="amso-campaign__landing-cta-group">
@@ -1139,7 +1138,7 @@ export class CampaignShell {
     const controls = formatStoryControlsHud(
       snapshot.storyObjectiveSegmentId,
       snapshot.authoredWave,
-      this.copy.controlsHud
+      GAME_INSTRUCTION_COPY.compactControls
     );
     this.hudControls.textContent = controls ?? "";
     this.hudControls.hidden = controls === null;

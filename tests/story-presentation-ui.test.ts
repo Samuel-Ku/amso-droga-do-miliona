@@ -138,7 +138,7 @@ describe("player-paced story presentation", () => {
 
   it("keeps controls in the top HUD and removes visible bottom gameplay text", () => {
     expect(formatStoryControlsHud("epoch_1.training"))
-      .toBe("Skok: W/↑/Spacja/tap · Ślizg: S/↓");
+      .toBe("Skok: Spacja/W/↑/tap · Ślizg: S/↓/swipe ↓");
     expect(formatStoryControlsHud("epoch_2.quality_series")).toBeNull();
     expect(campaignShellSource).toContain("data-campaign-hud-controls");
     expect(campaignShellSource).not.toContain("data-campaign-gameplay-hint");
@@ -253,6 +253,22 @@ describe("player-paced story presentation", () => {
     expect(campaignCss).toContain("opacity: 0.8");
     expect(campaignCss).toContain("transition: none");
     expect(campaignCss).toContain("color-scheme: only light");
+  });
+
+  it("keeps phone-landscape instructions readable with accessible actions", () => {
+    const phoneRule =
+      "@media (max-width: 960px) and (max-height: 520px) and (orientation: landscape)";
+    const phoneRuleStart = campaignCss.lastIndexOf(phoneRule);
+    expect(phoneRuleStart).toBeGreaterThan(-1);
+    const phoneCss = campaignCss.slice(phoneRuleStart);
+
+    expect(isCampaignViewportTooNarrow(844, 390)).toBe(false);
+    expect(isCampaignViewportTooNarrow(960, 540)).toBe(false);
+    expect(phoneCss).toContain(".amso-campaign__how-to");
+    expect(phoneCss).toContain("display: block");
+    expect(phoneCss).toContain("font-size: 0.75rem");
+    expect(phoneCss).toContain("min-height: 44px");
+    expect(phoneCss).toContain("font-size: 0.875rem");
   });
 
   it("keeps the countdown route visible after every responsive scrim rule", () => {

@@ -18,7 +18,6 @@
     "soundOff": "Włącz dźwięk",
     "fullscreenEnter": "Pełny ekran",
     "fullscreenExit": "Wyjdź z pełnego",
-    "hudPackages": "Paczki",
     "hudScore": "Wynik",
     "pauseAction": "Pauza",
     "storyMode": "Droga do Miliona",
@@ -26,7 +25,6 @@
     "landingEyebrow": "Jubileuszowa historia AMSO",
     "landingTitle": "AMSO —",
     "landingTitleAccent": "Droga do Miliona",
-    "landingLead": "Jedna paczka rozpoczęła historię. Przebiegnij z nami drogę do zamówienia nr 1 000 000.",
     "landingMeta": "Około 6 minut · historia w Twoim tempie · skok i ślizg",
     "startStory": "Rozpocznij historię",
     "choosePath": "Wybierz swoją drogę",
@@ -79,9 +77,6 @@
     "narrowBody": "Obróć urządzenie, żeby rozpocząć grę.",
     "footerTagline": "AMSO. Sprzęt z przeszłością. Na przyszłość.",
     "footerCampaign": "Strona kampanii",
-    "tutorialJump": "Naciśnij W, ↑, Spację lub tapnij, żeby skoczyć.",
-    "tutorialSlide": "Naciśnij S, ↓ lub przesuń palcem w dół, żeby zrobić ślizg.",
-    "controlsHud": "Skok: W/↑/Spacja/tap · Ślizg: S/↓",
     "powerupWarrantyHud": "GWARANCJA AMSO CARE ×1",
     "warrantyConsumed": "GWARANCJA AMSO CARE zadziałała — próba trwa dalej.",
     "parcelWarrantyLine1": "GWARANCJA",
@@ -193,7 +188,7 @@
         "body": ["Pierwsze zamówienie przygotowaliśmy własnymi rękami. Tak rozpoczęła się droga AMSO."],
         "vignette": "first-package", "continueLabel": "Dalej", "perspective": "amso",
         "steps": [
-          { "id": "game-purpose", "title": "To gra o drodze AMSO.", "body": ["Bieg łączy etapy rozwoju firmy z bezpiecznymi kartami historii. Skacz klawiszem W, ↑, Spacją lub dotykiem; ślizgaj się klawiszem S, ↓ lub gestem w dół i realizuj zamówienia aż do miliona."], "continueLabel": "Poznaj początek", "safe": true, "fact": "Gra opowiada prawdziwą drogę AMSO od pierwszej paczki do miliona zamówień.", "action": "Pierwsza paczka rusza przez podgląd kolejnych miejsc: magazynu, stanowiska jakości i licznika.", "finalFrame": "Pierwsza paczka stoi na początku trasy prowadzącej do czytelnego znaku 1 000 000." },
+          { "id": "game-purpose", "copyRef": "game-introduction", "safe": true, "fact": "Gra opowiada prawdziwą drogę AMSO od pierwszej paczki do miliona zamówień.", "action": "Pierwsza paczka rusza przez podgląd kolejnych miejsc: magazynu, stanowiska jakości i licznika.", "finalFrame": "Pierwsza paczka stoi na początku trasy prowadzącej do czytelnego znaku 1 000 000." },
           { "id": "first-hand-packed", "title": "Pierwszą paczkę przygotowaliśmy sami.", "body": ["Z małego sklepu i magazynu wielkości kawalerki własnymi rękami wysłaliśmy pierwsze zamówienie. Ty poprowadzisz tę drogę aż do miliona."], "continueLabel": "Rozpocznij drogę", "safe": true, "fact": "Pierwsze zamówienie AMSO zostało przygotowane własnymi rękami w małym sklepie i magazynie.", "action": "Pracownik składa karton, wkłada urządzenie, zamyka paczkę i nakleja etykietę.", "finalFrame": "Gotowa pierwsza paczka stoi przy wyjściu z małego magazynu, a zespół AMSO jest obok." }
         ]
       },
@@ -253,14 +248,14 @@
         "id": "challenge.million_wave", "chapter": "epoch_5", "eyebrow": "Wyzwanie", "title": "Próg Miliona sprawdza całą drogę.",
         "body": ["Zrealizuj 30 zamówień i ukończ dwanaście różnych kombinacji."], "vignette": "million-wave", "continueLabel": "Podejmij wyzwanie", "perspective": "challenge",
         "steps": [
-          { "id": "two-goals", "title": "Dwanaście prób prowadzi do miliona.", "body": ["Zrealizuj 30 zamówień w dwunastu kombinacjach skoku oraz ślizgu. W fabule nie ma game over: pominięte zamówienia wracają bez przeszkód."], "continueLabel": "Rozpocznij finał", "safe": true, "fact": "Próg Miliona wymaga 30 zamówień i dwunastu kombinacji bez game over w fabule.", "action": "HUD pokazuje jeden licznik zamówień rosnący z każdym zebranym urządzeniem lub paczką.", "finalFrame": "Licznik zamówień jest widoczny nad bezpiecznym początkiem finałowej trasy." }
+          { "id": "two-goals", "title": "Zbierz ostatnie 50 paczek.", "body": ["Zbierz je wszystkie i doprowadź licznik do 1 000 000 zamówień."], "continueLabel": "Rozpocznij finał", "safe": true, "fact": "Próg Miliona wymaga 30 zamówień i dwunastu kombinacji bez game over w fabule.", "action": "HUD pokazuje jeden licznik zamówień rosnący z każdym zebranym urządzeniem lub paczką.", "finalFrame": "Licznik zamówień jest widoczny nad bezpiecznym początkiem finałowej trasy." }
         ]
       },
        {
-        "id": "story.million_finale", "chapter": "finale", "eyebrow": "Nasza historia", "title": "BRAWO! Wspólnie przygotowaliśmy aż MILION paczek!",
-        "body": ["Dziękujemy!", "Graj dalej i pobijaj kolejne rekordy. Jedno potknięcie kończy Twoją grę."], "vignette": "million-package", "continueLabel": "Zobacz, co dalej", "perspective": "amso",
+        "id": "story.million_finale", "chapter": "finale", "eyebrow": "Nasza historia", "title": "BRAWO! Wspólnie dotarliśmy do miliona paczek.",
+        "body": ["Dziękujemy, że jesteś częścią tej drogi."], "vignette": "million-package", "continueLabel": "Zobacz, co dalej", "perspective": "amso",
         "steps": [
-          { "id": "million-celebration", "title": "BRAWO! Wspólnie przygotowaliśmy aż MILION paczek!", "body": ["Dziękujemy!", "Graj dalej i pobijaj kolejne rekordy. Jedno potknięcie kończy Twoją grę."], "continueLabel": "Zobacz, co dalej", "safe": true, "fact": "AMSO osiągnęło milion zrealizowanych zamówień.", "action": "Licznik przechodzi na 1 000 000, a zespół AMSO otacza milionową paczkę.", "finalFrame": "Świąteczny znak 1 000 000, milionowa paczka i zespół AMSO tworzą jeden centralny kadr." }
+          { "id": "million-celebration", "title": "BRAWO! Wspólnie dotarliśmy do miliona paczek.", "body": ["Dziękujemy, że jesteś częścią tej drogi."], "continueLabel": "Zobacz, co dalej", "safe": true, "fact": "AMSO osiągnęło milion zrealizowanych zamówień.", "action": "Licznik przechodzi na 1 000 000, a zespół AMSO otacza milionową paczkę.", "finalFrame": "Świąteczny znak 1 000 000, milionowa paczka i zespół AMSO tworzą jeden centralny kadr." }
         ]
       },
       {

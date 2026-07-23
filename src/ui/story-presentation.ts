@@ -2,6 +2,7 @@ import type { StoryObjectiveId, StoryObjectivesSnapshot } from "../game/story-ob
 import type { AuthoredWaveProgressSnapshot } from "../game/authored-wave";
 import type { ActivePowerUpStatus } from "../game/power-ups";
 import type { PackageType, PowerUpKind, StoryPerspective } from "../shared/types";
+import { GAME_INSTRUCTION_COPY } from "./game-instructions-copy";
 
 const STORY_PERSPECTIVE_LABELS: Readonly<Record<StoryPerspective, string>> = {
   amso: "Nasza historia",
@@ -129,7 +130,7 @@ export function formatPowerUpHud(
 export function formatStoryControlsHud(
   segmentId: string,
   authoredProgress?: Readonly<AuthoredWaveProgressSnapshot> | null,
-  copy = "Skok: W/↑/Spacja/tap · Ślizg: S/↓"
+  copy = GAME_INSTRUCTION_COPY.compactControls
 ): string | null {
   return segmentId === "epoch_1.training" ||
     (authoredProgress?.microlevelId === "first-package" &&

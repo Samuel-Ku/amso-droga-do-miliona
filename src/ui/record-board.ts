@@ -1,5 +1,6 @@
 import { RecordsClient, sanitizePlayerName } from "../records-client";
 import type { RecordBoardEntry } from "../shared/types";
+import { GAME_INSTRUCTION_COPY } from "./game-instructions-copy";
 
 function formatInt(n: number): string {
   return Math.round(n).toLocaleString("pl-PL");
@@ -89,7 +90,7 @@ export class RecordBoard {
             <th scope="col">#</th>
             <th scope="col">Gracz</th>
             <th scope="col">Wynik</th>
-            <th scope="col">Paczki</th>
+            <th scope="col">${GAME_INSTRUCTION_COPY.hudOrdersLabel}</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>

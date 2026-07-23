@@ -12,6 +12,10 @@ import {
   validateRunnerConfig
 } from "../src/config/schema";
 import type { RunnerConfigValidationOptions } from "../src/config/types";
+import {
+  GAME_INSTRUCTION_COPY,
+  GAME_INTRODUCTION_COPY_REF
+} from "../src/ui/game-instructions-copy";
 
 function validConfig(): Record<string, unknown> {
   return structuredClone(productionConfig) as Record<string, unknown>;
@@ -26,10 +30,14 @@ describe("runner config v5 story validation", () => {
     expect(visibleCopy).toContain("GWARANCJA AMSO CARE");
   });
 
-  it("documents both keyboard pairs in the configurable tutorial copy", () => {
-    expect(productionConfig.ui?.tutorialJump).toMatch(/W.*↑.*Spacj/u);
-    expect(productionConfig.ui?.tutorialSlide).toMatch(/S.*↓/u);
-    expect(productionConfig.ui?.controlsHud).toBe("Skok: W/↑/Spacja/tap · Ślizg: S/↓");
+  it("keeps canonical instructions outside configurable UI copy", () => {
+    expect(productionConfig.ui).not.toHaveProperty("tutorialJump");
+    expect(productionConfig.ui).not.toHaveProperty("tutorialSlide");
+    expect(productionConfig.ui).not.toHaveProperty("controlsHud");
+    expect(productionConfig.ui).not.toHaveProperty("landingLead");
+    expect(productionConfig.ui).not.toHaveProperty("hudPackages");
+    expect(GAME_INSTRUCTION_COPY.jump).toContain("Spacja, W lub ↑");
+    expect(GAME_INSTRUCTION_COPY.slide).toContain("S lub ↓");
     expect(productionConfig.ui?.powerupWarrantyHud).toBe("GWARANCJA AMSO CARE ×1");
     expect(productionConfig.ui?.warrantyConsumed).toContain("GWARANCJA AMSO CARE");
     expect(productionConfig.ui?.parcelWarrantyLine1).toBe("GWARANCJA");
@@ -180,7 +188,9 @@ describe("runner config v5 story validation", () => {
     for (const scene of activeScenes) {
       for (const page of scene.steps ?? []) {
         expect(page.title?.trim().split(/\s+/u).length ?? 0).toBeLessThanOrEqual(8);
-        expect(page.body.join(" ").length).toBeLessThanOrEqual(220);
+        expect(page.body.join(" ").length).toBeLessThanOrEqual(
+          page.copyRef === GAME_INTRODUCTION_COPY_REF ? 360 : 220
+        );
         expect(page.fact).toBeTruthy();
         expect(page.action).toBeTruthy();
         expect(page.finalFrame).toBeTruthy();
@@ -189,7 +199,7 @@ describe("runner config v5 story validation", () => {
     expect(JSON.stringify(activeScenes)).not.toContain("Boeing");
     expect(JSON.stringify(activeScenes)).toContain("PKiN");
     expect(result.data.cta.challengeLabel).toBe("Gramy dalej — tryb wyzwania");
-    expect(result.data.ui?.landingLead).toContain("1 000 000");
+    expect(GAME_INSTRUCTION_COPY.landingGoal).toContain("1 000 000");
     expect(result.data.ui?.sharePublication).toContain("Drodze do Miliona");
     expect(result.data.story.epochs.map(({ themeIndex }) => themeIndex))
       .toEqual([0, 1, 2, 3, 4]);

@@ -31,6 +31,10 @@ import type {
   RunnerConfigValidationResult
 } from "./types";
 import embeddedResourcePolicy from "./embedded-resource-policy.json";
+import {
+  GAME_INTRODUCTION_COPY,
+  GAME_INTRODUCTION_COPY_REF
+} from "../ui/game-instructions-copy";
 
 const IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9_.-]{0,63}$/;
 const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$/;
@@ -73,10 +77,17 @@ const CANONICAL_SEQUENCE = [
 ] as const;
 const UI_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9]{0,63}$/;
 const CRITICAL_UI_KEYS = [
-  "landingLead", "startStory", "choosePath", "replayStory", "challengeMode",
+  "startStory", "choosePath", "replayStory", "challengeMode",
   "startChallenge", "fullStory", "loading", "errorTitle", "errorBody",
   "pauseTitle", "pauseBody", "narrowTitle", "narrowBody", "sharePublication"
 ] as const;
+const RETIRED_INSTRUCTION_UI_KEYS = new Set([
+  "landingLead",
+  "controlsHud",
+  "hudPackages",
+  "tutorialJump",
+  "tutorialSlide"
+]);
 const ASSET_BUNDLE_IDS: readonly AssetBundleId[] = [
   "common", "prologue", "epoch_1", "epoch_2", "epoch_3", "epoch_4", "epoch_5",
   "finale", "challenge"
@@ -264,21 +275,49 @@ function parseAssets(
 function parseScenePage(value: unknown): StoryScenePageConfig | null {
   if (!isRecord(value) || !hasExactKeys(
     value,
-    ["id", "title", "body", "continueLabel", "safe", "fact", "action", "finalFrame"],
-    ["id", "body", "continueLabel", "safe"]
-  ) || !isIdentifier(value.id) ||
-      (value.title !== undefined && !isSafeText(value.title, 160)) ||
-      !Array.isArray(value.body) || value.body.length < 1 || value.body.length > 2 ||
-      value.body.some((paragraph) => !isSafeText(paragraph, 420)) ||
-      !isSafeText(value.continueLabel, 80) || value.safe !== true ||
+    [
+      "id", "copyRef", "title", "body", "continueLabel", "safe", "fact", "action",
+      "finalFrame"
+    ],
+    ["id", "safe"]
+  ) || !isIdentifier(value.id) || value.safe !== true ||
       (value.fact !== undefined && !isSafeText(value.fact, 220)) ||
       (value.action !== undefined && !isSafeText(value.action, 220)) ||
       (value.finalFrame !== undefined && !isSafeText(value.finalFrame, 220))) return null;
+
+  const hasSemanticCopy = value.copyRef !== undefined;
+  if (hasSemanticCopy) {
+    if (value.copyRef !== GAME_INTRODUCTION_COPY_REF ||
+        value.id !== "game-purpose" ||
+        value.title !== undefined ||
+        value.body !== undefined ||
+        value.continueLabel !== undefined) return null;
+  } else if (
+    (value.title !== undefined && !isSafeText(value.title, 160)) ||
+    !Array.isArray(value.body) ||
+    value.body.length < 1 ||
+    value.body.length > 3 ||
+    value.body.some((paragraph) => !isSafeText(paragraph, 420)) ||
+    !isSafeText(value.continueLabel, 80)
+  ) {
+    return null;
+  }
+
+  const resolvedCopy = hasSemanticCopy
+    ? {
+        title: GAME_INTRODUCTION_COPY.title,
+        body: [...GAME_INTRODUCTION_COPY.body],
+        continueLabel: GAME_INTRODUCTION_COPY.continueLabel
+      }
+    : {
+        ...(typeof value.title === "string" ? { title: value.title } : {}),
+        body: value.body as string[],
+        continueLabel: value.continueLabel as string
+      };
   return {
     id: value.id,
-    ...(typeof value.title === "string" ? { title: value.title } : {}),
-    body: value.body as string[],
-    continueLabel: value.continueLabel,
+    ...(hasSemanticCopy ? { copyRef: GAME_INTRODUCTION_COPY_REF } : {}),
+    ...resolvedCopy,
     safe: true,
     ...(typeof value.fact === "string" ? { fact: value.fact } : {}),
     ...(typeof value.action === "string" ? { action: value.action } : {}),
@@ -483,7 +522,8 @@ function parseStory(value: unknown): StoryConfig | null {
   if (typedScenes.filter(({ id }) => activeSceneIds.has(id)).some((scene) =>
     (scene.steps ?? []).some((page) =>
       page.fact === undefined || page.action === undefined || page.finalFrame === undefined ||
-      (page.title?.trim().split(/\s+/u).length ?? 0) > 8 || page.body.join(" ").length > 220
+      (page.title?.trim().split(/\s+/u).length ?? 0) > 8 ||
+      page.body.join(" ").length > (page.copyRef === GAME_INTRODUCTION_COPY_REF ? 360 : 220)
     ))) return null;
   const playSteps = typedSequence.filter((step) => step.type === "play");
   if (playSteps.some((step) => step.epochIndex < 0 || step.epochIndex >= typedEpochs.length) ||
@@ -543,7 +583,9 @@ function parseUiCopy(value: unknown): Readonly<Record<string, string>> | null {
   }
   const copy: Record<string, string> = {};
   for (const [key, text] of Object.entries(value)) {
-    if (!UI_KEY_PATTERN.test(key) || !isSafeText(text, 420)) return null;
+    if (RETIRED_INSTRUCTION_UI_KEYS.has(key) ||
+        !UI_KEY_PATTERN.test(key) ||
+        !isSafeText(text, 420)) return null;
     copy[key] = text;
   }
   return copy;
