@@ -46,8 +46,7 @@ export const DEFAULT_DISABLED_RUNNER_CONFIG: Readonly<RunnerConfig> = Object.fre
     millionThreshold: Object.freeze({
       counterStart: 999_950,
       counterTarget: 1_000_000,
-      orderTarget: 50,
-      combinationTarget: 12
+      orderTarget: 50
     })
   }),
   challenge: Object.freeze({

@@ -239,16 +239,16 @@
       },
       {
         "id": "story.million_approach", "chapter": "epoch_5", "eyebrow": "Nasza historia", "title": "Ostatnia droga do miliona.",
-        "body": ["Licznik zaczyna od 999 970 i rośnie wraz z każdym zrealizowanym zamówieniem."], "vignette": "million-counter", "continueLabel": "Rozpocznij finał", "perspective": "amso",
+        "body": ["Licznik zaczyna od 999 950 i rośnie wraz z każdym zrealizowanym zamówieniem."], "vignette": "million-counter", "continueLabel": "Rozpocznij finał", "perspective": "amso",
         "steps": [
-          { "id": "counter-source", "title": "Do miliona zostało 30 zamówień.", "body": ["Licznik zaczyna od 999 970. Każde zebrane urządzenie lub paczka realizuje dokładnie jedno zamówienie, a dwanaście kombinacji przypomni umiejętności z całej drogi."], "continueLabel": "Poznaj zasady finału", "safe": true, "fact": "Finał rozpoczyna się od 999 970 zamówień i wymaga zrealizowania kolejnych 30.", "action": "Licznik zatrzymuje się na 999 970, a różne zamówienia ustawiają się przed trasą.", "finalFrame": "Czytelny licznik 999 970 stoi nad trasą, a pierwsze z trzydziestu zamówień czeka po prawej." }
+          { "id": "counter-source", "title": "Do miliona zostało 50 zamówień.", "body": ["Licznik zaczyna od 999 950. Każde zebrane urządzenie lub paczka realizuje dokładnie jedno zamówienie."], "continueLabel": "Poznaj zasady finału", "safe": true, "fact": "Finał rozpoczyna się od 999 950 zamówień i wymaga zrealizowania kolejnych 50.", "action": "Licznik zatrzymuje się na 999 950, a różne zamówienia ustawiają się przed trasą.", "finalFrame": "Czytelny licznik 999 950 stoi nad trasą, a pierwsze z pięćdziesięciu zamówień czeka po prawej." }
         ]
       },
       {
         "id": "challenge.million_wave", "chapter": "epoch_5", "eyebrow": "Wyzwanie", "title": "Próg Miliona sprawdza całą drogę.",
-        "body": ["Zrealizuj 30 zamówień i ukończ dwanaście różnych kombinacji."], "vignette": "million-wave", "continueLabel": "Podejmij wyzwanie", "perspective": "challenge",
+        "body": ["Zrealizuj ostatnie 50 zamówień i doprowadź licznik do miliona."], "vignette": "million-wave", "continueLabel": "Podejmij wyzwanie", "perspective": "challenge",
         "steps": [
-          { "id": "two-goals", "title": "Zbierz ostatnie 50 paczek.", "body": ["Zbierz je wszystkie i doprowadź licznik do 1 000 000 zamówień."], "continueLabel": "Rozpocznij finał", "safe": true, "fact": "Próg Miliona wymaga 30 zamówień i dwunastu kombinacji bez game over w fabule.", "action": "HUD pokazuje jeden licznik zamówień rosnący z każdym zebranym urządzeniem lub paczką.", "finalFrame": "Licznik zamówień jest widoczny nad bezpiecznym początkiem finałowej trasy." }
+          { "id": "two-goals", "title": "Zbierz ostatnie 50 zamówień.", "body": ["Zbierz je wszystkie i doprowadź licznik do 1 000 000 zamówień."], "continueLabel": "Rozpocznij finał", "safe": true, "fact": "Próg Miliona wymaga zrealizowania ostatnich 50 zamówień bez game over w fabule.", "action": "HUD pokazuje jeden licznik zamówień rosnący z każdym zebranym urządzeniem lub paczką.", "finalFrame": "Licznik zamówień jest widoczny nad bezpiecznym początkiem finałowej trasy." }
         ]
       },
        {
@@ -290,7 +290,7 @@
       { "index": 1, "id": "podwojny_wynik", "name": "Proces i Jakość", "year": "Jakość i zaufanie", "themeIndex": 1, "durationSeconds": 45, "obstaclePool": ["box-stack", "pallet", "overhead"], "difficultyStart": 1.22, "difficultyEnd": 1.48, "challengeName": "Proces i Jakość", "powerUpDebut": "podwojny_wynik" },
       { "index": 2, "id": "historie_klientow", "name": "Firma rośnie razem ze sprzętem", "year": "Jedna prawdziwa historia", "themeIndex": 2, "durationSeconds": 40, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.34, "difficultyEnd": 1.58, "challengeName": "Rozwój Firmy", "powerUpDebut": "podwojny_wynik" },
       { "index": 3, "id": "skala", "name": "Skala Zamówień", "year": "Roczna skala", "themeIndex": 3, "durationSeconds": 50, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.45, "difficultyEnd": 1.7, "challengeName": "Skala Zamówień", "powerUpDebut": "gwarancja_48" },
-      { "index": 4, "id": "droga_do_miliona", "name": "Droga do Miliona", "year": "999 970 → 1 000 000", "themeIndex": 4, "durationSeconds": 75, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.55, "difficultyEnd": 1.85, "challengeName": "Próg Miliona" }
+      { "index": 4, "id": "droga_do_miliona", "name": "Droga do Miliona", "year": "999 950 → 1 000 000", "themeIndex": 4, "durationSeconds": 75, "obstaclePool": ["box-stack", "pallet", "trolley", "overhead"], "difficultyStart": 1.55, "difficultyEnd": 1.85, "challengeName": "Próg Miliona" }
     ],
     "modeHandoff": {
       "id": "story.challenge_handoff",
@@ -303,8 +303,7 @@
     "millionThreshold": {
       "counterStart": 999950,
       "counterTarget": 1000000,
-      "orderTarget": 50,
-      "combinationTarget": 12
+      "orderTarget": 50
     }
   },
   "challenge": {

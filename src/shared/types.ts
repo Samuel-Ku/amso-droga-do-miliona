@@ -168,7 +168,6 @@ export interface MillionThresholdConfig {
   counterStart: number;
   counterTarget: 1_000_000;
   orderTarget: number;
-  combinationTarget: 12;
 }
 
 export interface StoryConfig {

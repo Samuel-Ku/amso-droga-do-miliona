@@ -174,11 +174,9 @@ export function formatAuthoredWaveHud(
       const step = progress.completed ? 3 : completed % 3 + 1;
       return `${SCALE_ZONE_SYMBOLS[zoneIndex]} ${SCALE_ZONE_LABELS[zoneIndex]} ${step}/3`;
     }
-    case "million-threshold": {
-      const target = progress.totalOrderTarget ?? 30;
-      const counter = 1_000_000 - target + Math.min(target, progress.totalOrdersCollected);
-      return new Intl.NumberFormat("pl-PL").format(counter);
-    }
+    case "million-threshold":
+      // The objective HUD owns the one canonical 999 950 → 1 000 000 counter.
+      return null;
   }
 }
 
@@ -244,8 +242,7 @@ export function formatStoryObjectiveHud(
     case "epoch_5.million_threshold": {
       const finale = objectives.epoch5.millionThreshold;
       return `${prefix("epoch_5.million_threshold")}Próg Miliona · ZAMÓWIENIA ` +
-        `${finale.ordersCollected}/${finale.orderTarget} · KOMBINACJE ` +
-        `${finale.combinationsCompleted}/${finale.combinationTarget}`;
+        `${finale.ordersCollected}/${finale.orderTarget}`;
     }
     default:
       return null;

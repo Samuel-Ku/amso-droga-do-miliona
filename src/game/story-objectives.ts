@@ -84,8 +84,6 @@ export interface StoryObjectivesSnapshot {
     millionThreshold: {
       ordersCollected: number;
       orderTarget: number;
-      combinationsCompleted: number;
-      combinationTarget: number;
       counterStart: number;
       counterTarget: number;
       counterValue: number;
@@ -105,8 +103,7 @@ export const STORY_OBJECTIVE_TARGETS = {
   trustClean: 12,
   requiredOrders: 6,
   orderPeakSeconds: 60,
-  millionOrders: 50,
-  millionCombinations: 12
+  millionOrders: 50
 } as const;
 
 const TARGETS = STORY_OBJECTIVE_TARGETS;
@@ -148,7 +145,6 @@ export class StoryObjectiveDirector {
   private orderPeakElapsedSeconds = 0;
   private orderPeakDurationSeconds: number = TARGETS.orderPeakSeconds;
   private thresholdOrders = 0;
-  private thresholdCombinations = 0;
 
   public enterSegment(segmentId: string | null, _durationSeconds?: number): boolean {
     if (segmentId === null) {
@@ -299,15 +295,6 @@ export class StoryObjectiveDirector {
     });
   }
 
-  public recordMillionCombination(): StoryObjectiveUpdate {
-    return this.update(() => {
-      if (this.activeSegmentId !== "epoch_5.million_threshold" ||
-          this.thresholdCombinations >= TARGETS.millionCombinations) return false;
-      this.thresholdCombinations += 1;
-      return true;
-    });
-  }
-
   public get snapshot(): StoryObjectivesSnapshot {
     const trainingComplete = this.trainingJumps >= TARGETS.mixedActionsEach &&
       this.trainingSlides >= TARGETS.mixedActionsEach;
@@ -395,8 +382,6 @@ export class StoryObjectiveDirector {
         millionThreshold: {
           ordersCollected: this.thresholdOrders,
           orderTarget: TARGETS.millionOrders,
-          combinationsCompleted: this.thresholdCombinations,
-          combinationTarget: TARGETS.millionCombinations,
           counterStart: 1_000_000 - TARGETS.millionOrders,
           counterTarget: 1_000_000,
           counterValue: 1_000_000 - TARGETS.millionOrders + this.thresholdOrders,

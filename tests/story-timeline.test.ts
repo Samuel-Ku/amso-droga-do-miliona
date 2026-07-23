@@ -61,8 +61,7 @@ function playerPacedStory(): StoryConfig {
     millionThreshold: {
       counterStart: 999_950,
       counterTarget: 1_000_000,
-      orderTarget: 50,
-      combinationTarget: 12
+      orderTarget: 50
     }
   };
 }

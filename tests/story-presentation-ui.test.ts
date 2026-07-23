@@ -123,7 +123,7 @@ describe("player-paced story presentation", () => {
       microlevelId: "million-threshold",
       totalOrdersCollected: 12,
       totalOrderTarget: 50
-    })).toBe("999 962");
+    })).toBeNull();
   });
 
   it("uses recognizable object and process symbols in authored HUD slots", () => {
@@ -177,9 +177,8 @@ describe("player-paced story presentation", () => {
 
     director.enterSegment("epoch_5.million_threshold", 72);
     for (let index = 0; index < 12; index += 1) director.recordMillionOrder();
-    for (let index = 0; index < 3; index += 1) director.recordMillionCombination();
     expect(formatStoryObjectiveHud(director.snapshot, []))
-      .toBe("Próg Miliona · ZAMÓWIENIA 12/50 · KOMBINACJE 3/12");
+      .toBe("Próg Miliona · ZAMÓWIENIA 12/50");
   });
 
   it("wraps keyboard focus inside the two-control story dialog", () => {

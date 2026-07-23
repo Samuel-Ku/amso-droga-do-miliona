@@ -75,8 +75,7 @@ describe("runner config v5 story validation", () => {
     story.millionThreshold = {
       counterStart: 999_950,
       counterTarget: 1_000_000,
-      orderTarget: 50,
-      combinationTarget: 12
+      orderTarget: 50
     };
 
     const parsed = parseRunnerConfig(expanded);
@@ -102,8 +101,7 @@ describe("runner config v5 story validation", () => {
     expect(parsed?.story.millionThreshold).toEqual({
       counterStart: 999_950,
       counterTarget: 1_000_000,
-      orderTarget: 50,
-      combinationTarget: 12
+      orderTarget: 50
     });
   });
 
@@ -200,6 +198,8 @@ describe("runner config v5 story validation", () => {
     expect(JSON.stringify(activeScenes)).toContain("PKiN");
     expect(result.data.cta.challengeLabel).toBe("Gramy dalej — tryb wyzwania");
     expect(GAME_INSTRUCTION_COPY.landingGoal).toContain("1 000 000");
+    expect(JSON.stringify(productionConfig.story.scenes)).not.toContain("999 970");
+    expect(JSON.stringify(productionConfig.story.scenes)).toContain("999 950");
     expect(result.data.ui?.sharePublication).toContain("Drodze do Miliona");
     expect(result.data.story.epochs.map(({ themeIndex }) => themeIndex))
       .toEqual([0, 1, 2, 3, 4]);

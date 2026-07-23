@@ -890,10 +890,8 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
         this.storyTimeline.forceCompletePlayStep();
       }
       const waitingForFinaleGoals = previousStory.playSegment?.id === "epoch_5.million_threshold" &&
-        // Once the million counter reaches 1 000 000 the player-visible finale
-        // must proceed. Equipment rewards also credit that counter, so gating on
-        // the authored parcel tally alone could strand a full counter with no
-        // finale. The twelve-combination goal stays a tracked bonus.
+        // Once the canonical order counter reaches 1 000 000 the player-visible
+        // finale must proceed. Equipment and parcel pickups both credit it.
         !millionObjectiveComplete &&
         ((this.authoredWaveDirector
           ? !this.authoredWaveDirector.completed
@@ -1139,11 +1137,6 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
             obstacle.kind === "overhead" ? "slide" : "jump"
           )
         );
-        if (obstacle.source === "boss") {
-          this.handleStoryObjectiveUpdate(
-            this.storyObjectiveDirector.recordMillionCombination()
-          );
-        }
       }
       if (obstacle.x + obstacle.width < -40) obstacle.active = false;
     }
@@ -1971,8 +1964,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       const runtimeDefinition = definition?.id === "million-threshold" && this.story
         ? {
             ...definition,
-            finaleOrderTarget: this.story.millionThreshold.orderTarget,
-            repeatWavesUntil: this.story.millionThreshold.combinationTarget
+            finaleOrderTarget: this.story.millionThreshold.orderTarget
           }
         : definition;
       this.authoredWaveDirector = runtimeDefinition
@@ -2307,12 +2299,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     if (this.mode === "challenge") {
       return 1_000_000 + Math.max(0, this.ordersCollected - this.challengeStartOrders);
     }
-    const authored = this.authoredWaveDirector;
-    if (authored?.definition.id !== "million-threshold") {
-      return this.storyObjectiveDirector.snapshot.epoch5.millionThreshold.counterValue;
-    }
-    const target = authored.snapshot.totalOrderTarget ?? 30;
-    return 1_000_000 - target + Math.min(target, authored.snapshot.totalOrdersCollected);
+    return this.storyObjectiveDirector.snapshot.epoch5.millionThreshold.counterValue;
   }
 
   private currentWorldVisual(): {

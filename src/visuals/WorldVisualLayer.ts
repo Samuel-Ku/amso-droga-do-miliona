@@ -104,7 +104,7 @@ export class WorldVisualLayer {
         ${WORLD_ROUTE_SVG}
       </div>
       <div class="amso-world-visual__counter" aria-hidden="true">
-        <span data-world-counter>999 970</span>
+         <span data-world-counter>999 950</span>
       </div>
     `;
     this.panels = [

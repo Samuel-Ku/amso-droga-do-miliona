@@ -628,7 +628,7 @@ describe("campaign collision contract", () => {
     harness.game.destroy();
   });
 
-  it("runs a twelve-combination final with no boss", () => {
+  it("ends the boss-free finale only when the order counter reaches one million", () => {
     const harness = createGameHarness("story");
     harness.game.start("keyboard");
     for (let guard = 0; guard < 2_000; guard += 1) {
@@ -653,11 +653,16 @@ describe("campaign collision contract", () => {
     expect(harness.snapshots.at(-1)?.bossPhase).toBe("inactive");
     expect(harness.snapshots.at(-1)?.authoredWave?.waveTarget).toBe(12);
     harness.advance(80, harness.avoidObstacles);
-    // The finale triggers as soon as the million counter reaches 1 000 000,
-    // independent of the twelve-combination goal, which stays a tracked bonus.
+    // The finale has one completion condition: the order counter reaches 1 000 000.
     const finaleReached = harness.snapshots.some(({ millionCounterValue }) =>
       millionCounterValue === 1_000_000);
     expect(finaleReached).toBe(true);
+    const finalMillionGameplaySnapshot = harness.snapshots
+      .filter(({ storyObjectiveSegmentId }) =>
+        storyObjectiveSegmentId === "epoch_5.million_threshold"
+      )
+      .at(-1);
+    expect(finalMillionGameplaySnapshot?.millionCounterValue).toBe(1_000_000);
     // Continue through the finale scenes to reach the challenge handoff.
     for (let guard = 0; guard < 60 && harness.snapshots.at(-1)?.mode === "story"; guard += 1) {
       const story = harness.storyUpdates.at(-1);

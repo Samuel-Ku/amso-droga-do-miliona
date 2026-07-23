@@ -416,19 +416,17 @@ function parseMillionThreshold(value: unknown): StoryConfig["millionThreshold"] 
   const usesLegacyTarget = Object.hasOwn(value, "packageTarget");
   if (usesCanonicalTarget === usesLegacyTarget) return null;
   const acceptedKeys = usesCanonicalTarget
-    ? ["counterStart", "counterTarget", "orderTarget", "combinationTarget"]
-    : ["counterStart", "counterTarget", "packageTarget", "combinationTarget"];
+    ? ["counterStart", "counterTarget", "orderTarget"]
+    : ["counterStart", "counterTarget", "packageTarget"];
   const orderTarget = usesCanonicalTarget ? value.orderTarget : value.packageTarget;
   if (!hasExactKeys(value, acceptedKeys, acceptedKeys) ||
       value.counterTarget !== 1_000_000 || !Number.isInteger(orderTarget) ||
       !finiteInRange(orderTarget, 30, 60) ||
-      value.counterStart !== 1_000_000 - (orderTarget as number) ||
-      value.combinationTarget !== 12) return null;
+      value.counterStart !== 1_000_000 - (orderTarget as number)) return null;
   return {
     counterStart: value.counterStart as number,
     counterTarget: 1_000_000,
-    orderTarget: orderTarget as number,
-    combinationTarget: 12
+    orderTarget: orderTarget as number
   };
 }
 

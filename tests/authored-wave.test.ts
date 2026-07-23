@@ -10,7 +10,7 @@ import {
 import { getAuthoredStoryDifficulty, getChallengeDifficulty } from "../src/game/difficulty";
 
 describe("v7 authored story waves", () => {
-  it("offers exactly 75 packages across the denser twelve finale combinations", () => {
+  it("offers enough varied finale routes to collect the last fifty orders", () => {
     const finale = STORY_MICROLEVELS.find(({ id }) => id === "million-threshold");
     expect(finale).toBeDefined();
     expect(finale!.waves.reduce((sum, item) => sum + availablePackages(item), 0)).toBe(75);
@@ -21,6 +21,7 @@ describe("v7 authored story waves", () => {
     for (const target of [40, 50, 60]) {
       const director = new AuthoredWaveDirector({ ...finale, finaleOrderTarget: target });
       for (const item of finale.waves) {
+        if (director.currentWave === null) break;
         for (let count = 0; count < availablePackages(item); count += 1) director.recordPackage();
         director.resolve(true);
       }
@@ -28,6 +29,22 @@ describe("v7 authored story waves", () => {
       expect(director.snapshot.totalOrderTarget).toBe(target);
       expect(director.completed).toBe(true);
     }
+  });
+
+  it("does not require completing every finale route after the order target is met", () => {
+    const finale = STORY_MICROLEVELS.find(({ id }) => id === "million-threshold")!;
+    const director = new AuthoredWaveDirector({ ...finale, finaleOrderTarget: 30 });
+    while (director.currentWave !== null) {
+      const active = director.currentWave;
+      for (let count = 0; count < availablePackages(active); count += 1) {
+        director.recordPackage();
+      }
+      director.resolve(true);
+    }
+    director.advance(finale.minimumDurationSeconds);
+
+    expect(director.snapshot.wavesCompleted).toBeLessThan(finale.waves.length);
+    expect(director.completed).toBe(true);
   });
 
   it("publishes six valid microlevels with the approved speed curve", () => {
@@ -136,12 +153,12 @@ describe("v7 authored story waves", () => {
       }));
   });
 
-  it("defines twelve distinct finale combinations and derives the million counter", () => {
+  it("defines varied finale routes and derives the canonical order counter", () => {
     const finale = STORY_MICROLEVELS.at(-1)!;
     expect(finale.waves).toHaveLength(12);
     expect(new Set(finale.waves.map(({ id }) => id)).size).toBe(12);
-    expect(finale.finaleOrderTarget).toBe(30);
-    expect(1_000_000 - finale.finaleOrderTarget!).toBe(999_970);
+    expect(finale.finaleOrderTarget).toBe(50);
+    expect(1_000_000 - finale.finaleOrderTarget!).toBe(999_950);
   });
 
   it("follows the approved story and challenge speed points", () => {
