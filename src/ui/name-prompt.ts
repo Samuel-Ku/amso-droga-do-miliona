@@ -1,4 +1,8 @@
-import { sanitizePlayerName } from "../records-client";
+import {
+  PLAYER_NAME_DISALLOWED_MESSAGE,
+  PLAYER_NAME_TOO_LONG_MESSAGE,
+  validatePlayerName
+} from "../moderation/player-name-policy";
 
 export interface NamePromptResult {
   name: string;
@@ -27,13 +31,14 @@ export class NamePrompt {
           <input
             class="amso-name-prompt__input"
             type="text"
-            maxlength="24"
             autocomplete="off"
             aria-label="Imię lub nick"
+            aria-describedby="amso-name-prompt-help amso-name-prompt-error"
             data-campaign-name-input
-            placeholder="np. Kurier_AMSO"
+            placeholder="np. Kurier_12"
           />
-          <p class="amso-name-prompt__error" data-campaign-name-error hidden role="alert"></p>
+          <p class="amso-name-prompt__help" id="amso-name-prompt-help">Maksymalnie 14 znaków: litery, cyfry, spacja, myślnik lub podkreślenie.</p>
+          <p class="amso-name-prompt__error" id="amso-name-prompt-error" data-campaign-name-error hidden role="alert"></p>
           <div class="amso-name-prompt__actions">
             <button type="button" class="amso-campaign__button amso-campaign__button--secondary" data-campaign-name-skip>Teraz nie</button>
             <button type="submit" class="amso-campaign__button amso-campaign__button--primary" data-campaign-name-submit>Zapisz</button>
@@ -47,16 +52,33 @@ export class NamePrompt {
     const error = this.overlay.querySelector<HTMLElement>("[data-campaign-name-error]")!;
     const skip = this.overlay.querySelector<HTMLButtonElement>("[data-campaign-name-skip]")!;
 
+    const showValidation = (): ReturnType<typeof validatePlayerName> => {
+      const result = validatePlayerName(input.value);
+      if (result.valid || input.value.length === 0) {
+        error.textContent = "";
+        error.hidden = true;
+        return result;
+      }
+      error.textContent = result.reason === "too_long"
+        ? PLAYER_NAME_TOO_LONG_MESSAGE
+        : PLAYER_NAME_DISALLOWED_MESSAGE;
+      error.hidden = false;
+      return result;
+    };
+
+    input.addEventListener("input", showValidation);
     form.addEventListener("submit", (e) => {
       e.preventDefault();
-      const name = sanitizePlayerName(input.value);
-      if (!name) {
-        error.textContent = "Wpisz od 1 do 24 znaków (litery, cyfry, spacja, _ . - ').";
-        error.hidden = false;
+      const result = showValidation();
+      if (!result.valid) {
+        if (input.value.length === 0) {
+          error.textContent = PLAYER_NAME_DISALLOWED_MESSAGE;
+          error.hidden = false;
+        }
         input.focus();
         return;
       }
-      this.resolve({ name, skipped: false });
+      this.resolve({ name: result.name, skipped: false });
     });
     skip.addEventListener("click", () => this.resolve({ name: "", skipped: true }));
   }

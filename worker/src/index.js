@@ -13,14 +13,18 @@
  * row cap keep the object small and prevent trivial abuse.
  */
 
+import {
+  PLAYER_NAME_POLICY_VERSION,
+  validatePlayerName
+} from "../../src/moderation/player-name-policy.ts";
+
 const R2_KEY = "records.json";
 const MAX_ROWS = 50;            // hard cap on stored rows (board shows top 10)
 const BOARD_SIZE = 10;          // rows returned to clients
-const MAX_NAME_LEN = 24;
-const NAME_ALLOWED = /^[\p{L}\p{N} _.\-']+$/u;
 
 /**
  * @typedef {Object} RecordRow
+ * @property {string} [id]
  * @property {string} name
  * @property {number} challengeScore
  * @property {number} orders
@@ -79,7 +83,8 @@ function isValidRow(row) {
  */
 function normalizeRow(row) {
   return {
-    name: String(row.name).slice(0, MAX_NAME_LEN),
+    ...row,
+    name: String(row.name),
     challengeScore: Math.round(Number(row.challengeScore)),
     orders: Number.isFinite(Number(row.orders)) ? Math.round(Number(row.orders)) : 0,
     updatedAt: Number.isFinite(Number(row.updatedAt)) ? Number(row.updatedAt) : Date.now()
@@ -87,15 +92,24 @@ function normalizeRow(row) {
 }
 
 /**
- * @param {string} raw
- * @returns {string | null}
+ * Produces a public copy. It never mutates or exposes a rejected source name.
+ * Rank is calculated from score order, independently of name moderation.
+ *
+ * @param {RecordRow[]} rows
+ * @returns {Array<RecordRow & {rank: number}>}
  */
-function sanitizeName(raw) {
-  if (typeof raw !== "string") return null;
-  const trimmed = raw.trim().slice(0, MAX_NAME_LEN);
-  if (trimmed.length === 0) return null;
-  if (!NAME_ALLOWED.test(trimmed)) return null;
-  return trimmed;
+function publicBoard(rows) {
+  return rows.slice(0, BOARD_SIZE).map((row, index) => {
+    const validation = validatePlayerName(row.name);
+    return {
+      ...(typeof row.id === "string" ? { id: row.id } : {}),
+      name: validation.valid ? validation.name : "Gracz",
+      challengeScore: row.challengeScore,
+      orders: row.orders,
+      updatedAt: row.updatedAt,
+      rank: index + 1
+    };
+  });
 }
 
 /**
@@ -123,6 +137,8 @@ export default {
 
     const headers = {
       "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      "x-moderation-policy-version": PLAYER_NAME_POLICY_VERSION,
       "access-control-allow-origin": "*",
       "access-control-allow-methods": "GET, POST, OPTIONS",
       "access-control-allow-headers": "content-type"
@@ -134,7 +150,7 @@ export default {
 
     if (request.method === "GET") {
       const board = await loadBoard(env.RECORDS);
-      return new Response(JSON.stringify({ entries: board.slice(0, BOARD_SIZE) }), {
+      return new Response(JSON.stringify({ entries: publicBoard(board) }), {
         status: 200,
         headers
       });
@@ -151,16 +167,19 @@ export default {
         });
       }
 
-      const name = sanitizeName(payload && payload.name);
+      const nameValidation = validatePlayerName(
+        typeof (payload && payload.name) === "string" ? payload.name : ""
+      );
       const challengeScore = sanitizeScore(payload && payload.challengeScore);
       const orders = sanitizeScore(payload && payload.orders);
 
-      if (name === null) {
+      if (!nameValidation.valid) {
         return new Response(JSON.stringify({ error: "invalid_name" }), {
           status: 400,
           headers
         });
       }
+      const name = nameValidation.name;
 
       const bucket = /** @type {R2Bucket} */ (env.RECORDS);
       const board = await loadBoard(bucket);
@@ -174,7 +193,7 @@ export default {
       if (previous && previous.challengeScore >= challengeScore) {
         return new Response(
           JSON.stringify({
-            entries: board.slice(0, BOARD_SIZE),
+            entries: publicBoard(board),
             updated: false,
             best: previous.challengeScore
           }),
@@ -183,6 +202,7 @@ export default {
       }
 
       const row = {
+        id: previous?.id ?? crypto.randomUUID(),
         name,
         challengeScore,
         orders,
@@ -200,7 +220,7 @@ export default {
       await saveBoard(bucket, trimmed);
       return new Response(
         JSON.stringify({
-          entries: trimmed.slice(0, BOARD_SIZE),
+          entries: publicBoard(trimmed),
           updated: true,
           best: challengeScore
         }),

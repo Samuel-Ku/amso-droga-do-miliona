@@ -74,17 +74,19 @@ export class RecordBoard {
     const rows = this.entries
       .map((e, i) => {
         const me = this.highlightedName && e.name === this.highlightedName;
+        const safeName = escapeHtml(e.name);
         return `
           <tr class="amso-records__row${me ? " amso-records__row--me" : ""}">
-            <td class="amso-records__rank">${i + 1}</td>
-            <td class="amso-records__name">${escapeHtml(e.name)}</td>
-            <td class="amso-records__score">${formatInt(e.challengeScore)}</td>
-            <td class="amso-records__orders">${formatInt(e.orders)}</td>
+            <td class="amso-records__rank"><span class="amso-records__mobile-rank-mark" aria-hidden="true">#</span>${i + 1}</td>
+            <th class="amso-records__name" scope="row" title="${safeName}">${safeName}</th>
+            <td class="amso-records__score"><span class="amso-records__mobile-label" data-record-mobile-label>Wynik:</span><span>${formatInt(e.challengeScore)}</span></td>
+            <td class="amso-records__orders"><span class="amso-records__mobile-separator" aria-hidden="true">·</span><span class="amso-records__mobile-label" data-record-mobile-label>Zamówienia:</span><span>${formatInt(e.orders)}</span></td>
           </tr>`;
       })
       .join("");
     this.host.innerHTML = this.wrap(`
       <table class="amso-records__table">
+        <caption class="amso-records__caption">Tablica rekordów</caption>
         <thead>
           <tr>
             <th scope="col">#</th>

@@ -3,6 +3,8 @@ export const GAME_INTRODUCTION_COPY_REF = "game-introduction" as const;
 export const GAME_INSTRUCTION_COPY = Object.freeze({
   landingGoal:
     "Pomóż kurierowi realizować zamówienia, zbierając paczki i urządzenia podczas biegu przez kolejne etapy historii AMSO aż do zamówienia nr 1 000 000.",
+  mobileLandingGoal:
+    "Pomóż kurierowi realizować zamówienia, zbierając paczki i urządzenia podczas biegu przez historię AMSO aż do zamówienia nr 1 000 000.",
   introTitle: "Poznaj drogę AMSO do miliona zamówień.",
   introGoal:
     "Pomóż kurierowi realizować zamówienia, zbierając paczki i urządzenia. Bieg prowadzi przez kolejne etapy rozwoju AMSO aż do zamówienia nr 1 000 000.",

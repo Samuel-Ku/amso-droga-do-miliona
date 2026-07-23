@@ -114,7 +114,6 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   challengeResultTitle: "Koniec próby",
   resultBest: "Rekord",
   resultDistance: "Przebyta droga",
-  resultWarranty: "Gwarancja AMSO Care uratowała bieg",
   powerupWarranty: "GWARANCJA AMSO CARE — uratuje jedną próbę w Trybie Wyzwania.",
   powerupWarrantyHud: "GWARANCJA AMSO CARE ×1",
   warrantyConsumed: "GWARANCJA AMSO CARE zadziałała — próba trwa dalej.",
@@ -608,8 +607,17 @@ export class CampaignShell {
             <div class="amso-campaign__landing-copy">
               <p class="amso-campaign__eyebrow" data-campaign-copy="landingEyebrow">Jubileuszowa historia AMSO</p>
               <h1><span data-campaign-copy="landingTitleAccent">Droga do Miliona</span></h1>
-              <p class="amso-campaign__lead" data-campaign-landing-goal>${GAME_INSTRUCTION_COPY.landingGoal}</p>
+              <p class="amso-campaign__lead amso-campaign__landing-goal--desktop" data-campaign-landing-goal="desktop">${GAME_INSTRUCTION_COPY.landingGoal}</p>
+              <p class="amso-campaign__lead amso-campaign__landing-goal--mobile" data-campaign-landing-goal="mobile">${GAME_INSTRUCTION_COPY.mobileLandingGoal}</p>
               <p class="amso-campaign__meta" data-campaign-copy="landingMeta">Około 6 minut · historia w Twoim tempie · skok i ślizg</p>
+              <div class="amso-campaign__landing-cta-group">
+                <div class="amso-campaign__landing-actions" data-campaign-landing-actions></div>
+                <p class="amso-campaign__orientation-hint" aria-hidden="true">
+                  <span aria-hidden="true">↻</span>
+                  <span data-campaign-copy="orientationHint">Do gry potrzebny jest tryb poziomy</span>
+                </p>
+              </div>
+              <div data-campaign-landing-records></div>
               <details class="amso-campaign__how-to">
                 <summary>Jak działa gra?</summary>
                 <div>
@@ -619,14 +627,6 @@ export class CampaignShell {
                   <p>${GAME_INSTRUCTION_COPY.ordersAndCombo}</p>
                 </div>
               </details>
-              <div class="amso-campaign__landing-cta-group">
-                <div class="amso-campaign__landing-actions" data-campaign-landing-actions></div>
-                <p class="amso-campaign__orientation-hint" aria-hidden="true">
-                  <span aria-hidden="true">↻</span>
-                  <span data-campaign-copy="orientationHint">Do gry potrzebny jest tryb poziomy</span>
-                </p>
-              </div>
-              <div data-campaign-landing-records></div>
             </div>
             <div class="amso-campaign__landing-art" aria-hidden="true">
               <img class="amso-campaign__main-lockup" src="${MAIN_LOCKUP_PATH}" alt="" width="1600" height="1460" />
@@ -726,21 +726,34 @@ export class CampaignShell {
               <p class="amso-campaign__eyebrow" data-campaign-copy="challengeResultEyebrow">Próba Miliona</p>
               <h2 data-campaign-copy="challengeResultTitle">Koniec próby</h2>
               <div class="amso-campaign__result-grid amso-campaign__result-grid--challenge">
-                <span><small data-campaign-copy="resultPackages">Zrealizowane zamówienia</small> <strong data-campaign-challenge-packages>0</strong></span>
-                <span><small>Wynik łączny</small> <strong data-campaign-challenge-total>0</strong></span>
-                <span><small>Wynik wyzwania</small> <strong data-campaign-challenge-score>0</strong></span>
-                <span><small data-campaign-challenge-best-label>Twój rekord wyzwania</small> <strong data-campaign-challenge-best>0</strong></span>
-                <span><small data-campaign-copy="resultDistance">Przebyta droga</small> <strong><i data-campaign-challenge-distance>0</i> m</strong></span>
-                <span data-campaign-challenge-saves-stat><small data-campaign-copy="resultWarranty">Gwarancja AMSO Care uratowała bieg</small> <strong data-campaign-challenge-saves>0</strong></span>
+                <span data-campaign-result-metric="orders" role="group">
+                  <small class="amso-campaign__result-label--desktop" data-campaign-copy="resultPackages">Zrealizowane zamówienia</small>
+                  <small class="amso-campaign__result-label--mobile" data-campaign-mobile-label="orders" aria-hidden="true">Zamówienia</small>
+                  <strong data-campaign-challenge-packages>0</strong>
+                </span>
+                <span data-campaign-result-metric="total" role="group">
+                  <small>Wynik łączny</small>
+                  <strong data-campaign-challenge-total>0</strong>
+                </span>
+                <span data-campaign-result-metric="challenge" role="group">
+                  <small>Wynik wyzwania</small>
+                  <strong data-campaign-challenge-score>0</strong>
+                </span>
+                <span data-campaign-result-metric="best" role="group">
+                  <small class="amso-campaign__result-label--desktop" data-campaign-challenge-best-label>Twój rekord wyzwania</small>
+                  <small class="amso-campaign__result-label--mobile" data-campaign-mobile-label="best" aria-hidden="true">Rekord</small>
+                  <strong data-campaign-challenge-best>0</strong>
+                </span>
+                <span data-campaign-result-metric="distance" role="group">
+                  <small data-campaign-copy="resultDistance">Przebyta droga</small>
+                  <strong><i data-campaign-challenge-distance>0</i> m</strong>
+                </span>
               </div>
-              <div class="amso-campaign__actions">
+              <div class="amso-campaign__actions amso-campaign__result-actions" data-campaign-result-actions>
                 <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-restart-challenge data-campaign-copy="retryChallenge">Spróbuj jeszcze raz</button>
-                <button class="amso-campaign__button amso-campaign__button--secondary" type="button" data-campaign-toggle-share data-campaign-copy="shareResult">Udostępnij wynik</button>
-                <button class="amso-campaign__text-link" type="button" data-campaign-restart-story data-campaign-copy="replayStory">Przejdź historię ponownie</button>
-                <a class="amso-campaign__text-link" data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
+                <button class="amso-campaign__button amso-campaign__button--secondary" type="button" data-campaign-toggle-share data-campaign-copy="shareResult" aria-expanded="false" aria-controls="amso-campaign-share-panel">Udostępnij wynik</button>
               </div>
-              <div data-campaign-result-records></div>
-              <div class="amso-campaign__share-panel" data-campaign-share-panel hidden>
+              <div class="amso-campaign__share-panel" id="amso-campaign-share-panel" data-campaign-share-panel hidden>
                 <img class="amso-campaign__share-lockup" src="${COMPACT_LOCKUP_PATH}" alt="" width="1600" height="924" />
                 <p><strong data-campaign-copy="shareTurn">Teraz Twoja kolej.</strong> <span data-campaign-copy="shareLead">Wybierz, gdzie chcesz udostępnić kartę wyniku.</span></p>
                 <div class="amso-campaign__share-actions">
@@ -749,6 +762,8 @@ export class CampaignShell {
                 </div>
                 <p class="amso-campaign__share-status" data-campaign-share-status role="status"></p>
               </div>
+              <div data-campaign-result-records></div>
+              <a class="amso-campaign__text-link amso-campaign__result-exit" data-campaign-result-exit data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
             </div>
           </section>
 
@@ -1264,13 +1279,23 @@ export class CampaignShell {
     requiredElement(this.challengeResultScreen, "[data-campaign-challenge-total]").textContent = formatInteger(result.totalScore);
     requiredElement(this.challengeResultScreen, "[data-campaign-challenge-score]").textContent = formatInteger(result.challengeScore);
     requiredElement(this.challengeResultScreen, "[data-campaign-challenge-best]").textContent = formatInteger(result.bestScore);
-    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-best-label]").textContent =
-      result.firstChallengeResult ? "Pierwszy wynik wyzwania" : "Twój rekord wyzwania";
+    const bestLabel = result.firstChallengeResult ? "Pierwszy wynik wyzwania" : "Twój rekord wyzwania";
+    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-best-label]").textContent = bestLabel;
     requiredElement(this.challengeResultScreen, "[data-campaign-challenge-distance]").textContent = formatInteger(result.distanceM);
-    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-saves]").textContent = formatInteger(result.warrantySaves);
-    requiredElement<HTMLElement>(this.challengeResultScreen, "[data-campaign-challenge-saves-stat]").hidden = result.warrantySaves === 0;
+    requiredElement(this.challengeResultScreen, "[data-campaign-result-metric='orders']")
+      .setAttribute("aria-label", `${this.copy.resultPackages}: ${formatInteger(result.orders)}`);
+    requiredElement(this.challengeResultScreen, "[data-campaign-result-metric='total']")
+      .setAttribute("aria-label", `Wynik łączny: ${formatInteger(result.totalScore)}`);
+    requiredElement(this.challengeResultScreen, "[data-campaign-result-metric='challenge']")
+      .setAttribute("aria-label", `Wynik wyzwania: ${formatInteger(result.challengeScore)}`);
+    requiredElement(this.challengeResultScreen, "[data-campaign-result-metric='best']")
+      .setAttribute("aria-label", `${bestLabel}: ${formatInteger(result.bestScore)}`);
+    requiredElement(this.challengeResultScreen, "[data-campaign-result-metric='distance']")
+      .setAttribute("aria-label", `${this.copy.resultDistance}: ${formatInteger(result.distanceM)} m`);
     this.sharePanel.hidden = true;
     this.shareStatus.textContent = "";
+    requiredElement<HTMLButtonElement>(this.challengeResultScreen, "[data-campaign-toggle-share]")
+      .setAttribute("aria-expanded", "false");
     this.setView("challenge_result", this.challengeResultScreen);
     requiredElement<HTMLButtonElement>(this.challengeResultScreen, "[data-campaign-restart-challenge]").focus({ preventScroll: true });
     this.announce(
@@ -1605,10 +1630,9 @@ export class CampaignShell {
       this.callbacks.onStart({ mode: "challenge", restartStory: false });
     } else if (target.matches("[data-campaign-restart-challenge]")) {
       this.callbacks.onRestart("challenge");
-    } else if (target.matches("[data-campaign-restart-story]")) {
-      this.callbacks.onRestart("story");
     } else if (target.matches("[data-campaign-toggle-share]")) {
       this.sharePanel.hidden = !this.sharePanel.hidden;
+      target.setAttribute("aria-expanded", String(!this.sharePanel.hidden));
       if (!this.sharePanel.hidden) requiredElement<HTMLButtonElement>(this.sharePanel, "[data-campaign-share]").focus({ preventScroll: true });
     } else if (target.matches("[data-campaign-share]")) {
       const platform = target.dataset.campaignShare;

@@ -145,12 +145,13 @@ describe("player-paced story presentation", () => {
     expect(campaignShellSource).not.toContain("data-campaign-story-caption");
   });
 
-  it("separates total and challenge results and hides an unused protection stat", () => {
+  it("separates total and challenge results and removes the protection stat", () => {
     expect(campaignShellSource).toContain("Wynik łączny");
     expect(campaignShellSource).toContain("Wynik wyzwania");
     expect(campaignShellSource).toContain("Pierwszy wynik wyzwania");
     expect(campaignShellSource).toContain("Twój rekord wyzwania");
-    expect(campaignShellSource).toContain("result.warrantySaves === 0");
+    expect(campaignShellSource).not.toContain("data-campaign-challenge-saves-stat");
+    expect(campaignShellSource).not.toContain("Gwarancja AMSO Care uratowała bieg");
   });
 
   it("formats live order, peak, counter and finale progress for the HUD", () => {

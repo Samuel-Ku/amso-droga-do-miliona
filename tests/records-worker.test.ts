@@ -2,6 +2,8 @@
 // We import the module and exercise it with an in-memory R2 bucket mock.
 // Note: wrangler types are not installed, so we mock the minimal R2 surface.
 import { describe, expect, it } from "vitest";
+import { PLAYER_NAME_POLICY_VERSION } from "../src/moderation/player-name-policy";
+import { disallowedPlayerNames } from "./fixtures/player-name-moderation";
 
 // @ts-expect-error - plain JS module without bundled declarations
 const worker = await import("../worker/src/index.js").then((m) => m.default);
@@ -37,6 +39,15 @@ describe("records worker", () => {
     const env = { RECORDS: memoryR2() };
     const res = await worker.fetch(jsonRequest({ name: "<script>", challengeScore: 10 }), env, {});
     expect(res.status).toBe(400);
+  });
+
+  it.each(disallowedPlayerNames)("rejects a direct moderated POST for %s without writing", async (name) => {
+    const records = memoryR2();
+    const env = { RECORDS: records };
+    const res = await worker.fetch(jsonRequest({ name, challengeScore: 10 }), env, {});
+
+    expect(res.status).toBe(400);
+    expect(records.store.has("records.json")).toBe(false);
   });
 
   it("stores a first record and returns top entries", async () => {
@@ -77,5 +88,53 @@ describe("records worker", () => {
     const env = { RECORDS: memoryR2() };
     const res = await worker.fetch(new Request("https://x.test/api/other"), env, {});
     expect(res.status).toBe(404);
+  });
+
+  it("moderates historical names on read without leaking or modifying R2", async () => {
+    const stored = [{
+      id: "record-7",
+      name: "AMSO Official",
+      challengeScore: 900,
+      orders: 30,
+      updatedAt: 123
+    }];
+    const raw = JSON.stringify(stored);
+    const records = memoryR2({ "records.json": raw });
+    const res = await worker.fetch(new Request("https://x.test/api/records"), {
+      RECORDS: records
+    }, {});
+    const serialized = await res.text();
+    const body = JSON.parse(serialized);
+
+    expect(body.entries).toEqual([{
+      id: "record-7",
+      name: "Gracz",
+      challengeScore: 900,
+      orders: 30,
+      updatedAt: 123,
+      rank: 1
+    }]);
+    expect(serialized).not.toContain("AMSO Official");
+    expect(records.store.get("records.json")).toBe(raw);
+  });
+
+  it("keeps allowed historical manufacturers and disables stale public caching", async () => {
+    const records = memoryR2({
+      "records.json": JSON.stringify([{
+        id: "record-8",
+        name: "Dell",
+        challengeScore: 800,
+        orders: 20,
+        updatedAt: 124
+      }])
+    });
+    const res = await worker.fetch(new Request("https://x.test/api/records"), {
+      RECORDS: records
+    }, {});
+    const body = await res.json();
+
+    expect(body.entries[0].name).toBe("Dell");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("x-moderation-policy-version")).toBe(PLAYER_NAME_POLICY_VERSION);
   });
 });

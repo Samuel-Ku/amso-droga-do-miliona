@@ -18,9 +18,10 @@ function makeProfile(): PlayerProfileStore {
 }
 
 describe("sanitizePlayerName", () => {
-  it("trims and caps length", () => {
+  it("normalizes spaces and rejects names over 14 grapheme clusters", () => {
     expect(sanitizePlayerName("  Kurier  ")).toBe("Kurier");
-    expect(sanitizePlayerName("a".repeat(50))).toHaveLength(24);
+    expect(sanitizePlayerName("Jan   Kowalski")).toBe("Jan Kowalski");
+    expect(sanitizePlayerName("a".repeat(15))).toBeNull();
   });
 
   it("rejects empty and disallowed characters", () => {

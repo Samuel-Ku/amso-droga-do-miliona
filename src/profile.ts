@@ -93,7 +93,7 @@ export class PlayerProfileStore {
         fullscreenPreference,
         playerName:
           typeof parsed.playerName === "string" && parsed.playerName.length > 0
-            ? parsed.playerName.slice(0, 24)
+            ? parsed.playerName
             : null,
         submittedBestScore: Math.round(safeNonNegativeNumber(parsed.submittedBestScore))
       };
@@ -153,8 +153,7 @@ export class PlayerProfileStore {
   }
 
   public setPlayerName(name: string | null): void {
-    this.profile.playerName =
-      name && name.length > 0 ? name.slice(0, 24) : null;
+    this.profile.playerName = name && name.length > 0 ? name : null;
     this.write();
   }
 

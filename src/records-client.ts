@@ -1,9 +1,8 @@
 import type { RecordBoardEntry } from "./shared/types";
 import { PlayerProfileStore } from "./profile";
+import { validatePlayerName } from "./moderation/player-name-policy";
 
 const DEFAULT_ENDPOINT = "/api/records";
-const MAX_NAME_LEN = 24;
-const NAME_ALLOWED = /^[\p{L}\p{N} _.\-']+$/u;
 
 export interface BoardResponse {
   entries: RecordBoardEntry[];
@@ -55,9 +54,14 @@ export class RecordsClient {
     orders: number,
     signal?: AbortSignal
   ): Promise<{ board: RecordBoardEntry[]; submitted: boolean }> {
-    const name = profile.playerName;
+    const storedName = profile.playerName;
     const score = Math.round(challengeScore);
-    if (!name) return { board: [], submitted: false };
+    if (!storedName) return { board: [], submitted: false };
+    const validatedName = validatePlayerName(storedName);
+    if (!validatedName.valid) {
+      return { board: await this.fetchBoard(signal), submitted: false };
+    }
+    const name = validatedName.name;
     if (!this.writesEnabled) return { board: await this.fetchBoard(signal), submitted: false };
     if (score <= profile.submittedBestScore) {
       return { board: await this.fetchBoard(signal), submitted: false };
@@ -78,8 +82,6 @@ export class RecordsClient {
 }
 
 export function sanitizePlayerName(raw: string): string | null {
-  const trimmed = raw.trim().slice(0, MAX_NAME_LEN);
-  if (trimmed.length === 0) return null;
-  if (!NAME_ALLOWED.test(trimmed)) return null;
-  return trimmed;
+  const result = validatePlayerName(raw);
+  return result.valid ? result.name : null;
 }
