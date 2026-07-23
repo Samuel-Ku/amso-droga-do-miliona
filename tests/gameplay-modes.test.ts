@@ -79,6 +79,7 @@ function createGameHarness(
   if (!config) throw new Error("production config should parse");
   const snapshots: GameSnapshot[] = [];
   const storyUpdates: StoryTimelineSnapshot[] = [];
+  const storyUpdateSnapshots: Array<GameSnapshot | undefined> = [];
   const storyUpdateCounters: Array<number | undefined> = [];
   const visualFrames: Array<{ distance: number; alpha: number }> = [];
   const modeChanges: string[] = [];
@@ -98,6 +99,7 @@ function createGameHarness(
       },
       onStoryUpdate: (snapshot) => {
         storyUpdates.push(snapshot);
+        storyUpdateSnapshots.push(snapshots.at(-1));
         storyUpdateCounters.push(snapshots.at(-1)?.millionCounterValue);
       },
       onModeChange: (mode) => modeChanges.push(mode),
@@ -169,6 +171,7 @@ function createGameHarness(
     game,
     snapshots,
     storyUpdates,
+    storyUpdateSnapshots,
     storyUpdateCounters,
     visualFrames,
     modeChanges,
@@ -829,27 +832,100 @@ describe("direct slide control", () => {
 
 describe("story lifecycle pauses", () => {
   it("keeps countdown controls and visual travel frozen until play resumes", () => {
-    const harness = createGameHarness("story");
+    const config = parseRunnerConfig(productionConfig);
+    if (!config) throw new Error("production config should parse");
+    const harness = createGameHarness("story", {
+      ...config.story,
+      resumeCountdownSeconds: 3
+    });
     harness.game.start("keyboard");
     harness.continueCurrentSceneFully();
     harness.advance(STORY_REFRAME_SECONDS + 0.05);
 
     const countdownStart = harness.storyUpdates.at(-1);
     expect(countdownStart?.state).toBe("countdown");
+    expect(countdownStart?.countdownValue).toBe(3);
     expect(countdownStart?.controlsEnabled).toBe(false);
     const startDistance = harness.visualFrames.at(-1)?.distance;
+    const frozenSnapshot = harness.storyUpdateSnapshots.at(-1);
+    const frozenState = (snapshot: GameSnapshot | undefined) => snapshot === undefined
+      ? undefined
+      : {
+          score: snapshot.score,
+          packagesCollected: snapshot.packagesCollected,
+          ordersCollected: snapshot.ordersCollected,
+          collisions: snapshot.collisions,
+          recoverySeconds: snapshot.recoverySeconds,
+          startProtectionSeconds: snapshot.startProtectionSeconds,
+          durationSeconds: snapshot.durationSeconds,
+          distanceM: snapshot.distanceM,
+          backgroundTravelPixels: snapshot.backgroundTravelPixels,
+          difficultyLevel: snapshot.difficultyLevel,
+          storyProgress: snapshot.storyProgress,
+          storyObjectives: snapshot.storyObjectives,
+          activePowerUps: snapshot.activePowerUps,
+          activePowerUpStatuses: snapshot.activePowerUpStatuses,
+          milestoneCelebration: snapshot.milestoneCelebration,
+          authoredWave: snapshot.authoredWave
+        };
 
     harness.game.jump("keyboard");
     harness.game.crouch(true, "keyboard");
     harness.advance(1);
 
     expect(harness.storyUpdates.at(-1)?.state).toBe("countdown");
+    expect(harness.storyUpdates.at(-1)?.countdownValue).toBe(2);
     expect(harness.visualFrames.at(-1)?.distance).toBe(startDistance);
+    expect(frozenState(harness.storyUpdateSnapshots.at(-1))).toEqual(frozenState(frozenSnapshot));
 
-    harness.advance(2.1);
+    harness.advance(1);
+    expect(harness.storyUpdates.at(-1)?.countdownValue).toBe(1);
+    expect(harness.visualFrames.at(-1)?.distance).toBe(startDistance);
+    expect(frozenState(harness.storyUpdateSnapshots.at(-1))).toEqual(frozenState(frozenSnapshot));
+
+    harness.advance(1.1);
     expect(harness.storyUpdates.at(-1)?.state).toBe("play");
     expect(harness.visualFrames.at(-1)?.distance).toBeGreaterThan(startDistance ?? 0);
     harness.game.destroy();
+  });
+
+  it("produces the same seeded play after countdown inputs are rejected", () => {
+    const baseline = createGameHarness("story");
+    const attemptedInput = createGameHarness("story");
+    for (const harness of [baseline, attemptedInput]) {
+      harness.game.start("keyboard");
+      harness.continueCurrentSceneFully();
+      harness.advance(STORY_REFRAME_SECONDS + 0.05);
+      expect(harness.storyUpdates.at(-1)?.state).toBe("countdown");
+    }
+
+    attemptedInput.game.jump("keyboard");
+    attemptedInput.game.crouch(true, "keyboard");
+    baseline.advance(2.1);
+    attemptedInput.advance(2.1);
+    baseline.advance(8);
+    attemptedInput.advance(8);
+
+    const publicOutcome = (snapshot: GameSnapshot | undefined) => snapshot === undefined
+      ? undefined
+      : {
+          score: snapshot.score,
+          packagesCollected: snapshot.packagesCollected,
+          ordersCollected: snapshot.ordersCollected,
+          collisions: snapshot.collisions,
+          distanceM: snapshot.distanceM,
+          durationSeconds: snapshot.durationSeconds,
+          difficultyLevel: snapshot.difficultyLevel,
+          nextStepIndex: snapshot.nextStepIndex,
+          authoredWave: snapshot.authoredWave,
+          storyObjectives: snapshot.storyObjectives
+        };
+    expect(publicOutcome(attemptedInput.snapshots.at(-1)))
+      .toEqual(publicOutcome(baseline.snapshots.at(-1)));
+    expect(attemptedInput.outcome).toBe(baseline.outcome);
+
+    baseline.game.destroy();
+    attemptedInput.game.destroy();
   });
 
   it("ignores blur and visibility while a story scene or countdown owns focus", () => {

@@ -313,6 +313,83 @@ describe("story input safety gate", () => {
     shell.destroy();
   });
 
+  it("keeps the same frozen origin with reduced motion enabled", () => {
+    const { shell } = createShell();
+    const world = document.querySelector<HTMLElement>("[data-campaign-world-visual]");
+    const panels = [...document.querySelectorAll<HTMLElement>("[data-world-panel]")];
+
+    shell.showGame("story");
+    showScene(shell);
+    shell.showStoryReframe();
+    shell.updateVisualFrame(600, 0, true);
+    for (const value of [3, 2, 1] as const) {
+      shell.showStoryCountdown(value);
+      shell.updateVisualFrame(600, 0, true);
+      expect(world?.dataset.motionState).toBe("reading");
+      expect(world?.style.getPropertyValue("--world-phase-px")).toBe("0px");
+      expect(panels.map(({ style }) => style.transform)).toEqual([
+        "translate3d(0%, 0, 0)",
+        "translate3d(100%, 0, 0)",
+      ]);
+    }
+
+    shell.returnToGame();
+    shell.updateVisualFrame(600, 0, true);
+    expect(world?.style.getPropertyValue("--world-phase-px")).toBe("0px");
+    shell.updateVisualFrame(650, 0, true);
+    expect(world?.dataset.motionState).toBe("moving");
+    expect(world?.style.getPropertyValue("--world-phase-px")).toBe("17.5px");
+    expect(panels[0]?.style.transform).not.toBe("translate3d(0%, 0, 0)");
+    shell.destroy();
+  });
+
+  it("applies the frozen local start to same-world and different-world transitions", async () => {
+    const { shell } = createShell();
+    const world = document.querySelector<HTMLElement>("[data-campaign-world-visual]");
+    const panels = [...document.querySelectorAll<HTMLElement>("[data-world-panel]")];
+    shell.showGame("story");
+
+    const presentTransition = async (
+      presentationId: string,
+      visualStateId: string,
+      absoluteDistance: number
+    ): Promise<string | undefined> => {
+      shell.showStoryScene({
+        sceneId: presentationId,
+        presentationId,
+        visualStateId,
+        title: presentationId,
+        body: "Historia",
+        vignette: "story",
+        continueLabel: "Dalej"
+      });
+      await shell.waitForWorldPresentation();
+      shell.showStoryReframe();
+      shell.updateVisualFrame(absoluteDistance, 0, false);
+      shell.showStoryCountdown(3);
+      shell.updateVisualFrame(absoluteDistance, 0, false);
+      expect(world?.dataset.motionState).toBe("reading");
+      expect(panels.map(({ style }) => style.transform)).toEqual([
+        "translate3d(0%, 0, 0)",
+        "translate3d(100%, 0, 0)",
+      ]);
+      shell.returnToGame();
+      shell.updateVisualFrame(absoluteDistance, 0, false);
+      shell.updateVisualFrame(absoluteDistance + 10, 0, false);
+      expect(world?.style.getPropertyValue("--world-phase-px")).toBe("10px");
+      return world?.dataset.worldId;
+    };
+
+    const firstWorld = await presentTransition("epoch-1-challenge", "epoch_1.challenge", 400);
+    const sameWorld = await presentTransition("epoch-1-resolve", "epoch_1.resolve", 800);
+    const differentWorld = await presentTransition("epoch-2-resolve", "epoch_2.resolve", 1_200);
+
+    expect(firstWorld).toBe("order-process");
+    expect(sameWorld).toBe(firstWorld);
+    expect(differentWorld).toBe("quality-service");
+    shell.destroy();
+  });
+
   it("shows a moving seam only when challenge panels belong to different worlds", async () => {
     const { shell } = createShell();
     const seam = document.querySelector<HTMLElement>("[data-world-seam-blur]");

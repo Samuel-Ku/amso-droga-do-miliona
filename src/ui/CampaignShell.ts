@@ -920,8 +920,7 @@ export class CampaignShell {
     if (this.destroyed) return;
     this.activeMode = null;
     this.challengeResult = null;
-    this.storyVisualOriginDistance = null;
-    this.latestVisualDistance = 0;
+    this.resetStoryVisualClock();
     this.orientationState = { phase: "idle" };
     this.setMuted(options.muted, false);
     this.applyWorldVisual("first-mile", "story.first_package", "landing");
@@ -974,8 +973,7 @@ export class CampaignShell {
     this.lastWaveFeedbackKey = "";
     this.paused = false;
     this.challengeResult = null;
-    this.storyVisualOriginDistance = null;
-    this.latestVisualDistance = 0;
+    this.resetStoryVisualClock();
     this.hideScreens();
     this.root.dataset.view = "game";
     this.root.dataset.mode = mode;
@@ -1856,6 +1854,11 @@ export class CampaignShell {
       return;
     }
     delete this.root.dataset.mobileLayout;
+  }
+
+  private resetStoryVisualClock(): void {
+    this.storyVisualOriginDistance = null;
+    this.latestVisualDistance = 0;
   }
 
   private applyMilestoneLayout(): void {

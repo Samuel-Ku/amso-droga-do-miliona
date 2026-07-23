@@ -9,7 +9,7 @@ jego zakończeniu.
 
 ## Automatyczna walidacja
 
-- 57 plików testowych i 550 testów zakończonych powodzeniem.
+- 57 plików testowych i 553 testy zakończone powodzeniem.
 - TypeScript typecheck zakończony powodzeniem.
 - Produkcyjny build i build loadera zakończone powodzeniem.
 - Autonomiczny HTML zbudowany z 45 osadzonymi obrazami w 94 odwołaniach.
@@ -22,6 +22,12 @@ jego zakończeniu.
   assetu oraz odblokowanie po zakończeniu publicznego oczekiwania.
 - Test błędu assetu potwierdza, że semantyczny fallback kończy gotowość
   prezentacji zamiast blokować historię.
+- Porównanie dwóch przebiegów z tym samym seedem potwierdza, że jump i slide
+  wysłane podczas countdownu nie pozostawiają zbuforowanego skutku po starcie.
+- Publiczne snapshoty na każdej cyfrze zachowują dystans, wynik, kolizje,
+  ochronę, recovery, trudność, cele, power-upy i stan authored wave.
+- Testy Paneli świata obejmują zwykły i ograniczony ruch, a także przejście
+  między stanami tego samego świata i zmianę na inny świat.
 
 Suite wypisuje znany diagnostyczny `ECONNREFUSED` dla opcjonalnego lokalnego
 endpointu rekordów na porcie 3000; nie powoduje on błędu testu.
@@ -49,8 +55,5 @@ przeglądarki i klienta developerskiego.
   płynności startu.
 - Safari na fizycznym iPhonie: odbiór statycznego countdownu, pierwszego kroku,
   dźwięku i fallbacku.
-- Przejście w obrębie tego samego świata oraz późniejsza zmiana między różnymi
-  światami w pełnym przebiegu historii.
-
 Te bramki wymagają fizycznych urządzeń i pozostają otwarte. Wynik desktopowego
 browser QA ani headless testów nie zastępuje ich zgodnie z Bramką wydania.
