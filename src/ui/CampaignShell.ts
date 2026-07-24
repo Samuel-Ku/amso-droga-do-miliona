@@ -529,6 +529,13 @@ export class CampaignShell {
   private orientationDebounceTimer: ReturnType<typeof setTimeout> | undefined;
   private muted = false;
   private lastWaveFeedbackKey = "";
+  private lastHudPackages: number | null = null;
+  private lastHudScore: number | null = null;
+  private lastHudCombo: number | null = null;
+  private lastHudPowerUpsKey = "";
+  private lastHudControlsKey = "";
+  private lastHudEpochKey = "";
+  private lastMilestoneKey = "";
   private paused = false;
   private trustCorridor = false;
   private tooNarrowActive = false;
@@ -956,6 +963,14 @@ export class CampaignShell {
     return this.worldVisualLayer.waitForCurrentPresentation();
   }
 
+  public prepareChallengeWorlds(): Promise<void> {
+    return this.worldVisualLayer.prepareChallengeWorlds();
+  }
+
+  public isDecodeSafePhase(): boolean {
+    return this.root.dataset.view !== "game";
+  }
+
   public showError(message?: string): void {
     if (this.destroyed) return;
     const errorMessage = message ?? this.copy.errorBody;
@@ -1173,28 +1188,55 @@ export class CampaignShell {
             : "POWTÓRZ FALĘ");
       }
     }
-    this.hudPackages.textContent = formatInteger(snapshot.packagesCollected);
-    this.hudScore.textContent = formatInteger(snapshot.score);
-    this.hudCombo.textContent = `×${formatInteger(snapshot.combo)}`;
-    const activePowerUps = formatPowerUpHud(
-      snapshot.activePowerUps,
-      snapshot.activePowerUpStatuses,
-      { gwarancja_48: this.copy.powerupWarrantyHud }
-    );
-    this.hudPowerUps.textContent = activePowerUps;
-    this.hudPowerUps.hidden = activePowerUps.length === 0;
-    const controls = formatStoryControlsHud(
-      snapshot.storyObjectiveSegmentId,
-      snapshot.authoredWave,
-      GAME_INSTRUCTION_COPY.compactControls
-    );
-    this.hudControls.textContent = controls ?? "";
-    this.hudControls.hidden = controls === null;
+    if (snapshot.packagesCollected !== this.lastHudPackages) {
+      this.lastHudPackages = snapshot.packagesCollected;
+      this.hudPackages.textContent = formatInteger(snapshot.packagesCollected);
+    }
+    if (snapshot.score !== this.lastHudScore) {
+      this.lastHudScore = snapshot.score;
+      this.hudScore.textContent = formatInteger(snapshot.score);
+    }
+    if (snapshot.combo !== this.lastHudCombo) {
+      this.lastHudCombo = snapshot.combo;
+      this.hudCombo.textContent = `×${formatInteger(snapshot.combo)}`;
+    }
+    const powerUpsKey = `${snapshot.activePowerUps.join(",")}|` +
+      snapshot.activePowerUpStatuses.map(({ kind, remainingSeconds }) =>
+        `${kind}:${remainingSeconds}`
+      ).join(",");
+    if (powerUpsKey !== this.lastHudPowerUpsKey) {
+      this.lastHudPowerUpsKey = powerUpsKey;
+      const activePowerUps = formatPowerUpHud(
+        snapshot.activePowerUps,
+        snapshot.activePowerUpStatuses,
+        { gwarancja_48: this.copy.powerupWarrantyHud }
+      );
+      this.hudPowerUps.textContent = activePowerUps;
+      this.hudPowerUps.hidden = activePowerUps.length === 0;
+    }
+    const controlsKey = `${snapshot.storyObjectiveSegmentId ?? ""}|` +
+      `${snapshot.authoredWave?.microlevelId ?? ""}|` +
+      `${snapshot.authoredWave?.currentWaveId ?? ""}|` +
+      `${snapshot.authoredWave?.attemptsOnCurrentWave ?? ""}`;
+    if (controlsKey !== this.lastHudControlsKey) {
+      this.lastHudControlsKey = controlsKey;
+      const controls = formatStoryControlsHud(
+        snapshot.storyObjectiveSegmentId,
+        snapshot.authoredWave,
+        GAME_INSTRUCTION_COPY.compactControls
+      );
+      this.hudControls.textContent = controls ?? "";
+      this.hudControls.hidden = controls === null;
+    }
     if (this.activeMode === "story") {
       const progress = snapshot.epochIndexMax > 0
         ? `${snapshot.epochIndex + 1}/${snapshot.epochIndexMax + 1}`
         : "";
-      this.hudEpoch.textContent = [snapshot.epochName, progress].filter(Boolean).join(" · ");
+      const epoch = [snapshot.epochName, progress].filter(Boolean).join(" · ");
+      if (epoch !== this.lastHudEpochKey) {
+        this.lastHudEpochKey = epoch;
+        this.hudEpoch.textContent = epoch;
+      }
       this.showStoryObjective(
         formatAuthoredWaveHud(snapshot.authoredWave) ??
           formatStoryObjectiveHud(snapshot.storyObjectives, snapshot.activeStoryOrderTypes)
@@ -1240,6 +1282,11 @@ export class CampaignShell {
     reducedMotion = false
   ): void {
     if (this.destroyed) return;
+    const key = celebration === null || celebration === undefined
+      ? ""
+      : `${celebration.text}|${celebration.kind}|${celebration.intensity}|${reducedMotion}`;
+    if (key === this.lastMilestoneKey) return;
+    this.lastMilestoneKey = key;
     if (celebration === null || celebration === undefined) {
       this.milestoneMessage.hidden = true;
       this.milestoneMessage.textContent = "";
@@ -1633,9 +1680,15 @@ export class CampaignShell {
       phase,
       transitionMode
     });
-    this.root.dataset.visualWorld = state.worldId;
-    this.root.dataset.visualState = state.stateId;
-    this.root.dataset.copyPlacement = state.copyPlacement;
+    if (this.root.dataset.visualWorld !== state.worldId) {
+      this.root.dataset.visualWorld = state.worldId;
+    }
+    if (this.root.dataset.visualState !== state.stateId) {
+      this.root.dataset.visualState = state.stateId;
+    }
+    if (this.root.dataset.copyPlacement !== state.copyPlacement) {
+      this.root.dataset.copyPlacement = state.copyPlacement;
+    }
   }
 
   private readonly handleClick = (event: MouseEvent): void => {

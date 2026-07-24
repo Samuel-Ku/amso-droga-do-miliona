@@ -34,6 +34,7 @@ export class WorldAssetStore {
   private readonly store: DecodedImageStore;
   private readonly ownsStore: boolean;
   private readonly promises = new Map<string, Promise<DecodedWorldAsset>>();
+  private readonly terminalFailures = new Set<string>();
 
   public constructor(source: DecodedImageStore | (() => HTMLImageElement) = () => new Image()) {
     this.ownsStore = !(source instanceof DecodedImageStore);
@@ -43,6 +44,9 @@ export class WorldAssetStore {
   }
 
   public load(path: string): Promise<DecodedWorldAsset> {
+    if (this.terminalFailures.has(path)) {
+      return Promise.reject(new Error("world_asset_decode_failed"));
+    }
     const pending = this.promises.get(path);
     if (pending) return pending;
     const match = /\/world-\d{2}-(.+)\.webp$/u.exec(path);
@@ -51,14 +55,28 @@ export class WorldAssetStore {
       .then(({ image }) => ({ path, image }))
       .catch((error: unknown) => {
         this.promises.delete(path);
+        this.terminalFailures.add(path);
         throw error;
       });
     this.promises.set(path, promise);
     return promise;
   }
 
+  public async prepareAll(
+    paths: readonly string[] = CAMPAIGN_WORLDS.map(({ assetPath }) => assetPath)
+  ): Promise<void> {
+    for (const path of paths) {
+      try {
+        await this.load(path);
+      } catch {
+        // A terminal failure is a ready semantic-fallback state.
+      }
+    }
+  }
+
   public destroy(): void {
     this.promises.clear();
+    this.terminalFailures.clear();
     if (this.ownsStore) this.store.destroy();
   }
 }
@@ -73,6 +91,20 @@ function requiredElement<T extends Element>(root: ParentNode, selector: string):
 export class WorldVisualLayer {
   private panels: [HTMLImageElement, HTMLImageElement];
   private readonly seamBlur: HTMLElement;
+  private readonly plate: HTMLElement;
+  private readonly route: SVGElement;
+  private readonly counter: HTMLElement;
+  private readonly numberFormatter = new Intl.NumberFormat("pl-PL", {
+    maximumFractionDigits: 0
+  });
+  private lastCounterValue: number | null = null;
+  private lastPhaseValue = "";
+  private lastMotionState = "";
+  private lastPhasePixels = "";
+  private lastPanelTransforms: [string, string] = ["", ""];
+  private seamVisible = false;
+  private seamLeft = "";
+  private seamWorlds = "";
   private currentWorldId: CampaignWorldId | null = null;
   private currentStateId = "";
   private requestedAssetPath: string | null = null;
@@ -112,25 +144,28 @@ export class WorldVisualLayer {
       requiredElement<HTMLImageElement>(host, '[data-world-panel="next"]')
     ];
     this.seamBlur = requiredElement<HTMLElement>(host, "[data-world-seam-blur]");
+    this.plate = requiredElement<HTMLElement>(host, "[data-world-plate]");
+    this.route = requiredElement<SVGElement>(this.plate, ".amso-world-visual__route");
+    this.counter = requiredElement<HTMLElement>(host, "[data-world-counter]");
     this.host.style.setProperty("--world-overlap", "0px");
+    this.panels[0].style.transition = "none";
+    this.panels[1].style.transition = "none";
   }
 
   public applyGeometry(snapshot: Readonly<WorldPlateTransform>): void {
     const { x, y, width, height } = snapshot.plateRect;
-    const plate = requiredElement<HTMLElement>(this.host, "[data-world-plate]");
-    plate.style.left = `${x}px`;
-    plate.style.top = `${y}px`;
-    plate.style.width = `${width}px`;
-    plate.style.height = `${height}px`;
-    const route = requiredElement<SVGElement>(plate, ".amso-world-visual__route");
-    route.style.left = `${snapshot.worldOffsetX - x}px`;
-    route.style.top = `${snapshot.worldOffsetY - y}px`;
-    route.style.width = `${WORLD_WIDTH * snapshot.worldScale}px`;
-    route.style.height = `${WORLD_HEIGHT * snapshot.worldScale}px`;
-    this.host.style.setProperty("--plate-x", `${x}px`);
-    this.host.style.setProperty("--plate-y", `${y}px`);
-    this.host.style.setProperty("--plate-width", `${width}px`);
-    this.host.style.setProperty("--plate-height", `${height}px`);
+    this.setStyle(this.plate, "left", `${x}px`);
+    this.setStyle(this.plate, "top", `${y}px`);
+    this.setStyle(this.plate, "width", `${width}px`);
+    this.setStyle(this.plate, "height", `${height}px`);
+    this.setStyle(this.route, "left", `${snapshot.worldOffsetX - x}px`);
+    this.setStyle(this.route, "top", `${snapshot.worldOffsetY - y}px`);
+    this.setStyle(this.route, "width", `${WORLD_WIDTH * snapshot.worldScale}px`);
+    this.setStyle(this.route, "height", `${WORLD_HEIGHT * snapshot.worldScale}px`);
+    this.setProperty("--plate-x", `${x}px`);
+    this.setProperty("--plate-y", `${y}px`);
+    this.setProperty("--plate-width", `${width}px`);
+    this.setProperty("--plate-height", `${height}px`);
   }
 
   public show(selection: WorldVisualSelection): CampaignSceneVisualState {
@@ -145,40 +180,48 @@ export class WorldVisualLayer {
     this.currentWorldId = selection.worldId;
     this.currentStateId = selection.stateId;
 
-    this.host.dataset.worldId = selection.worldId;
-    this.host.dataset.stateId = selection.stateId;
-    this.host.dataset.phase = selection.phase;
-    this.host.dataset.copyPlacement = state.copyPlacement;
-    this.host.style.setProperty("--world-position-portrait", state.crops.portrait);
-    this.host.style.setProperty("--world-position-landscape", state.crops.landscape);
-    this.host.style.setProperty("--world-position-desktop", state.crops.desktop);
-    this.host.style.setProperty("--world-reading-zoom", String(state.readingCamera.zoom));
-    this.host.style.setProperty("--world-game-zoom", String(state.gameCamera.zoom));
-    this.host.style.setProperty("--world-reading-origin-x", `${state.readingCamera.x * 100}%`);
-    this.host.style.setProperty("--world-reading-origin-y", `${state.readingCamera.y * 100}%`);
+    this.setDataset("worldId", selection.worldId);
+    this.setDataset("stateId", selection.stateId);
+    this.setDataset("phase", selection.phase);
+    this.lastPhaseValue = selection.phase;
+    this.setDataset("copyPlacement", state.copyPlacement);
+    this.setProperty("--world-position-portrait", state.crops.portrait);
+    this.setProperty("--world-position-landscape", state.crops.landscape);
+    this.setProperty("--world-position-desktop", state.crops.desktop);
+    this.setProperty("--world-reading-zoom", String(state.readingCamera.zoom));
+    this.setProperty("--world-game-zoom", String(state.gameCamera.zoom));
+    this.setProperty("--world-reading-origin-x", `${state.readingCamera.x * 100}%`);
+    this.setProperty("--world-reading-origin-y", `${state.readingCamera.y * 100}%`);
 
     if (selection.phase === "story") this.setParallaxDistance(0, false);
     if (worldChanged || (this.currentAsset === null && this.requestedAssetPath === null)) {
       this.loadWorldAsset(world.assetPath, selection.phase === "story");
     }
     if (worldChanged || stateChanged) {
-      this.host.dataset.reveal = state.revealMotion;
-      this.host.dataset.visualEvent = state.visualEvent;
+      this.setDataset("reveal", state.revealMotion);
+      this.setDataset("visualEvent", state.visualEvent);
     }
     return state;
   }
 
   public setCounterValue(value: number): void {
     const safeValue = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
-    const text = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 })
+    if (safeValue === this.lastCounterValue) return;
+    this.lastCounterValue = safeValue;
+    const text = this.numberFormatter
       .format(safeValue)
       .replace(/[\u00a0\u202f]/gu, " ");
-    this.host.querySelectorAll<HTMLElement>("[data-world-counter]")
-      .forEach((element) => { element.textContent = text; });
+    if (this.counter.textContent !== text) this.counter.textContent = text;
   }
 
   public setPhase(phase: WorldVisualPhase): void {
+    if (phase === this.lastPhaseValue) return;
+    this.lastPhaseValue = phase;
     this.host.dataset.phase = phase;
+  }
+
+  public prepareChallengeWorlds(): Promise<void> {
+    return this.assets.prepareAll();
   }
 
   public waitForCurrentPresentation(): Promise<void> {
@@ -222,8 +265,16 @@ export class WorldVisualLayer {
       ? reducedMotionBackgroundTravelPixels(distancePixels)
       : Math.max(0, distancePixels);
     this.lastDistance = distance;
-    this.host.style.setProperty("--world-phase-px", `${distance}px`);
-    this.host.dataset.motionState = active ? "moving" : "reading";
+    const phasePixels = `${distance}px`;
+    if (phasePixels !== this.lastPhasePixels) {
+      this.lastPhasePixels = phasePixels;
+      this.host.style.setProperty("--world-phase-px", phasePixels);
+    }
+    const motionState = active ? "moving" : "reading";
+    if (motionState !== this.lastMotionState) {
+      this.lastMotionState = motionState;
+      this.host.dataset.motionState = motionState;
+    }
 
     if (!active) {
       this.setPanelMotion(false);
@@ -303,8 +354,16 @@ export class WorldVisualLayer {
     const travel = progress * 100;
     const currentX = -travel;
     const nextX = 100 - travel;
-    this.panels[0].style.transform = `translate3d(${currentX}%, 0, 0)`;
-    this.panels[1].style.transform = `translate3d(${nextX}%, 0, 0)`;
+    const currentTransform = `translate3d(${currentX}%, 0, 0)`;
+    const nextTransform = `translate3d(${nextX}%, 0, 0)`;
+    if (currentTransform !== this.lastPanelTransforms[0]) {
+      this.panels[0].style.transform = currentTransform;
+      this.lastPanelTransforms[0] = currentTransform;
+    }
+    if (nextTransform !== this.lastPanelTransforms[1]) {
+      this.panels[1].style.transform = nextTransform;
+      this.lastPanelTransforms[1] = nextTransform;
+    }
     this.updateSeamBlur(progress);
   }
 
@@ -318,24 +377,40 @@ export class WorldVisualLayer {
       currentWorldId !== undefined &&
       nextWorldId !== undefined &&
       currentWorldId !== nextWorldId;
-    this.seamBlur.hidden = !betweenDifferentWorlds;
+    if (this.seamVisible !== betweenDifferentWorlds) {
+      this.seamVisible = betweenDifferentWorlds;
+      this.seamBlur.hidden = !betweenDifferentWorlds;
+    }
     if (!betweenDifferentWorlds) {
-      delete this.seamBlur.dataset.betweenWorlds;
+      if (this.seamWorlds !== "") {
+        this.seamWorlds = "";
+        delete this.seamBlur.dataset.betweenWorlds;
+      }
       return;
     }
-    this.seamBlur.style.left = `${(1 - progress) * 100}%`;
-    this.seamBlur.dataset.betweenWorlds = `${currentWorldId}:${nextWorldId}`;
+    const left = `${(1 - progress) * 100}%`;
+    if (left !== this.seamLeft) {
+      this.seamLeft = left;
+      this.seamBlur.style.left = left;
+    }
+    const worlds = `${currentWorldId}:${nextWorldId}`;
+    if (worlds !== this.seamWorlds) {
+      this.seamWorlds = worlds;
+      this.seamBlur.dataset.betweenWorlds = worlds;
+    }
   }
 
   private setPanelMotion(currentSmooth: boolean, nextSmooth = currentSmooth): void {
     void currentSmooth;
     void nextSmooth;
-    this.panels[0].style.transition = "none";
-    this.panels[1].style.transition = "none";
   }
 
   private recyclePanels(): void {
     this.panels = [this.panels[1], this.panels[0]];
+    this.lastPanelTransforms = [
+      this.panels[0].style.transform,
+      this.panels[1].style.transform
+    ];
     this.panels[0].dataset.worldPanel = "current";
     this.panels[1].dataset.worldPanel = "next";
   }
@@ -449,8 +524,8 @@ export class WorldVisualLayer {
     this.queuedAsset = null;
     this.pendingPanelPrepared = false;
     this.pendingPanelPreparing = false;
-    if (redrawVisiblePanel) void this.drawPanel(this.panels[0], this.currentAsset);
-    void this.drawPanel(this.panels[1], this.currentAsset);
+    if (redrawVisiblePanel) this.assignDecodedPanel(this.panels[0], this.currentAsset);
+    this.assignDecodedPanel(this.panels[1], this.currentAsset);
     this.placePanels((this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH);
     this.prepareNextWorld(this.currentAsset.path);
   }
@@ -462,23 +537,38 @@ export class WorldVisualLayer {
     this.scheduledPreloadPath = next.assetPath;
     const run = (): void => {
       if (this.scheduledPreloadPath !== next.assetPath) return;
+      if (this.host.dataset.phase === "game") {
+        view?.setTimeout(schedule, 250);
+        return;
+      }
       void this.assets.load(next.assetPath).catch(() => undefined).finally(() => {
         if (this.scheduledPreloadPath === next.assetPath) this.scheduledPreloadPath = null;
       });
     };
     const view = this.host.ownerDocument.defaultView;
-    if (typeof view?.requestIdleCallback === "function") {
-      view.requestIdleCallback(() => run());
-    } else {
-      const runWhenPresentationPaused = (): void => {
-        if (this.scheduledPreloadPath !== next.assetPath) return;
-        if (this.host.dataset.phase === "game") {
-          view?.setTimeout(runWhenPresentationPaused, 250);
-          return;
-        }
-        run();
-      };
-      view?.setTimeout(runWhenPresentationPaused, 50);
+    const schedule = (): void => {
+      if (typeof view?.requestIdleCallback === "function") {
+        view.requestIdleCallback(() => run());
+      } else {
+        view?.setTimeout(run, 50);
+      }
+    };
+    schedule();
+  }
+
+  private setProperty(name: string, value: string): void {
+    if (this.host.style.getPropertyValue(name) !== value) {
+      this.host.style.setProperty(name, value);
+    }
+  }
+
+  private setDataset(name: string, value: string): void {
+    if (this.host.dataset[name] !== value) this.host.dataset[name] = value;
+  }
+
+  private setStyle(element: HTMLElement | SVGElement, name: string, value: string): void {
+    if (element.style.getPropertyValue(name) !== value) {
+      element.style.setProperty(name, value);
     }
   }
 

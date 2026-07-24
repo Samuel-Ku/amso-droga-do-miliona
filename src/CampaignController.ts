@@ -285,6 +285,9 @@ export class CampaignController {
         }
       });
       const runnerArtwork = await this.loadRunnerArtwork();
+      if (safeRequest.mode === "challenge") {
+        await this.shell.prepareChallengeWorlds();
+      }
       await this.shell.waitForWorldPresentation();
       // The page shell is already present; this paint is the real hand-off from
       // resource readiness to Canvas/context readiness.
@@ -491,6 +494,10 @@ export class CampaignController {
       if (this.destroyed || token !== this.startToken || index >= PARCEL_CELEBRATION_FRAME_PATHS.length) return;
       const run = (): void => {
         if (this.destroyed || token !== this.startToken) return;
+        if (!this.shell.isDecodeSafePhase()) {
+          window.setTimeout(scheduleNext, 250);
+          return;
+        }
         const current = index++;
         void this.decodedImageStore.load(
           `parcel-celebration-${current + 1}`,
@@ -527,7 +534,6 @@ export class CampaignController {
       if (authoredAudio.resultCue !== null) this.audio.playCue(authoredAudio.resultCue);
       if (authoredAudio.completionCue !== null) this.audio.playCue(authoredAudio.completionCue);
     }
-    this.warmWorldAssetWindow(snapshot.visualWorldId);
     const previous = this.lastSnapshot;
     if (previous !== null) {
       if (snapshot.collisions > previous.collisions) {
@@ -735,7 +741,14 @@ export class CampaignController {
 
     // Artwork has a semantic vector fallback, so background transport failures
     // must never replace a readable scene with the global loading error.
-    void this.assetLoader.warmBundles(bundleWindow).catch(() => undefined);
+    const warmNext = (index: number): void => {
+      const bundleId = bundleWindow[index];
+      if (bundleId === undefined) return;
+      void this.assetLoader.warmBundles([bundleId])
+        .then(() => warmNext(index + 1))
+        .catch(() => undefined);
+    };
+    warmNext(0);
   }
 
   private uiCopy(key: string, fallback: string): string {

@@ -53,6 +53,38 @@ try {
       externalRequests.push(request.url());
     }
   });
+  await page.addInitScript(() => {
+    window.__performanceScenarioRuntime = {
+      activeDecodeStarts: 0,
+      activeFramesOver33Ms: 0,
+      maxActiveFrameMs: 0
+    };
+    const originalDecode = HTMLImageElement.prototype.decode;
+    HTMLImageElement.prototype.decode = function trackedDecode() {
+      if (document.querySelector(".amso-campaign")?.getAttribute("data-view") === "game") {
+        window.__performanceScenarioRuntime.activeDecodeStarts += 1;
+      }
+      return originalDecode.call(this);
+    };
+    let previousActiveFrame = null;
+    const observeFrame = (timestamp) => {
+      const active = document.visibilityState === "visible" &&
+        document.querySelector(".amso-campaign")?.getAttribute("data-view") === "game";
+      if (active && previousActiveFrame !== null) {
+        const interval = timestamp - previousActiveFrame;
+        window.__performanceScenarioRuntime.maxActiveFrameMs = Math.max(
+          window.__performanceScenarioRuntime.maxActiveFrameMs,
+          interval
+        );
+        if (interval > 33) {
+          window.__performanceScenarioRuntime.activeFramesOver33Ms += 1;
+        }
+      }
+      previousActiveFrame = active ? timestamp : null;
+      requestAnimationFrame(observeFrame);
+    };
+    requestAnimationFrame(observeFrame);
+  });
 
   const url = new URL(pathToFileURL(artifactPath));
   url.searchParams.set("qa", "performance");
@@ -99,7 +131,10 @@ try {
         }
       : null,
     consoleErrors,
-    externalRequests
+    externalRequests,
+    runtimePerformance: await page.evaluate(
+      () => window.__performanceScenarioRuntime
+    )
   };
   process.stdout.write(`${JSON.stringify(evidence, null, 2)}\n`);
   const checkpointsPassed = Array.isArray(evidence.scenarioCheckpoints) &&
@@ -109,6 +144,8 @@ try {
       checkpointsPassed &&
       evidence.session?.inputQueueOverflows === 0 &&
       evidence.session?.replayValid === true &&
+      evidence.runtimePerformance?.activeDecodeStarts === 0 &&
+      evidence.runtimePerformance?.activeFramesOver33Ms === 0 &&
       consoleErrors.length === 0 &&
       externalRequests.length === 0) {
     exitCode = 0;

@@ -96,6 +96,26 @@ describe("mobile-safe world assets", () => {
     await store.load(paths[0]!);
     expect(images).toHaveLength(7);
   });
+
+  it("prepares challenge worlds sequentially and caches terminal fallback readiness", async () => {
+    const { store, images } = imageHarness();
+    const preparing = store.prepareAll(["world-a.webp", "world-b.webp"]);
+
+    expect(images).toHaveLength(1);
+    images[0]!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(images).toHaveLength(2));
+    images[1]!.dispatchEvent(new Event("error"));
+    await vi.waitFor(() => expect(images[1]!.decode).toHaveBeenCalledTimes(2));
+    images[1]!.dispatchEvent(new Event("error"));
+    await vi.waitFor(() => expect(images[1]!.decode).toHaveBeenCalledTimes(3));
+    images[1]!.dispatchEvent(new Event("error"));
+    await preparing;
+
+    await expect(store.load("world-b.webp")).rejects.toThrow(
+      "world_asset_decode_failed"
+    );
+    expect(images).toHaveLength(2);
+  });
 });
 
 describe("edge-to-edge gameplay background", () => {
@@ -109,6 +129,28 @@ describe("edge-to-edge gameplay background", () => {
   it("moves at exactly ten percent of gameplay travel", () => {
     expect(BACKGROUND_PARALLAX_SPEED_RATIO).toBe(0.1);
     expect(backgroundTravelPixels(2_400)).toBe(240);
+  });
+
+  it("does not repeat stable counter, motion, or phase writes", async () => {
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host);
+    layer.setCounterValue(999_950);
+    layer.setParallaxDistance(240, true);
+    const mutations: MutationRecord[] = [];
+    const observer = new MutationObserver((records) => mutations.push(...records));
+    observer.observe(host, {
+      subtree: true,
+      attributes: true,
+      characterData: true,
+      childList: true
+    });
+
+    layer.setCounterValue(999_950);
+    layer.setParallaxDistance(240, true);
+    await Promise.resolve();
+
+    expect(mutations).toEqual([]);
+    observer.disconnect();
   });
 
   it("uses adjacent, equally oriented panels without overlap or crossfade", () => {
@@ -477,7 +519,7 @@ describe("edge-to-edge gameplay background", () => {
     vi.useRealTimers();
   });
 
-  it("keeps a bright branded fallback instead of a black or global error screen", async () => {
+  it("keeps a bright branded fallback without retrying during active gameplay", async () => {
     const { store, images } = imageHarness();
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host, store);
@@ -491,9 +533,8 @@ describe("edge-to-edge gameplay background", () => {
     expect(host.dataset.worldId).toBe("first-mile");
 
     layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "game" });
-    expect(images).toHaveLength(2);
-    images[1]!.dispatchEvent(new Event("load"));
-    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    expect(images).toHaveLength(1);
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("fallback"));
   });
 
   it("treats a story fallback as a ready first frame", async () => {
