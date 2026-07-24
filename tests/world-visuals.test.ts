@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import productionConfig from "../public/assets/milion-runner/runner-config.json";
 import {
   CAMPAIGN_WORLDS,
+  CHALLENGE_WORLD_SECONDS,
   ChallengeWorldDirector,
   resolvePlaySegmentVisual,
   sceneVisualState
@@ -138,7 +139,7 @@ describe("world visual continuity", () => {
     const director = new ChallengeWorldDirector("direct");
     expect(director.snapshot.stateId).toBe("story.first_package");
 
-    director.advance(45, false);
+    director.advance(CHALLENGE_WORLD_SECONDS, false);
     expect(director.snapshot.stateId).toBe("story.first_package");
     expect(director.snapshot.transitionPending).toBe(true);
 
@@ -147,12 +148,12 @@ describe("world visual continuity", () => {
     expect(director.snapshot.worldElapsedSeconds).toBe(0);
   });
 
-  it("continues from the finale after story, then returns to the first world after 45 seconds", () => {
+  it("continues from the finale after story, then returns after one world cycle", () => {
     const director = new ChallengeWorldDirector("story-continuation");
     expect(director.snapshot.stateId).toBe("story.million_finale");
     expect(sceneVisualState(director.snapshot.stateId).worldId).toBe("million-finale");
 
-    director.advance(44.99, true);
+    director.advance(CHALLENGE_WORLD_SECONDS - 0.01, true);
     expect(director.snapshot.stateId).toBe("story.million_finale");
     director.advance(0.01, true);
     expect(director.snapshot.stateId).toBe("story.first_package");
@@ -162,7 +163,7 @@ describe("world visual continuity", () => {
     const director = new ChallengeWorldDirector("direct");
     const seen = [director.snapshot.stateId];
     for (let index = 0; index < 7; index += 1) {
-      director.advance(45, true);
+      director.advance(CHALLENGE_WORLD_SECONDS, true);
       seen.push(director.snapshot.stateId);
     }
     expect(seen).toEqual([

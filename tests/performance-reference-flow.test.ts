@@ -1,0 +1,167 @@
+import { describe, expect, it } from "vitest";
+import productionConfig from "../public/assets/milion-runner/runner-config.json";
+import { parseRunnerConfig } from "../src/config/schema";
+import type { GameResult } from "../src/game/contracts";
+import { RunnerGame } from "../src/game/RunnerGame";
+import { exactDeterminismArtifact } from "../src/qa/determinism";
+import {
+  PERFORMANCE_REFERENCE_V1,
+  validateScenarioRun
+} from "../src/qa/performance-reference-v1";
+import {
+  WORLD_ARTWORK_CONTRACT,
+  calculateWorldPlateTransform
+} from "../src/visuals/world-plate-transform";
+
+function createScenarioHarness(reducedMotion = true) {
+  const frames = new Map<number, FrameRequestCallback>();
+  let nextFrameId = 0;
+  const view = {
+    devicePixelRatio: 1,
+    requestAnimationFrame(callback: FrameRequestCallback): number {
+      nextFrameId += 1;
+      frames.set(nextFrameId, callback);
+      return nextFrameId;
+    },
+    cancelAnimationFrame(id: number): void {
+      frames.delete(id);
+    },
+    addEventListener(): void {},
+    removeEventListener(): void {},
+    matchMedia: () => ({
+      matches: false,
+      addEventListener(): void {},
+      removeEventListener(): void {}
+    })
+  };
+  const documentMock = {
+    defaultView: view,
+    visibilityState: "visible",
+    hasFocus: () => true,
+    addEventListener(): void {},
+    removeEventListener(): void {}
+  };
+  const contextTarget: Record<PropertyKey, unknown> = {
+    createLinearGradient: () => ({ addColorStop(): void {} })
+  };
+  const context = new Proxy(contextTarget, {
+    get(target, key) {
+      if (key in target) return target[key];
+      return (): void => {};
+    },
+    set(target, key, value) {
+      target[key] = value;
+      return true;
+    }
+  }) as unknown as CanvasRenderingContext2D;
+  const canvas = {
+    width: 960,
+    height: 540,
+    style: { width: "", height: "" },
+    ownerDocument: documentMock,
+    getContext: () => context
+  } as unknown as HTMLCanvasElement;
+  const config = parseRunnerConfig(productionConfig);
+  if (!config) throw new Error("production config should parse");
+
+  const gameOvers: GameResult[] = [];
+  let completedThroughStep: number | null = null;
+  const game = new RunnerGame(
+    canvas,
+    {
+      onGameOver: (result) => gameOvers.push(result)
+    },
+    {
+      seed: PERFORMANCE_REFERENCE_V1.seed,
+      reducedMotion,
+      mode: "challenge",
+      challenge: config.challenge,
+      qaScenarioActive: true,
+      replayInputs: PERFORMANCE_REFERENCE_V1.inputs,
+      scenarioDurationSteps: PERFORMANCE_REFERENCE_V1.durationSteps,
+      onScenarioComplete: (step) => {
+        completedThroughStep = step;
+      }
+    }
+  );
+  game.applyGeometry(
+    calculateWorldPlateTransform(960, 540, WORLD_ARTWORK_CONTRACT)!,
+    { width: 960, height: 540, dpr: 1 }
+  );
+
+  return {
+    game,
+    gameOvers,
+    get completedThroughStep(): number | null {
+      return completedThroughStep;
+    },
+    run(): void {
+      game.start("pointer");
+      let timestamp = 0;
+      for (let guard = 0; guard < 4_000 && game.state === "running"; guard += 1) {
+        const entry = frames.entries().next().value as
+          | [number, FrameRequestCallback]
+          | undefined;
+        if (!entry) break;
+        frames.delete(entry[0]);
+        timestamp += 1000 / 60;
+        entry[1](timestamp);
+      }
+    }
+  };
+}
+
+describe("performance-reference-v1 production gameplay flow", () => {
+  it("completes all 7200 steps through the real challenge input boundary", () => {
+    const harness = createScenarioHarness();
+
+    harness.run();
+
+    expect(harness.gameOvers).toEqual([]);
+    expect(harness.completedThroughStep).toBe(
+      PERFORMANCE_REFERENCE_V1.durationSteps - 1
+    );
+    expect(harness.game.isReplayValid).toBe(true);
+    const coverage = harness.game.scenarioCoverage();
+    expect(coverage.jump).toBeGreaterThanOrEqual(10);
+    expect(coverage.crouch).toBeGreaterThanOrEqual(8);
+    expect(coverage.pickup).toBeGreaterThanOrEqual(1);
+    expect(coverage["power-up:gwarancja_48"]).toBeGreaterThanOrEqual(1);
+    expect(coverage.celebration).toBeGreaterThanOrEqual(1);
+    expect(coverage.guarantee).toBeGreaterThanOrEqual(1);
+    expect(coverage["world-change"]).toBeGreaterThanOrEqual(2);
+    expect(coverage["max-approved-density"]).toBeGreaterThanOrEqual(120);
+
+    const artifact = exactDeterminismArtifact(
+      harness.game.canonicalDeterministicState()
+    );
+    expect(artifact.digest).toBe("fnv1a32:852a7ac6");
+    expect(validateScenarioRun(PERFORMANCE_REFERENCE_V1, {
+      completedThroughStep: harness.completedThroughStep ?? -1,
+      checkpointResults: [{ completedThroughStep: -1, passed: true }],
+      coverage,
+      finalDigest: artifact.digest,
+      expectedFinalDigest: PERFORMANCE_REFERENCE_V1.expectedFinalDigest,
+      inputQueueOverflows: 0
+    }).passed).toBe(true);
+    harness.game.destroy();
+  });
+
+  it("keeps the authoritative result independent from motion preference", () => {
+    const fullMotion = createScenarioHarness(false);
+    const reducedMotion = createScenarioHarness(true);
+
+    fullMotion.run();
+    reducedMotion.run();
+
+    expect(fullMotion.gameOvers).toEqual([]);
+    expect(reducedMotion.gameOvers).toEqual([]);
+    expect(exactDeterminismArtifact(
+      fullMotion.game.canonicalDeterministicState()
+    ).digest).toBe(exactDeterminismArtifact(
+      reducedMotion.game.canonicalDeterministicState()
+    ).digest);
+    fullMotion.game.destroy();
+    reducedMotion.game.destroy();
+  });
+});

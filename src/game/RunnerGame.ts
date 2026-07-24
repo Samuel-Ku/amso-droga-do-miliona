@@ -818,6 +818,9 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     }
     const stepInput = this.inputQueue.consume(this.nextStepIndex);
     this.controlMethod = stepInput.controlMethod;
+    if (stepInput.crouchChanged) {
+      this.crouchInputHeld = stepInput.crouchHeld;
+    }
     if (stepInput.jumpPressed) {
       this.scenarioJumpCount += 1;
       this.crouchHeld = false;
@@ -835,7 +838,8 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       this.scenarioWorldChangeCount += 1;
       this.scenarioLastWorldIndex = worldIndex;
     }
-    if (this.logisticWaveDirector.snapshot.phase === "running") {
+    if (this.mode === "challenge" &&
+        challengePressureAt(this.challengeElapsedSeconds).axis === "density") {
       this.scenarioMaxDensitySteps += 1;
     }
     this.nextStepIndex += 1;
@@ -979,7 +983,6 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
 
     if (this.recordEmphasisRemaining > 0) {
       this.recordEmphasisRemaining = Math.max(0, this.recordEmphasisRemaining - deltaSeconds);
-      activeDeltaSeconds *= 0.72;
     }
 
     if (this.storyTimeline === null && this.cutsceneRemaining > 0) {

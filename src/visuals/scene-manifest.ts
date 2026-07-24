@@ -694,7 +694,7 @@ export function resolvePlaySegmentVisual(
   };
 }
 
-export const CHALLENGE_WORLD_SECONDS = 45;
+export const CHALLENGE_WORLD_SECONDS = 24;
 export const CHALLENGE_WORLD_STATES = Object.freeze([
   "story.first_package",
   "epoch_1.resolve",

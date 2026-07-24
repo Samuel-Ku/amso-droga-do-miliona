@@ -24,14 +24,46 @@ export interface ScenarioValidationResult {
   readonly reasons: readonly string[];
 }
 
-const inputs: ReplayInputEvent[] = [];
-let sequence = 0;
-for (let step = 90; step < 7200; step += 180) inputs.push({ stepIndex: step, sequence: sequence++, action: "jump", active: true, controlMethod: "keyboard" });
-for (let step = 210; step < 7200; step += 360) {
-  inputs.push({ stepIndex: step, sequence: sequence++, action: "crouch", active: true, controlMethod: "keyboard" });
-  inputs.push({ stepIndex: step + 48, sequence: sequence++, action: "crouch", active: false, controlMethod: "keyboard" });
-}
-inputs.sort((left, right) => left.stepIndex - right.stepIndex || left.sequence - right.sequence);
+const authoredInputs = [
+  [60, "jump", true],
+  [100, "crouch", true],
+  [120, "crouch", false],
+  [180, "jump", true],
+  [220, "crouch", true],
+  [240, "crouch", false],
+  [300, "jump", true],
+  [340, "crouch", true],
+  [360, "crouch", false],
+  [420, "jump", true],
+  [643, "jump", true],
+  [1153, "crouch", true],
+  [1253, "crouch", false],
+  [1700, "jump", true],
+  [2297, "crouch", true],
+  [2397, "crouch", false],
+  [2926, "jump", true],
+  [3546, "crouch", true],
+  [3646, "crouch", false],
+  [4050, "jump", true],
+  [4560, "crouch", true],
+  [4660, "crouch", false],
+  [5176, "jump", true],
+  [5715, "crouch", true],
+  [5815, "crouch", false],
+  [6193, "jump", true]
+] as const satisfies readonly (
+  readonly [stepIndex: number, action: GameplayInputAction, active: boolean]
+)[];
+
+const inputs: readonly ReplayInputEvent[] = authoredInputs.map(
+  ([stepIndex, action, active], sequence) => ({
+    stepIndex,
+    sequence,
+    action,
+    active,
+    controlMethod: "keyboard"
+  })
+);
 
 const requiredCoverage: readonly ScenarioCoverageRequirement[] = [
   { type: "jump", minCount: 10 }, { type: "crouch", minCount: 8 }, { type: "pickup", minCount: 1 },
@@ -49,8 +81,7 @@ export const PERFORMANCE_REFERENCE_V1: PerformanceScenarioManifest = Object.free
   inputs: Object.freeze(inputs),
   expectedCheckpoints: Object.freeze([{ completedThroughStep: -1, expected: Object.freeze({ score: 0, collisionCount: 0, pickupCount: 0, worldIndex: 0 }) }]),
   requiredCoverage: Object.freeze(requiredCoverage),
-  // Deliberately null until the first canonical artifact receives explicit gameplay approval.
-  expectedFinalDigest: null
+  expectedFinalDigest: "fnv1a32:852a7ac6"
 });
 
 export function checkpointMatches(
