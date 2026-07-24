@@ -1208,7 +1208,8 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     const storyOrdersActive = activeStorySegment?.id === "epoch_4.order_peak";
     const scriptedObjectiveActive = activeStorySegment?.id === "epoch_1.training" ||
       activeStorySegment?.id === "epoch_2.quality_series";
-    const authoredProgramActive = this.authoredWaveDirector !== null;
+    const authoredProgramActive = this.authoredWaveDirector !== null &&
+      this.authoredWaveDirector.currentWave !== null;
     const climaxCommand = activeStorySegment &&
         STORY_CLIMAX_SEGMENTS.has(activeStorySegment.id) &&
         this.currentEpoch < 4

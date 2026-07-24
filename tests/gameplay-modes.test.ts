@@ -351,6 +351,49 @@ describe("campaign collision contract", () => {
     harness.game.destroy();
   });
 
+  it("keeps spawning packages and obstacles until the story card actually opens", () => {
+    const config = parseRunnerConfig(productionConfig);
+    if (!config) throw new Error("production config should parse");
+    const extendedFirstRun: StoryConfig = {
+      ...config.story,
+      sequence: config.story.sequence.map((step) =>
+        step.type === "play" && step.id === "epoch_1.first_package"
+          ? { ...step, durationSeconds: 60 }
+          : step
+      )
+    };
+    const harness = createGameHarness("story", extendedFirstRun);
+    harness.game.start("keyboard");
+    harness.continueCurrentSceneFully();
+    harness.advance(STORY_REFRAME_SECONDS + 3.05);
+
+    let sawPackageAfterProgram = false;
+    let sawObstacleAfterProgram = false;
+    const internals = harness.game as unknown as {
+      obstacles: Array<{ active: boolean; authoredWaveId?: string }>;
+      packages: Array<{ active: boolean; authoredWaveId?: string }>;
+    };
+    for (let guard = 0; guard < 240; guard += 1) {
+      harness.advance(0.25, harness.avoidObstacles);
+      const story = harness.storyUpdates.at(-1);
+      const authoredProgramComplete =
+        harness.snapshots.at(-1)?.authoredWave?.completed === true;
+      if (authoredProgramComplete && story?.state === "play") {
+        sawPackageAfterProgram ||= internals.packages.some(
+          ({ active, authoredWaveId }) => active && authoredWaveId === undefined
+        );
+        sawObstacleAfterProgram ||= internals.obstacles.some(
+          ({ active, authoredWaveId }) => active && authoredWaveId === undefined
+        );
+      }
+      if (sawPackageAfterProgram && sawObstacleAfterProgram) break;
+    }
+
+    expect(sawPackageAfterProgram).toBe(true);
+    expect(sawObstacleAfterProgram).toBe(true);
+    harness.game.destroy();
+  });
+
   it("holds the tutorial until the required jump and slide patterns are cleared", () => {
     const harness = createGameHarness("story");
     harness.game.start("keyboard");
