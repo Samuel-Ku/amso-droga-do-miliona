@@ -9,6 +9,7 @@
     "build:demo": "vite build --config vite.demo.config.ts",
     "build:single": "npm run build:demo && node scripts/make-single-file.mjs",
     "check:autonomic-html": "node scripts/check-performance-release.mjs",
+    "check:performance-scenario": "npm run build:single && node scripts/run-performance-reference.mjs",
     "check:performance-release": "node scripts/check-performance-release.mjs --require-evidence",
     "build:frames": "node scripts/make-comprehension-frame-review.mjs",
     "build:all": "npm run build && npm run build:single && npm run build:frames",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "happy-dom": "^20.10.6",
+    "playwright": "^1.61.1",
     "typescript": "^7.0.2",
     "vite": "^8.1.4",
     "vitest": "^4.1.10"

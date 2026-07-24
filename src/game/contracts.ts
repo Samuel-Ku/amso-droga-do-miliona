@@ -172,6 +172,13 @@ export interface RunnerGameOptions {
     readonly controlMethod: ControlMethod;
   }[];
   scenarioDurationSteps?: number;
+  /** Versioned QA workload cadence; production Challenge keeps its authored default. */
+  challengeWorldDurationSeconds?: number;
+  scenarioCheckpointSteps?: readonly number[];
+  onScenarioCheckpoint?: (
+    completedThroughStep: number,
+    canonicalState: Readonly<Record<string, unknown>>
+  ) => void;
   onScenarioComplete?: (completedThroughStep: number) => void;
 }
 

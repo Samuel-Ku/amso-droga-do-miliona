@@ -149,6 +149,10 @@ export class CampaignController {
   private scenarioArtifact: ExactDeterminismArtifact<Readonly<Record<string, unknown>>> | null = null;
   private scenarioValidation: ScenarioValidationResult | null = null;
   private scenarioInitialCheckpointPassed = false;
+  private scenarioCheckpointResults: Array<{
+    completedThroughStep: number;
+    passed: boolean;
+  }> = [];
 
   public constructor(
     host: HTMLElement,
@@ -159,6 +163,7 @@ export class CampaignController {
   ) {
     this.profile = profile;
     this.recordsClient = new RecordsClient(config.recordsApi ?? "/api/records", {
+      readsEnabled: runtime.qa === undefined,
       writesEnabled: runtime.qa === undefined
     });
     this.tracker = new DataLayerTracker({
@@ -261,6 +266,7 @@ export class CampaignController {
     this.lastLogisticPhase = "inactive";
     this.lastWaveAudioKey = "";
     this.shownPowerUpHints.clear();
+    this.scenarioCheckpointResults = [];
     this.shell.showLoading(undefined);
 
     if (this.config.audio.enabled && this.runtime.qa?.audio !== "disabled") void this.audio.start();
@@ -323,6 +329,21 @@ export class CampaignController {
           qaScenarioActive: true,
           replayInputs: PERFORMANCE_REFERENCE_V1.inputs,
           scenarioDurationSteps: PERFORMANCE_REFERENCE_V1.durationSteps,
+          challengeWorldDurationSeconds:
+            PERFORMANCE_REFERENCE_V1.challengeWorldDurationSeconds,
+          scenarioCheckpointSteps: PERFORMANCE_REFERENCE_V1.expectedCheckpoints
+            .map(({ completedThroughStep }) => completedThroughStep)
+            .filter((completedThroughStep) => completedThroughStep >= 0),
+          onScenarioCheckpoint: (completedThroughStep, canonicalState) => {
+            const checkpoint = PERFORMANCE_REFERENCE_V1.expectedCheckpoints.find(
+              (candidate) => candidate.completedThroughStep === completedThroughStep
+            );
+            this.scenarioCheckpointResults.push({
+              completedThroughStep,
+              passed: checkpoint !== undefined &&
+                checkpointMatches(checkpoint, canonicalState)
+            });
+          },
           onQaAbort: () => this.shell.showError("QA Scenario failed: input queue overflow."),
           onScenarioComplete: () => {
             if (this.game?.isReplayValid) {
@@ -331,10 +352,7 @@ export class CampaignController {
               );
               this.scenarioValidation = validateScenarioRun(PERFORMANCE_REFERENCE_V1, {
                 completedThroughStep: PERFORMANCE_REFERENCE_V1.durationSteps - 1,
-                checkpointResults: [{
-                  completedThroughStep: -1,
-                  passed: this.scenarioInitialCheckpointPassed
-                }],
+                checkpointResults: this.scenarioCheckpointResults,
                 coverage: this.game.scenarioCoverage(),
                 finalDigest: this.scenarioArtifact.digest,
                 expectedFinalDigest: PERFORMANCE_REFERENCE_V1.expectedFinalDigest,
@@ -349,6 +367,10 @@ export class CampaignController {
         const initial = PERFORMANCE_REFERENCE_V1.expectedCheckpoints[0];
         this.scenarioInitialCheckpointPassed = initial !== undefined &&
           checkpointMatches(initial, this.game.canonicalDeterministicState());
+        this.scenarioCheckpointResults.push({
+          completedThroughStep: -1,
+          passed: this.scenarioInitialCheckpointPassed
+        });
       }
       this.scheduleCelebrationArtworkWarmup(runnerArtwork, token);
       const game = this.game;
@@ -560,6 +582,7 @@ export class CampaignController {
       },
       session,
       scenarioArtifact: this.scenarioArtifact,
+      scenarioCheckpoints: this.scenarioCheckpointResults,
       scenarioValidation: this.scenarioValidation,
       releaseGate: evaluatePerformanceReleaseGate({
         inputQueueOverflows: session.inputQueueOverflows,

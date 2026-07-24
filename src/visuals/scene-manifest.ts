@@ -694,7 +694,7 @@ export function resolvePlaySegmentVisual(
   };
 }
 
-export const CHALLENGE_WORLD_SECONDS = 24;
+export const CHALLENGE_WORLD_SECONDS = 45;
 export const CHALLENGE_WORLD_STATES = Object.freeze([
   "story.first_package",
   "epoch_1.resolve",
@@ -720,7 +720,10 @@ export class ChallengeWorldDirector {
   private worldElapsedSeconds = 0;
   private transitionPending = false;
 
-  public constructor(start: ChallengeWorldStart = "direct") {
+  public constructor(
+    start: ChallengeWorldStart = "direct",
+    private readonly worldDurationSeconds = CHALLENGE_WORLD_SECONDS
+  ) {
     this.reset(start);
   }
 
@@ -733,7 +736,7 @@ export class ChallengeWorldDirector {
   public advance(deltaSeconds: number, routeClear: boolean): ChallengeWorldSnapshot {
     const safeDelta = Number.isFinite(deltaSeconds) ? Math.max(0, deltaSeconds) : 0;
     this.worldElapsedSeconds += safeDelta;
-    if (this.worldElapsedSeconds + Number.EPSILON >= CHALLENGE_WORLD_SECONDS) {
+    if (this.worldElapsedSeconds + Number.EPSILON >= this.worldDurationSeconds) {
       this.transitionPending = true;
     }
     if (this.transitionPending && routeClear) {

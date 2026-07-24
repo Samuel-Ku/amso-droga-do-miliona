@@ -32,6 +32,20 @@ describe("sanitizePlayerName", () => {
 });
 
 describe("RecordsClient.submitIfBest", () => {
+  it("keeps a disabled QA board fully offline", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new RecordsClient("/api/records", {
+      readsEnabled: false,
+      writesEnabled: false
+    });
+
+    await expect(client.fetchBoard()).resolves.toEqual([]);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
   it("does not submit when score does not beat submitted best", async () => {
     const profile = makeProfile();
     profile.setPlayerName("Anka");

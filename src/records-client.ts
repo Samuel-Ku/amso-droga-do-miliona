@@ -12,14 +12,20 @@ export interface BoardResponse {
 
 export class RecordsClient {
   private readonly endpoint: string;
+  private readonly readsEnabled: boolean;
   private readonly writesEnabled: boolean;
 
-  public constructor(endpoint: string = DEFAULT_ENDPOINT, options: { writesEnabled?: boolean } = {}) {
+  public constructor(
+    endpoint: string = DEFAULT_ENDPOINT,
+    options: { readsEnabled?: boolean; writesEnabled?: boolean } = {}
+  ) {
     this.endpoint = endpoint;
+    this.readsEnabled = options.readsEnabled !== false;
     this.writesEnabled = options.writesEnabled !== false;
   }
 
   public async fetchBoard(signal?: AbortSignal): Promise<RecordBoardEntry[]> {
+    if (!this.readsEnabled) return [];
     const res = await fetch(this.endpoint, {
       method: "GET",
       headers: { accept: "application/json" },

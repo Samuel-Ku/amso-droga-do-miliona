@@ -6,6 +6,7 @@ import { RunnerGame } from "../src/game/RunnerGame";
 import { exactDeterminismArtifact } from "../src/qa/determinism";
 import {
   PERFORMANCE_REFERENCE_V1,
+  checkpointMatches,
   validateScenarioRun
 } from "../src/qa/performance-reference-v1";
 import {
@@ -65,6 +66,10 @@ function createScenarioHarness(reducedMotion = true) {
   if (!config) throw new Error("production config should parse");
 
   const gameOvers: GameResult[] = [];
+  const checkpointResults: Array<{
+    completedThroughStep: number;
+    passed: boolean;
+  }> = [];
   let completedThroughStep: number | null = null;
   const game = new RunnerGame(
     canvas,
@@ -79,6 +84,21 @@ function createScenarioHarness(reducedMotion = true) {
       qaScenarioActive: true,
       replayInputs: PERFORMANCE_REFERENCE_V1.inputs,
       scenarioDurationSteps: PERFORMANCE_REFERENCE_V1.durationSteps,
+      challengeWorldDurationSeconds:
+        PERFORMANCE_REFERENCE_V1.challengeWorldDurationSeconds,
+      scenarioCheckpointSteps: PERFORMANCE_REFERENCE_V1.expectedCheckpoints
+        .map(({ completedThroughStep: step }) => step)
+        .filter((step) => step >= 0),
+      onScenarioCheckpoint: (step, canonicalState) => {
+        const checkpoint = PERFORMANCE_REFERENCE_V1.expectedCheckpoints.find(
+          ({ completedThroughStep: expectedStep }) => expectedStep === step
+        );
+        checkpointResults.push({
+          completedThroughStep: step,
+          passed: checkpoint !== undefined &&
+            checkpointMatches(checkpoint, canonicalState)
+        });
+      },
       onScenarioComplete: (step) => {
         completedThroughStep = step;
       }
@@ -92,6 +112,7 @@ function createScenarioHarness(reducedMotion = true) {
   return {
     game,
     gameOvers,
+    checkpointResults,
     get completedThroughStep(): number | null {
       return completedThroughStep;
     },
@@ -114,6 +135,15 @@ function createScenarioHarness(reducedMotion = true) {
 describe("performance-reference-v1 production gameplay flow", () => {
   it("completes all 7200 steps through the real challenge input boundary", () => {
     const harness = createScenarioHarness();
+    const initialCheckpoint = PERFORMANCE_REFERENCE_V1.expectedCheckpoints[0];
+    harness.checkpointResults.push({
+      completedThroughStep: -1,
+      passed: initialCheckpoint !== undefined &&
+        checkpointMatches(
+          initialCheckpoint,
+          harness.game.canonicalDeterministicState()
+        )
+    });
 
     harness.run();
 
@@ -128,6 +158,7 @@ describe("performance-reference-v1 production gameplay flow", () => {
     expect(coverage.pickup).toBeGreaterThanOrEqual(1);
     expect(coverage["power-up:gwarancja_48"]).toBeGreaterThanOrEqual(1);
     expect(coverage.celebration).toBeGreaterThanOrEqual(1);
+    expect(coverage.milestone).toBeGreaterThanOrEqual(1);
     expect(coverage.guarantee).toBeGreaterThanOrEqual(1);
     expect(coverage["world-change"]).toBeGreaterThanOrEqual(2);
     expect(coverage["max-approved-density"]).toBeGreaterThanOrEqual(120);
@@ -135,10 +166,10 @@ describe("performance-reference-v1 production gameplay flow", () => {
     const artifact = exactDeterminismArtifact(
       harness.game.canonicalDeterministicState()
     );
-    expect(artifact.digest).toBe("fnv1a32:852a7ac6");
+    expect(artifact.digest).toBe(PERFORMANCE_REFERENCE_V1.expectedFinalDigest);
     expect(validateScenarioRun(PERFORMANCE_REFERENCE_V1, {
       completedThroughStep: harness.completedThroughStep ?? -1,
-      checkpointResults: [{ completedThroughStep: -1, passed: true }],
+      checkpointResults: harness.checkpointResults,
       coverage,
       finalDigest: artifact.digest,
       expectedFinalDigest: PERFORMANCE_REFERENCE_V1.expectedFinalDigest,
@@ -164,4 +195,5 @@ describe("performance-reference-v1 production gameplay flow", () => {
     fullMotion.game.destroy();
     reducedMotion.game.destroy();
   });
+
 });

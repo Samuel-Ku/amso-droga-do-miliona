@@ -186,6 +186,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
   private scenarioCrouchCount = 0;
   private scenarioWorldChangeCount = 0;
   private scenarioMaxDensitySteps = 0;
+  private scenarioMilestoneCount = 0;
   private scenarioLastWorldIndex = 0;
   private readonly scenarioPowerUpCounts: Record<PowerUpKind, number> = {
     gwarancja_48: 0,
@@ -213,7 +214,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
   private storyOrderPatternIndex = 0;
   private storyObjectivePatternIndex = 0;
   private readonly logisticWaveDirector: LogisticWaveDirector;
-  private readonly challengeWorldDirector = new ChallengeWorldDirector("direct");
+  private readonly challengeWorldDirector: ChallengeWorldDirector;
   private currentEpoch = 0;
   private epochElapsed = 0;
   private cutsceneRemaining = 0;
@@ -266,6 +267,9 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
   private readonly replayInputs: NonNullable<RunnerGameOptions["replayInputs"]>;
   private replayInputCursor = 0;
   private readonly scenarioDurationSteps: number | null;
+  private readonly scenarioCheckpointSteps: readonly number[];
+  private scenarioCheckpointCursor = 0;
+  private readonly onScenarioCheckpoint: RunnerGameOptions["onScenarioCheckpoint"];
   private readonly onScenarioComplete: RunnerGameOptions["onScenarioComplete"];
   private renderScene: RenderScene | null = null;
   private readonly renderPowerUps: PowerUpKind[] = [];
@@ -327,7 +331,13 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     this.qualityMode = options.qualityMode ?? "auto";
     this.replayInputs = options.replayInputs ?? [];
     this.scenarioDurationSteps = options.scenarioDurationSteps ?? null;
+    this.scenarioCheckpointSteps = options.scenarioCheckpointSteps ?? [];
+    this.onScenarioCheckpoint = options.onScenarioCheckpoint;
     this.onScenarioComplete = options.onScenarioComplete;
+    this.challengeWorldDirector = new ChallengeWorldDirector(
+      "direct",
+      options.challengeWorldDurationSeconds
+    );
     this.logisticWaveDirector = new LogisticWaveDirector(
       this.challenge?.logisticWaveMinSeconds ?? 45,
       this.challenge?.logisticWaveMaxSeconds ?? 60
@@ -416,6 +426,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       pickup: this.packagesCollected,
       "power-up:gwarancja_48": this.scenarioPowerUpCounts.gwarancja_48,
       celebration: this.celebrationCount,
+      milestone: this.scenarioMilestoneCount,
       guarantee: this.scenarioPowerUpCounts.gwarancja_48 + this.warrantySaves,
       "world-change": this.scenarioWorldChangeCount,
       "max-approved-density": this.scenarioMaxDensitySteps
@@ -612,6 +623,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     this.scenarioCrouchCount = 0;
     this.scenarioWorldChangeCount = 0;
     this.scenarioMaxDensitySteps = 0;
+    this.scenarioMilestoneCount = 0;
     this.scenarioLastWorldIndex = 0;
     this.scenarioPowerUpCounts.gwarancja_48 = 0;
     this.scenarioPowerUpCounts.podwojny_wynik = 0;
@@ -639,6 +651,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     this.inputQueue.reset();
     this.nextStepIndex = 0;
     this.replayInputCursor = 0;
+    this.scenarioCheckpointCursor = 0;
     this.replayValid = true;
     this.longFrameCount = 0;
     this.accumulator = 0;
@@ -843,6 +856,18 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       this.scenarioMaxDensitySteps += 1;
     }
     this.nextStepIndex += 1;
+    const completedThroughStep = this.nextStepIndex - 1;
+    while (this.scenarioCheckpointCursor < this.scenarioCheckpointSteps.length) {
+      const checkpointStep = this.scenarioCheckpointSteps[this.scenarioCheckpointCursor];
+      if (checkpointStep === undefined || checkpointStep > completedThroughStep) break;
+      this.scenarioCheckpointCursor += 1;
+      if (checkpointStep === completedThroughStep) {
+        this.onScenarioCheckpoint?.(
+          completedThroughStep,
+          this.canonicalDeterministicState()
+        );
+      }
+    }
     if (this.scenarioDurationSteps !== null && this.nextStepIndex >= this.scenarioDurationSteps) {
       this.cancelFrame();
       this.setState("paused");
@@ -983,6 +1008,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
 
     if (this.recordEmphasisRemaining > 0) {
       this.recordEmphasisRemaining = Math.max(0, this.recordEmphasisRemaining - deltaSeconds);
+      activeDeltaSeconds *= 0.72;
     }
 
     if (this.storyTimeline === null && this.cutsceneRemaining > 0) {
@@ -1463,7 +1489,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       const safeToCelebrate = !this.obstacles.some(({ active, x }) =>
         active && x >= this.runner.x
       );
-      if (newPersonalRecord && safeToCelebrate && !this.reducedMotion) {
+      if (newPersonalRecord && safeToCelebrate) {
         this.recordEmphasisRemaining = 0.25;
       }
       const celebrations = collection.countsAsPackage
@@ -1482,6 +1508,9 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       }
       for (const celebration of celebrations) {
         this.celebrationCount += 1;
+        if (celebration.achievement !== "record") {
+          this.scenarioMilestoneCount += 1;
+        }
         try {
           this.callbacks.onMilestoneCelebration?.(celebration);
         } catch {

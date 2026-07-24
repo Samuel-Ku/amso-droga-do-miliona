@@ -3,11 +3,11 @@ import type { GameplayInputAction } from "../game/input-queue";
 
 export interface ReplayInputEvent { readonly stepIndex: number; readonly sequence: number; readonly action: GameplayInputAction; readonly active: boolean; readonly controlMethod: ControlMethod; }
 export type ScenarioCoverageRequirement =
-  | { readonly type: "jump" | "crouch" | "pickup" | "celebration" | "guarantee" | "world-change"; readonly minCount: number }
+  | { readonly type: "jump" | "crouch" | "pickup" | "celebration" | "milestone" | "guarantee" | "world-change"; readonly minCount: number }
   | { readonly type: "power-up"; readonly id: string; readonly minCount: number }
   | { readonly type: "max-approved-density"; readonly minDurationSteps: number };
 export interface ScenarioCheckpoint { readonly completedThroughStep: number; readonly expected: Readonly<Record<string, unknown>>; }
-export interface PerformanceScenarioManifest { readonly id: "performance-reference-v1"; readonly durationSteps: 7200; readonly seed: number; readonly mode: "challenge"; readonly configVersion: string; readonly inputs: readonly ReplayInputEvent[]; readonly expectedCheckpoints: readonly ScenarioCheckpoint[]; readonly requiredCoverage: readonly ScenarioCoverageRequirement[]; readonly expectedFinalDigest: string | null; }
+export interface PerformanceScenarioManifest { readonly id: "performance-reference-v1"; readonly durationSteps: 7200; readonly seed: number; readonly mode: "challenge"; readonly configVersion: string; readonly challengeWorldDurationSeconds: number; readonly inputs: readonly ReplayInputEvent[]; readonly expectedCheckpoints: readonly ScenarioCheckpoint[]; readonly requiredCoverage: readonly ScenarioCoverageRequirement[]; readonly expectedFinalDigest: string | null; }
 export interface ScenarioRunEvidence {
   readonly completedThroughStep: number;
   readonly checkpointResults: readonly { completedThroughStep: number; passed: boolean }[];
@@ -35,22 +35,22 @@ const authoredInputs = [
   [340, "crouch", true],
   [360, "crouch", false],
   [420, "jump", true],
-  [643, "jump", true],
-  [1153, "crouch", true],
-  [1253, "crouch", false],
-  [1700, "jump", true],
-  [2297, "crouch", true],
-  [2397, "crouch", false],
-  [2926, "jump", true],
-  [3546, "crouch", true],
-  [3646, "crouch", false],
-  [4050, "jump", true],
-  [4560, "crouch", true],
-  [4660, "crouch", false],
-  [5176, "jump", true],
-  [5715, "crouch", true],
-  [5815, "crouch", false],
-  [6193, "jump", true]
+  [652, "jump", true],
+  [1162, "crouch", true],
+  [1262, "crouch", false],
+  [1709, "jump", true],
+  [2306, "crouch", true],
+  [2406, "crouch", false],
+  [2935, "jump", true],
+  [3555, "crouch", true],
+  [3655, "crouch", false],
+  [4059, "jump", true],
+  [4569, "crouch", true],
+  [4669, "crouch", false],
+  [5185, "jump", true],
+  [5724, "crouch", true],
+  [5824, "crouch", false],
+  [6202, "jump", true]
 ] as const satisfies readonly (
   readonly [stepIndex: number, action: GameplayInputAction, active: boolean]
 )[];
@@ -68,7 +68,8 @@ const inputs: readonly ReplayInputEvent[] = authoredInputs.map(
 const requiredCoverage: readonly ScenarioCoverageRequirement[] = [
   { type: "jump", minCount: 10 }, { type: "crouch", minCount: 8 }, { type: "pickup", minCount: 1 },
   { type: "power-up", id: "gwarancja_48", minCount: 1 }, { type: "celebration", minCount: 1 },
-  { type: "guarantee", minCount: 1 }, { type: "world-change", minCount: 2 },
+  { type: "milestone", minCount: 1 }, { type: "guarantee", minCount: 1 },
+  { type: "world-change", minCount: 2 },
   { type: "max-approved-density", minDurationSteps: 120 }
 ];
 
@@ -78,10 +79,15 @@ export const PERFORMANCE_REFERENCE_V1: PerformanceScenarioManifest = Object.free
   seed: 0x4d5a1201,
   mode: "challenge",
   configVersion: "runner-config-v4",
+  challengeWorldDurationSeconds: 24,
   inputs: Object.freeze(inputs),
-  expectedCheckpoints: Object.freeze([{ completedThroughStep: -1, expected: Object.freeze({ score: 0, collisionCount: 0, pickupCount: 0, worldIndex: 0 }) }]),
+  expectedCheckpoints: Object.freeze([
+    { completedThroughStep: -1, expected: Object.freeze({ score: 0, collisionCount: 0, pickupCount: 0, worldIndex: 0 }) },
+    { completedThroughStep: 2399, expected: Object.freeze({ simulationStep: 2400, score: 3759, collisionCount: 0, pickupCount: 14, worldIndex: 0 }) },
+    { completedThroughStep: 4799, expected: Object.freeze({ simulationStep: 4800, score: 9099, collisionCount: 0, pickupCount: 36, worldIndex: 1 }) }
+  ]),
   requiredCoverage: Object.freeze(requiredCoverage),
-  expectedFinalDigest: "fnv1a32:852a7ac6"
+  expectedFinalDigest: "fnv1a32:232d8be0"
 });
 
 export function checkpointMatches(

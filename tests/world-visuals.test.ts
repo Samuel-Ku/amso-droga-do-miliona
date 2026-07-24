@@ -148,6 +148,18 @@ describe("world visual continuity", () => {
     expect(director.snapshot.worldElapsedSeconds).toBe(0);
   });
 
+  it("keeps the production cadence while allowing a versioned QA workload cadence", () => {
+    const production = new ChallengeWorldDirector("direct");
+    const performanceScenario = new ChallengeWorldDirector("direct", 24);
+
+    production.advance(24, true);
+    performanceScenario.advance(24, true);
+    performanceScenario.advance(24, true);
+
+    expect(production.snapshot.stateId).toBe("story.first_package");
+    expect(performanceScenario.snapshot.stateId).toBe("epoch_2.resolve");
+  });
+
   it("continues from the finale after story, then returns after one world cycle", () => {
     const director = new ChallengeWorldDirector("story-continuation");
     expect(director.snapshot.stateId).toBe("story.million_finale");
