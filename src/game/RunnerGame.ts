@@ -1489,7 +1489,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       const safeToCelebrate = !this.obstacles.some(({ active, x }) =>
         active && x >= this.runner.x
       );
-      if (newPersonalRecord && safeToCelebrate) {
+      if (newPersonalRecord && safeToCelebrate && !this.reducedMotion) {
         this.recordEmphasisRemaining = 0.25;
       }
       const celebrations = collection.countsAsPackage

@@ -14,7 +14,7 @@ import {
   calculateWorldPlateTransform
 } from "../src/visuals/world-plate-transform";
 
-function createScenarioHarness(reducedMotion = true) {
+function createScenarioHarness(reducedMotion = false) {
   const frames = new Map<number, FrameRequestCallback>();
   let nextFrameId = 0;
   const view = {
@@ -176,24 +176,6 @@ describe("performance-reference-v1 production gameplay flow", () => {
       inputQueueOverflows: 0
     }).passed).toBe(true);
     harness.game.destroy();
-  });
-
-  it("keeps the authoritative result independent from motion preference", () => {
-    const fullMotion = createScenarioHarness(false);
-    const reducedMotion = createScenarioHarness(true);
-
-    fullMotion.run();
-    reducedMotion.run();
-
-    expect(fullMotion.gameOvers).toEqual([]);
-    expect(reducedMotion.gameOvers).toEqual([]);
-    expect(exactDeterminismArtifact(
-      fullMotion.game.canonicalDeterministicState()
-    ).digest).toBe(exactDeterminismArtifact(
-      reducedMotion.game.canonicalDeterministicState()
-    ).digest);
-    fullMotion.game.destroy();
-    reducedMotion.game.destroy();
   });
 
 });

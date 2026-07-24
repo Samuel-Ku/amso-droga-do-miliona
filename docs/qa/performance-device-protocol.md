@@ -2,6 +2,15 @@
 
 Status: implementation and provisional QA may proceed. Final minimum-profile performance sign-off is incomplete until a physical 4 GB Android phone is named and available.
 
+## Versioned world-transition workload
+
+`performance-reference-v1` keeps the production simulation, collision, input,
+spawn, and `ChallengeWorldDirector` paths. Its manifest explicitly sets the
+visual world duration to 24 seconds so the fixed 60-second capture crosses two
+real world boundaries. Normal Challenge mode retains its authored 45-second
+cadence. The effective scenario cadence is included in `qaRunConfiguration`;
+it is a coverage parameter, not a production setting or private-state mutation.
+
 ## References
 
 - Primary available Android reference: OnePlus 8 Pro, exact SKU/RAM/Android/Chrome versions to be recorded per run. Force 60 Hz, fix FHD+ or QHD+, landscape, battery saver off, consistent charging state, cold thermal start, and record the CSS viewport. Results are `provisional-reference`, never `minimum-profile-passed`.

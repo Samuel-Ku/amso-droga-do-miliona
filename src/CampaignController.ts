@@ -569,6 +569,8 @@ export class CampaignController {
         qaMode: "performance",
         scenarioId: this.runtime.qa.scenarioId,
         scenarioConfigVersion: PERFORMANCE_REFERENCE_V1.configVersion,
+        challengeWorldDurationSeconds:
+          PERFORMANCE_REFERENCE_V1.challengeWorldDurationSeconds,
         qualityRequest: this.runtime.qa.quality,
         motionRequest: this.runtime.qa.motion,
         resolvedMotionPreference: this.runtime.qa.motion === "reduced" ||
