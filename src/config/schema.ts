@@ -79,7 +79,7 @@ const CANONICAL_SEQUENCE = [
 ] as const;
 const UI_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9]{0,63}$/;
 const CRITICAL_UI_KEYS = [
-  "startStory", "choosePath", "replayStory", "challengeMode",
+  "startStory", "choosePath", "replayStory", "challengeMode", "challengeCta",
   "startChallenge", "fullStory", "loading", "errorTitle", "errorBody",
   "pauseTitle", "pauseBody", "narrowTitle", "narrowBody", "sharePublication"
 ] as const;

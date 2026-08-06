@@ -33,8 +33,8 @@ describe("PlayerProfileStore", () => {
   it("starts with a minimal unfinished profile and only story mode available", () => {
     const store = new PlayerProfileStore(new MemoryStorage());
 
-    expect(store.snapshot).toEqual({
-      schemaVersion: 5,
+    expect(store.snapshot).toMatchObject({
+      schemaVersion: 6,
       challengeRecordVersion: 11,
       storyCompleted: false,
       bestChallengeScore: 0,
@@ -46,6 +46,7 @@ describe("PlayerProfileStore", () => {
       playerName: null,
       submittedBestScore: 0
     });
+    expect(store.snapshot.playerId).toMatch(/^[A-Za-z0-9_-]{8,128}$/);
     expect(store.snapshot).not.toHaveProperty("storyCheckpoint");
     expect(store.availableModes).toEqual(["story"]);
   });
@@ -72,8 +73,8 @@ describe("PlayerProfileStore", () => {
     expect(restored.availableModes).toEqual(["story"]);
 
     restored.setSoundMuted(true);
-    expect(JSON.parse(storage.getItem("amso_milion_runner_profile") ?? "null")).toEqual({
-      schemaVersion: 5,
+    expect(JSON.parse(storage.getItem("amso_milion_runner_profile") ?? "null")).toMatchObject({
+      schemaVersion: 6,
       challengeRecordVersion: 11,
       storyCompleted: false,
       bestChallengeScore: 0,
@@ -108,7 +109,7 @@ describe("PlayerProfileStore", () => {
     const persisted = storage.getItem("amso_milion_runner_profile") ?? "";
     expect(persisted).not.toContain("bestChallengePackages");
     expect(JSON.parse(persisted)).toMatchObject({
-      schemaVersion: 5,
+      schemaVersion: 6,
       challengeRecordVersion: 11,
       bestChallengeScore: 9_500,
       bestChallengeOrders: 42,
@@ -125,7 +126,7 @@ describe("PlayerProfileStore", () => {
   it("keeps a v11 record across an unrelated future profile-schema migration", () => {
     const storage = new MemoryStorage();
     storage.setItem("amso_milion_runner_profile", JSON.stringify({
-      schemaVersion: 6,
+      schemaVersion: 7,
       challengeRecordVersion: 11,
       storyCompleted: true,
       bestChallengeScore: 77_250,
@@ -137,12 +138,44 @@ describe("PlayerProfileStore", () => {
     const restored = new PlayerProfileStore(storage);
 
     expect(restored.snapshot).toMatchObject({
-      schemaVersion: 5,
+      schemaVersion: 6,
       challengeRecordVersion: 11,
       bestChallengeScore: 77_250,
       bestChallengeOrders: 219,
       challengeRuns: 8,
       challengeRecordRuns: 3
+    });
+  });
+
+  it("adds one stable anonymous player id without losing an existing leaderboard identity", () => {
+    const storage = new MemoryStorage();
+    storage.setItem("amso_milion_runner_profile", JSON.stringify({
+      schemaVersion: 5,
+      challengeRecordVersion: 11,
+      storyCompleted: true,
+      bestChallengeScore: 44_000,
+      bestChallengeOrders: 88,
+      challengeRuns: 4,
+      challengeRecordRuns: 2,
+      soundMuted: true,
+      fullscreenPreference: "fullscreen",
+      playerName: "Kurier",
+      submittedBestScore: 44_000
+    }));
+
+    const first = new PlayerProfileStore(storage);
+    const playerId = first.playerId;
+    first.setSoundMuted(false);
+    const restored = new PlayerProfileStore(storage);
+
+    expect(playerId).toMatch(/^[A-Za-z0-9_-]{8,128}$/);
+    expect(restored.playerId).toBe(playerId);
+    expect(restored.snapshot).toMatchObject({
+      schemaVersion: 6,
+      storyCompleted: true,
+      bestChallengeScore: 44_000,
+      playerName: "Kurier",
+      submittedBestScore: 44_000
     });
   });
 

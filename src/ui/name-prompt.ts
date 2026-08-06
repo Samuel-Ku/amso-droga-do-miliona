@@ -83,11 +83,12 @@ export class NamePrompt {
     skip.addEventListener("click", () => this.resolve({ name: "", skipped: true }));
   }
 
-  public ask(prefill = ""): Promise<NamePromptResult> {
+  public ask(prefill = "", message = ""): Promise<NamePromptResult> {
     const input = this.overlay.querySelector<HTMLInputElement>("[data-campaign-name-input]")!;
     const error = this.overlay.querySelector<HTMLElement>("[data-campaign-name-error]")!;
     input.value = prefill;
-    error.hidden = true;
+    error.textContent = message;
+    error.hidden = message.length === 0;
     this.overlay.hidden = false;
     input.focus();
     return new Promise((resolve) => {

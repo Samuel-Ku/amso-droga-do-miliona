@@ -19,15 +19,14 @@ describe("RecordBoard.renderFrom", () => {
     ]);
 
     expect(host.querySelectorAll("table")).toHaveLength(1);
-    expect(host.querySelector("caption")?.textContent).toBe("Tablica rekordów");
+    expect(host.querySelector("caption")?.textContent).toBe("Tablica rekordów — Tryb Wyzwania");
     expect(Array.from(host.querySelectorAll("thead th")).map((cell) => [
       cell.textContent,
       cell.getAttribute("scope")
     ])).toEqual([
       ["#", "col"],
       ["Gracz", "col"],
-      ["Wynik", "col"],
-      ["Zamówienia", "col"]
+      ["Wynik", "col"]
     ]);
     expect(host.querySelector("tbody th")?.getAttribute("scope")).toBe("row");
     expect(host.querySelector("tbody th")?.textContent).toBe("Karcz");
@@ -46,11 +45,10 @@ describe("RecordBoard.renderFrom", () => {
     expect(cells.map((cell) => cell.className)).toEqual([
       "amso-records__rank",
       "amso-records__name",
-      "amso-records__score",
-      "amso-records__orders"
+      "amso-records__score"
     ]);
-    expect(cells[2]?.querySelector("[data-record-mobile-label]")?.textContent).toBe("Wynik:");
-    expect(cells[3]?.querySelector("[data-record-mobile-label]")?.textContent).toBe("Zamówienia:");
+    expect(cells[2]?.querySelector("[data-record-score]")?.textContent).toBe("695 741");
+    expect(cells[2]?.querySelector("[data-record-orders]")?.textContent).toBe("745 zamówień");
   });
 
   it("highlights the current player and renders hostile names only as text", () => {
@@ -69,10 +67,56 @@ describe("RecordBoard.renderFrom", () => {
     ]);
 
     expect(host.querySelector(".amso-records__row--me")).not.toBeNull();
+    expect(host.querySelector("[data-record-current-label]")?.textContent).toBe("Ty");
     expect(host.querySelector("img")).toBeNull();
-    expect(host.querySelector(".amso-records__name")?.textContent)
+    expect(host.querySelector(".amso-records__name > span")?.textContent)
       .toBe("<img src=x onerror=alert(1)>");
     expect(host.querySelector(".amso-records__name")?.getAttribute("title"))
       .toBe("<img src=x onerror=alert(1)>");
+  });
+
+  it("renders the desktop result as top nine plus the exact current row", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const board = new RecordBoard(host, new RecordsClient("/api/records"), { context: "result" });
+    const entries = Array.from({ length: 10 }, (_, index) => ({
+      name: `Gracz ${index + 1}`,
+      challengeScore: 1_000 - index,
+      orders: 100 - index,
+      updatedAt: index,
+      rank: index + 1
+    }));
+
+    board.renderFrom(entries, {
+      name: "Kurier",
+      challengeScore: 500,
+      orders: 40,
+      updatedAt: 99,
+      rank: 184
+    });
+
+    expect(host.querySelectorAll(".amso-records__row")).toHaveLength(10);
+    expect(host.querySelector(".amso-records__row--separator")?.textContent).toContain("…");
+    expect(host.querySelector(".amso-records__row--me .amso-records__rank")?.textContent)
+      .toContain("184");
+  });
+
+  it("renders compact results as top three plus the exact current row", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const board = new RecordBoard(host, new RecordsClient("/api/records"), { context: "result" });
+    board.setCompact(true);
+    const entries = Array.from({ length: 10 }, (_, index) => ({
+      name: `Gracz ${index + 1}`,
+      challengeScore: 1_000 - index,
+      orders: 100 - index,
+      updatedAt: index,
+      rank: index + 1
+    }));
+
+    board.renderFrom(entries, { name: "Kurier", challengeScore: 500, orders: 40, updatedAt: 99, rank: 184 });
+
+    expect(host.querySelectorAll(".amso-records__row")).toHaveLength(4);
+    expect(host.querySelector(".amso-records")?.getAttribute("data-records-context")).toBe("result");
   });
 });

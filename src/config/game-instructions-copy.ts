@@ -8,12 +8,16 @@ export const GAME_INSTRUCTION_COPY = Object.freeze({
   introTitle: "Poznaj drogę AMSO do miliona zamówień.",
   introGoal:
     "Pomóż kurierowi realizować zamówienia, zbierając paczki i urządzenia. Bieg prowadzi przez kolejne etapy rozwoju AMSO aż do zamówienia nr 1 000 000.",
+  modeDifference:
+    "Historia prowadzi przez jubileuszowe etapy AMSO. Tryb Wyzwania to niekończący się bieg po jak najlepszy wynik.",
   storySafety:
-    "Historia i bieg przeplatają się. Gdy pojawia się karta historii, trasa jest bezpieczna. Nie musisz wtedy omijać przeszkód ani zbierać przedmiotów.",
+    "Gdy pojawia się karta historii, trasa jest bezpieczna — nie musisz wtedy omijać przeszkód ani zbierać przedmiotów.",
   jump: "Skok: Spacja, W lub ↑. Na urządzeniu mobilnym dotknij ekranu.",
   slide: "Ślizg: S lub ↓. Na urządzeniu mobilnym przesuń palcem w dół.",
+  controls:
+    "Skok: Spacja, W lub ↑; na telefonie dotknij ekranu. Ślizg: S lub ↓; na telefonie przesuń palcem w dół.",
   ordersAndCombo:
-    "Zbieraj paczki i urządzenia, aby realizować kolejne zamówienia. Bonus zawsze pokazuje swoje działanie, a kolejne czyste akcje zwiększają SERIĘ ×N.",
+    "Zbieraj paczki i urządzenia, realizuj zamówienia i buduj SERIĘ ×N kolejnymi czystymi akcjami.",
   introCta: "Rozpocznij historię",
   hudOrdersLabel: "Zamówienia",
   compactControls: "Skok: Spacja/W/↑/tap · Ślizg: S/↓/swipe ↓"

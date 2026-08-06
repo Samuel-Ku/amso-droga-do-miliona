@@ -57,9 +57,9 @@ describe("canonical game instructions", () => {
     expect(document.querySelector("[data-campaign-landing-goal]")?.textContent)
       .toBe(GAME_INSTRUCTION_COPY.landingGoal);
     expect(howToParagraphs).toEqual([
+      GAME_INSTRUCTION_COPY.modeDifference,
       GAME_INSTRUCTION_COPY.storySafety,
-      GAME_INSTRUCTION_COPY.jump,
-      GAME_INSTRUCTION_COPY.slide,
+      GAME_INSTRUCTION_COPY.controls,
       GAME_INSTRUCTION_COPY.ordersAndCombo
     ]);
     expect(document.querySelector("[data-campaign-hud-orders-label]")?.textContent)
@@ -77,8 +77,8 @@ describe("canonical game instructions", () => {
       orders: 2,
       updatedAt: Date.UTC(2026, 6, 23, 8)
     }]);
-    expect(boardHost.querySelector("th:last-child")?.textContent)
-      .toBe(GAME_INSTRUCTION_COPY.hudOrdersLabel);
+    expect(boardHost.querySelector("[data-record-orders]")?.textContent)
+      .toBe("2 zamówień");
 
     shell.destroy();
   });

@@ -106,4 +106,34 @@ describe("challenge result screen", () => {
 
     shell.destroy();
   });
+
+  it("opens mobile sharing as an overlay and restores focus on close", () => {
+    Object.defineProperties(window, {
+      innerWidth: { configurable: true, value: 844 },
+      innerHeight: { configurable: true, value: 390 }
+    });
+    const shell = createShell();
+    shell.showChallengeResult(RESULT);
+    const root = document.querySelector<HTMLElement>(".amso-campaign")!;
+    const trigger = document.querySelector<HTMLButtonElement>("[data-campaign-toggle-share]")!;
+    const panel = document.querySelector<HTMLElement>("[data-campaign-share-panel]")!;
+    const stage = document.querySelector<HTMLElement>("[data-campaign-stage]")!;
+    const header = document.querySelector<HTMLElement>(".amso-campaign__header")!;
+
+    expect(root.dataset.mobileLayout).toBe("true");
+    trigger.click();
+    expect(panel.hidden).toBe(false);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(panel.parentElement).toBe(stage);
+    expect(panel.getAttribute("role")).toBe("dialog");
+    expect(panel.getAttribute("aria-modal")).toBe("true");
+    expect(header.inert).toBe(true);
+    panel.querySelector<HTMLButtonElement>("[data-campaign-close-overlay]")?.click();
+    expect(panel.hidden).toBe(true);
+    expect(panel.getAttribute("role")).toBe("region");
+    expect(panel.hasAttribute("aria-modal")).toBe(false);
+    expect(header.inert).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+    shell.destroy();
+  });
 });

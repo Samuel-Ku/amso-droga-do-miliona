@@ -21,7 +21,7 @@ import {
 } from "./story-presentation";
 import { RecordBoard } from "./record-board";
 import { NamePrompt } from "./name-prompt";
-import { RecordsClient } from "../records-client";
+import { RecordsClient, RecordsNameTakenError } from "../records-client";
 import type { PlayerProfileStore } from "../profile";
 import type { QualityCommitContext } from "../performance/visual-quality-coordinator";
 import { DecodedImageStore } from "../assets/DecodedImageStore";
@@ -80,13 +80,14 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   pauseAction: "Pauza",
   storyMode: "Droga do Miliona",
   challengeMode: "Szybki start — Tryb Wyzwania",
+  challengeCta: "Szybki start",
   landingEyebrow: "Jubileuszowa historia AMSO",
   landingTitle: "AMSO —",
   landingTitleAccent: "Droga do Miliona",
   landingMeta: "Około 6 minut · historia w Twoim tempie · skok i ślizg",
-  startStory: "Rozpocznij historię",
+  startStory: "Zagraj z historią AMSO",
   choosePath: "Wybierz swoją drogę",
-  replayStory: "Pełna historia i instrukcja",
+  replayStory: "Powtórz historię AMSO",
   orientationFocus: "Włącz tryb gry",
   loading: "Przygotowujemy pierwszą paczkę…",
   errorEyebrow: "Trasa chwilowo niedostępna",
@@ -216,7 +217,7 @@ export function campaignVisualStateAtProgress(
 
 export function isCampaignViewportTooNarrow(width: number, height: number): boolean {
   const landscape = width > height;
-  if (landscape) return width < 480 || height < 220;
+  if (landscape) return width < 600 || height < 220;
   return width < 280 || height < 400;
 }
 
@@ -540,6 +541,10 @@ export class CampaignShell {
   private trustCorridor = false;
   private tooNarrowActive = false;
   private activeModalScreen: HTMLElement | null = null;
+  private activeOverlay: HTMLElement | null = null;
+  private overlayTrigger: HTMLElement | null = null;
+  private sharePanelOriginParent: HTMLElement | null = null;
+  private sharePanelOriginNextSibling: ChildNode | null = null;
   private destroyed = false;
   private pointerStartY: number | null = null;
   private pointerSwipedDown = false;
@@ -629,11 +634,11 @@ export class CampaignShell {
               </div>
               <div data-campaign-landing-records></div>
               <details class="amso-campaign__how-to">
-                <summary>Jak działa gra?</summary>
+                <summary data-campaign-how-to-trigger aria-controls="amso-campaign-how-to-panel">Jak działa gra?</summary>
                 <div>
+                  <p>${GAME_INSTRUCTION_COPY.modeDifference}</p>
                   <p>${GAME_INSTRUCTION_COPY.storySafety}</p>
-                  <p>${GAME_INSTRUCTION_COPY.jump}</p>
-                  <p>${GAME_INSTRUCTION_COPY.slide}</p>
+                  <p>${GAME_INSTRUCTION_COPY.controls}</p>
                   <p>${GAME_INSTRUCTION_COPY.ordersAndCombo}</p>
                 </div>
               </details>
@@ -642,6 +647,19 @@ export class CampaignShell {
               <img class="amso-campaign__main-lockup" src="${MAIN_LOCKUP_PATH}" alt="" width="1600" height="1460" />
             </div>
           </section>
+
+          <div class="amso-campaign__overlay" id="amso-campaign-how-to-panel" data-campaign-how-to-panel hidden role="dialog" aria-modal="true" aria-labelledby="amso-campaign-how-to-title">
+            <div class="amso-campaign__overlay-card">
+              <button class="amso-campaign__overlay-close" type="button" data-campaign-close-overlay aria-label="Zamknij instrukcję">×</button>
+              <h2 id="amso-campaign-how-to-title">Jak działa gra?</h2>
+              <div class="amso-campaign__overlay-copy">
+                <p>${GAME_INSTRUCTION_COPY.modeDifference}</p>
+                <p>${GAME_INSTRUCTION_COPY.storySafety}</p>
+                <p>${GAME_INSTRUCTION_COPY.controls}</p>
+                <p>${GAME_INSTRUCTION_COPY.ordersAndCombo}</p>
+              </div>
+            </div>
+          </div>
 
           <div
             class="amso-campaign__orientation-prompt"
@@ -763,7 +781,8 @@ export class CampaignShell {
                 <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-restart-challenge data-campaign-copy="retryChallenge">Spróbuj jeszcze raz</button>
                 <button class="amso-campaign__button amso-campaign__button--secondary" type="button" data-campaign-toggle-share data-campaign-copy="shareResult" aria-expanded="false" aria-controls="amso-campaign-share-panel">Udostępnij wynik</button>
               </div>
-              <div class="amso-campaign__share-panel" id="amso-campaign-share-panel" data-campaign-share-panel hidden>
+              <div class="amso-campaign__share-panel" id="amso-campaign-share-panel" data-campaign-share-panel hidden role="region" aria-label="Udostępnij wynik">
+                <button class="amso-campaign__overlay-close" type="button" data-campaign-close-overlay aria-label="Zamknij udostępnianie">×</button>
                 <img class="amso-campaign__share-lockup" src="${COMPACT_LOCKUP_PATH}" alt="" width="1600" height="924" />
                 <p><strong data-campaign-copy="shareTurn">Teraz Twoja kolej.</strong> <span data-campaign-copy="shareLead">Wybierz, gdzie chcesz udostępnić kartę wyniku.</span></p>
                 <div class="amso-campaign__share-actions">
@@ -884,8 +903,13 @@ export class CampaignShell {
     if (this.recordsClient) {
       const landingHost = this.root.querySelector<HTMLElement>("[data-campaign-landing-records]");
       const resultHost = this.root.querySelector<HTMLElement>("[data-campaign-result-records]");
-      this.landingRecords = landingHost ? new RecordBoard(landingHost, this.recordsClient) : null;
-      this.resultRecords = resultHost ? new RecordBoard(resultHost, this.recordsClient) : null;
+      this.landingRecords = landingHost
+        ? new RecordBoard(landingHost, this.recordsClient, { context: "landing" })
+        : null;
+      this.resultRecords = resultHost
+        ? new RecordBoard(resultHost, this.recordsClient, { context: "result" })
+        : null;
+      this.resultRecords?.setPlayerId(this.profile?.playerId ?? null);
       this.namePrompt = new NamePrompt(this.root);
     } else {
       this.landingRecords = null;
@@ -1384,30 +1408,43 @@ export class CampaignShell {
   private async syncChallengeRecord(challengeScore: number, orders: number): Promise<void> {
     if (!this.recordsClient || !this.profile || !this.resultRecords || !this.namePrompt) return;
     const score = Math.round(challengeScore);
-    const needsName = this.profile.playerName === null;
-    const beatsBest = score > this.profile.submittedBestScore;
-
-    if (needsName && beatsBest) {
+    if (this.profile.playerName === null && score > this.profile.submittedBestScore) {
       const answer = await this.namePrompt.ask("");
       if (answer.skipped) {
-        // Player declined: still show the board without their entry.
         await this.resultRecords.refresh();
         return;
       }
       this.profile.setPlayerName(answer.name);
     }
 
-    try {
-      const { board, submitted } = await this.recordsClient.submitIfBest(
-        this.profile,
-        score,
-        orders
-      );
-      this.resultRecords.setHighlight(this.profile.playerName);
-      this.resultRecords.renderFrom(board);
-      if (submitted) this.announce("Wpisano Cię na tablicę rekordów!");
-    } catch {
-      await this.resultRecords.refresh();
+    for (;;) {
+      try {
+        const { board, playerEntry, submitted } = await this.recordsClient.submitIfBest(
+          this.profile,
+          score,
+          orders
+        );
+        this.resultRecords.setHighlight(this.profile.playerName);
+        this.resultRecords.renderFrom(board, playerEntry);
+        if (submitted) this.announce("Wpisano Cię na tablicę rekordów!");
+        return;
+      } catch (error) {
+        if (!(error instanceof RecordsNameTakenError)) {
+          await this.resultRecords.refresh();
+          return;
+        }
+        const rejectedName = this.profile.playerName ?? "";
+        this.profile.setPlayerName(null);
+        const answer = await this.namePrompt.ask(
+          rejectedName,
+          "Ta nazwa jest już zajęta. Wybierz inną."
+        );
+        if (answer.skipped) {
+          await this.resultRecords.refresh();
+          return;
+        }
+        this.profile.setPlayerName(answer.name);
+      }
     }
   }
 
@@ -1485,9 +1522,10 @@ export class CampaignShell {
       heading.textContent = this.copy.choosePath;
       const storyButton = this.createActionButton(this.copy.replayStory, true);
       storyButton.addEventListener("click", () => this.queueStart({ mode: "story", restartStory: true }), { once: true });
-      const challengeButton = this.createActionButton(this.copy.challengeMode, false);
+      const challengeButton = this.createActionButton(this.copy.challengeCta, true);
       challengeButton.addEventListener("click", () => this.queueStart({ mode: "challenge", restartStory: false }), { once: true });
-      this.landingActions.append(heading, storyButton, challengeButton);
+      storyButton.className = "amso-campaign__button amso-campaign__button--secondary";
+      this.landingActions.append(heading, challengeButton, storyButton);
       return;
     }
 
@@ -1578,6 +1616,7 @@ export class CampaignShell {
   }
 
   private hideScreens(): void {
+    this.closeOverlay(false);
     this.setScreenModal(null);
     [
       this.landingScreen,
@@ -1638,6 +1677,7 @@ export class CampaignShell {
   }
 
   private activeKeyboardDialog(): HTMLElement | null {
+    if (this.activeOverlay) return this.activeOverlay;
     if (!this.pauseScreen.hidden) return this.pauseScreen;
     if (!this.orientationPrompt.hidden) return this.orientationPrompt;
     return null;
@@ -1692,9 +1732,16 @@ export class CampaignShell {
   }
 
   private readonly handleClick = (event: MouseEvent): void => {
-    const target = event.target instanceof Element ? event.target.closest<HTMLElement>("button, a") : null;
+    const target = event.target instanceof Element
+      ? event.target.closest<HTMLElement>("button, a, summary")
+      : null;
     if (target === null) return;
-    if (target.matches("[data-campaign-story-continue]")) {
+    if (target.matches("[data-campaign-how-to-trigger]") && this.root.dataset.mobileLayout === "true") {
+      event.preventDefault();
+      this.openOverlay(requiredElement(this.root, "[data-campaign-how-to-panel]"), target);
+    } else if (target.matches("[data-campaign-close-overlay]")) {
+      this.closeOverlay();
+    } else if (target.matches("[data-campaign-story-continue]")) {
       this.tryContinueStory();
     } else if (target.matches("[data-campaign-mute]")) {
       this.setMuted(!this.muted);
@@ -1713,9 +1760,13 @@ export class CampaignShell {
     } else if (target.matches("[data-campaign-restart-challenge]")) {
       this.callbacks.onRestart("challenge");
     } else if (target.matches("[data-campaign-toggle-share]")) {
-      this.sharePanel.hidden = !this.sharePanel.hidden;
-      target.setAttribute("aria-expanded", String(!this.sharePanel.hidden));
-      if (!this.sharePanel.hidden) requiredElement<HTMLButtonElement>(this.sharePanel, "[data-campaign-share]").focus({ preventScroll: true });
+      if (this.root.dataset.mobileLayout === "true") {
+        this.openOverlay(this.sharePanel, target);
+      } else {
+        this.sharePanel.hidden = !this.sharePanel.hidden;
+        target.setAttribute("aria-expanded", String(!this.sharePanel.hidden));
+        if (!this.sharePanel.hidden) requiredElement<HTMLButtonElement>(this.sharePanel, "[data-campaign-share]").focus({ preventScroll: true });
+      }
     } else if (target.matches("[data-campaign-share]")) {
       const platform = target.dataset.campaignShare;
       if (platform === "facebook" || platform === "instagram") {
@@ -1723,6 +1774,51 @@ export class CampaignShell {
       }
     }
   };
+
+  private openOverlay(overlay: HTMLElement, trigger: HTMLElement): void {
+    this.closeOverlay(false);
+    this.activeOverlay = overlay;
+    this.overlayTrigger = trigger;
+    overlay.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+    if (overlay === this.sharePanel) {
+      this.sharePanelOriginParent = this.sharePanel.parentElement;
+      this.sharePanelOriginNextSibling = this.sharePanel.nextSibling;
+      this.stage.append(this.sharePanel);
+      this.sharePanel.setAttribute("role", "dialog");
+      this.sharePanel.setAttribute("aria-modal", "true");
+      this.setScreenModal(this.sharePanel);
+    } else {
+      this.setScreenModal(overlay);
+    }
+    overlay.querySelector<HTMLElement>("button, [tabindex]:not([tabindex='-1'])")
+      ?.focus({ preventScroll: true });
+  }
+
+  private closeOverlay(restoreFocus = true): void {
+    const overlay = this.activeOverlay;
+    const trigger = this.overlayTrigger;
+    if (!overlay) return;
+    overlay.hidden = true;
+    trigger?.setAttribute("aria-expanded", "false");
+    if (overlay === this.sharePanel) {
+      this.setScreenModal(null);
+      const parent = this.sharePanelOriginParent;
+      const next = this.sharePanelOriginNextSibling;
+      if (parent) {
+        parent.insertBefore(this.sharePanel, next?.parentNode === parent ? next : null);
+      }
+      this.sharePanel.setAttribute("role", "region");
+      this.sharePanel.removeAttribute("aria-modal");
+      this.sharePanelOriginParent = null;
+      this.sharePanelOriginNextSibling = null;
+    } else {
+      this.setScreenModal(null);
+    }
+    this.activeOverlay = null;
+    this.overlayTrigger = null;
+    if (restoreFocus) trigger?.focus({ preventScroll: true });
+  }
 
   private async handleShare(platform: CampaignSharePlatform): Promise<void> {
     if (this.challengeResult === null) return;
@@ -1789,6 +1885,11 @@ export class CampaignShell {
 
   private readonly handleKeydown = (event: KeyboardEvent): void => {
     const activeDialog = this.activeKeyboardDialog();
+    if (activeDialog !== null && event.key === "Escape" && this.activeOverlay) {
+      event.preventDefault();
+      this.closeOverlay();
+      return;
+    }
     if (activeDialog !== null && event.key === "Tab") {
       const focusable = [...activeDialog.querySelectorAll<HTMLElement>(
         'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
@@ -1902,7 +2003,11 @@ export class CampaignShell {
   };
 
   private updateResponsiveLayout(width: number): void {
-    if (width <= 600) {
+    const height = this.root.getBoundingClientRect().height || window.innerHeight;
+    const coarse = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
+    const compact = width <= 600 || (width > height && height <= 500 && coarse);
+    this.resultRecords?.setCompact(compact);
+    if (compact) {
       this.root.dataset.mobileLayout = "true";
       return;
     }

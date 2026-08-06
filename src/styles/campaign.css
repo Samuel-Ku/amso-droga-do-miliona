@@ -1291,6 +1291,597 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   white-space: nowrap;
 }
 
+/* v14 hero, leaderboard and compact result composition */
+.amso-campaign {
+  --records-bg: rgb(255 255 255 / 90%);
+  --records-border: rgb(23 23 23 / 14%);
+  --records-radius: 16px;
+  --records-pad: 18px 20px;
+  --records-cell-pad: 9px 10px;
+  --records-max-width: 570px;
+}
+
+.amso-campaign__screen--landing {
+  overflow-y: auto;
+}
+
+.amso-campaign__landing-cta-group {
+  margin-top: 26px;
+}
+
+.amso-campaign__landing-actions {
+  gap: 10px;
+}
+
+.amso-campaign__landing-actions h2 {
+  margin: 0 0 12px;
+}
+
+.amso-campaign__landing-actions .amso-campaign__button {
+  min-height: 52px;
+  padding-inline: 22px;
+}
+
+.amso-campaign__button--secondary,
+.amso-campaign__result-card .amso-campaign__button--secondary {
+  border-color: rgb(23 23 23 / 28%);
+}
+
+.amso-campaign[data-view="landing"] [data-campaign-landing-records] {
+  margin-top: 24px;
+}
+
+.amso-campaign__how-to {
+  width: 100%;
+  max-width: var(--records-max-width);
+  margin: 14px 0 24px;
+  border: 1px solid var(--records-border);
+  border-radius: var(--records-radius);
+  background: var(--records-bg);
+  box-shadow: 0 10px 30px rgb(23 23 23 / 5%);
+}
+
+.amso-campaign__how-to summary {
+  position: relative;
+  min-height: 54px;
+  padding: 16px 52px 16px 20px;
+  list-style: none;
+  border-radius: inherit;
+  font-size: 0.96rem;
+  line-height: 1.35;
+}
+
+.amso-campaign__how-to summary::-webkit-details-marker {
+  display: none;
+}
+
+.amso-campaign__how-to summary::after {
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  content: "";
+  transform: translateY(-70%) rotate(45deg);
+  transition: transform 160ms ease;
+}
+
+.amso-campaign__how-to[open] summary::after {
+  transform: translateY(-30%) rotate(225deg);
+}
+
+.amso-campaign__how-to div {
+  gap: 9px;
+  padding: 0 20px 18px;
+}
+
+.amso-campaign__how-to p {
+  color: #514d48;
+  font-size: 0.82rem;
+}
+
+.amso-campaign :is(button, a, summary):focus-visible,
+.amso-campaign__canvas:focus-visible {
+  outline: 3px solid var(--campaign-orange-500);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px rgb(255 255 255 / 88%);
+}
+
+.amso-campaign__main-lockup {
+  width: min(84%, 610px);
+  transform: translateX(5%) rotate(-1.5deg);
+}
+
+.amso-records {
+  box-shadow: 0 10px 30px rgb(23 23 23 / 5%);
+}
+
+.amso-records__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.amso-records__title {
+  margin: 0;
+  color: #3d3935;
+  font-size: 0.86rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+}
+
+.amso-records__badge {
+  padding: 4px 8px;
+  border: 1px solid rgb(23 23 23 / 12%);
+  border-radius: 999px;
+  background: rgb(250 247 240 / 85%);
+  color: #6c6863;
+  font-size: 0.6rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.amso-records__table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.amso-records__table th,
+.amso-records__table td {
+  border-bottom-color: rgb(23 23 23 / 7%);
+}
+
+.amso-records__table thead th {
+  color: #756f68;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.amso-records__rank {
+  width: 2.4rem;
+  font-weight: 850;
+}
+
+.amso-records__row--podium .amso-records__rank {
+  width: 42px;
+  color: #2d2925;
+}
+
+.amso-records__row--podium .amso-records__rank-value {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  place-items: center;
+}
+
+.amso-records__row--rank-1 .amso-records__rank-value { background: #f2c94c; }
+.amso-records__row--rank-2 .amso-records__rank-value { background: #d7dbe0; }
+.amso-records__row--rank-3 .amso-records__rank-value { background: #d9a06f; }
+
+.amso-records__row--rank-1 > :not(.amso-records__rank) {
+  background: rgb(255 244 210 / 45%);
+}
+
+.amso-records__name {
+  font-weight: 760;
+}
+
+.amso-records__name > span {
+  display: inline-block;
+  overflow: hidden;
+  max-width: 24ch;
+  vertical-align: middle;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.amso-records__name small {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgb(255 107 0 / 12%);
+  color: #b44900;
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.amso-records__score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+
+.amso-records__score strong {
+  color: #211e1b;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.amso-records__score small {
+  color: #77716a;
+  font-size: 0.68rem;
+  font-weight: 650;
+}
+
+.amso-records__row--me > :first-child {
+  box-shadow: inset 3px 0 0 var(--campaign-orange-500);
+}
+
+.amso-records__row--separator td {
+  padding: 2px 10px;
+  border: 0;
+  color: #8c857d;
+  text-align: center;
+  letter-spacing: 0.3em;
+}
+
+.amso-campaign__overlay {
+  position: absolute;
+  z-index: 120;
+  inset: 0;
+  display: grid;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  place-items: center;
+  background: rgb(23 23 23 / 72%);
+}
+
+.amso-campaign__overlay-card,
+.amso-campaign[data-mobile-layout="true"] .amso-campaign__share-panel {
+  position: relative;
+  width: min(100%, 680px);
+  max-height: 100%;
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid rgb(23 23 23 / 14%);
+  border-radius: 18px;
+  background: rgb(250 247 240 / 98%);
+  color: var(--campaign-black);
+  box-shadow: 0 24px 70px rgb(0 0 0 / 30%);
+}
+
+.amso-campaign__overlay-card h2 {
+  margin: 0 42px 14px 0;
+  font-size: 1.35rem;
+}
+
+.amso-campaign__overlay-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.amso-campaign__overlay-copy p {
+  margin: 0;
+  color: #514d48;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.amso-campaign__overlay-close {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid rgb(23 23 23 / 16%);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--campaign-black);
+  place-items: center;
+  font-size: 1.35rem;
+}
+
+.amso-campaign__share-panel:not([hidden]) .amso-campaign__overlay-close {
+  display: grid;
+}
+
+.amso-campaign__share-panel .amso-campaign__overlay-close {
+  display: none;
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse),
+  (max-width: 600px) {
+  .amso-campaign[data-mobile-layout="true"] {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    grid-template-rows: max-content minmax(0, 1fr) max-content;
+  }
+
+  .amso-campaign[data-view][data-mobile-layout="true"] .amso-campaign__main,
+  .amso-campaign[data-view][data-mobile-layout="true"] .amso-campaign__stage {
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    contain: layout paint;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__screen--landing {
+    position: absolute;
+    display: grid;
+    grid-template-columns: minmax(0, 1.12fr) minmax(150px, 0.88fr);
+    gap: 12px;
+    overflow: hidden;
+    padding: 8px 14px;
+    align-items: center;
+    text-align: left;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__landing-copy {
+    display: flex;
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    padding: 10px 14px;
+    border-radius: 16px;
+    flex-direction: column;
+    background: rgb(250 247 240 / 96%);
+    text-align: left;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__eyebrow {
+    margin-bottom: 3px;
+    font-size: 0.56rem;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__landing-copy h1 {
+    font-size: clamp(1.55rem, 7.5vh, 2.15rem);
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__landing-goal--desktop {
+    display: none;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__landing-goal--mobile {
+    display: block;
+    margin: 4px 0;
+    font-size: clamp(0.7rem, 2.6vh, 0.82rem);
+    line-height: 1.3;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__meta,
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] [data-campaign-landing-records] {
+    display: none;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__landing-cta-group {
+    width: 100%;
+    max-width: none;
+    margin: 7px 0 0;
+    align-items: stretch;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__landing-actions {
+    width: 100%;
+    max-width: none;
+    gap: 6px;
+    flex-direction: column;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__landing-actions h2 {
+    margin: 0 0 2px;
+    font-size: clamp(0.98rem, 3.8vh, 1.25rem);
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__landing-actions .amso-campaign__button {
+    width: 100%;
+    min-height: 40px;
+    padding: 7px 12px;
+    font-size: 0.72rem;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__how-to {
+    display: block;
+    margin: 7px 0 0;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__how-to summary {
+    min-height: 40px;
+    padding: 10px 42px 10px 14px;
+    font-size: 0.74rem;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__how-to > div {
+    display: none;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__landing-art {
+    position: relative;
+    z-index: 0;
+    display: grid;
+    inset: auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    opacity: 1;
+    place-items: center;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__main-lockup {
+    display: block;
+    width: min(100%, 19rem);
+    max-height: 68vh;
+    margin: 0;
+    transform: rotate(-1.5deg);
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__screen--result {
+    padding: 6px 12px;
+    overflow: hidden;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(260px, 1.1fr);
+    grid-template-rows: auto auto 1fr auto;
+    gap: 5px 12px;
+    width: min(100%, 960px);
+    height: 100%;
+    max-height: 100%;
+    padding: 10px 14px;
+    overflow: hidden;
+    align-items: start;
+    text-align: left;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-lockup {
+    position: absolute;
+    z-index: 0;
+    top: 10%;
+    right: 2%;
+    display: block;
+    width: 52%;
+    max-height: 82%;
+    margin: 0;
+    opacity: 0.08;
+    pointer-events: none;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-card > :not(.amso-campaign__result-lockup) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-card > .amso-campaign__eyebrow,
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-card > h2,
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid,
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-actions,
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-exit {
+    grid-column: 1;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-card > h2 {
+    margin: 0;
+    padding: 0;
+    font-size: clamp(1.2rem, 5vh, 1.65rem);
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid--challenge {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin: 2px 0;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid--challenge [data-campaign-result-metric="total"] {
+    grid-column: 1 / -1;
+    padding: 8px;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid--challenge [data-campaign-result-metric="challenge"],
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid--challenge [data-campaign-result-metric="distance"] {
+    display: none;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid--challenge [data-campaign-result-metric] {
+    min-width: 0;
+    padding: 6px 8px;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-actions .amso-campaign__button {
+    min-height: 40px;
+    padding: 7px 10px;
+    font-size: 0.72rem;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] [data-campaign-result-records] {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    align-self: center;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-records {
+    padding: 10px 12px;
+    background: rgb(255 255 255 / 88%);
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-records__heading {
+    margin-bottom: 4px;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-records__table {
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.72rem;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-records__table thead {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    clip: rect(0 0 0 0);
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-records__table .amso-records__row {
+    display: table-row;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-records__table .amso-records__row > :is(th, td) {
+    display: table-cell;
+    padding: 4px 6px;
+    border-bottom: 1px solid rgb(23 23 23 / 7%);
+    background: transparent;
+    vertical-align: middle;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-records__score strong {
+    font-size: 0.78rem;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-records__score small {
+    font-size: 0.58rem;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__share-panel:not([hidden]) {
+    position: absolute;
+    z-index: 130;
+    inset: 8px;
+    display: grid;
+    width: auto;
+    max-height: calc(100% - 16px);
+    margin: 0;
+    place-content: center;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__share-panel .amso-campaign__overlay-close {
+    display: grid;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-exit {
+    margin: 0;
+    font-size: 0.68rem;
+  }
+}
+
 @media (max-width: 820px) {
   .amso-campaign__screen--landing {
     grid-template-columns: 1fr;
@@ -3531,4 +4122,208 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   font: 700 11px/1.35 ui-monospace, monospace;
   white-space: pre-line;
   pointer-events: none;
+}
+
+/* Final compact-shell overrides live last so legacy container rules cannot
+   turn the no-scroll mobile composition back into the stacked layout. */
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse),
+  (max-width: 600px) {
+  .amso-campaign[data-view][data-mobile-layout="true"] {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    grid-template-rows: max-content minmax(0, 1fr) max-content;
+  }
+
+  .amso-campaign[data-view][data-mobile-layout="true"] .amso-campaign__main,
+  .amso-campaign[data-view][data-mobile-layout="true"] .amso-campaign__stage {
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    contain: layout paint;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__screen--landing {
+    position: absolute;
+    display: grid;
+    grid-template-columns: minmax(0, 1.12fr) minmax(150px, 0.88fr);
+    gap: 12px;
+    padding: 8px 14px;
+    overflow: hidden;
+    align-items: center;
+    text-align: left;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__landing-copy {
+    display: flex;
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    padding: 10px 14px;
+    border-radius: 16px;
+    flex-direction: column;
+    background: rgb(250 247 240 / 96%);
+    text-align: left;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] [data-campaign-landing-records],
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__meta {
+    display: none;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__landing-art {
+    position: relative;
+    z-index: 0;
+    display: grid;
+    inset: auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    opacity: 1;
+    place-items: center;
+  }
+
+  .amso-campaign[data-view="landing"][data-mobile-layout="true"] .amso-campaign__main-lockup {
+    display: block;
+    width: min(100%, 19rem);
+    max-height: 68vh;
+    margin: 0;
+    transform: rotate(-1.5deg);
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__screen--result {
+    padding: 6px 12px;
+    overflow: hidden;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(260px, 1.1fr);
+    grid-template-rows: auto auto auto auto auto;
+    gap: 4px 12px;
+    width: min(100%, 960px);
+    height: 100%;
+    max-height: 100%;
+    padding: 8px 14px;
+    overflow: hidden;
+    align-items: start;
+    text-align: left;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-card > .amso-campaign__eyebrow,
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-card > h2,
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid,
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-actions,
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-exit {
+    grid-column: 1;
+    width: 100%;
+    margin: 0;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid--challenge {
+    display: grid;
+    grid-template-columns: 1.2fr 0.9fr 0.9fr;
+    gap: 5px;
+    min-height: 0;
+    margin: 1px 0;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid--challenge [data-campaign-result-metric] {
+    display: flex;
+    min-width: 0;
+    min-height: 46px;
+    padding: 5px 6px;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid--challenge [data-campaign-result-metric="total"] {
+    grid-column: 1;
+    grid-row: 1;
+    order: 0;
+    padding: 5px 6px;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid--challenge [data-campaign-result-metric="orders"] {
+    grid-column: 2;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid--challenge [data-campaign-result-metric="best"] {
+    grid-column: 3;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid--challenge [data-campaign-result-metric="challenge"],
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid--challenge [data-campaign-result-metric="distance"] {
+    display: none;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid--challenge small {
+    font-size: 0.55rem;
+    line-height: 1.05;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid--challenge strong {
+    font-size: clamp(0.86rem, 3.5vh, 1.12rem);
+    line-height: 1.05;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid--challenge [data-campaign-result-metric="total"] strong {
+    color: var(--campaign-orange-600);
+    font-size: clamp(1.12rem, 4.6vh, 1.42rem);
+    font-weight: 950;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-grid--challenge [data-campaign-result-metric]:not([data-campaign-result-metric="total"]) strong {
+    font-size: clamp(0.76rem, 3vh, 0.96rem);
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-records__score > :is(strong, small) {
+    display: block;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-records__row--podium .amso-records__rank-value {
+    width: 22px;
+    height: 22px;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-actions .amso-campaign__button {
+    min-width: 0;
+    min-height: 38px;
+    padding: 6px 8px;
+    font-size: 0.68rem;
+    white-space: normal;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] [data-campaign-result-records] {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    align-self: center;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-lockup {
+    top: 8%;
+    right: 1%;
+    left: auto;
+    width: 48%;
+    max-height: 84%;
+    opacity: 0.08;
+  }
+
+  .amso-campaign[data-view="challenge_result"][data-mobile-layout="true"] .amso-campaign__result-exit {
+    font-size: 0.64rem;
+    line-height: 1.1;
+  }
 }

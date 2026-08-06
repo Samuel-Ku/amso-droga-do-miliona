@@ -14,10 +14,12 @@ export interface RunnerFact {
 export type PackageType = "notebook" | "telefon" | "pc" | "lcd";
 
 export interface RecordBoardEntry {
+  id?: string;
   name: string;
   challengeScore: number;
   orders: number;
   updatedAt: number;
+  rank?: number;
 }
 /** Visual form of one ordinary order. Physical facts still use PackageType. */
 export type OrderVisualType = PackageType | "parcel";

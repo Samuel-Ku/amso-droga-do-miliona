@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { RecordsClient, sanitizePlayerName } from "../src/records-client";
+import {
+  RecordsClient,
+  RecordsNameTakenError,
+  sanitizePlayerName
+} from "../src/records-client";
 import { PlayerProfileStore } from "../src/profile";
 
 function makeProfile(): PlayerProfileStore {
@@ -53,7 +57,12 @@ describe("RecordsClient.submitIfBest", () => {
 
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ entries: [], updated: false, best: 500 })
+      json: async () => ({
+        entries: [],
+        playerEntry: { name: "Anka", challengeScore: 500, orders: 12, updatedAt: 1, rank: 22 },
+        updated: false,
+        best: 500
+      })
     } as Response);
     vi.stubGlobal("fetch", fetchMock);
 
@@ -62,7 +71,7 @@ describe("RecordsClient.submitIfBest", () => {
 
     expect(result.submitted).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(1); // only GET, no POST
-    expect(fetchMock.mock.calls[0]![0]).toBe("/api/records");
+    expect(fetchMock.mock.calls[0]![0]).toContain("/api/records?limit=10&playerId=");
 
     vi.unstubAllGlobals();
   });
@@ -73,7 +82,12 @@ describe("RecordsClient.submitIfBest", () => {
 
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ entries: [{ name: "Anka", challengeScore: 700, orders: 20, updatedAt: 1 }], updated: true, best: 700 })
+      json: async () => ({
+        entries: [{ name: "Anka", challengeScore: 700, orders: 20, updatedAt: 1, rank: 1 }],
+        playerEntry: { name: "Anka", challengeScore: 700, orders: 20, updatedAt: 1, rank: 1 },
+        updated: true,
+        best: 700
+      })
     } as Response);
     vi.stubGlobal("fetch", fetchMock);
 
@@ -81,9 +95,79 @@ describe("RecordsClient.submitIfBest", () => {
     const result = await client.submitIfBest(profile, 700, 20);
 
     expect(result.submitted).toBe(true);
+    expect(result.playerEntry?.rank).toBe(1);
     expect(fetchMock).toHaveBeenCalledTimes(1); // single POST (name already set)
     expect(fetchMock.mock.calls[0]![1]!.method).toBe("POST");
+    expect(JSON.parse(String(fetchMock.mock.calls[0]![1]!.body))).toMatchObject({
+      playerId: profile.playerId,
+      name: "Anka",
+      previousSubmittedBest: 0
+    });
 
+    vi.unstubAllGlobals();
+  });
+
+  it("requests the current player's exact row when no POST is needed", async () => {
+    const profile = makeProfile();
+    profile.setPlayerName("Anka");
+    profile.markSubmitted(500);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        entries: [],
+        playerEntry: { name: "Anka", challengeScore: 500, orders: 12, updatedAt: 1, rank: 184 }
+      })
+    } as Response);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await new RecordsClient("/api/records").submitIfBest(profile, 300, 7);
+
+    expect(result.playerEntry?.rank).toBe(184);
+    expect(fetchMock.mock.calls[0]![0]).toContain(`playerId=${encodeURIComponent(profile.playerId)}`);
+    vi.unstubAllGlobals();
+  });
+
+  it("surfaces a reserved-name collision as a distinct public error", async () => {
+    const profile = makeProfile();
+    profile.setPlayerName("Anka");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: async () => ({ error: "name_taken" })
+    } as Response));
+
+    await expect(new RecordsClient("/api/records").submitIfBest(profile, 700, 20))
+      .rejects.toBeInstanceOf(RecordsNameTakenError);
+    vi.unstubAllGlobals();
+  });
+
+  it("submits an equal score so a higher orders tiebreak can improve rank", async () => {
+    const profile = makeProfile();
+    profile.setPlayerName("Kurier");
+    profile.markSubmitted(500);
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      entries: [],
+      playerEntry: {
+        id: "record-1",
+        name: "Kurier",
+        challengeScore: 500,
+        orders: 20,
+        updatedAt: 2,
+        rank: 1
+      },
+      updated: true
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await new RecordsClient("/api/records")
+      .submitIfBest(profile, 500, 20);
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
+      challengeScore: 500,
+      orders: 20
+    });
+    expect(result.submitted).toBe(true);
     vi.unstubAllGlobals();
   });
 });

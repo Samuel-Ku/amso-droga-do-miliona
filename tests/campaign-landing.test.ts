@@ -84,6 +84,26 @@ describe("campaign landing composition", () => {
     shell.destroy();
   });
 
+  it("makes Story the only first path and Challenge the primary returning path", () => {
+    const shell = createShell();
+    shell.showLanding({ challengeUnlocked: false, fullscreenPreference: null, muted: false });
+    expect(Array.from(document.querySelectorAll<HTMLButtonElement>(
+      "[data-campaign-landing-actions] button"
+    )).map((button) => button.textContent)).toEqual(["Zagraj z historią AMSO"]);
+
+    shell.showLanding({ challengeUnlocked: true, fullscreenPreference: null, muted: false });
+    const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>(
+      "[data-campaign-landing-actions] button"
+    ));
+    expect(buttons.map((button) => button.textContent)).toEqual([
+      "Szybki start",
+      "Powtórz historię AMSO"
+    ]);
+    expect(buttons[0]?.classList.contains("amso-campaign__button--primary")).toBe(true);
+    expect(buttons[1]?.classList.contains("amso-campaign__button--secondary")).toBe(true);
+    shell.destroy();
+  });
+
   it("keeps branding and two text-labelled header actions in separate groups", () => {
     const shell = createShell();
     const header = document.querySelector<HTMLElement>(".amso-campaign__header")!;

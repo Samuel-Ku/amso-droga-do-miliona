@@ -85,10 +85,33 @@ describe("mobile campaign shell", () => {
   it("accepts a wide Android landscape viewport while preserving minimums", () => {
     expect(isCampaignViewportTooNarrow(960, 315)).toBe(false);
     expect(isCampaignViewportTooNarrow(640, 280)).toBe(false);
+    expect(isCampaignViewportTooNarrow(568, 320)).toBe(true);
     expect(isCampaignViewportTooNarrow(479, 320)).toBe(true);
     expect(isCampaignViewportTooNarrow(960, 219)).toBe(true);
     expect(isCampaignViewportTooNarrow(279, 844)).toBe(true);
     expect(isCampaignViewportTooNarrow(390, 844)).toBe(false);
+  });
+
+  it("opens compact instructions as an overlay and restores focus without scrolling the page", () => {
+    Object.defineProperties(window, {
+      innerWidth: { configurable: true, value: 844 },
+      innerHeight: { configurable: true, value: 390 }
+    });
+    const shell = createShell();
+    shell.showLanding({ challengeUnlocked: true, fullscreenPreference: null, muted: false });
+    const root = document.querySelector<HTMLElement>(".amso-campaign")!;
+    const trigger = document.querySelector<HTMLElement>("[data-campaign-how-to-trigger]")!;
+    const overlay = document.querySelector<HTMLElement>("[data-campaign-how-to-panel]")!;
+
+    expect(root.dataset.mobileLayout).toBe("true");
+    expect(overlay.hidden).toBe(true);
+    trigger.click();
+    expect(overlay.hidden).toBe(false);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(overlay.hidden).toBe(true);
+    expect(document.activeElement).toBe(trigger);
+    shell.destroy();
   });
 
   it("turns the fullscreen control into an honest CSS game mode without the API", async () => {
