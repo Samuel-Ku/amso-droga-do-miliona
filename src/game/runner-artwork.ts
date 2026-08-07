@@ -102,6 +102,7 @@ export function courierCrouchFrameOffsetX(frame: number): number {
 }
 
 type ArtworkImageFactory = () => HTMLImageElement;
+type ArtworkWarmupCanvasFactory = () => HTMLCanvasElement;
 
 export interface RunnerArtworkAssets {
   readonly orders?: HTMLImageElement;
@@ -141,6 +142,7 @@ export class RunnerArtwork {
   private readonly obstacles: Readonly<Record<ObstacleKind, HTMLImageElement | null>>;
   private readonly overheadVariants: readonly (HTMLImageElement | null)[];
   private readonly parcelFrames: (HTMLImageElement | null)[];
+  private firstFramePrepared = false;
 
   public constructor(source: ArtworkImageFactory | RunnerArtworkAssets = {}) {
     const factory = typeof source === "function" ? source : undefined;
@@ -172,6 +174,40 @@ export class RunnerArtwork {
   public installParcelFrame(index: number, image: HTMLImageElement): void {
     if (!Number.isInteger(index) || index < 0 || index >= this.parcelFrames.length) return;
     this.parcelFrames[index] = image;
+  }
+
+  /** Uploads every critical raster through Canvas before the first visible gameplay frame. */
+  public prepareForFirstFrame(
+    canvasFactory: ArtworkWarmupCanvasFactory = () => document.createElement("canvas")
+  ): void {
+    if (this.firstFramePrepared) return;
+    const images = [...new Set([
+      this.orders,
+      this.powerUps,
+      this.courier,
+      this.courierCrouch,
+      this.courierJump,
+      ...Object.values(this.obstacles),
+      ...this.overheadVariants
+    ])];
+    if (images.some((image) => !drawable(image))) {
+      throw new Error("critical_runner_artwork_missing");
+    }
+    const canvas = canvasFactory();
+    canvas.width = 64;
+    canvas.height = 64;
+    try {
+      const context = canvas.getContext("2d");
+      if (context === null) throw new Error("critical_runner_artwork_warmup_failed");
+      for (const image of images) {
+        context.drawImage(image!, 0, 0, canvas.width, canvas.height);
+        context.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      this.firstFramePrepared = true;
+    } finally {
+      canvas.width = 0;
+      canvas.height = 0;
+    }
   }
 
   public hasOverheadArtwork(visualVariant: number): boolean {

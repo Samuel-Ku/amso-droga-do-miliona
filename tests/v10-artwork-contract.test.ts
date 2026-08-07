@@ -58,6 +58,54 @@ function scene(overrides: Partial<RenderScene> = {}): RenderScene {
 }
 
 describe("v10 production artwork contract", () => {
+  it("warms every unique critical canvas asset once and releases the scratch canvas", () => {
+    const image = () => ({
+      complete: true,
+      naturalWidth: 512,
+      naturalHeight: 512
+    }) as HTMLImageElement;
+    const assets = {
+      orders: image(),
+      powerUps: image(),
+      courier: image(),
+      courierCrouch: image(),
+      courierJump: image(),
+      obstacles: {
+        "box-stack": image(),
+        pallet: image(),
+        trolley: image(),
+        overhead: image()
+      },
+      overheadVariants: [] as HTMLImageElement[]
+    };
+    assets.overheadVariants = [assets.obstacles.overhead, image(), image()];
+    const artwork = new RunnerArtwork(assets);
+    const drawImage = vi.fn();
+    const clearRect = vi.fn();
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => ({ drawImage, clearRect }))
+    } as unknown as HTMLCanvasElement;
+
+    artwork.prepareForFirstFrame(() => canvas);
+    artwork.prepareForFirstFrame(() => canvas);
+
+    expect(drawImage).toHaveBeenCalledTimes(11);
+    expect(new Set(drawImage.mock.calls.map(([drawn]) => drawn))).toEqual(new Set([
+      assets.orders,
+      assets.powerUps,
+      assets.courier,
+      assets.courierCrouch,
+      assets.courierJump,
+      ...Object.values(assets.obstacles),
+      ...assets.overheadVariants
+    ]));
+    expect(clearRect).toHaveBeenCalledTimes(11);
+    expect(canvas.width).toBe(0);
+    expect(canvas.height).toBe(0);
+  });
+
   it("has five equal ordinary order visuals", () => {
     expect(ORDER_VISUAL_TYPES).toEqual(["notebook", "telefon", "pc", "lcd", "parcel"]);
     expect(Object.keys(ORDER_ASSET_PATHS)).toEqual(ORDER_VISUAL_TYPES);
