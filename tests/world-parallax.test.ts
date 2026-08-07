@@ -383,8 +383,8 @@ describe("edge-to-edge gameplay background", () => {
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
 
     await vi.waitFor(() => expect(idleCallbacks.length).toBeGreaterThan(0));
-    expect(idleOptions.shift()).toMatchObject({ timeout: 1_000 });
-    idleCallbacks.shift()?.({ didTimeout: true, timeRemaining: () => 0 });
+    expect(idleOptions.shift()).toBeUndefined();
+    idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 4 });
     await vi.waitFor(() => expect(images).toHaveLength(3));
     expect(images[2]?.src).toContain("world-03-quality-service");
 
@@ -402,8 +402,8 @@ describe("edge-to-edge gameplay background", () => {
       await vi.waitFor(() => expect(idleCallbacks.length + compositeFrames.length)
         .toBeGreaterThan(0));
       if (idleCallbacks.length > 0) {
-        expect(idleOptions.shift()).toMatchObject({ timeout: 1_000 });
-        idleCallbacks.shift()?.({ didTimeout: true, timeRemaining: () => 0 });
+        expect(idleOptions.shift()).toBeUndefined();
+        idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 4 });
       } else {
         compositeFrames.shift()?.(stage * 16);
       }

@@ -21,7 +21,6 @@ export type WorldTransitionMode = "story-linked" | "offscreen";
 // A 120 Hz frame leaves less than 8 ms total. Each preparation lease performs
 // only one small synchronous DOM operation; decode/composite completion stays async.
 const PANEL_PREPARATION_MIN_IDLE_MS = 2;
-const PANEL_PREPARATION_IDLE_TIMEOUT_MS = 1_000;
 
 export interface WorldVisualSelection {
   readonly worldId: CampaignWorldId;
@@ -693,7 +692,7 @@ export class WorldVisualLayer {
       this.panelPreparationScheduled = false;
       if (this.destroyed) return;
       const needsIdleLease = this.host.dataset.phase === "game" && !this.paused;
-      if (needsIdleLease && deadline !== undefined && !deadline.didTimeout &&
+      if (needsIdleLease && deadline !== undefined &&
           deadline.timeRemaining() < PANEL_PREPARATION_MIN_IDLE_MS) {
         this.deferPanelPreparationRetry();
         return;
@@ -717,7 +716,7 @@ export class WorldVisualLayer {
       });
     };
     if (activeGameplay && typeof requestIdle === "function") {
-      requestIdle((deadline) => run(deadline), { timeout: PANEL_PREPARATION_IDLE_TIMEOUT_MS });
+      requestIdle((deadline) => run(deadline));
     } else {
       run();
     }
@@ -919,8 +918,7 @@ export class WorldVisualLayer {
             resolve(false);
             return;
           }
-          if (!deadline.didTimeout &&
-              deadline.timeRemaining() < PANEL_PREPARATION_MIN_IDLE_MS) {
+          if (deadline.timeRemaining() < PANEL_PREPARATION_MIN_IDLE_MS) {
             const timerId = view.setTimeout(() => {
               this.panelStageRetryTimers.delete(timerId);
               attempt();
@@ -933,7 +931,7 @@ export class WorldVisualLayer {
           } catch {
             resolve(false);
           }
-        }, { timeout: PANEL_PREPARATION_IDLE_TIMEOUT_MS });
+        });
         this.panelStageIdleCallbacks.set(idleId, () => resolve(false));
       };
       attempt();
