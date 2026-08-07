@@ -290,6 +290,7 @@ export class CampaignController {
         }
       });
       const runnerArtwork = await this.loadRunnerArtwork();
+      if (this.destroyed || token !== this.startToken) return;
       runnerArtwork.prepareForFirstFrame();
       if (safeRequest.mode === "challenge") {
         await this.shell.prepareChallengeWorlds();

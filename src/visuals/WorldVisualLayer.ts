@@ -121,10 +121,11 @@ export class WorldVisualLayer {
   private scheduledPreloadPath: string | null = null;
   private scheduledPreloadAsset: DecodedWorldAsset | null = null;
   private preparedPanelAsset: DecodedWorldAsset | null = null;
+  private preparedFallbackWorldId: CampaignWorldId | null = null;
   private panelPreparationScheduled = false;
+  private panelPreparationRetryTimer: number | null = null;
   private panelPreparationPath: string | null = null;
   private panelPreparationRevision = 0;
-  private idlePreparationLease = false;
   private paused = false;
   private destroyed = false;
   private currentPresentationReady: Promise<void> = Promise.resolve();
@@ -262,7 +263,11 @@ export class WorldVisualLayer {
       }
       this.prepareNextWorld(asset.path);
     } catch {
-      // Terminal optional-image failure is a ready semantic-fallback state.
+      if (this.destroyed || !this.isPanelPreparationSafe()) return;
+      this.assignFallback(this.panels[1], next.worldId);
+      this.assignFallback(this.stagedPanel, next.worldId);
+      this.preparedFallbackWorldId = next.worldId;
+      this.prepareNextWorld(next.assetPath);
     }
   }
 
@@ -289,7 +294,12 @@ export class WorldVisualLayer {
     this.scheduledPreloadPath = null;
     this.scheduledPreloadAsset = null;
     this.preparedPanelAsset = null;
-    this.idlePreparationLease = false;
+    this.preparedFallbackWorldId = null;
+    const view = this.host.ownerDocument.defaultView;
+    if (this.panelPreparationRetryTimer !== null) {
+      view?.clearTimeout(this.panelPreparationRetryTimer);
+      this.panelPreparationRetryTimer = null;
+    }
     this.panelPreparationRevision += 1;
     this.resolveCurrentPresentation = null;
     this.rejectCurrentPresentation = null;
@@ -513,7 +523,10 @@ export class WorldVisualLayer {
   private loadWorldAsset(assetPath: string, immediateStoryPresentation = false): void {
     if (this.requestedAssetPath === assetPath) return;
     this.requestedAssetPath = assetPath;
-    const preparedPath = this.preparedPanelAsset?.path ?? this.scheduledPreloadPath;
+    const preparedPath = this.preparedPanelAsset?.path ??
+      (this.preparedFallbackWorldId === null
+        ? this.scheduledPreloadPath
+        : campaignWorld(this.preparedFallbackWorldId).assetPath);
     if (preparedPath !== null && preparedPath !== assetPath) {
       this.clearPreparedPanel();
     }
@@ -580,8 +593,14 @@ export class WorldVisualLayer {
       }
       if (this.transitionMode === "offscreen" && this.currentAsset !== null) {
         const failedWorld = CAMPAIGN_WORLDS.find(({ assetPath: path }) => path === assetPath);
+        const fallbackWorldId = failedWorld?.worldId ?? this.currentWorldId;
+        if (fallbackWorldId === null) return;
+        const preparedFallback = this.preparedFallbackWorldId === fallbackWorldId &&
+          this.preparedFallbackPanelsMatch(fallbackWorldId);
         this.clearPendingTransition();
-        this.pendingFallbackWorldId = failedWorld?.worldId ?? this.currentWorldId;
+        this.pendingFallbackWorldId = fallbackWorldId;
+        this.pendingPanelPrepared = preparedFallback;
+        if (preparedFallback) this.preparedFallbackWorldId = null;
         this.host.dataset.assetState = "fallback-pending";
         return;
       }
@@ -638,8 +657,8 @@ export class WorldVisualLayer {
     if (this.destroyed || (activeGameplay && typeof requestIdle !== "function") ||
         this.scheduledPreloadPath === null || this.panelPreparationScheduled ||
         this.panelPreparationPath !== null) return;
-    if (this.scheduledPreloadAsset !== null && !activeGameplay) {
-      this.prepareScheduledPanel();
+    if (this.scheduledPreloadAsset !== null) {
+      if (!activeGameplay) this.prepareScheduledPanel();
       return;
     }
     this.panelPreparationScheduled = true;
@@ -649,27 +668,19 @@ export class WorldVisualLayer {
       if (this.destroyed) return;
       const needsIdleLease = this.host.dataset.phase === "game" && !this.paused;
       if (needsIdleLease && deadline !== undefined && !deadline.didTimeout &&
-          deadline.timeRemaining() < 8) return;
-      this.idlePreparationLease = needsIdleLease;
-      const preloadOnly = this.preparedPanelAsset !== null;
+          deadline.timeRemaining() < 8) {
+        this.deferPanelPreparationRetry();
+        return;
+      }
       if (this.scheduledPreloadPath !== path) {
-        this.idlePreparationLease = false;
         this.schedulePreparedPanelWork();
         return;
       }
       void this.assets.load(path).then((asset) => {
-        if (this.destroyed || this.scheduledPreloadPath !== path) {
-          this.idlePreparationLease = false;
-          return;
-        }
+        if (this.destroyed || this.scheduledPreloadPath !== path) return;
         this.scheduledPreloadAsset = asset;
-        if (preloadOnly) {
-          this.idlePreparationLease = false;
-          return;
-        }
-        this.prepareScheduledPanel();
+        if (this.host.dataset.phase !== "game" || this.paused) this.prepareScheduledPanel();
       }).catch(() => {
-        this.idlePreparationLease = false;
         if (this.scheduledPreloadPath === path) {
           this.scheduledPreloadPath = null;
           this.scheduledPreloadAsset = null;
@@ -686,18 +697,15 @@ export class WorldVisualLayer {
   private prepareScheduledPanel(): void {
     const asset = this.scheduledPreloadAsset;
     if (asset === null || !this.isPanelPreparationSafe() || this.panelPreparationPath !== null) {
-      this.idlePreparationLease = false;
       return;
     }
-    if (this.preparedPanelAsset !== null) {
-      this.idlePreparationLease = false;
+    if (this.preparedPanelAsset !== null || this.preparedFallbackWorldId !== null) {
       return;
     }
     const revision = ++this.panelPreparationRevision;
     this.panelPreparationPath = asset.path;
     void this.drawPrecompositedPanelPair(asset).then((ready) => {
       if (revision !== this.panelPreparationRevision) {
-        this.idlePreparationLease = false;
         return;
       }
       this.panelPreparationPath = null;
@@ -713,7 +721,6 @@ export class WorldVisualLayer {
       } else if (this.isPanelPreparationSafe()) {
         this.schedulePreparedPanelWork();
       }
-      this.idlePreparationLease = false;
       this.resumePanelPreparation();
     });
   }
@@ -735,7 +742,17 @@ export class WorldVisualLayer {
   }
 
   private isPanelPreparationSafe(): boolean {
-    return this.host.dataset.phase !== "game" || this.paused || this.idlePreparationLease;
+    return this.host.dataset.phase !== "game" || this.paused;
+  }
+
+  private deferPanelPreparationRetry(): void {
+    if (this.panelPreparationRetryTimer !== null || this.destroyed) return;
+    const view = this.host.ownerDocument.defaultView;
+    if (view === null) return;
+    this.panelPreparationRetryTimer = view.setTimeout(() => {
+      this.panelPreparationRetryTimer = null;
+      this.schedulePreparedPanelWork();
+    }, 250);
   }
 
   private async drawPrecompositedPanel(
@@ -782,6 +799,13 @@ export class WorldVisualLayer {
       this.stagedPanel.dataset.assetPath === assetPath && !this.stagedPanel.hidden;
   }
 
+  private preparedFallbackPanelsMatch(worldId: CampaignWorldId): boolean {
+    return this.panels[1].dataset.worldId === worldId &&
+      this.panels[1].dataset.assetFallback === "true" &&
+      this.stagedPanel.dataset.worldId === worldId &&
+      this.stagedPanel.dataset.assetFallback === "true";
+  }
+
   private waitForCompositeFrame(): Promise<void> {
     const view = this.host.ownerDocument.defaultView;
     return new Promise((resolve) => {
@@ -810,11 +834,16 @@ export class WorldVisualLayer {
 
   private clearPreparedPanel(): void {
     this.preparedPanelAsset = null;
+    this.preparedFallbackWorldId = null;
     this.scheduledPreloadPath = null;
     this.scheduledPreloadAsset = null;
     this.panelPreparationPath = null;
     this.panelPreparationRevision += 1;
-    this.idlePreparationLease = false;
+    const view = this.host.ownerDocument.defaultView;
+    if (this.panelPreparationRetryTimer !== null) {
+      view?.clearTimeout(this.panelPreparationRetryTimer);
+      this.panelPreparationRetryTimer = null;
+    }
   }
 
   private setProperty(name: string, value: string): void {
@@ -887,6 +916,7 @@ export class WorldVisualLayer {
     this.pendingPanelPreparing = false;
     this.host.dataset.assetState = "fallback";
     this.placePanels((this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH);
+    this.prepareNextWorld(campaignWorld(worldId).assetPath);
   }
 
   private assignFallback(panel: HTMLImageElement, worldId: CampaignWorldId): void {

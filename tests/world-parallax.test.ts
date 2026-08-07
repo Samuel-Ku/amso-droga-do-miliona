@@ -188,6 +188,52 @@ describe("edge-to-edge gameplay background", () => {
       ?.dataset.assetPath).toContain("world-02-order-process");
   });
 
+  it("prepares the next challenge world's semantic fallback before gameplay", async () => {
+    const { store, images } = imageHarness();
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+    layer.show({
+      worldId: "first-mile",
+      stateId: "story.first_package",
+      phase: "landing"
+    });
+    images[0]!.dispatchEvent(new Event("load"));
+    await layer.waitForCurrentPresentation();
+
+    const preparing = layer.prepareChallengeWorlds();
+    await vi.waitFor(() => expect(images).toHaveLength(2));
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      images[1]!.dispatchEvent(new Event("error"));
+      if (attempt < 3) {
+        await vi.waitFor(() => expect(images[1]!.decode).toHaveBeenCalledTimes(attempt + 1));
+      }
+    }
+    await preparing;
+    expect([...host.querySelectorAll<HTMLImageElement>("[data-world-panel], [data-world-staged-panel]")]
+      .filter(({ dataset }) => dataset.worldId === "order-process")
+      .every(({ dataset }) => dataset.assetFallback === "true")).toBe(true);
+
+    layer.show({
+      worldId: "first-mile",
+      stateId: "story.first_package",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    layer.show({
+      worldId: "order-process",
+      stateId: "epoch_1.challenge",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("fallback-pending"));
+    layer.setParallaxDistance(240, true);
+    layer.setParallaxDistance(961, true);
+    expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
+      ?.dataset.assetFallback).toBe("true");
+    expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
+      ?.dataset.worldId).toBe("order-process");
+  });
+
   it("continues the one-world warmup queue in an active idle budget", async () => {
     const idleCallbacks: IdleRequestCallback[] = [];
     vi.stubGlobal("requestIdleCallback", vi.fn((callback: IdleRequestCallback) => {
@@ -228,6 +274,8 @@ describe("edge-to-edge gameplay background", () => {
     await Promise.resolve();
     expect(images).toHaveLength(2);
     expect(idleCallbacks).toHaveLength(0);
+    await vi.waitFor(() => expect(idleCallbacks).toHaveLength(1));
+    idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 0 });
 
     layer.setPaused(true);
     await vi.waitFor(() => expect(images).toHaveLength(3));
@@ -247,14 +295,20 @@ describe("edge-to-edge gameplay background", () => {
     expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
       ?.dataset.worldId).toBe("order-process");
 
-    await vi.waitFor(() => expect(idleCallbacks).toHaveLength(1));
-    idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 50 });
+    if (idleCallbacks.length > 0) {
+      idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 50 });
+      await Promise.resolve();
+    }
+    expect(host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
+      ?.dataset.assetPath).not.toContain("world-03-quality-service");
+    layer.setPaused(true);
     await vi.waitFor(() => {
       expect(host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
         ?.dataset.assetPath).toContain("world-03-quality-service");
       expect(host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
         ?.dataset.presentationReady).toBe("true");
     });
+    layer.setPaused(false);
   });
 
   it("uses adjacent, equally oriented panels without overlap or crossfade", () => {

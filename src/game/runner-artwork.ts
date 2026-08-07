@@ -103,6 +103,7 @@ export function courierCrouchFrameOffsetX(frame: number): number {
 
 type ArtworkImageFactory = () => HTMLImageElement;
 type ArtworkWarmupCanvasFactory = () => HTMLCanvasElement;
+const warmedCanvasImages = new WeakSet<HTMLImageElement>();
 
 export interface RunnerArtworkAssets {
   readonly orders?: HTMLImageElement;
@@ -193,16 +194,22 @@ export class RunnerArtwork {
     if (images.some((image) => !drawable(image))) {
       throw new Error("critical_runner_artwork_missing");
     }
+    const pendingImages = images.filter((image) => !warmedCanvasImages.has(image!));
+    if (pendingImages.length === 0) {
+      this.firstFramePrepared = true;
+      return;
+    }
     const canvas = canvasFactory();
     canvas.width = 64;
     canvas.height = 64;
     try {
       const context = canvas.getContext("2d");
       if (context === null) throw new Error("critical_runner_artwork_warmup_failed");
-      for (const image of images) {
+      for (const image of pendingImages) {
         context.drawImage(image!, 0, 0, canvas.width, canvas.height);
         context.clearRect(0, 0, canvas.width, canvas.height);
       }
+      for (const image of pendingImages) warmedCanvasImages.add(image!);
       this.firstFramePrepared = true;
     } finally {
       canvas.width = 0;

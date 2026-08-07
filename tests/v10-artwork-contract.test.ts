@@ -90,6 +90,9 @@ describe("v10 production artwork contract", () => {
 
     artwork.prepareForFirstFrame(() => canvas);
     artwork.prepareForFirstFrame(() => canvas);
+    const restartedArtwork = new RunnerArtwork(assets);
+    const restartedCanvasFactory = vi.fn(() => canvas);
+    restartedArtwork.prepareForFirstFrame(restartedCanvasFactory);
 
     expect(drawImage).toHaveBeenCalledTimes(11);
     expect(new Set(drawImage.mock.calls.map(([drawn]) => drawn))).toEqual(new Set([
@@ -104,6 +107,32 @@ describe("v10 production artwork contract", () => {
     expect(clearRect).toHaveBeenCalledTimes(11);
     expect(canvas.width).toBe(0);
     expect(canvas.height).toBe(0);
+    expect(restartedCanvasFactory).not.toHaveBeenCalled();
+  });
+
+  it("keeps the controlled critical error when first-frame artwork is incomplete", () => {
+    const image = {
+      complete: true,
+      naturalWidth: 512,
+      naturalHeight: 512
+    } as HTMLImageElement;
+    const artwork = new RunnerArtwork({
+      orders: image,
+      powerUps: image,
+      courier: image,
+      courierCrouch: image,
+      courierJump: image,
+      obstacles: {
+        "box-stack": image,
+        pallet: image,
+        trolley: image,
+        overhead: undefined
+      },
+      overheadVariants: [image]
+    });
+
+    expect(() => artwork.prepareForFirstFrame())
+      .toThrowError("critical_runner_artwork_missing");
   });
 
   it("has five equal ordinary order visuals", () => {
