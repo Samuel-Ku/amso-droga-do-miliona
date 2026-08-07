@@ -42,8 +42,23 @@ import {
 
 export type { CampaignStoryScene, CampaignStorySceneInput } from "./story-presentation";
 
-const MAIN_LOCKUP_PATH = "/assets/milion-runner/brand/million-neutral-main.svg";
-const COMPACT_LOCKUP_PATH = "/assets/milion-runner/brand/million-neutral-compact.svg";
+interface CampaignLockups {
+  readonly main: string;
+  readonly compact: string;
+}
+
+const POLISH_LOCKUPS: CampaignLockups = Object.freeze({
+  main: "/assets/milion-runner/brand/mz-main-lockup-v1.avif",
+  compact: "/assets/milion-runner/brand/mz-compact-lockup-v1.avif"
+});
+const INTERNATIONAL_LOCKUPS: CampaignLockups = Object.freeze({
+  main: "/assets/milion-runner/brand/million-neutral-main.svg",
+  compact: "/assets/milion-runner/brand/million-neutral-compact.svg"
+});
+
+function campaignLockups(i18n: CampaignI18n): CampaignLockups {
+  return i18n.locale === "pl" ? POLISH_LOCKUPS : INTERNATIONAL_LOCKUPS;
+}
 
 export type CampaignMode = "story" | "challenge";
 
@@ -256,7 +271,7 @@ function canonicalPageUrl(): string {
   return url.href;
 }
 
-function loadShareCardLockup(): Promise<HTMLImageElement | null> {
+function loadShareCardLockup(source: string): Promise<HTMLImageElement | null> {
   const image = document.createElement("img");
   image.alt = "";
   image.decoding = "async";
@@ -276,7 +291,7 @@ function loadShareCardLockup(): Promise<HTMLImageElement | null> {
     timeout = window.setTimeout(() => finish(null), 2_500);
     image.onload = () => finish(image.naturalWidth > 0 ? image : null);
     image.onerror = () => finish(null);
-    image.src = COMPACT_LOCKUP_PATH;
+    image.src = source;
 
     if (image.complete) {
       finish(image.naturalWidth > 0 ? image : null);
@@ -418,7 +433,7 @@ export async function createCampaignShareCard(
   if (context === null) {
     throw new Error("share_card_canvas_unavailable");
   }
-  const lockup = await loadShareCardLockup();
+  const lockup = await loadShareCardLockup(campaignLockups(options.i18n ?? DEFAULT_I18N).compact);
   drawShareCard(context, result, options, lockup);
   return canvasToBlob(canvas);
 }
@@ -581,6 +596,7 @@ export class CampaignShell {
     options: CampaignShellOptions = {},
   ) {
     this.i18n = options.i18n ?? DEFAULT_I18N;
+    const lockups = campaignLockups(this.i18n);
     this.canonicalUrl = options.canonicalUrl ?? canonicalPageUrl();
     this.campaignUrl = options.campaignUrl ?? "/milion";
     this.fullStoryUrl = options.fullStoryUrl ?? this.campaignUrl;
@@ -666,7 +682,7 @@ export class CampaignShell {
               </details>
             </div>
             <div class="amso-campaign__landing-art" aria-hidden="true">
-              <img class="amso-campaign__main-lockup" src="${MAIN_LOCKUP_PATH}" alt="" width="1600" height="1460" />
+              <img class="amso-campaign__main-lockup" src="${lockups.main}" alt="" width="1600" height="1460" />
             </div>
           </section>
 
@@ -708,7 +724,7 @@ export class CampaignShell {
 
           <section class="amso-campaign__screen amso-campaign__screen--dialog" data-campaign-loading hidden>
             <div class="amso-campaign__card amso-campaign__card--loading">
-              <img class="amso-campaign__compact-lockup" src="${COMPACT_LOCKUP_PATH}" alt="" width="1600" height="924" />
+              <img class="amso-campaign__compact-lockup" src="${lockups.compact}" alt="" width="1600" height="924" />
               <span class="amso-campaign__loading-package" aria-hidden="true"></span>
               <h2 data-campaign-loading-text data-campaign-copy="loading">Przygotowujemy pierwszą paczkę…</h2>
               <progress data-campaign-loading-progress max="1"></progress>
@@ -753,7 +769,7 @@ export class CampaignShell {
 
           <section class="amso-campaign__screen amso-campaign__screen--result" data-campaign-story-result hidden>
             <div class="amso-campaign__result-card">
-              <img class="amso-campaign__result-lockup amso-campaign__result-lockup--main" src="${MAIN_LOCKUP_PATH}" alt="" width="1600" height="1460" />
+              <img class="amso-campaign__result-lockup amso-campaign__result-lockup--main" src="${lockups.main}" alt="" width="1600" height="1460" />
               <p class="amso-campaign__eyebrow" data-campaign-copy="storyResultEyebrow">Dziękujemy za wspólną drogę</p>
               <h2 data-campaign-copy="storyResultTitle">Twoja Droga do Miliona</h2>
               <div class="amso-campaign__result-grid">
@@ -772,7 +788,7 @@ export class CampaignShell {
 
           <section class="amso-campaign__screen amso-campaign__screen--result" data-campaign-challenge-result hidden>
             <div class="amso-campaign__result-card">
-              <img class="amso-campaign__result-lockup" src="${COMPACT_LOCKUP_PATH}" alt="" width="1600" height="924" />
+              <img class="amso-campaign__result-lockup" src="${lockups.compact}" alt="" width="1600" height="924" />
               <p class="amso-campaign__eyebrow" data-campaign-copy="challengeResultEyebrow">Próba Miliona</p>
               <h2 data-campaign-copy="challengeResultTitle">Koniec próby</h2>
               <div class="amso-campaign__result-grid amso-campaign__result-grid--challenge">
@@ -805,7 +821,7 @@ export class CampaignShell {
               </div>
               <div class="amso-campaign__share-panel" id="amso-campaign-share-panel" data-campaign-share-panel hidden role="region" aria-label="Udostępnij wynik">
                 <button class="amso-campaign__overlay-close" type="button" data-campaign-close-overlay aria-label="Zamknij udostępnianie">×</button>
-                <img class="amso-campaign__share-lockup" src="${COMPACT_LOCKUP_PATH}" alt="" width="1600" height="924" />
+                <img class="amso-campaign__share-lockup" src="${lockups.compact}" alt="" width="1600" height="924" />
                 <p><strong data-campaign-copy="shareTurn">Teraz Twoja kolej.</strong> <span data-campaign-copy="shareLead">Wybierz, gdzie chcesz udostępnić kartę wyniku.</span></p>
                 <div class="amso-campaign__share-actions">
                   <button type="button" data-campaign-share="facebook" data-campaign-copy="facebook">Facebook</button>
@@ -829,7 +845,7 @@ export class CampaignShell {
               aria-labelledby="amso-campaign-story-scene-title"
               aria-describedby="amso-campaign-story-scene-body amso-campaign-story-visual-description"
             >
-              <img class="amso-campaign__story-final-lockup" src="${MAIN_LOCKUP_PATH}" alt="" width="1600" height="1460" />
+              <img class="amso-campaign__story-final-lockup" src="${lockups.main}" alt="" width="1600" height="1460" />
               <p class="amso-campaign__story-scene-eyebrow" data-campaign-story-scene-eyebrow hidden></p>
               <h2 id="amso-campaign-story-scene-title" data-campaign-story-scene-title></h2>
               <div id="amso-campaign-story-scene-body" class="amso-campaign__story-scene-body" data-campaign-story-scene-body tabindex="0"></div>

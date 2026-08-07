@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createCampaignI18n } from "../src/localization";
 import { createCampaignShareCard } from "../src/ui/CampaignShell";
 
 interface ShareCardHarness {
@@ -72,12 +73,12 @@ afterEach(() => {
 });
 
 describe("campaign result share card brand", () => {
-  it("renders the real compact MZ lockup when the image is available", async () => {
+  it("renders the neutral compact lockup for an international result card", async () => {
     const harness = installShareCardHarness(true);
 
     const card = await createCampaignShareCard(
       { score: 1_234_567, orders: 42 },
-      { canonicalUrl: "https://example.com/gra" },
+      { canonicalUrl: "https://amso.eu/en/road-to-a-million", i18n: createCampaignI18n("en") },
     );
 
     expect(card.type).toBe("image/png");
@@ -86,6 +87,18 @@ describe("campaign result share card brand", () => {
     const [image, x, y, width, height] = harness.drawImage.mock.calls[0] ?? [];
     expect([image, x, y, width]).toEqual([harness.image, 596, 43, 430]);
     expect(height).toBeCloseTo(248.325);
+  });
+
+  it("keeps the Polish compact lockup for a Polish result card", async () => {
+    const harness = installShareCardHarness(true);
+
+    await createCampaignShareCard(
+      { score: 1_234_567, orders: 42 },
+      { canonicalUrl: "https://amso.pl/droga-do-miliona", i18n: createCampaignI18n("pl") },
+    );
+
+    expect(harness.image.src).toBe("/assets/milion-runner/brand/mz-compact-lockup-v1.avif");
+    expect(harness.drawImage).toHaveBeenCalledTimes(1);
   });
 
   it("falls back without drawing a fake AMSO wordmark", async () => {
