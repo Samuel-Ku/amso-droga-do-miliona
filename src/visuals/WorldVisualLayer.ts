@@ -513,6 +513,10 @@ export class WorldVisualLayer {
   private loadWorldAsset(assetPath: string, immediateStoryPresentation = false): void {
     if (this.requestedAssetPath === assetPath) return;
     this.requestedAssetPath = assetPath;
+    const preparedPath = this.preparedPanelAsset?.path ?? this.scheduledPreloadPath;
+    if (preparedPath !== null && preparedPath !== assetPath) {
+      this.clearPreparedPanel();
+    }
     this.host.dataset.assetState = "loading";
     if (this.currentAsset === null || immediateStoryPresentation) {
       this.currentPresentationReady = new Promise<void>((resolve, reject) => {
