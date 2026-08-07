@@ -109,12 +109,18 @@ try {
     deviceMemoryGiB: navigator.deviceMemory ?? null
   }));
   const consoleErrors = [];
+  const consoleErrorDetails = [];
   const externalRequests = [];
   const failedResponses = [];
   page.on("console", (message) => {
-    if (message.type() === "error") consoleErrors.push(message.text());
+    if (message.type() !== "error") return;
+    consoleErrors.push(message.text());
+    consoleErrorDetails.push({ text: message.text(), location: message.location() });
   });
-  page.on("pageerror", (error) => consoleErrors.push(error.message));
+  page.on("pageerror", (error) => {
+    consoleErrors.push(error.message);
+    consoleErrorDetails.push({ text: error.message, location: null });
+  });
   page.on("response", (response) => {
     if (response.status() < 400) return;
     const responseUrl = new URL(response.url());
@@ -503,7 +509,7 @@ try {
       inputQueueOverflows: report?.session?.inputQueueOverflows ?? null,
       session: report?.session ?? null
     },
-    diagnostics: { consoleErrors, externalRequests, failedResponses },
+    diagnostics: { consoleErrors, consoleErrorDetails, externalRequests, failedResponses },
     readiness: { coldStartMs, criticalReadyMs },
     memory: {
       available: false,

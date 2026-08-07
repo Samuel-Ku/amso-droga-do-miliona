@@ -54,6 +54,12 @@ describe("single-file QA artwork", () => {
     expect(watchdogPosition).toBeGreaterThan(bootPosition);
   });
 
+  it("declares a self-contained favicon so preview captures stay console-clean", () => {
+    expect(productionEntry).toMatch(
+      /<link\s+rel="icon"\s+href="data:image\/svg\+xml,[^"]+"\s*\/?>/i
+    );
+  });
+
   it("shows a readable boot state before JavaScript initializes the campaign", () => {
     const campaignRoot = qaPreview.match(
       /<main id="amso-campaign-root"[^>]*>([\s\S]*?)<\/main>/
