@@ -331,7 +331,7 @@ describe("edge-to-edge gameplay background", () => {
     });
   });
 
-  it("continues DOM preparation when a later world resolves during active idle", async () => {
+  it("continues DOM preparation through short active idle budgets", async () => {
     const idleCallbacks: IdleRequestCallback[] = [];
     const compositeFrames: FrameRequestCallback[] = [];
     vi.stubGlobal("requestIdleCallback", vi.fn((callback: IdleRequestCallback) => {
@@ -377,7 +377,7 @@ describe("edge-to-edge gameplay background", () => {
     layer.setParallaxDistance(961, true);
 
     await vi.waitFor(() => expect(idleCallbacks.length).toBeGreaterThan(0));
-    idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 50 });
+    idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 4 });
     await vi.waitFor(() => expect(images).toHaveLength(3));
     expect(images[2]?.src).toContain("world-03-quality-service");
 
@@ -391,7 +391,7 @@ describe("edge-to-edge gameplay background", () => {
       await vi.waitFor(() => expect(idleCallbacks.length + compositeFrames.length)
         .toBeGreaterThan(0));
       if (idleCallbacks.length > 0) {
-        idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 50 });
+        idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 4 });
       } else {
         compositeFrames.shift()?.(stage * 16);
       }

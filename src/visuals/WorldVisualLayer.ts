@@ -18,6 +18,10 @@ import type { CampaignI18n } from "../localization";
 export type WorldVisualPhase = "landing" | "story" | "game" | "result";
 export type WorldTransitionMode = "story-linked" | "offscreen";
 
+// A 120 Hz frame leaves less than 8 ms total. Each preparation lease performs
+// only one small synchronous DOM operation; decode/composite completion stays async.
+const PANEL_PREPARATION_MIN_IDLE_MS = 2;
+
 export interface WorldVisualSelection {
   readonly worldId: CampaignWorldId;
   readonly stateId: string;
@@ -679,7 +683,7 @@ export class WorldVisualLayer {
       if (this.destroyed) return;
       const needsIdleLease = this.host.dataset.phase === "game" && !this.paused;
       if (needsIdleLease && deadline !== undefined && !deadline.didTimeout &&
-          deadline.timeRemaining() < 8) {
+          deadline.timeRemaining() < PANEL_PREPARATION_MIN_IDLE_MS) {
         this.deferPanelPreparationRetry();
         return;
       }
@@ -904,7 +908,8 @@ export class WorldVisualLayer {
             resolve(false);
             return;
           }
-          if (!deadline.didTimeout && deadline.timeRemaining() < 8) {
+          if (!deadline.didTimeout &&
+              deadline.timeRemaining() < PANEL_PREPARATION_MIN_IDLE_MS) {
             const timerId = view.setTimeout(() => {
               this.panelStageRetryTimers.delete(timerId);
               attempt();

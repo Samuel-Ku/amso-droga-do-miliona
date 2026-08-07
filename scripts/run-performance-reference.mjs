@@ -110,10 +110,19 @@ try {
   }));
   const consoleErrors = [];
   const externalRequests = [];
+  const failedResponses = [];
   page.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text());
   });
   page.on("pageerror", (error) => consoleErrors.push(error.message));
+  page.on("response", (response) => {
+    if (response.status() < 400) return;
+    const responseUrl = new URL(response.url());
+    failedResponses.push({
+      status: response.status(),
+      resource: `${responseUrl.origin}${responseUrl.pathname}`
+    });
+  });
   page.on("request", (request) => {
     const requestUrl = new URL(request.url());
     const expectedDeploymentResource = deploymentUrl !== undefined &&
@@ -399,7 +408,8 @@ try {
     transitionActiveDecodeStarts === 0 &&
     intervals.filter((interval) => interval > 33).length === 0 &&
     consoleErrors.length === 0 &&
-    externalRequests.length === 0;
+    externalRequests.length === 0 &&
+    failedResponses.length === 0;
   const evidence = {
     schema: "amso-performance-run-v1",
     capturePassed,
@@ -493,7 +503,7 @@ try {
       inputQueueOverflows: report?.session?.inputQueueOverflows ?? null,
       session: report?.session ?? null
     },
-    diagnostics: { consoleErrors, externalRequests },
+    diagnostics: { consoleErrors, externalRequests, failedResponses },
     readiness: { coldStartMs, criticalReadyMs },
     memory: {
       available: false,

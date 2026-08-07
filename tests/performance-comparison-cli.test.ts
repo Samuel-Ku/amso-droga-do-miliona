@@ -57,7 +57,7 @@ function evidence(audioMode: "enabled" | "disabled", variant: "before" | "after"
       replayValid: true,
       inputQueueOverflows: 0
     },
-    diagnostics: { consoleErrors: [], externalRequests: [] },
+    diagnostics: { consoleErrors: [], externalRequests: [], failedResponses: [] },
     readiness: { coldStartMs: 900, criticalReadyMs: 700 },
     memory: { available: false },
     visualFixturesPassed: true,

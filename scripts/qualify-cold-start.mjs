@@ -278,7 +278,8 @@ const automatedChecks = {
     resourceTimings }) => attribution !== undefined && longTasks !== undefined &&
       longAnimationFrames !== undefined && Array.isArray(resourceTimings)),
   diagnosticsPassed: runValues.every(({ diagnostics }) =>
-    diagnostics.consoleErrors.length === 0 && diagnostics.externalRequests.length === 0),
+    diagnostics.consoleErrors.length === 0 && diagnostics.externalRequests.length === 0 &&
+    (diagnostics.failedResponses?.length ?? 0) === 0),
   domGrowthPassed: runValues.every(({ dom }) => dom.maxNodeCount - dom.initialNodeCount <= 32 &&
     !hasMonotonicGrowth(dom.samples)),
   auxiliaryMemoryTrendPassed: runValues.every(({ memory }) =>
