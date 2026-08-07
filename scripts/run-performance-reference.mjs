@@ -59,17 +59,22 @@ try {
       activeFramesOver33Ms: 0,
       maxActiveFrameMs: 0
     };
+    const isActiveGameplay = () => {
+      const worldVisual = document.querySelector("[data-campaign-world-visual]");
+      return document.querySelector(".amso-campaign")?.getAttribute("data-view") === "game" &&
+        worldVisual?.getAttribute("data-phase") === "game" &&
+        worldVisual.getAttribute("data-paused") !== "true";
+    };
     const originalDecode = HTMLImageElement.prototype.decode;
     HTMLImageElement.prototype.decode = function trackedDecode() {
-      if (document.querySelector(".amso-campaign")?.getAttribute("data-view") === "game") {
+      if (isActiveGameplay()) {
         window.__performanceScenarioRuntime.activeDecodeStarts += 1;
       }
       return originalDecode.call(this);
     };
     let previousActiveFrame = null;
     const observeFrame = (timestamp) => {
-      const active = document.visibilityState === "visible" &&
-        document.querySelector(".amso-campaign")?.getAttribute("data-view") === "game";
+      const active = document.visibilityState === "visible" && isActiveGameplay();
       if (active && previousActiveFrame !== null) {
         const interval = timestamp - previousActiveFrame;
         window.__performanceScenarioRuntime.maxActiveFrameMs = Math.max(

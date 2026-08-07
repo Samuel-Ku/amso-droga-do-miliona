@@ -91,6 +91,7 @@ function requiredElement<T extends Element>(root: ParentNode, selector: string):
 /** Two adjacent world panels share one absolute parallax phase. */
 export class WorldVisualLayer {
   private panels: [HTMLImageElement, HTMLImageElement];
+  private stagedPanel: HTMLImageElement;
   private readonly seamBlur: HTMLElement;
   private readonly plate: HTMLElement;
   private readonly route: SVGElement;
@@ -118,6 +119,13 @@ export class WorldVisualLayer {
   private lastParallaxCycle: number | null = null;
   private readonly panelAssignmentRevisions = new WeakMap<HTMLImageElement, number>();
   private scheduledPreloadPath: string | null = null;
+  private scheduledPreloadAsset: DecodedWorldAsset | null = null;
+  private preparedPanelAsset: DecodedWorldAsset | null = null;
+  private panelPreparationScheduled = false;
+  private panelPreparationPath: string | null = null;
+  private panelPreparationRevision = 0;
+  private paused = false;
+  private destroyed = false;
   private currentPresentationReady: Promise<void> = Promise.resolve();
   private resolveCurrentPresentation: (() => void) | null = null;
   private rejectCurrentPresentation: ((error: Error) => void) | null = null;
@@ -131,6 +139,7 @@ export class WorldVisualLayer {
       <div class="amso-world-visual__image-stack" data-world-plate aria-hidden="true">
         <img class="amso-world-visual__panel" data-world-panel="current" alt="" width="1780" height="941" draggable="false" />
         <img class="amso-world-visual__panel" data-world-panel="next" alt="" width="1780" height="941" draggable="false" />
+        <img class="amso-world-visual__panel" data-world-staged-panel alt="" width="1780" height="941" draggable="false" />
         <div class="amso-world-visual__seam-blur" data-world-seam-blur hidden></div>
         ${WORLD_ROUTE_SVG}
       </div>
@@ -142,6 +151,7 @@ export class WorldVisualLayer {
       requiredElement<HTMLImageElement>(host, '[data-world-panel="current"]'),
       requiredElement<HTMLImageElement>(host, '[data-world-panel="next"]')
     ];
+    this.stagedPanel = requiredElement<HTMLImageElement>(host, "[data-world-staged-panel]");
     this.seamBlur = requiredElement<HTMLElement>(host, "[data-world-seam-blur]");
     this.plate = requiredElement<HTMLElement>(host, "[data-world-plate]");
     this.route = requiredElement<SVGElement>(this.plate, ".amso-world-visual__route");
@@ -149,6 +159,8 @@ export class WorldVisualLayer {
     this.host.style.setProperty("--world-overlap", "0px");
     this.panels[0].style.transition = "none";
     this.panels[1].style.transition = "none";
+    this.stagedPanel.style.transition = "none";
+    this.stagedPanel.style.transform = "translate3d(200%, 0, 0)";
   }
 
   public applyGeometry(snapshot: Readonly<WorldPlateTransform>): void {
@@ -216,6 +228,13 @@ export class WorldVisualLayer {
     if (phase === this.lastPhaseValue) return;
     this.lastPhaseValue = phase;
     this.host.dataset.phase = phase;
+    this.resumePanelPreparation();
+  }
+
+  public setPaused(paused: boolean): void {
+    this.paused = paused;
+    this.setDataset("paused", String(paused));
+    this.resumePanelPreparation();
   }
 
   public prepareChallengeWorlds(): Promise<void> {
@@ -238,13 +257,17 @@ export class WorldVisualLayer {
   }
 
   public destroy(): void {
+    this.destroyed = true;
     this.requestedAssetPath = null;
     this.currentAsset = null;
     this.clearPendingTransition();
     this.scheduledPreloadPath = null;
+    this.scheduledPreloadAsset = null;
+    this.preparedPanelAsset = null;
+    this.panelPreparationRevision += 1;
     this.resolveCurrentPresentation = null;
     this.rejectCurrentPresentation = null;
-    for (const panel of this.panels) {
+    for (const panel of [...this.panels, this.stagedPanel]) {
       panel.onload = null;
       panel.onerror = null;
       panel.removeAttribute("src");
@@ -298,7 +321,8 @@ export class WorldVisualLayer {
       }
       const transition = Math.max(0, (distance - this.transitionStartDistance) / WORLD_WIDTH);
       if (transition >= 1 - Number.EPSILON * 8) {
-        this.commitPendingAsset(true);
+        this.promotePreparedPanels();
+        this.commitPendingAsset();
       } else {
         this.placePanels(Math.min(1, transition));
       }
@@ -321,12 +345,19 @@ export class WorldVisualLayer {
     }
 
     if (cycleDelta === 1) {
-      this.recyclePanels();
+      const preparedAssetSwap = this.pendingAsset !== null && this.pendingPanelPrepared;
+      const preparedFallbackSwap = this.pendingFallbackWorldId !== null &&
+        this.pendingPanelPrepared;
+      if (preparedAssetSwap || preparedFallbackSwap) {
+        this.promotePreparedPanels();
+      } else {
+        this.recyclePanels();
+      }
       this.setPanelMotion(true, false);
       this.placePanels(progress);
       if (this.pendingAsset !== null) {
         if (this.pendingPanelPrepared) {
-          this.commitPendingAsset(false);
+          this.commitPendingAsset();
         } else {
           this.preparePendingPanel();
         }
@@ -413,11 +444,36 @@ export class WorldVisualLayer {
     this.panels[1].dataset.worldPanel = "next";
   }
 
+  private promotePreparedPanels(): void {
+    const previousCurrent = this.panels[0];
+    const preparedCurrent = this.panels[1];
+    const preparedNext = this.stagedPanel;
+    this.panels = [preparedCurrent, preparedNext];
+    this.stagedPanel = previousCurrent;
+    delete preparedNext.dataset.worldStagedPanel;
+    preparedCurrent.dataset.worldPanel = "current";
+    preparedNext.dataset.worldPanel = "next";
+    preparedNext.style.willChange = "transform";
+    delete previousCurrent.dataset.worldPanel;
+    previousCurrent.dataset.worldStagedPanel = "";
+    previousCurrent.style.transition = "none";
+    previousCurrent.style.transform = "translate3d(200%, 0, 0)";
+    previousCurrent.style.willChange = "auto";
+    previousCurrent.hidden = true;
+    this.lastPanelTransforms = [
+      preparedCurrent.style.transform,
+      preparedNext.style.transform
+    ];
+  }
+
   private resynchronizePanels(progress: number): void {
     this.setPanelMotion(false);
-    if (this.currentAsset !== null && this.pendingPanelPrepared) {
-      void this.drawPanel(this.panels[0], this.currentAsset);
-      void this.drawPanel(this.panels[1], this.currentAsset);
+    if (this.pendingAsset !== null && this.pendingPanelPrepared) {
+      this.promotePreparedPanels();
+      this.commitPendingAsset();
+    } else if (this.pendingFallbackWorldId !== null && this.pendingPanelPrepared) {
+      this.promotePreparedPanels();
+      this.commitPendingFallback();
     }
     if (this.queuedAsset !== null) {
       this.pendingAsset = this.queuedAsset;
@@ -444,6 +500,7 @@ export class WorldVisualLayer {
       if (this.currentAsset === null || immediateStoryPresentation) {
         this.currentAsset = decodedAsset;
         this.clearPendingTransition();
+        this.clearPreparedPanel();
         void Promise.all([
           this.drawPanel(this.panels[0], decodedAsset),
           this.drawPanel(this.panels[1], decodedAsset)
@@ -474,9 +531,12 @@ export class WorldVisualLayer {
         this.pendingAsset = decodedAsset;
         this.queuedAsset = null;
         this.pendingFallbackWorldId = null;
-        this.pendingPanelPrepared = false;
+        this.pendingPanelPrepared = this.preparedPanelAsset?.path === decodedAsset.path &&
+          this.preparedPanelsMatch(decodedAsset.path);
+        if (this.pendingPanelPrepared) this.preparedPanelAsset = null;
         this.pendingPanelPreparing = false;
         this.transitionStartDistance = this.lastDistance - this.lastDistance % WORLD_WIDTH;
+        this.resumePanelPreparation();
       }
       if (this.currentAsset !== decodedAsset) this.host.dataset.assetState = "loaded";
     }).catch(() => {
@@ -515,43 +575,183 @@ export class WorldVisualLayer {
     });
   }
 
-  private commitPendingAsset(redrawVisiblePanel: boolean): void {
+  private commitPendingAsset(): void {
     if (this.pendingAsset === null) return;
     this.currentAsset = this.pendingAsset;
     this.pendingAsset = this.queuedAsset;
     this.queuedAsset = null;
     this.pendingPanelPrepared = false;
     this.pendingPanelPreparing = false;
-    if (redrawVisiblePanel) this.assignDecodedPanel(this.panels[0], this.currentAsset);
-    this.assignDecodedPanel(this.panels[1], this.currentAsset);
     this.placePanels((this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH);
     this.prepareNextWorld(this.currentAsset.path);
   }
 
   private prepareNextWorld(assetPath: string): void {
     const index = CAMPAIGN_WORLDS.findIndex(({ assetPath: candidate }) => candidate === assetPath);
-    const next = CAMPAIGN_WORLDS[index + 1];
-    if (next === undefined || this.scheduledPreloadPath === next.assetPath) return;
+    if (index < 0) return;
+    const next = CAMPAIGN_WORLDS[(index + 1) % CAMPAIGN_WORLDS.length];
+    if (next === undefined || this.preparedPanelAsset?.path === next.assetPath ||
+        this.scheduledPreloadPath === next.assetPath) return;
     this.scheduledPreloadPath = next.assetPath;
+    this.scheduledPreloadAsset = null;
+    this.schedulePreparedPanelWork();
+  }
+
+  private schedulePreparedPanelWork(): void {
+    if (this.destroyed || !this.isPanelPreparationSafe() ||
+        this.scheduledPreloadPath === null || this.panelPreparationScheduled ||
+        this.panelPreparationPath !== null) return;
+    if (this.scheduledPreloadAsset !== null) {
+      this.prepareScheduledPanel();
+      return;
+    }
+    this.panelPreparationScheduled = true;
+    const path = this.scheduledPreloadPath;
+    const view = this.host.ownerDocument.defaultView;
     const run = (): void => {
-      if (this.scheduledPreloadPath !== next.assetPath) return;
-      if (this.host.dataset.phase === "game") {
-        view?.setTimeout(schedule, 250);
+      this.panelPreparationScheduled = false;
+      if (this.destroyed || !this.isPanelPreparationSafe()) return;
+      if (this.scheduledPreloadPath !== path) {
+        this.schedulePreparedPanelWork();
         return;
       }
-      void this.assets.load(next.assetPath).catch(() => undefined).finally(() => {
-        if (this.scheduledPreloadPath === next.assetPath) this.scheduledPreloadPath = null;
+      void this.assets.load(path).then((asset) => {
+        if (this.destroyed || this.scheduledPreloadPath !== path) return;
+        this.scheduledPreloadAsset = asset;
+        this.prepareScheduledPanel();
+      }).catch(() => {
+        if (this.scheduledPreloadPath === path) {
+          this.scheduledPreloadPath = null;
+          this.scheduledPreloadAsset = null;
+        }
       });
     };
-    const view = this.host.ownerDocument.defaultView;
-    const schedule = (): void => {
-      if (typeof view?.requestIdleCallback === "function") {
-        view.requestIdleCallback(() => run());
-      } else {
-        view?.setTimeout(run, 50);
+    if (typeof view?.requestIdleCallback === "function") {
+      view.requestIdleCallback(() => run());
+    } else {
+      view?.setTimeout(run, 50);
+    }
+  }
+
+  private prepareScheduledPanel(): void {
+    const asset = this.scheduledPreloadAsset;
+    if (asset === null || !this.isPanelPreparationSafe() || this.panelPreparationPath !== null) {
+      return;
+    }
+    const revision = ++this.panelPreparationRevision;
+    this.panelPreparationPath = asset.path;
+    void this.drawPrecompositedPanelPair(asset).then((ready) => {
+      if (revision !== this.panelPreparationRevision) return;
+      this.panelPreparationPath = null;
+      if (ready && this.scheduledPreloadPath === asset.path) {
+        this.preparedPanelAsset = asset;
+        this.scheduledPreloadPath = null;
+        this.scheduledPreloadAsset = null;
+      } else if (!ready && this.isPanelPreparationSafe() &&
+          (this.panels[1].dataset.assetPath === asset.path ||
+            this.stagedPanel.dataset.assetPath === asset.path)) {
+        this.scheduledPreloadPath = null;
+        this.scheduledPreloadAsset = null;
+      } else if (this.isPanelPreparationSafe()) {
+        this.schedulePreparedPanelWork();
       }
-    };
-    schedule();
+      this.resumePanelPreparation();
+    });
+  }
+
+  private resumePanelPreparation(): void {
+    if (!this.isPanelPreparationSafe()) return;
+    if (this.pendingFallbackWorldId !== null) {
+      this.preparePendingFallback();
+      return;
+    }
+    if (this.pendingAsset !== null && !this.pendingPanelPrepared) {
+      this.preparePendingPanel();
+      return;
+    }
+    this.schedulePreparedPanelWork();
+  }
+
+  private isPanelPreparationSafe(): boolean {
+    return this.host.dataset.phase !== "game" || this.paused;
+  }
+
+  private async drawPrecompositedPanel(
+    panel: HTMLImageElement,
+    asset: DecodedWorldAsset
+  ): Promise<boolean> {
+    if (!this.isPanelPreparationSafe()) return false;
+    panel.style.willChange = "transform";
+    const assignment = this.assignDecodedPanel(panel, asset);
+    panel.hidden = true;
+    try {
+      await panel.decode();
+      if (!this.isPanelAssignmentCurrent(panel, asset, assignment) ||
+          !this.isPanelPreparationSafe()) return false;
+      panel.hidden = false;
+      panel.getBoundingClientRect();
+      await this.waitForCompositeFrame();
+      if (!this.isPanelAssignmentCurrent(panel, asset, assignment) ||
+          !this.isPanelPreparationSafe()) {
+        if (assignment === this.panelAssignmentRevisions.get(panel)) panel.hidden = true;
+        return false;
+      }
+      await this.waitForCompositeFrame();
+      if (!this.isPanelAssignmentCurrent(panel, asset, assignment) ||
+          !this.isPanelPreparationSafe()) {
+        if (assignment === this.panelAssignmentRevisions.get(panel)) panel.hidden = true;
+        return false;
+      }
+      panel.dataset.presentationReady = "true";
+      return true;
+    } catch {
+      if (assignment === this.panelAssignmentRevisions.get(panel)) panel.hidden = true;
+      return false;
+    }
+  }
+
+  private async drawPrecompositedPanelPair(asset: DecodedWorldAsset): Promise<boolean> {
+    if (!await this.drawPrecompositedPanel(this.stagedPanel, asset)) return false;
+    return this.drawPrecompositedPanel(this.panels[1], asset);
+  }
+
+  private preparedPanelsMatch(assetPath: string): boolean {
+    return this.panels[1].dataset.assetPath === assetPath && !this.panels[1].hidden &&
+      this.stagedPanel.dataset.assetPath === assetPath && !this.stagedPanel.hidden;
+  }
+
+  private waitForCompositeFrame(): Promise<void> {
+    const view = this.host.ownerDocument.defaultView;
+    return new Promise((resolve) => {
+      if (typeof view?.requestAnimationFrame === "function") {
+        view.requestAnimationFrame(() => resolve());
+      } else {
+        view?.setTimeout(resolve, 0);
+      }
+    });
+  }
+
+  private isPanelAssignmentCurrent(
+    panel: HTMLImageElement,
+    asset: DecodedWorldAsset,
+    assignment: number
+  ): boolean {
+    const expectedSource = new URL(
+      asset.image.currentSrc || asset.image.src || asset.path,
+      this.host.ownerDocument.baseURI
+    ).href;
+    return assignment === this.panelAssignmentRevisions.get(panel) &&
+      panel.src === expectedSource &&
+      asset.image.naturalWidth === WORLD_ARTWORK_CONTRACT.artWidth &&
+      asset.image.naturalHeight === WORLD_ARTWORK_CONTRACT.artHeight;
+  }
+
+  private clearPreparedPanel(): void {
+    this.preparedPanelAsset = null;
+    this.scheduledPreloadPath = null;
+    this.scheduledPreloadAsset = null;
+    this.panelPreparationPath = null;
+    this.panelPreparationRevision += 1;
   }
 
   private setProperty(name: string, value: string): void {
@@ -572,18 +772,45 @@ export class WorldVisualLayer {
 
   private preparePendingPanel(): void {
     const asset = this.pendingAsset;
-    if (asset === null || this.pendingPanelPrepared) return;
-    this.assignDecodedPanel(this.panels[1], asset);
-    this.pendingPanelPreparing = false;
-    this.pendingPanelPrepared = true;
-    this.host.dataset.assetState = "loaded";
-    this.updateSeamBlur((this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH);
+    if (asset === null || this.pendingPanelPrepared || this.pendingPanelPreparing ||
+        !this.isPanelPreparationSafe() || this.panelPreparationPath !== null) return;
+    const revision = ++this.panelPreparationRevision;
+    this.panelPreparationPath = asset.path;
+    this.pendingPanelPreparing = true;
+    void this.drawPrecompositedPanelPair(asset).then((ready) => {
+      if (revision !== this.panelPreparationRevision) return;
+      this.panelPreparationPath = null;
+      this.pendingPanelPreparing = false;
+      if (this.pendingAsset !== asset) {
+        this.resumePanelPreparation();
+        return;
+      }
+      this.pendingPanelPrepared = ready;
+      if (ready) {
+        this.preparedPanelAsset = null;
+        if (this.scheduledPreloadPath === asset.path) {
+          this.scheduledPreloadPath = null;
+          this.scheduledPreloadAsset = null;
+        }
+        this.host.dataset.assetState = "loaded";
+        this.updateSeamBlur((this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH);
+      } else if (this.isPanelPreparationSafe() &&
+          (this.panels[1].dataset.assetPath === asset.path ||
+            this.stagedPanel.dataset.assetPath === asset.path)) {
+        const failedWorld = CAMPAIGN_WORLDS.find(({ assetPath }) => assetPath === asset.path);
+        this.pendingAsset = null;
+        this.pendingFallbackWorldId = failedWorld?.worldId ?? this.currentWorldId;
+        this.host.dataset.assetState = "fallback-pending";
+      }
+      this.resumePanelPreparation();
+    });
   }
 
   private preparePendingFallback(): void {
     const worldId = this.pendingFallbackWorldId;
-    if (worldId === null || this.pendingPanelPrepared) return;
+    if (worldId === null || this.pendingPanelPrepared || !this.isPanelPreparationSafe()) return;
     this.assignFallback(this.panels[1], worldId);
+    this.assignFallback(this.stagedPanel, worldId);
     this.pendingPanelPrepared = true;
     this.host.dataset.assetState = "fallback";
     this.updateSeamBlur((this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH);
@@ -595,7 +822,6 @@ export class WorldVisualLayer {
     this.pendingFallbackWorldId = null;
     this.pendingPanelPrepared = false;
     this.pendingPanelPreparing = false;
-    this.assignFallback(this.panels[1], worldId);
     this.host.dataset.assetState = "fallback";
     this.placePanels((this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH);
   }
@@ -609,6 +835,7 @@ export class WorldVisualLayer {
     delete panel.dataset.assetPath;
     panel.dataset.worldId = worldId;
     panel.dataset.assetFallback = "true";
+    delete panel.dataset.presentationReady;
     panel.hidden = false;
   }
 
@@ -620,6 +847,7 @@ export class WorldVisualLayer {
     if (worldId !== null) {
       this.assignFallback(this.panels[0], worldId);
       this.assignFallback(this.panels[1], worldId);
+      this.assignFallback(this.stagedPanel, worldId);
     } else {
       this.clearPanels();
     }
@@ -637,6 +865,7 @@ export class WorldVisualLayer {
     panel.height = WORLD_ARTWORK_CONTRACT.artHeight;
     panel.dataset.assetPath = asset.path;
     delete panel.dataset.assetFallback;
+    delete panel.dataset.presentationReady;
     const world = CAMPAIGN_WORLDS.find(({ assetPath }) => assetPath === asset.path);
     if (world) panel.dataset.worldId = world.worldId;
     panel.src = asset.image.currentSrc || asset.image.src || asset.path;
@@ -651,10 +880,7 @@ export class WorldVisualLayer {
     // their own DOM decode readiness; they never create a second retry lifecycle.
     try {
       await panel.decode();
-      const expectedSource = new URL(asset.image.currentSrc || asset.image.src || asset.path, document.baseURI).href;
-      if (assignment !== this.panelAssignmentRevisions.get(panel) || panel.src !== expectedSource) return false;
-      if (asset.image.naturalWidth !== WORLD_ARTWORK_CONTRACT.artWidth ||
-          asset.image.naturalHeight !== WORLD_ARTWORK_CONTRACT.artHeight) return false;
+      if (!this.isPanelAssignmentCurrent(panel, asset, assignment)) return false;
       panel.hidden = false;
       return true;
     } catch {
@@ -664,11 +890,12 @@ export class WorldVisualLayer {
   }
 
   private clearPanels(): void {
-    for (const panel of this.panels) {
+    for (const panel of [...this.panels, this.stagedPanel]) {
       panel.removeAttribute("src");
       delete panel.dataset.assetPath;
       delete panel.dataset.worldId;
       delete panel.dataset.assetFallback;
+      delete panel.dataset.presentationReady;
     }
   }
 

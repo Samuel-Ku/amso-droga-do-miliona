@@ -1057,6 +1057,7 @@ export class CampaignShell {
     this.activeMode = mode;
     this.lastWaveFeedbackKey = "";
     this.paused = false;
+    this.worldVisualLayer.setPaused(false);
     this.challengeResult = null;
     this.resetStoryVisualClock();
     this.hideScreens();
@@ -1213,6 +1214,7 @@ export class CampaignShell {
   public setPaused(paused: boolean): void {
     if (this.destroyed || this.activeMode === null) return;
     this.paused = paused;
+    this.worldVisualLayer.setPaused(paused);
     this.pauseScreen.hidden = !paused;
     this.root.toggleAttribute("data-paused", paused);
     this.canvas.tabIndex = paused ? -1 : 0;

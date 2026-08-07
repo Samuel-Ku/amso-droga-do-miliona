@@ -197,6 +197,12 @@ describe("responsive world release contract", () => {
     images.find(({ src }) => src.includes("world-02-order-process"))!
       .dispatchEvent(new Event("load"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    layer.setPaused(true);
+    await vi.waitFor(() => {
+      expect(host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
+        ?.dataset.presentationReady).toBe("true");
+    });
+    layer.setPaused(false);
     layer.setParallaxDistance(480, true);
     expect([plate.style.left, plate.style.top, plate.style.width, plate.style.height])
       .toEqual(initialRect);

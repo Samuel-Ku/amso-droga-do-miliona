@@ -390,7 +390,7 @@ describe("story input safety gate", () => {
     shell.destroy();
   });
 
-  it("shows a moving seam only when challenge panels belong to different worlds", async () => {
+  it("keeps the seam hidden when pause prepares an atomic challenge swap", async () => {
     const { shell } = createShell();
     const seam = document.querySelector<HTMLElement>("[data-world-seam-blur]");
     const world = document.querySelector<HTMLElement>("[data-campaign-world-visual]");
@@ -403,9 +403,15 @@ describe("story input safety gate", () => {
 
     shell.update(challengeSnapshot("quality-service", "epoch_2.resolve"));
     await vi.waitFor(() => expect(world?.dataset.assetState).toBe("loaded"));
+    shell.setPaused(true);
+    await vi.waitFor(() => {
+      expect(document.querySelector<HTMLImageElement>('[data-world-panel="next"]')
+        ?.dataset.presentationReady).toBe("true");
+    });
+    shell.setPaused(false);
     shell.updateVisualFrame(961, 0, false);
-    expect(seam?.hidden).toBe(false);
-    expect(seam?.dataset.betweenWorlds).toBe("first-mile:quality-service");
+    expect(seam?.hidden).toBe(true);
+    expect(seam?.dataset.betweenWorlds).toBeUndefined();
 
     shell.updateVisualFrame(1_921, 0, false);
     expect(seam?.hidden).toBe(true);

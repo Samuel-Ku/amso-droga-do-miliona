@@ -125,6 +125,7 @@ describe("edge-to-edge gameplay background", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
   it("moves at exactly ten percent of gameplay travel", () => {
     expect(BACKGROUND_PARALLAX_SPEED_RATIO).toBe(0.1);
@@ -226,7 +227,7 @@ describe("edge-to-edge gameplay background", () => {
     expect(host.querySelector("[data-world-connector]")).toBeNull();
   });
 
-  it("waits for an offscreen seam before drawing a pending challenge world", async () => {
+  it("keeps the current world until pause prepares a pending challenge panel", async () => {
     const { store, images } = imageHarness();
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host, store);
@@ -261,11 +262,22 @@ describe("edge-to-edge gameplay background", () => {
 
     layer.setParallaxDistance(961, true);
     await Promise.resolve();
-    const qualityPanel = panels.find(({ dataset }) => dataset.assetPath?.includes("world-03"));
-    expect(qualityPanel?.style.transform).toBe("translate3d(99.89583333333333%, 0, 0)");
+    expect(panels.filter(({ dataset }) => dataset.assetPath?.includes("world-03")))
+      .toHaveLength(0);
+    expect(panels.every(({ dataset }) => dataset.worldId === "first-mile")).toBe(true);
+
+    layer.setPaused(true);
+    await vi.waitFor(() => {
+      expect(panels.find(({ dataset }) => dataset.assetPath?.includes("world-03"))
+        ?.dataset.presentationReady).toBe("true");
+    });
+    layer.setPaused(false);
+    layer.setParallaxDistance(1_921, true);
+    expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
+      ?.dataset.worldId).toBe("quality-service");
   });
 
-  it("exposes a local blur only on the moving seam between different worlds", async () => {
+  it("keeps the seam hidden for an atomically prepared world swap", async () => {
     const { store, images } = imageHarness();
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host, store);
@@ -291,15 +303,30 @@ describe("edge-to-edge gameplay background", () => {
     const qualityImage = images.find(({ src }) => src.includes("world-03-quality-service"));
     qualityImage!.dispatchEvent(new Event("load"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    layer.setPaused(true);
+    await vi.waitFor(() => {
+      const nextPanel = host.querySelector<HTMLImageElement>('[data-world-panel="next"]');
+      expect(nextPanel?.dataset.assetPath).toContain("world-03-quality-service");
+      expect(nextPanel?.dataset.presentationReady).toBe("true");
+    });
+    const srcMutations: MutationRecord[] = [];
+    const observer = new MutationObserver((records) => srcMutations.push(...records));
+    observer.observe(host, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["src"]
+    });
+    layer.setPaused(false);
 
     layer.setParallaxDistance(961, true);
-    await vi.waitFor(() => expect(seam?.hidden).toBe(false));
-    expect(seam?.style.left).toBe("99.89583333333333%");
-    expect(seam?.dataset.betweenWorlds).toBe("first-mile:quality-service");
+    await Promise.resolve();
+    expect(seam?.hidden).toBe(true);
+    expect(seam?.dataset.betweenWorlds).toBeUndefined();
+    expect(srcMutations).toEqual([]);
+    observer.disconnect();
 
     layer.setParallaxDistance(3_000, true, true);
-    expect(seam?.hidden).toBe(false);
-    expect(seam?.style.left).toBe("90.625%");
+    expect(seam?.hidden).toBe(true);
 
     layer.setParallaxDistance(1_920, true);
     expect(seam?.hidden).toBe(true);
@@ -335,19 +362,51 @@ describe("edge-to-edge gameplay background", () => {
     qualityImage.dispatchEvent(new Event("error"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("fallback-pending"));
 
+    layer.setPaused(true);
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("fallback"));
+    layer.setPaused(false);
     layer.setParallaxDistance(961, true);
-    const next = host.querySelector<HTMLImageElement>('[data-world-panel="next"]');
-    expect(next?.dataset.worldId).toBe("quality-service");
-    expect(next?.dataset.assetFallback).toBe("true");
-    expect(seam?.hidden).toBe(false);
-
-    layer.setParallaxDistance(1_921, true);
     expect([...host.querySelectorAll<HTMLImageElement>("[data-world-panel]")]
       .every(({ dataset }) =>
         dataset.worldId === "quality-service" && dataset.assetFallback === "true"
       )).toBe(true);
     expect(seam?.hidden).toBe(true);
     expect(host.dataset.assetState).toBe("fallback");
+  });
+
+  it("uses a pending fallback when paused panel presentation decode fails", async () => {
+    const { store, images } = imageHarness();
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+
+    layer.show({
+      worldId: "first-mile",
+      stateId: "story.first_package",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    images[0]!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    layer.setParallaxDistance(240, true);
+    vi.mocked(HTMLImageElement.prototype.decode)
+      .mockRejectedValue(new Error("world_panel_decode_failed"));
+
+    layer.show({
+      worldId: "quality-service",
+      stateId: "epoch_2.resolve",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    images.find(({ src }) => src.includes("world-03-quality-service"))!
+      .dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+
+    layer.setPaused(true);
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("fallback"));
+    layer.setPaused(false);
+    layer.setParallaxDistance(961, true);
+    expect([...host.querySelectorAll<HTMLImageElement>("[data-world-panel]")]
+      .every(({ dataset }) => dataset.assetFallback === "true")).toBe(true);
   });
 
   it("repeats the current world when the next decoded asset misses its seam", async () => {
@@ -385,7 +444,7 @@ describe("edge-to-edge gameplay background", () => {
     expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
       ?.dataset.worldId).toBe("first-mile");
     expect(host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
-      ?.dataset.worldId).toBe("quality-service");
+      ?.dataset.worldId).toBe("first-mile");
   });
 
   it("resynchronizes skipped cycles and distance resets without an animated swap", () => {
@@ -415,6 +474,52 @@ describe("edge-to-edge gameplay background", () => {
     ]);
   });
 
+  it("resynchronizes prepared panels during gameplay without decoding them again", async () => {
+    const { store, images } = imageHarness();
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+
+    layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "game" });
+    images[0]!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+
+    layer.show({
+      worldId: "quality-service",
+      stateId: "epoch_2.resolve",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    const qualityImage = images.find(({ src }) => src.includes("world-03-quality-service"));
+    expect(qualityImage).toBeDefined();
+    qualityImage!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+
+    layer.setPaused(true);
+    await vi.waitFor(() => {
+      const nextPanel = host.querySelector<HTMLImageElement>('[data-world-panel="next"]');
+      expect(nextPanel?.dataset.assetPath).toContain("world-03-quality-service");
+      expect(nextPanel?.dataset.presentationReady).toBe("true");
+    });
+    layer.setPaused(false);
+    const panelDecode = vi.mocked(HTMLImageElement.prototype.decode);
+    const decodeCountBeforeResynchronization = panelDecode.mock.calls.length;
+    const srcMutations: MutationRecord[] = [];
+    const observer = new MutationObserver((records) => srcMutations.push(...records));
+    observer.observe(host, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["src"]
+    });
+
+    layer.setParallaxDistance(240, true);
+    layer.setParallaxDistance(3_120, true);
+    await Promise.resolve();
+
+    expect(panelDecode).toHaveBeenCalledTimes(decodeCountBeforeResynchronization);
+    expect(srcMutations).toEqual([]);
+    observer.disconnect();
+  });
+
   it("finishes the prepared offscreen world before queuing a newer request", async () => {
     const { store, images } = imageHarness();
     const host = document.createElement("div");
@@ -436,24 +541,35 @@ describe("edge-to-edge gameplay background", () => {
     expect(qualityImage).toBeDefined();
     qualityImage!.dispatchEvent(new Event("load"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
-    layer.setParallaxDistance(961, true);
-    await Promise.resolve();
-    layer.setParallaxDistance(962, true);
+    layer.setPaused(true);
+    await vi.waitFor(() => {
+      expect(host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
+        ?.dataset.presentationReady).toBe("true");
+    });
 
     showOffscreen("client-paths", "epoch_3.start");
     const clientImage = images.find(({ src }) => src.includes("world-04-client-paths"));
     expect(clientImage).toBeDefined();
     clientImage!.dispatchEvent(new Event("load"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    layer.setPaused(false);
+
+    layer.setParallaxDistance(961, true);
+    expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
+      ?.dataset.assetPath).toContain("world-03-quality-service");
 
     layer.setParallaxDistance(1_921, true);
     expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
       ?.dataset.assetPath).toContain("world-03-quality-service");
 
-    await Promise.resolve();
+    layer.setPaused(true);
+    await vi.waitFor(() => {
+      const nextPanel = host.querySelector<HTMLImageElement>('[data-world-panel="next"]');
+      expect(nextPanel?.dataset.assetPath).toContain("world-04-client-paths");
+      expect(nextPanel?.dataset.presentationReady).toBe("true");
+    });
+    layer.setPaused(false);
     layer.setParallaxDistance(2_881, true);
-    await Promise.resolve();
-    layer.setParallaxDistance(2_882, true);
     expect([...host.querySelectorAll<HTMLImageElement>("[data-world-panel]")]
       .some(({ dataset }) => dataset.assetPath?.includes("world-04-client-paths")))
       .toBe(true);
@@ -464,25 +580,165 @@ describe("edge-to-edge gameplay background", () => {
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host, store);
 
-    layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "game" });
+    layer.show({
+      worldId: "first-mile",
+      stateId: "story.first_package",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
     images[0]!.dispatchEvent(new Event("load"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
     expect(images).toHaveLength(1);
+    layer.setParallaxDistance(240, true);
 
-    layer.show({ worldId: "order-process", stateId: "epoch_1.challenge", phase: "game" });
+    layer.show({
+      worldId: "order-process",
+      stateId: "epoch_1.challenge",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
     images[1]!.dispatchEvent(new Event("load"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
 
     expect(images).toHaveLength(2);
-    layer.setParallaxDistance(960, true);
+    layer.setPaused(true);
     await vi.waitFor(() => {
       const panel = host.querySelector<HTMLImageElement>('[data-world-panel="next"]');
       expect(panel?.dataset.assetPath).toContain("world-02");
-      expect(panel?.hidden).toBe(false);
+      expect(panel?.dataset.presentationReady).toBe("true");
     });
+    layer.setPaused(false);
     layer.setParallaxDistance(961, true);
     layer.setPhase("story");
     await vi.waitFor(() => expect(images).toHaveLength(3));
+  });
+
+  it("prepares the quality-service DOM panel during story before gameplay", async () => {
+    vi.useFakeTimers();
+    const compositeFrames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      compositeFrames.push(callback);
+      return compositeFrames.length;
+    });
+    const { store, images } = imageHarness();
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+
+    layer.show({ worldId: "order-process", stateId: "epoch_1.challenge", phase: "story" });
+    images[0]!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    await vi.advanceTimersByTimeAsync(50);
+    const qualityImage = images.find(({ src }) => src.includes("world-03-quality-service"));
+    expect(qualityImage).toBeDefined();
+    qualityImage!.dispatchEvent(new Event("load"));
+    await vi.advanceTimersByTimeAsync(0);
+
+    const nextPanel = host.querySelector<HTMLImageElement>('[data-world-panel="next"]');
+    const stagedPanel = host.querySelector<HTMLImageElement>("[data-world-staged-panel]");
+    expect(stagedPanel?.dataset.assetPath).toContain("world-03-quality-service");
+    for (const timestamp of [16, 32]) {
+      expect(compositeFrames).toHaveLength(1);
+      compositeFrames.shift()?.(timestamp);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    }
+    expect(nextPanel?.dataset.assetPath).toContain("world-03-quality-service");
+    expect(nextPanel?.hidden).toBe(false);
+    for (const timestamp of [48, 64]) {
+      expect(compositeFrames).toHaveLength(1);
+      compositeFrames.shift()?.(timestamp);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    }
+    await vi.waitFor(() => expect(nextPanel?.dataset.presentationReady).toBe("true"));
+
+    const panelDecode = vi.mocked(HTMLImageElement.prototype.decode);
+    const decodeCountBeforeGameplay = panelDecode.mock.calls.length;
+    layer.show({
+      worldId: "quality-service",
+      stateId: "epoch_2.resolve",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    layer.setParallaxDistance(240, true);
+    layer.setParallaxDistance(961, true);
+
+    expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
+      ?.dataset.worldId).toBe("quality-service");
+    expect(panelDecode).toHaveBeenCalledTimes(decodeCountBeforeGameplay);
+  });
+
+  it("schedules sequential panel warmup through requestIdleCallback when available", async () => {
+    let idleCallback: IdleRequestCallback | undefined;
+    const requestIdleCallback = vi.fn((callback: IdleRequestCallback) => {
+      idleCallback = callback;
+      return 1;
+    });
+    vi.stubGlobal("requestIdleCallback", requestIdleCallback);
+    const { store, images } = imageHarness();
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+
+    layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "story" });
+    images[0]!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+
+    expect(requestIdleCallback).toHaveBeenCalledOnce();
+    expect(images).toHaveLength(1);
+    idleCallback?.({ didTimeout: false, timeRemaining: () => 50 });
+    await vi.waitFor(() => expect(images).toHaveLength(2));
+    expect(images[1]!.src).toContain("world-02-order-process");
+  });
+
+  it("continues sequential panel warmup from the seventh world to first-mile", async () => {
+    vi.useFakeTimers();
+    const { store, images } = imageHarness();
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+
+    layer.show({
+      worldId: "million-finale",
+      stateId: "story.million_finale",
+      phase: "story"
+    });
+    images[0]!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(images.some(({ src }) => src.includes("world-01-first-mile"))).toBe(true);
+  });
+
+  it("ignores a pending panel decode completion after destroy", async () => {
+    vi.useFakeTimers();
+    const { store, images } = imageHarness();
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+    layer.show({ worldId: "order-process", stateId: "epoch_1.challenge", phase: "story" });
+    images[0]!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+
+    let resolvePanelDecode: (() => void) | undefined;
+    vi.mocked(HTMLImageElement.prototype.decode).mockImplementationOnce(() =>
+      new Promise<void>((resolve) => { resolvePanelDecode = resolve; })
+    );
+    await vi.advanceTimersByTimeAsync(50);
+    images.find(({ src }) => src.includes("world-03-quality-service"))!
+      .dispatchEvent(new Event("load"));
+    await vi.waitFor(() => {
+      expect(host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
+        ?.dataset.assetPath).toContain("world-03-quality-service");
+    });
+
+    layer.destroy();
+    resolvePanelDecode?.();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(host.querySelectorAll("[data-world-panel]")).toHaveLength(0);
+    expect(host.querySelector("[data-world-staged-panel]")).toBeNull();
+    expect(host.querySelectorAll("img")).toHaveLength(0);
   });
 
   it("presents a world selected by a story card immediately at its authored frame", async () => {

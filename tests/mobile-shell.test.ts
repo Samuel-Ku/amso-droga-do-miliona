@@ -206,6 +206,8 @@ describe("mobile campaign shell", () => {
     expect(onJump).toHaveBeenCalledWith("pointer");
 
     shell.setPaused(true);
+    expect(document.querySelector<HTMLElement>(".amso-campaign__world-visual")
+      ?.dataset.paused).toBe("true");
     canvas.dispatchEvent(new PointerEvent("pointerdown", {
       bubbles: true,
       button: 0,
@@ -215,6 +217,9 @@ describe("mobile campaign shell", () => {
       pointerType: "mouse"
     }));
     expect(onJump).toHaveBeenCalledTimes(1);
+    shell.showGame("challenge");
+    expect(document.querySelector<HTMLElement>(".amso-campaign__world-visual")
+      ?.dataset.paused).toBe("false");
     shell.destroy();
   });
 
