@@ -676,7 +676,7 @@ export class WorldVisualLayer {
       });
     };
     if (typeof requestIdle === "function") {
-      requestIdle((deadline) => run(deadline));
+      requestIdle((deadline) => run(deadline), { timeout: 1_500 });
     } else {
       view?.setTimeout(run, 50);
     }
