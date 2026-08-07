@@ -125,6 +125,8 @@ export class WorldVisualLayer {
   private preparedFallbackWorldId: CampaignWorldId | null = null;
   private panelPreparationScheduled = false;
   private panelPreparationRetryTimer: number | null = null;
+  private readonly panelStageRetryTimers = new Map<number, () => void>();
+  private readonly panelStageIdleCallbacks = new Map<number, () => void>();
   private panelPreparationPath: string | null = null;
   private panelPreparationRevision = 0;
   private paused = false;
@@ -302,6 +304,7 @@ export class WorldVisualLayer {
       view?.clearTimeout(this.panelPreparationRetryTimer);
       this.panelPreparationRetryTimer = null;
     }
+    this.cancelPanelStageWork();
     this.panelPreparationRevision += 1;
     this.resolveCurrentPresentation = null;
     this.rejectCurrentPresentation = null;
@@ -719,7 +722,7 @@ export class WorldVisualLayer {
     const revision = ++this.panelPreparationRevision;
     this.panelPreparationPath = asset.path;
     const preparation = activeGameplay
-      ? this.drawPrecompositedPanelPairDuringActiveIdle(asset)
+      ? this.drawPrecompositedPanelPairDuringActiveIdle(asset, revision)
       : this.drawPrecompositedPanelPair(asset);
     void preparation.then((ready) => {
       if (revision !== this.panelPreparationRevision) {
@@ -830,30 +833,36 @@ export class WorldVisualLayer {
   }
 
   private async drawPrecompositedPanelPairDuringActiveIdle(
-    asset: DecodedWorldAsset
+    asset: DecodedWorldAsset,
+    revision: number
   ): Promise<boolean> {
-    if (!await this.drawPrecompositedPanelDuringActiveIdle(this.stagedPanel, asset)) return false;
-    return this.drawPrecompositedPanelDuringActiveIdle(this.panels[1], asset);
+    if (!await this.drawPrecompositedPanelDuringActiveIdle(
+      this.stagedPanel, asset, revision
+    )) return false;
+    return this.drawPrecompositedPanelDuringActiveIdle(this.panels[1], asset, revision);
   }
 
   private async drawPrecompositedPanelDuringActiveIdle(
     panel: HTMLImageElement,
-    asset: DecodedWorldAsset
+    asset: DecodedWorldAsset,
+    revision: number
   ): Promise<boolean> {
+    const isCurrent = (): boolean => revision === this.panelPreparationRevision &&
+      this.panelPreparationPath === asset.path && this.scheduledPreloadPath === asset.path;
     let assignment = 0;
     const decoded = await this.runInPanelPreparationWindow(() => {
       panel.style.willChange = "transform";
       assignment = this.assignDecodedPanel(panel, asset);
       panel.hidden = true;
       return panel.decode().then(() => true, () => false);
-    });
+    }, isCurrent);
     if (!decoded) return false;
     const exposed = await this.runInPanelPreparationWindow(() => {
       if (!this.isPanelAssignmentCurrent(panel, asset, assignment)) return false;
       panel.hidden = false;
       panel.getBoundingClientRect();
       return true;
-    });
+    }, isCurrent);
     if (!exposed) return false;
     await this.waitForCompositeFrame();
     await this.waitForCompositeFrame();
@@ -864,20 +873,22 @@ export class WorldVisualLayer {
       }
       panel.dataset.presentationReady = "true";
       return true;
-    });
+    }, isCurrent);
   }
 
   private runInPanelPreparationWindow(
-    operation: () => boolean | Promise<boolean>
+    operation: () => boolean | Promise<boolean>,
+    isCurrent: () => boolean = () => true
   ): Promise<boolean> {
     const view = this.host.ownerDocument.defaultView;
+    if (this.destroyed || !isCurrent()) return Promise.resolve(false);
     if (this.isPanelPreparationSafe()) return Promise.resolve(operation());
     if (view === null || typeof view.requestIdleCallback !== "function") {
       return Promise.resolve(false);
     }
     return new Promise((resolve) => {
       const attempt = (): void => {
-        if (this.destroyed) {
+        if (this.destroyed || !isCurrent()) {
           resolve(false);
           return;
         }
@@ -885,9 +896,18 @@ export class WorldVisualLayer {
           Promise.resolve(operation()).then(resolve, () => resolve(false));
           return;
         }
-        view.requestIdleCallback((deadline) => {
+        const idleId = view.requestIdleCallback((deadline) => {
+          this.panelStageIdleCallbacks.delete(idleId);
+          if (this.destroyed || !isCurrent()) {
+            resolve(false);
+            return;
+          }
           if (!deadline.didTimeout && deadline.timeRemaining() < 8) {
-            view.setTimeout(attempt, 250);
+            const timerId = view.setTimeout(() => {
+              this.panelStageRetryTimers.delete(timerId);
+              attempt();
+            }, 250);
+            this.panelStageRetryTimers.set(timerId, () => resolve(false));
             return;
           }
           try {
@@ -896,9 +916,24 @@ export class WorldVisualLayer {
             resolve(false);
           }
         });
+        this.panelStageIdleCallbacks.set(idleId, () => resolve(false));
       };
       attempt();
     });
+  }
+
+  private cancelPanelStageWork(): void {
+    const view = this.host.ownerDocument.defaultView;
+    for (const [timerId, cancel] of this.panelStageRetryTimers) {
+      view?.clearTimeout(timerId);
+      cancel();
+    }
+    this.panelStageRetryTimers.clear();
+    for (const [idleId, cancel] of this.panelStageIdleCallbacks) {
+      view?.cancelIdleCallback?.(idleId);
+      cancel();
+    }
+    this.panelStageIdleCallbacks.clear();
   }
 
   private preparedPanelsMatch(assetPath: string): boolean {
@@ -952,6 +987,7 @@ export class WorldVisualLayer {
       view?.clearTimeout(this.panelPreparationRetryTimer);
       this.panelPreparationRetryTimer = null;
     }
+    this.cancelPanelStageWork();
   }
 
   private setProperty(name: string, value: string): void {
