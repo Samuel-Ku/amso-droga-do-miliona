@@ -578,6 +578,15 @@ export class WorldVisualLayer {
         });
         this.prepareNextWorld(decodedAsset.path);
       } else if (this.transitionMode === "offscreen" &&
+          this.currentPanelMatches(decodedAsset.path)) {
+        this.currentAsset = decodedAsset;
+        this.clearPendingTransition();
+        if (this.preparedPanelAsset?.path === decodedAsset.path) {
+          this.preparedPanelAsset = null;
+        }
+        this.host.dataset.assetState = "loaded";
+        this.prepareNextWorld(decodedAsset.path);
+      } else if (this.transitionMode === "offscreen" &&
           this.pendingAsset !== null && this.pendingPanelPrepared) {
         this.queuedAsset = decodedAsset.path === this.pendingAsset.path
           ? null
@@ -950,6 +959,11 @@ export class WorldVisualLayer {
       this.panels[1].dataset.presentationReady === "true" &&
       this.stagedPanel.dataset.assetPath === assetPath && !this.stagedPanel.hidden &&
       this.stagedPanel.dataset.presentationReady === "true";
+  }
+
+  private currentPanelMatches(assetPath: string): boolean {
+    return this.panels[0].dataset.assetPath === assetPath && !this.panels[0].hidden &&
+      this.panels[0].dataset.presentationReady === "true";
   }
 
   private preparedFallbackPanelsMatch(worldId: CampaignWorldId): boolean {

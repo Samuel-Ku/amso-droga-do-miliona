@@ -369,15 +369,18 @@ describe("edge-to-edge gameplay background", () => {
       phase: "game",
       transitionMode: "offscreen"
     });
+    layer.setParallaxDistance(240, true);
+    layer.setParallaxDistance(961, true);
+    expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
+      ?.dataset.worldId).toBe("order-process");
     layer.show({
       worldId: "order-process",
       stateId: "epoch_1.challenge",
       phase: "game",
       transitionMode: "offscreen"
     });
+    expect(host.dataset.assetState).toBe("loading");
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
-    layer.setParallaxDistance(240, true);
-    layer.setParallaxDistance(961, true);
 
     await vi.waitFor(() => expect(idleCallbacks.length).toBeGreaterThan(0));
     expect(idleOptions.shift()).toMatchObject({ timeout: 1_000 });
@@ -429,18 +432,6 @@ describe("edge-to-edge gameplay background", () => {
       next: "quality-service", nextReady: "true",
       staged: "quality-service", stagedReady: "true"
     });
-    layer.show({
-      worldId: "quality-service",
-      stateId: "epoch_2.resolve",
-      phase: "game",
-      transitionMode: "offscreen"
-    });
-    expect(host.dataset.assetState).toBe("loading");
-    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
-    expect(preparedWorlds()).toEqual({
-      next: "quality-service", nextReady: "true",
-      staged: "quality-service", stagedReady: "true"
-    });
     layer.setParallaxDistance(1_200, true);
     layer.setParallaxDistance(1_921, true);
 
@@ -449,9 +440,19 @@ describe("edge-to-edge gameplay background", () => {
       current: current?.dataset.worldId,
       next: host.querySelector<HTMLImageElement>('[data-world-panel="next"]')?.dataset.worldId,
       staged: host.querySelector<HTMLImageElement>("[data-world-staged-panel]")?.dataset.worldId
-    }).toEqual({ current: "quality-service", next: "quality-service", staged: "order-process" });
+    }).toEqual({ current: "quality-service", next: "order-process", staged: "quality-service" });
     expect(current?.dataset.presentationReady).toBe("true");
     expect(current?.hidden).toBe(false);
+    layer.show({
+      worldId: "quality-service",
+      stateId: "epoch_2.resolve",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    expect(host.dataset.assetState).toBe("loading");
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
+      ?.dataset.worldId).toBe("quality-service");
     expect(panelDecode).toHaveBeenCalledTimes(decodeCountBeforeQualitySeam);
   });
 
