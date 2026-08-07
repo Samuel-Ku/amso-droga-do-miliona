@@ -293,7 +293,10 @@ try {
     await page.goto("about:blank");
   }
   const navigationStartedAt = Date.now();
-  await page.goto(url.href, { waitUntil: "load", timeout: 30_000 });
+  const navigationResponse = await page.goto(url.href, { waitUntil: "load", timeout: 30_000 });
+  const deployedArtifactBody = artifactPath === null && navigationResponse !== null
+    ? await navigationResponse.body()
+    : null;
   await page.waitForSelector("[data-campaign-landing-actions] button", {
     timeout: 30_000
   });
@@ -329,7 +332,11 @@ try {
   const runtime = await page.evaluate(() => {
     const runtime = window.__performanceScenarioRuntime;
     runtime.dom.finalNodeCount = document.getElementsByTagName("*").length;
-    runtime.resourceTimings = performance.getEntriesByType("resource").map((entry) => {
+    const timingEntries = [
+      ...performance.getEntriesByType("navigation"),
+      ...performance.getEntriesByType("resource")
+    ];
+    runtime.resourceTimings = timingEntries.map((entry) => {
       let resource = entry.name;
       try {
         const url = new URL(entry.name);
@@ -339,7 +346,7 @@ try {
       }
       return {
         resource,
-        initiatorType: entry.initiatorType,
+        initiatorType: entry.entryType === "navigation" ? "navigation" : entry.initiatorType,
         startedAtMs: entry.startTime,
         durationMs: entry.duration,
         transferSizeBytes: entry.transferSize ?? 0,
@@ -370,8 +377,17 @@ try {
   const checkpointsPassed = Array.isArray(report?.scenarioCheckpoints) &&
     report.scenarioCheckpoints.length > 1 &&
     report.scenarioCheckpoints.every(({ passed }) => passed === true);
+  const capturePassed = report?.scenarioValidation?.passed === true &&
+    checkpointsPassed &&
+    report?.session?.inputQueueOverflows === 0 &&
+    report?.session?.replayValid === true &&
+    runtime.activeDecodeStarts === 0 &&
+    intervals.filter((interval) => interval > 33).length === 0 &&
+    consoleErrors.length === 0 &&
+    externalRequests.length === 0;
   const evidence = {
     schema: "amso-performance-run-v1",
+    capturePassed,
     variant,
     profile,
     processState,
@@ -380,9 +396,12 @@ try {
       : { kind: "url", value: targetUrl.href },
     artifact: {
       name: artifactPath === null ? targetUrl.href : path.basename(artifactPath),
-      bytes: artifactPath === null ? null : fs.statSync(artifactPath).size,
-      sha256: artifactPath === null ? null :
-        createHash("sha256").update(fs.readFileSync(artifactPath)).digest("hex")
+      bytes: artifactPath === null ? deployedArtifactBody?.byteLength ?? null
+        : fs.statSync(artifactPath).size,
+      sha256: artifactPath === null
+        ? deployedArtifactBody === null ? null
+          : createHash("sha256").update(deployedArtifactBody).digest("hex")
+        : createHash("sha256").update(fs.readFileSync(artifactPath)).digest("hex")
     },
     configuration: {
       scenarioId: report?.qaRunConfiguration?.scenarioId ?? "performance-reference-v1",
@@ -491,14 +510,7 @@ try {
   } else {
     process.stdout.write(serializedEvidence);
   }
-  if (report?.scenarioValidation?.passed === true &&
-      checkpointsPassed &&
-      evidence.scenario.inputQueueOverflows === 0 &&
-      evidence.scenario.replayValid === true &&
-      runtime.activeDecodeStarts === 0 &&
-      evidence.frames.over33Ms === 0 &&
-      consoleErrors.length === 0 &&
-      externalRequests.length === 0) {
+  if (capturePassed) {
     exitCode = 0;
   }
 } finally {

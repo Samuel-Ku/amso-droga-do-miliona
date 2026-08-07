@@ -26,7 +26,8 @@ spike, active decode or a frame over 33 ms within ±500 ms of either first world
 transition, diagnostics/DOM/memory trends, or gameplay/replay differences.
 
 Headless JavaScript heap samples and Long Animation Frame rendering duration are
-diagnostic proxies only. Missing physical process-memory evidence, approved
+diagnostic proxies only. Unsupported browser-process attribution (including GC),
+missing physical process-memory evidence, approved
 visual fixtures, minimum-profile Android evidence, or iPhone Safari evidence
 keeps the release gate `incomplete`; the desktop run cannot promote it to
 `pass`.

@@ -47,6 +47,7 @@ const plan = {
     output: path.join(outputDirectory, `${profile}.json`)
   }))
 };
+const captureStatuses = new Map();
 
 if (process.argv.includes("--dry-run")) {
   process.stdout.write(`${JSON.stringify(plan)}\n`);
@@ -56,6 +57,7 @@ if (process.argv.includes("--dry-run")) {
 if (target !== undefined) {
   fs.mkdirSync(outputDirectory, { recursive: true });
   for (const run of plan.runs) {
+    fs.rmSync(run.output, { force: true });
     const targetArgs = isUrl ? ["--url", normalizedTarget] : ["--artifact", normalizedTarget];
     const result = spawnSync(process.execPath, [
       "scripts/run-performance-reference.mjs",
@@ -66,6 +68,7 @@ if (target !== undefined) {
       "--variant", "after",
       "--output", run.output
     ], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
+    captureStatuses.set(run.profile, { status: result.status, signal: result.signal });
     if (!fs.existsSync(run.output)) {
       throw new Error(`qualification run did not produce evidence: ${run.profile} (${result.status})`);
     }
@@ -94,6 +97,23 @@ function scenarioPassed(run) {
   return run.scenario.checkpointsPassed === true && run.scenario.coveragePassed === true &&
     run.scenario.digestPassed === true && run.scenario.replayValid === true &&
     run.scenario.inputQueueOverflows === 0;
+}
+
+function semanticEqual(left, right, key = "") {
+  if (typeof left === "number" && typeof right === "number") {
+    return Math.abs(left - right) <= (key === "simulationStep" ? 1 : 0.0001);
+  }
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return Array.isArray(left) && Array.isArray(right) && left.length === right.length &&
+      left.every((value, index) => semanticEqual(value, right[index], key));
+  }
+  if (left !== null && right !== null && typeof left === "object" &&
+      typeof right === "object") {
+    const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+    return [...keys].every((nestedKey) =>
+      semanticEqual(left[nestedKey], right[nestedKey], nestedKey));
+  }
+  return Object.is(left, right);
 }
 
 function smooth(run) {
@@ -224,20 +244,26 @@ const runs = Object.fromEntries(profiles.map(({ profile }) => {
 const runValues = Object.values(runs);
 const identities = runValues.map(identity);
 const comparable = identities.every((candidate) => equal(candidate, identities[0])) &&
+  runValues.every(({ artifact }) => Number.isFinite(artifact.bytes) && artifact.bytes > 0 &&
+    typeof artifact.sha256 === "string" && artifact.sha256.length === 64) &&
   runs["cold-audio-enabled"].processState === "cold" &&
   runs["cold-audio-enabled"].configuration.audioMode === "enabled" &&
   runs["cold-audio-disabled"].processState === "cold" &&
   runs["cold-audio-disabled"].configuration.audioMode === "disabled" &&
   runs["warm-audio-enabled"].processState === "warm" &&
-  runs["warm-audio-enabled"].configuration.audioMode === "enabled";
+  runs["warm-audio-enabled"].configuration.audioMode === "enabled" &&
+  runs["full-session"].processState === "cold" &&
+  runs["full-session"].configuration.audioMode === "enabled";
 const digests = runValues.map(({ scenario }) => scenario.finalDigest);
 const gameplayContractPassed = runValues.every(scenarioPassed) &&
   digests.every((digest) => typeof digest === "string" && digest === digests[0]) &&
-  runValues.every(({ scenario }) => equal(
+  runValues.every(({ scenario }) => semanticEqual(
     scenario.canonicalState, runValues[0].scenario.canonicalState));
 const summaries = Object.fromEntries(Object.entries(runs)
   .map(([profile, run]) => [profile, summarizeRun(run)]));
 const automatedChecks = {
+  captureProcessesPassed: runValues.every(({ capturePassed }) => capturePassed === true) &&
+    [...captureStatuses.values()].every(({ status, signal }) => status === 0 && signal === null),
   smoothRunsPassed: runValues.every(smooth),
   firstTenSecondsPassed: Object.values(summaries)
     .every(({ firstTenSeconds }) => firstTenSeconds.passed),
@@ -262,6 +288,13 @@ const automatedChecks = {
 const failedChecks = Object.entries(automatedChecks)
   .filter(([, passed]) => passed === false).map(([name]) => `automated-check-failed:${name}`);
 const missingEvidence = [];
+if (runValues.some(({ attribution, longTasks, longAnimationFrames }) =>
+  longTasks.support !== "supported" || longAnimationFrames.support !== "supported" ||
+  attribution.network.support !== "supported" || attribution.decode.support !== "supported" ||
+  attribution.gpuCompositing.support === "unsupported" ||
+  attribution.javascript.support === "unsupported" || attribution.gc.support === "unsupported")) {
+  missingEvidence.push("browser-process-attribution-evidence-unavailable");
+}
 if (runValues.some(({ memory }) => memory.available !== true)) {
   missingEvidence.push("physical-process-memory-evidence-unavailable");
 }

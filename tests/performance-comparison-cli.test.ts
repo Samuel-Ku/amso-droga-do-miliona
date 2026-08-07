@@ -71,6 +71,8 @@ function qualificationEvidence(
 ) {
   const audioMode = profile === "cold-audio-disabled" ? "disabled" : "enabled";
   const run: any = evidence(audioMode, "after");
+  run.capturePassed = true;
+  run.artifact.sha256 = "a".repeat(64);
   run.profile = profile;
   run.processState = profile === "warm-audio-enabled" ? "warm" : "cold";
   run.target = { kind: "url", value: "https://runner.example/campaign" };
@@ -212,6 +214,57 @@ describe("performance comparison CLI", () => {
     expect(report.automatedChecks.firstTenSecondsPassed).toBe(false);
     expect(report.automatedChecks.worldTransitionWindowsPassed).toBe(false);
     expect(report.releaseGate.status).toBe("fail");
+  });
+
+  it("fails qualification when a capture process reports failure", () => {
+    const directory = mkdtempSync(path.join(tmpdir(), "amso-cold-start-qualification-"));
+    temporaryDirectories.push(directory);
+    for (const profile of ["cold-audio-enabled", "cold-audio-disabled",
+      "warm-audio-enabled", "full-session"] as const) {
+      const run = qualificationEvidence(profile);
+      if (profile === "cold-audio-enabled") run.capturePassed = false;
+      writeFileSync(path.join(directory, `${profile}.json`), JSON.stringify(run));
+    }
+    const reportPath = path.join(directory, "qualification.json");
+
+    const result = spawnSync(process.execPath, [
+      "scripts/qualify-cold-start.mjs",
+      "--runs-dir", directory,
+      "--json-out", reportPath,
+      "--markdown-out", path.join(directory, "qualification.md")
+    ], { cwd: process.cwd(), encoding: "utf8" });
+
+    expect(result.status).toBe(1);
+    const report = JSON.parse(readFileSync(reportPath, "utf8"));
+    expect(report.automatedChecks.captureProcessesPassed).toBe(false);
+    expect(report.releaseGate.reasons).toContain(
+      "automated-check-failed:captureProcessesPassed"
+    );
+  });
+
+  it("rejects a full-session run with the wrong process mode", () => {
+    const directory = mkdtempSync(path.join(tmpdir(), "amso-cold-start-qualification-"));
+    temporaryDirectories.push(directory);
+    for (const profile of ["cold-audio-enabled", "cold-audio-disabled",
+      "warm-audio-enabled", "full-session"] as const) {
+      const run = qualificationEvidence(profile);
+      if (profile === "full-session") run.processState = "warm";
+      writeFileSync(path.join(directory, `${profile}.json`), JSON.stringify(run));
+    }
+    const reportPath = path.join(directory, "qualification.json");
+
+    const result = spawnSync(process.execPath, [
+      "scripts/qualify-cold-start.mjs",
+      "--runs-dir", directory,
+      "--json-out", reportPath,
+      "--markdown-out", path.join(directory, "qualification.md")
+    ], { cwd: process.cwd(), encoding: "utf8" });
+
+    expect(result.status).toBe(1);
+    expect(JSON.parse(readFileSync(reportPath, "utf8"))).toMatchObject({
+      comparable: false,
+      releaseGate: { status: "fail" }
+    });
   });
 
   it("writes a failed gate when required cold-process evidence is missing", () => {
