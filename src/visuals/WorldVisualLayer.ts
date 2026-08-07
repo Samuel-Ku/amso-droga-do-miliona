@@ -640,10 +640,12 @@ export class WorldVisualLayer {
     }
     this.panelPreparationScheduled = true;
     const path = this.scheduledPreloadPath;
-    const run = (): void => {
+    const run = (deadline?: IdleDeadline): void => {
       this.panelPreparationScheduled = false;
       if (this.destroyed) return;
       const needsIdleLease = this.host.dataset.phase === "game" && !this.paused;
+      if (needsIdleLease && deadline !== undefined && !deadline.didTimeout &&
+          deadline.timeRemaining() < 8) return;
       this.idlePreparationLease = needsIdleLease;
       const preloadOnly = this.preparedPanelAsset !== null;
       if (this.scheduledPreloadPath !== path) {
@@ -670,10 +672,10 @@ export class WorldVisualLayer {
         }
       });
     };
-    if (typeof requestIdle === "function") {
-      requestIdle(run, { timeout: 1_500 });
+    if (activeGameplay && typeof requestIdle === "function") {
+      requestIdle((deadline) => run(deadline));
     } else {
-      view?.setTimeout(run, 50);
+      run();
     }
   }
 

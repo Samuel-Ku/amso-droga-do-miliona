@@ -225,7 +225,13 @@ describe("edge-to-edge gameplay background", () => {
     });
     await vi.waitFor(() => expect(idleCallbacks).toHaveLength(1));
     idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 0 });
+    await Promise.resolve();
+    expect(images).toHaveLength(2);
+    expect(idleCallbacks).toHaveLength(0);
+
+    layer.setPaused(true);
     await vi.waitFor(() => expect(images).toHaveLength(3));
+    layer.setPaused(false);
     expect(host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
       ?.dataset.assetPath).toContain("world-02-order-process");
 
@@ -768,10 +774,9 @@ describe("edge-to-edge gameplay background", () => {
     expect(panelDecode).toHaveBeenCalledTimes(decodeCountBeforeGameplay);
   });
 
-  it("schedules sequential panel warmup through requestIdleCallback when available", async () => {
-    let idleCallback: IdleRequestCallback | undefined;
+  it("starts sequential panel warmup immediately outside active gameplay", async () => {
     const requestIdleCallback = vi.fn((callback: IdleRequestCallback) => {
-      idleCallback = callback;
+      void callback;
       return 1;
     });
     vi.stubGlobal("requestIdleCallback", requestIdleCallback);
@@ -783,10 +788,8 @@ describe("edge-to-edge gameplay background", () => {
     images[0]!.dispatchEvent(new Event("load"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
 
-    expect(requestIdleCallback).toHaveBeenCalledOnce();
-    expect(images).toHaveLength(1);
-    idleCallback?.({ didTimeout: false, timeRemaining: () => 50 });
-    await vi.waitFor(() => expect(images).toHaveLength(2));
+    expect(requestIdleCallback).not.toHaveBeenCalled();
+    expect(images).toHaveLength(2);
     expect(images[1]!.src).toContain("world-02-order-process");
   });
 
