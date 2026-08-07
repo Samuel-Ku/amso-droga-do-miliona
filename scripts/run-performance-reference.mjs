@@ -12,7 +12,10 @@ const usage = `Usage: node scripts/run-performance-reference.mjs [options]
 
 Options:
   --artifact PATH                  Autonomous HTML to profile
+  --url URL                        Deployed autonomous HTML to profile
   --audio enabled|disabled         Audio mode for this run
+  --process cold|warm              Browser-process state for the measured run
+  --profile cold-audio-enabled|cold-audio-disabled|warm-audio-enabled|full-session
   --variant before|after           Comparison label
   --output PATH                    Write machine-readable evidence JSON
   --help                           Show this help
@@ -28,12 +31,21 @@ if (process.argv.includes("--help")) {
   process.exit(0);
 }
 
-const artifactPath = path.resolve(root, option("artifact", "droga-do-miliona-qa.html"));
+const deploymentUrl = option("url");
+const artifactPath = deploymentUrl === undefined
+  ? path.resolve(root, option("artifact", "droga-do-miliona-qa.html"))
+  : null;
 const audioMode = option("audio", "enabled");
+const processState = option("process", "cold");
+const profile = option("profile", "full-session");
 const variant = option("variant", "after");
 const outputPath = option("output");
 if (!(["enabled", "disabled"].includes(audioMode)) ||
-    !(["before", "after"].includes(variant))) {
+    !(["before", "after"].includes(variant)) ||
+    !(["cold", "warm"].includes(processState)) ||
+    !(["cold-audio-enabled", "cold-audio-disabled", "warm-audio-enabled",
+      "full-session"].includes(profile)) ||
+    (deploymentUrl !== undefined && option("artifact") !== undefined)) {
   console.error(usage);
   process.exit(1);
 }
@@ -52,10 +64,13 @@ function rounded(value) {
   return value === null ? null : Math.round(value * 1_000) / 1_000;
 }
 
-if (!fs.existsSync(artifactPath)) {
+if (artifactPath !== null && !fs.existsSync(artifactPath)) {
   console.error("performance scenario failed: autonomous HTML artifact is missing");
   process.exit(1);
 }
+const targetUrl = deploymentUrl === undefined
+  ? new URL(pathToFileURL(artifactPath))
+  : new URL(deploymentUrl);
 
 const systemChromeCandidates = process.platform === "darwin"
   ? ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"]
@@ -87,7 +102,6 @@ try {
     hardwareConcurrency: navigator.hardwareConcurrency ?? null,
     deviceMemoryGiB: navigator.deviceMemory ?? null
   }));
-  const navigationStartedAt = Date.now();
   const consoleErrors = [];
   const externalRequests = [];
   page.on("console", (message) => {
@@ -96,7 +110,9 @@ try {
   page.on("pageerror", (error) => consoleErrors.push(error.message));
   page.on("request", (request) => {
     const protocol = new URL(request.url()).protocol;
-    if (protocol === "http:" || protocol === "https:") {
+    const expectedNavigation = deploymentUrl !== undefined && request.isNavigationRequest() &&
+      new URL(request.url()).origin === targetUrl.origin;
+    if ((protocol === "http:" || protocol === "https:") && !expectedNavigation) {
       externalRequests.push(request.url());
     }
   });
@@ -109,7 +125,14 @@ try {
       maxActiveFrameMs: 0,
       decodeTimings: [],
       worldTransitions: [],
-      qualityHistory: [{ level: "full", atMs: 0, reason: "force-full" }]
+      qualityHistory: [{ level: "full", atMs: 0, reason: "force-full" }],
+      longTasks: { support: "unsupported", count: 0, totalDurationMs: 0,
+        maxDurationMs: 0, entries: [] },
+      longAnimationFrames: { support: "unsupported", count: 0,
+        totalBlockingDurationMs: 0, entries: [] },
+      dom: { initialNodeCount: 0, maxNodeCount: 0, finalNodeCount: 0,
+        addedNodeCount: 0, removedNodeCount: 0, samples: [] },
+      memorySamples: []
     };
     const isActiveGameplay = () => {
       const worldVisual = document.querySelector("[data-campaign-world-visual]");
@@ -151,6 +174,49 @@ try {
         throw error;
       }
     };
+    const supportedEntries = PerformanceObserver.supportedEntryTypes ?? [];
+    if (supportedEntries.includes("longtask")) {
+      window.__performanceScenarioRuntime.longTasks.support = "supported";
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          const summary = window.__performanceScenarioRuntime.longTasks;
+          summary.count += 1;
+          summary.totalDurationMs += entry.duration;
+          summary.maxDurationMs = Math.max(summary.maxDurationMs, entry.duration);
+          if (summary.entries.length < 128) {
+            summary.entries.push({ startedAtMs: entry.startTime, durationMs: entry.duration,
+              active: isActiveGameplay() });
+          }
+        }
+      }).observe({ entryTypes: ["longtask"] });
+    }
+    if (supportedEntries.includes("long-animation-frame")) {
+      window.__performanceScenarioRuntime.longAnimationFrames.support = "supported";
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          const summary = window.__performanceScenarioRuntime.longAnimationFrames;
+          const scripts = Array.from(entry.scripts ?? []).map((script) => ({
+            durationMs: script.duration ?? 0,
+            executionStartMs: script.executionStart ?? null,
+            invokerType: script.invokerType ?? null,
+            source: script.sourceFunctionName || script.sourceURL || "anonymous"
+          }));
+          summary.count += 1;
+          summary.totalBlockingDurationMs += entry.blockingDuration ?? 0;
+          if (summary.entries.length < 128) {
+            summary.entries.push({
+              startedAtMs: entry.startTime,
+              durationMs: entry.duration,
+              blockingDurationMs: entry.blockingDuration ?? 0,
+              renderStartMs: entry.renderStart ?? null,
+              styleAndLayoutStartMs: entry.styleAndLayoutStart ?? null,
+              scripts,
+              active: isActiveGameplay()
+            });
+          }
+        }
+      }).observe({ entryTypes: ["long-animation-frame"] });
+    }
     let previousActiveFrame = null;
     const observeFrame = (timestamp) => {
       const active = document.visibilityState === "visible" && isActiveGameplay();
@@ -174,6 +240,29 @@ try {
     };
     requestAnimationFrame(observeFrame);
     document.addEventListener("DOMContentLoaded", () => {
+      const runtime = window.__performanceScenarioRuntime;
+      const countNodes = () => document.getElementsByTagName("*").length;
+      runtime.dom.initialNodeCount = countNodes();
+      runtime.dom.maxNodeCount = runtime.dom.initialNodeCount;
+      const sampleRuntime = () => {
+        const nodeCount = countNodes();
+        runtime.dom.finalNodeCount = nodeCount;
+        runtime.dom.maxNodeCount = Math.max(runtime.dom.maxNodeCount, nodeCount);
+        if (runtime.dom.samples.length < 128) runtime.dom.samples.push(nodeCount);
+        const heap = performance.memory?.usedJSHeapSize;
+        if (Number.isFinite(heap) && runtime.memorySamples.length < 128) {
+          runtime.memorySamples.push(heap);
+        }
+      };
+      sampleRuntime();
+      setInterval(sampleRuntime, 1_000);
+      new MutationObserver((records) => {
+        for (const record of records) {
+          runtime.dom.addedNodeCount += record.addedNodes.length;
+          runtime.dom.removedNodeCount += record.removedNodes.length;
+        }
+        runtime.dom.maxNodeCount = Math.max(runtime.dom.maxNodeCount, countNodes());
+      }).observe(document.documentElement, { childList: true, subtree: true });
       const worldVisual = document.querySelector("[data-campaign-world-visual]");
       if (!(worldVisual instanceof HTMLElement)) return;
       let previousWorldId = worldVisual.dataset.worldId ?? null;
@@ -191,13 +280,19 @@ try {
     }, { once: true });
   });
 
-  const url = new URL(pathToFileURL(artifactPath));
+  const url = new URL(targetUrl);
   url.searchParams.set("qa", "performance");
   url.searchParams.set("scenario", "performance-reference-v1");
   url.searchParams.set("quality", "force-full");
   url.searchParams.set("motion", "system");
   url.searchParams.set("audio", audioMode);
   url.searchParams.set("dpr", "1");
+  if (processState === "warm") {
+    await page.goto(url.href, { waitUntil: "load", timeout: 30_000 });
+    await page.waitForSelector("[data-campaign-landing-actions] button", { timeout: 30_000 });
+    await page.goto("about:blank");
+  }
+  const navigationStartedAt = Date.now();
   await page.goto(url.href, { waitUntil: "load", timeout: 30_000 });
   await page.waitForSelector("[data-campaign-landing-actions] button", {
     timeout: 30_000
@@ -231,23 +326,63 @@ try {
     }
   }
 
-  const runtime = await page.evaluate(() => window.__performanceScenarioRuntime);
+  const runtime = await page.evaluate(() => {
+    const runtime = window.__performanceScenarioRuntime;
+    runtime.dom.finalNodeCount = document.getElementsByTagName("*").length;
+    runtime.resourceTimings = performance.getEntriesByType("resource").map((entry) => {
+      let resource = entry.name;
+      try {
+        const url = new URL(entry.name);
+        resource = `${url.origin}${url.pathname}`;
+      } catch {
+        resource = entry.name.split(",", 1)[0];
+      }
+      return {
+        resource,
+        initiatorType: entry.initiatorType,
+        startedAtMs: entry.startTime,
+        durationMs: entry.duration,
+        transferSizeBytes: entry.transferSize ?? 0,
+        decodedBodySizeBytes: entry.decodedBodySize ?? 0
+      };
+    });
+    return runtime;
+  });
   const finalJsHeapBytes = await page.evaluate(() =>
     "memory" in performance && Number.isFinite(performance.memory?.usedJSHeapSize)
       ? performance.memory.usedJSHeapSize
       : null
   );
   const intervals = runtime.activeFrameIntervals;
+  const scriptDurationMs = runtime.longAnimationFrames.entries.reduce((total, entry) =>
+    total + entry.scripts.reduce((nested, script) => nested + script.durationMs, 0), 0);
+  const renderingProxyDurationMs = runtime.longAnimationFrames.entries.reduce((total, entry) => {
+    const nestedScriptDuration = entry.scripts.reduce((nested, script) =>
+      nested + script.durationMs, 0);
+    return total + Math.max(0, entry.durationMs - nestedScriptDuration);
+  }, 0);
+  const resourceDurationMs = runtime.resourceTimings.reduce((total, entry) =>
+    total + entry.durationMs, 0);
+  const transferSizeBytes = runtime.resourceTimings.reduce((total, entry) =>
+    total + entry.transferSizeBytes, 0);
+  const decodeDurationMs = runtime.decodeTimings.reduce((total, entry) =>
+    total + entry.durationMs, 0);
   const checkpointsPassed = Array.isArray(report?.scenarioCheckpoints) &&
     report.scenarioCheckpoints.length > 1 &&
     report.scenarioCheckpoints.every(({ passed }) => passed === true);
   const evidence = {
     schema: "amso-performance-run-v1",
     variant,
+    profile,
+    processState,
+    target: deploymentUrl === undefined
+      ? { kind: "artifact", value: path.basename(artifactPath) }
+      : { kind: "url", value: targetUrl.href },
     artifact: {
-      name: path.basename(artifactPath),
-      bytes: fs.statSync(artifactPath).size,
-      sha256: createHash("sha256").update(fs.readFileSync(artifactPath)).digest("hex")
+      name: artifactPath === null ? targetUrl.href : path.basename(artifactPath),
+      bytes: artifactPath === null ? null : fs.statSync(artifactPath).size,
+      sha256: artifactPath === null ? null :
+        createHash("sha256").update(fs.readFileSync(artifactPath)).digest("hex")
     },
     configuration: {
       scenarioId: report?.qaRunConfiguration?.scenarioId ?? "performance-reference-v1",
@@ -277,8 +412,8 @@ try {
         headless: true
       },
       profiler: {
-        name: "playwright-init-script",
-        version: 1
+        name: "playwright-browser-attribution",
+        version: 2
       },
       hardwareConcurrency: browserRuntime.hardwareConcurrency,
       deviceMemoryGiB: browserRuntime.deviceMemoryGiB
@@ -290,12 +425,30 @@ try {
       p99Ms: rounded(percentile(intervals, 0.99)),
       maxMs: rounded(intervals.length === 0 ? null : Math.max(...intervals)),
       over33Ms: intervals.filter((interval) => interval > 33).length,
+      over50Ms: intervals.filter((interval) => interval > 50).length,
       over100Ms: intervals.filter((interval) => interval > 100).length
     },
     frameTimeline: runtime.activeFrameTimeline,
     qualityHistory: runtime.qualityHistory,
     decodeTimings: runtime.decodeTimings,
     worldTransitions: runtime.worldTransitions,
+    longTasks: runtime.longTasks,
+    longAnimationFrames: runtime.longAnimationFrames,
+    resourceTimings: runtime.resourceTimings,
+    attribution: {
+      network: { support: "supported", durationMs: rounded(resourceDurationMs),
+        transferSizeBytes },
+      decode: { support: "supported", durationMs: rounded(decodeDurationMs) },
+      gpuCompositing: { support: runtime.longAnimationFrames.support === "supported"
+        ? "proxy" : "unsupported", durationMs: runtime.longAnimationFrames.support === "supported"
+          ? rounded(renderingProxyDurationMs) : null },
+      javascript: { support: runtime.longAnimationFrames.support === "supported"
+        ? "proxy" : runtime.longTasks.support, durationMs: rounded(
+          scriptDurationMs || runtime.longTasks.totalDurationMs) },
+      gc: { support: "unsupported", durationMs: null,
+        reason: "browser-process-trace-required" }
+    },
+    dom: runtime.dom,
     scenario: {
       checkpointsPassed,
       coveragePassed: report?.scenarioValidation?.coveragePassed === true,
@@ -312,7 +465,8 @@ try {
       available: false,
       reason: "physical-device-process-memory-required",
       auxiliaryJsHeapStartBytes: initialJsHeapBytes,
-      auxiliaryJsHeapEndBytes: finalJsHeapBytes
+      auxiliaryJsHeapEndBytes: finalJsHeapBytes,
+      samples: runtime.memorySamples
     },
     offlineProductionParityPassed: null,
     visualFixturesPassed: null,
@@ -327,6 +481,8 @@ try {
       output: absoluteOutputPath,
       variant,
       audioMode,
+      profile,
+      processState,
       frames: evidence.frames,
       activeDecodeStarts: runtime.activeDecodeStarts,
       worldTransitions: evidence.worldTransitions,

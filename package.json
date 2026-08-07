@@ -12,6 +12,7 @@
     "check:localization": "node scripts/check-localization-release.mjs",
     "check:performance-scenario": "npm run build:single && node scripts/run-performance-reference.mjs",
     "check:performance-comparison": "node scripts/compare-performance-evidence.mjs",
+    "check:cold-start-qualification": "node scripts/qualify-cold-start.mjs",
     "check:performance-release": "node scripts/check-performance-release.mjs --require-evidence",
     "build:frames": "node scripts/make-comprehension-frame-review.mjs",
     "build:all": "npm run build && npm run build:single && npm run build:frames",

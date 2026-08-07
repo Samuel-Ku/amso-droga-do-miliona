@@ -65,6 +65,42 @@ function evidence(audioMode: "enabled" | "disabled", variant: "before" | "after"
   };
 }
 
+function qualificationEvidence(
+  profile: "cold-audio-enabled" | "cold-audio-disabled" |
+    "warm-audio-enabled" | "full-session"
+) {
+  const audioMode = profile === "cold-audio-disabled" ? "disabled" : "enabled";
+  const run: any = evidence(audioMode, "after");
+  run.profile = profile;
+  run.processState = profile === "warm-audio-enabled" ? "warm" : "cold";
+  run.target = { kind: "url", value: "https://runner.example/campaign" };
+  run.frames.over50Ms = 0;
+  run.frameTimeline = [
+    { atMs: 5_000, intervalMs: 16.7 },
+    { atMs: 23_900, intervalMs: 16.7 },
+    { atMs: 24_100, intervalMs: 17.0 },
+    { atMs: 47_900, intervalMs: 16.7 },
+    { atMs: 48_100, intervalMs: 17.1 }
+  ];
+  run.longTasks = { support: "supported", count: 0, totalDurationMs: 0,
+    maxDurationMs: 0, entries: [] };
+  run.longAnimationFrames = { support: "supported", count: 0,
+    totalBlockingDurationMs: 0, entries: [] };
+  run.resourceTimings = [];
+  run.attribution = {
+    network: { support: "supported", transferSizeBytes: 0, durationMs: 0 },
+    decode: { support: "supported", durationMs: 0 },
+    gpuCompositing: { support: "proxy", durationMs: 0 },
+    javascript: { support: "proxy", durationMs: 0 },
+    gc: { support: "unsupported", durationMs: null }
+  };
+  run.dom = { initialNodeCount: 120, maxNodeCount: 124, finalNodeCount: 124,
+    addedNodeCount: 4, removedNodeCount: 0 };
+  run.memory.samples = [100, 102, 101, 103];
+  run.scenario.session = { durationSeconds: 60, replayValid: true, inputQueueOverflows: 0 };
+  return run;
+}
+
 afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) {
     rmSync(directory, { recursive: true, force: true });
@@ -80,9 +116,127 @@ describe("performance comparison CLI", () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("--artifact");
+    expect(result.stdout).toContain("--url");
     expect(result.stdout).toContain("--audio enabled|disabled");
+    expect(result.stdout).toContain("--process cold|warm");
+    expect(result.stdout).toContain("--profile cold-audio-enabled|cold-audio-disabled|warm-audio-enabled|full-session");
     expect(result.stdout).toContain("--output");
     expect(result.stdout).toContain("--variant before|after");
+  });
+
+  it("plans all four qualification profiles against one deployment", () => {
+    const result = spawnSync(process.execPath, [
+      "scripts/qualify-cold-start.mjs",
+      "--target", "https://runner.example/campaign",
+      "--output-dir", "/tmp/amso-cold-start",
+      "--dry-run"
+    ], { cwd: process.cwd(), encoding: "utf8" });
+
+    expect(result.status).toBe(0);
+    const plan = JSON.parse(result.stdout);
+    expect(plan.target).toBe("https://runner.example/campaign");
+    expect(plan.runs.map(({ profile }: { profile: string }) => profile)).toEqual([
+      "cold-audio-enabled",
+      "cold-audio-disabled",
+      "warm-audio-enabled",
+      "full-session"
+    ]);
+    expect(plan.runs.every(({ target }: { target: string }) =>
+      target === plan.target)).toBe(true);
+  });
+
+  it("qualifies four comparable runs while leaving physical evidence incomplete", () => {
+    const directory = mkdtempSync(path.join(tmpdir(), "amso-cold-start-qualification-"));
+    temporaryDirectories.push(directory);
+    for (const profile of ["cold-audio-enabled", "cold-audio-disabled",
+      "warm-audio-enabled", "full-session"] as const) {
+      writeFileSync(path.join(directory, `${profile}.json`),
+        JSON.stringify(qualificationEvidence(profile)));
+    }
+    const reportPath = path.join(directory, "qualification.json");
+    const markdownPath = path.join(directory, "qualification.md");
+
+    const result = spawnSync(process.execPath, [
+      "scripts/qualify-cold-start.mjs",
+      "--runs-dir", directory,
+      "--json-out", reportPath,
+      "--markdown-out", markdownPath
+    ], { cwd: process.cwd(), encoding: "utf8" });
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(readFileSync(reportPath, "utf8"))).toMatchObject({
+      schema: "amso-cold-start-qualification-v1",
+      comparable: true,
+      automatedChecks: {
+        smoothRunsPassed: true,
+        firstTenSecondsPassed: true,
+        worldTransitionWindowsPassed: true,
+        fullSessionPassed: true,
+        diagnosticsPassed: true,
+        domGrowthPassed: true,
+        gameplayContractPassed: true
+      },
+      releaseGate: { status: "incomplete" }
+    });
+    const markdown = readFileSync(markdownPath, "utf8");
+    expect(markdown).toContain("Long animation frames");
+    expect(markdown).toContain("GPU/compositing");
+    expect(markdown).toContain("Release gate: incomplete");
+  });
+
+  it("fails qualification on a cold-start spike or decode at either world transition", () => {
+    const directory = mkdtempSync(path.join(tmpdir(), "amso-cold-start-qualification-"));
+    temporaryDirectories.push(directory);
+    for (const profile of ["cold-audio-enabled", "cold-audio-disabled",
+      "warm-audio-enabled", "full-session"] as const) {
+      const run = qualificationEvidence(profile);
+      if (profile === "cold-audio-enabled") {
+        run.frameTimeline.push({ atMs: 6_000, intervalMs: 66.7 });
+      }
+      if (profile === "full-session") {
+        run.decodeTimings.push({ active: true, startedAtMs: 24_100, durationMs: 30 });
+      }
+      writeFileSync(path.join(directory, `${profile}.json`), JSON.stringify(run));
+    }
+    const reportPath = path.join(directory, "qualification.json");
+
+    const result = spawnSync(process.execPath, [
+      "scripts/qualify-cold-start.mjs",
+      "--runs-dir", directory,
+      "--json-out", reportPath,
+      "--markdown-out", path.join(directory, "qualification.md")
+    ], { cwd: process.cwd(), encoding: "utf8" });
+
+    expect(result.status).toBe(1);
+    const report = JSON.parse(readFileSync(reportPath, "utf8"));
+    expect(report.automatedChecks.firstTenSecondsPassed).toBe(false);
+    expect(report.automatedChecks.worldTransitionWindowsPassed).toBe(false);
+    expect(report.releaseGate.status).toBe("fail");
+  });
+
+  it("writes a failed gate when required cold-process evidence is missing", () => {
+    const directory = mkdtempSync(path.join(tmpdir(), "amso-cold-start-qualification-"));
+    temporaryDirectories.push(directory);
+    for (const profile of ["cold-audio-enabled", "warm-audio-enabled",
+      "full-session"] as const) {
+      writeFileSync(path.join(directory, `${profile}.json`),
+        JSON.stringify(qualificationEvidence(profile)));
+    }
+    const reportPath = path.join(directory, "qualification.json");
+
+    const result = spawnSync(process.execPath, [
+      "scripts/qualify-cold-start.mjs",
+      "--runs-dir", directory,
+      "--json-out", reportPath,
+      "--markdown-out", path.join(directory, "qualification.md")
+    ], { cwd: process.cwd(), encoding: "utf8" });
+
+    expect(result.status).toBe(1);
+    const report = JSON.parse(readFileSync(reportPath, "utf8"));
+    expect(report.releaseGate.status).toBe("fail");
+    expect(report.releaseGate.reasons).toContain(
+      "required-profile-missing:cold-audio-disabled"
+    );
   });
 
   it("writes a comparable report while keeping physical-device sign-off incomplete", () => {
