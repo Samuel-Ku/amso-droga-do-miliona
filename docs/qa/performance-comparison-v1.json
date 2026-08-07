@@ -1,0 +1,1069 @@
+{
+  "schema": "amso-performance-comparison-v1",
+  "comparable": true,
+  "configuration": {
+    "scenarioId": "performance-reference-v1",
+    "scenarioConfigVersion": "runner-config-v4",
+    "seed": 1297748481,
+    "inputTraceDigest": "fnv1a32:1e8a315d",
+    "challengeWorldDurationSeconds": 24,
+    "viewport": {
+      "width": 960,
+      "height": 540
+    },
+    "dpr": 1,
+    "quality": "force-full",
+    "motion": "system",
+    "environment": {
+      "host": {
+        "platform": "darwin",
+        "architecture": "arm64",
+        "release": "25.5.0",
+        "cpuModel": "Apple M1 Pro"
+      },
+      "browser": {
+        "engine": "chromium",
+        "version": "151.0.7922.76",
+        "executableSource": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+        "headless": true
+      },
+      "profiler": {
+        "name": "playwright-init-script",
+        "version": 1
+      },
+      "hardwareConcurrency": 10,
+      "deviceMemoryGiB": null
+    }
+  },
+  "runs": {
+    "before": {
+      "schema": "amso-performance-run-v1",
+      "variant": "before",
+      "artifact": {
+        "name": "droga-do-miliona-qa.html",
+        "bytes": 17771314,
+        "sha256": "e332633f6bb740437ba8fb8c2d7ab5ebe676bceeb95099e56b5b61cb8410de64"
+      },
+      "configuration": {
+        "scenarioId": "performance-reference-v1",
+        "scenarioConfigVersion": "runner-config-v4",
+        "seed": 1297748481,
+        "inputTraceDigest": "fnv1a32:1e8a315d",
+        "challengeWorldDurationSeconds": 24,
+        "viewport": {
+          "width": 960,
+          "height": 540
+        },
+        "dpr": 1,
+        "quality": "force-full",
+        "motion": "system",
+        "audioMode": "enabled"
+      },
+      "environment": {
+        "host": {
+          "platform": "darwin",
+          "architecture": "arm64",
+          "release": "25.5.0",
+          "cpuModel": "Apple M1 Pro"
+        },
+        "browser": {
+          "engine": "chromium",
+          "version": "151.0.7922.76",
+          "executableSource": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+          "headless": true
+        },
+        "profiler": {
+          "name": "playwright-init-script",
+          "version": 1
+        },
+        "hardwareConcurrency": 10,
+        "deviceMemoryGiB": null
+      },
+      "frames": {
+        "sampleCount": 7242,
+        "p50Ms": 8.3,
+        "p95Ms": 9.2,
+        "p99Ms": 9.3,
+        "maxMs": 33.6,
+        "over33Ms": 1,
+        "over100Ms": 0
+      },
+      "qualityHistory": [
+        {
+          "level": "full",
+          "atMs": 0,
+          "reason": "force-full"
+        }
+      ],
+      "decodeTimings": [
+        {
+          "startedAtMs": 866.8999999761581,
+          "durationMs": 49.5,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 916.8999999761581,
+          "durationMs": 6.200000047683716,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": "first-mile",
+          "panel": "current"
+        },
+        {
+          "startedAtMs": 916.8999999761581,
+          "durationMs": 10.800000071525574,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": "first-mile",
+          "panel": "next"
+        },
+        {
+          "startedAtMs": 943.2999999523163,
+          "durationMs": 44.700000047683716,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1292,
+          "durationMs": 12.200000047683716,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1292.1000000238419,
+          "durationMs": 12.199999928474426,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1292.7000000476837,
+          "durationMs": 68.79999995231628,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1292.7000000476837,
+          "durationMs": 69,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1293.2999999523163,
+          "durationMs": 68.40000009536743,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1294.3999999761581,
+          "durationMs": 69,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1295,
+          "durationMs": 68.60000002384186,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1295.3999999761581,
+          "durationMs": 68.30000007152557,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1295.7000000476837,
+          "durationMs": 68,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1295.8999999761581,
+          "durationMs": 67.89999997615814,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1296.1000000238419,
+          "durationMs": 67.79999995231628,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1296.6000000238419,
+          "durationMs": 68.89999997615814,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1364.7999999523163,
+          "durationMs": 6.300000071525574,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1371.3999999761581,
+          "durationMs": 1.399999976158142,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1373.3999999761581,
+          "durationMs": 15.300000071525574,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1400.8999999761581,
+          "durationMs": 38.10000002384186,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1445.5,
+          "durationMs": 38.39999997615814,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1491.1000000238419,
+          "durationMs": 32.699999928474426,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1530.6000000238419,
+          "durationMs": 37.5,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1574.7000000476837,
+          "durationMs": 26.799999952316284,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        }
+      ],
+      "worldTransitions": [
+        {
+          "worldId": "order-process",
+          "atMs": 26795.100000023842,
+          "phase": "game",
+          "paused": false
+        },
+        {
+          "worldId": "quality-service",
+          "atMs": 50734.299999952316,
+          "phase": "game",
+          "paused": false
+        }
+      ],
+      "diagnostics": {
+        "consoleErrors": [],
+        "externalRequests": []
+      },
+      "readiness": {
+        "coldStartMs": 996,
+        "criticalReadyMs": 641
+      },
+      "memory": {
+        "available": false,
+        "reason": "physical-device-process-memory-required",
+        "auxiliaryJsHeapStartBytes": 157000000,
+        "auxiliaryJsHeapEndBytes": 157000000
+      },
+      "offlineProductionParityPassed": null,
+      "visualFixturesPassed": null,
+      "view": "game",
+      "longFrames": [
+        {
+          "atMs": 46291.7,
+          "intervalMs": 33.599999999998545
+        }
+      ],
+      "qualityServiceWindow": {
+        "transitionAtMs": 50734.299999952316,
+        "sampleCount": 121,
+        "maxFrameMs": 9.5,
+        "activeDecodeCount": 0
+      },
+      "scenario": {
+        "checkpointsPassed": true,
+        "coveragePassed": true,
+        "digestPassed": true,
+        "finalDigest": "fnv1a32:232d8be0",
+        "replayValid": true,
+        "inputQueueOverflows": 0,
+        "session": {
+          "durationSeconds": 59.86,
+          "collisions": 1,
+          "ordersCollected": 78,
+          "replayValid": true,
+          "inputQueueOverflows": 0
+        }
+      }
+    },
+    "after": {
+      "schema": "amso-performance-run-v1",
+      "variant": "after",
+      "artifact": {
+        "name": "droga-do-miliona-qa.html",
+        "bytes": 17790958,
+        "sha256": "d4906befd8388acbfba0f4427c869add0548a5ecf04e5320c11f88e139f31e64"
+      },
+      "configuration": {
+        "scenarioId": "performance-reference-v1",
+        "scenarioConfigVersion": "runner-config-v4",
+        "seed": 1297748481,
+        "inputTraceDigest": "fnv1a32:1e8a315d",
+        "challengeWorldDurationSeconds": 24,
+        "viewport": {
+          "width": 960,
+          "height": 540
+        },
+        "dpr": 1,
+        "quality": "force-full",
+        "motion": "system",
+        "audioMode": "enabled"
+      },
+      "environment": {
+        "host": {
+          "platform": "darwin",
+          "architecture": "arm64",
+          "release": "25.5.0",
+          "cpuModel": "Apple M1 Pro"
+        },
+        "browser": {
+          "engine": "chromium",
+          "version": "151.0.7922.76",
+          "executableSource": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+          "headless": true
+        },
+        "profiler": {
+          "name": "playwright-init-script",
+          "version": 1
+        },
+        "hardwareConcurrency": 10,
+        "deviceMemoryGiB": null
+      },
+      "frames": {
+        "sampleCount": 7274,
+        "p50Ms": 8.1,
+        "p95Ms": 9.3,
+        "p99Ms": 10.8,
+        "maxMs": 26.9,
+        "over33Ms": 0,
+        "over100Ms": 0
+      },
+      "qualityHistory": [
+        {
+          "level": "full",
+          "atMs": 0,
+          "reason": "force-full"
+        }
+      ],
+      "decodeTimings": [
+        {
+          "startedAtMs": 750.3000000715256,
+          "durationMs": 71.29999995231628,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 821.8000000715256,
+          "durationMs": 0.6999999284744263,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": "first-mile",
+          "panel": "current"
+        },
+        {
+          "startedAtMs": 821.9000000953674,
+          "durationMs": 4.899999976158142,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": "first-mile",
+          "panel": "next"
+        },
+        {
+          "startedAtMs": 844.8000000715256,
+          "durationMs": 82.69999992847443,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 927.8000000715256,
+          "durationMs": 0.5,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": "order-process",
+          "panel": "staged"
+        },
+        {
+          "startedAtMs": 952.9000000953674,
+          "durationMs": 2.399999976158142,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": "order-process",
+          "panel": "next"
+        },
+        {
+          "startedAtMs": 1313.2000000476837,
+          "durationMs": 11.200000047683716,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1313.3000000715256,
+          "durationMs": 11.100000023841858,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1313.9000000953674,
+          "durationMs": 51.59999990463257,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1313.9000000953674,
+          "durationMs": 51.699999928474426,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1314.5,
+          "durationMs": 51.200000047683716,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1315.7000000476837,
+          "durationMs": 50.10000002384186,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1316.3000000715256,
+          "durationMs": 49.5,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1316.8000000715256,
+          "durationMs": 49,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1316.9000000953674,
+          "durationMs": 49,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1317.2000000476837,
+          "durationMs": 48.700000047683716,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1317.3000000715256,
+          "durationMs": 48.699999928474426,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1317.8000000715256,
+          "durationMs": 49.199999928474426,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1366.6000000238419,
+          "durationMs": 2.399999976158142,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1369.2000000476837,
+          "durationMs": 1.399999976158142,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1371.3000000715256,
+          "durationMs": 13.299999952316284,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1396.5,
+          "durationMs": 34.300000071525574,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1437.2000000476837,
+          "durationMs": 36.700000047683716,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1480.9000000953674,
+          "durationMs": 31.799999952316284,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1519.3000000715256,
+          "durationMs": 35.5,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1561,
+          "durationMs": 26.800000071525574,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 61615.90000009537,
+          "durationMs": 46.799999952316284,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": "quality-service",
+          "panel": "staged"
+        },
+        {
+          "startedAtMs": 61683.40000009537,
+          "durationMs": 0.5,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": "quality-service",
+          "panel": "next"
+        }
+      ],
+      "worldTransitions": [
+        {
+          "worldId": "order-process",
+          "atMs": 26771.700000047684,
+          "phase": "game",
+          "paused": false
+        },
+        {
+          "worldId": "quality-service",
+          "atMs": 50716.90000009537,
+          "phase": "game",
+          "paused": false
+        }
+      ],
+      "diagnostics": {
+        "consoleErrors": [],
+        "externalRequests": []
+      },
+      "readiness": {
+        "coldStartMs": 1008,
+        "criticalReadyMs": 611
+      },
+      "memory": {
+        "available": false,
+        "reason": "physical-device-process-memory-required",
+        "auxiliaryJsHeapStartBytes": 157000000,
+        "auxiliaryJsHeapEndBytes": 157000000
+      },
+      "offlineProductionParityPassed": null,
+      "visualFixturesPassed": null,
+      "view": "game",
+      "longFrames": [],
+      "qualityServiceWindow": {
+        "transitionAtMs": 50716.90000009537,
+        "sampleCount": 121,
+        "maxFrameMs": 11.299999999995634,
+        "activeDecodeCount": 0
+      },
+      "scenario": {
+        "checkpointsPassed": true,
+        "coveragePassed": true,
+        "digestPassed": true,
+        "finalDigest": "fnv1a32:232d8be0",
+        "replayValid": true,
+        "inputQueueOverflows": 0,
+        "session": {
+          "durationSeconds": 59.86,
+          "collisions": 1,
+          "ordersCollected": 78,
+          "replayValid": true,
+          "inputQueueOverflows": 0
+        }
+      }
+    },
+    "audioDisabled": {
+      "schema": "amso-performance-run-v1",
+      "variant": "after",
+      "artifact": {
+        "name": "droga-do-miliona-qa.html",
+        "bytes": 17790958,
+        "sha256": "d4906befd8388acbfba0f4427c869add0548a5ecf04e5320c11f88e139f31e64"
+      },
+      "configuration": {
+        "scenarioId": "performance-reference-v1",
+        "scenarioConfigVersion": "runner-config-v4",
+        "seed": 1297748481,
+        "inputTraceDigest": "fnv1a32:1e8a315d",
+        "challengeWorldDurationSeconds": 24,
+        "viewport": {
+          "width": 960,
+          "height": 540
+        },
+        "dpr": 1,
+        "quality": "force-full",
+        "motion": "system",
+        "audioMode": "disabled"
+      },
+      "environment": {
+        "host": {
+          "platform": "darwin",
+          "architecture": "arm64",
+          "release": "25.5.0",
+          "cpuModel": "Apple M1 Pro"
+        },
+        "browser": {
+          "engine": "chromium",
+          "version": "151.0.7922.76",
+          "executableSource": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+          "headless": true
+        },
+        "profiler": {
+          "name": "playwright-init-script",
+          "version": 1
+        },
+        "hardwareConcurrency": 10,
+        "deviceMemoryGiB": null
+      },
+      "frames": {
+        "sampleCount": 7215,
+        "p50Ms": 8.3,
+        "p95Ms": 9.3,
+        "p99Ms": 9.8,
+        "maxMs": 49.3,
+        "over33Ms": 2,
+        "over100Ms": 0
+      },
+      "qualityHistory": [
+        {
+          "level": "full",
+          "atMs": 0,
+          "reason": "force-full"
+        }
+      ],
+      "decodeTimings": [
+        {
+          "startedAtMs": 719.2000000476837,
+          "durationMs": 36.799999952316284,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 756.2000000476837,
+          "durationMs": 5,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": "first-mile",
+          "panel": "current"
+        },
+        {
+          "startedAtMs": 756.2000000476837,
+          "durationMs": 9.399999976158142,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": "first-mile",
+          "panel": "next"
+        },
+        {
+          "startedAtMs": 778.8000000715256,
+          "durationMs": 43.89999997615814,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 823,
+          "durationMs": 0,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": "order-process",
+          "panel": "staged"
+        },
+        {
+          "startedAtMs": 840.8000000715256,
+          "durationMs": 0.5999999046325684,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": "order-process",
+          "panel": "next"
+        },
+        {
+          "startedAtMs": 882.3000000715256,
+          "durationMs": 10.5,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 882.3000000715256,
+          "durationMs": 10.5,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 882.8999999761581,
+          "durationMs": 60.60000002384186,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 882.8999999761581,
+          "durationMs": 60.700000047683716,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 883.5,
+          "durationMs": 60.10000002384186,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 884.5,
+          "durationMs": 59.300000071525574,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 885,
+          "durationMs": 58.800000071525574,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 885.5,
+          "durationMs": 58.39999997615814,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 885.6000000238419,
+          "durationMs": 58.39999997615814,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 885.8999999761581,
+          "durationMs": 58.10000002384186,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 886.1000000238419,
+          "durationMs": 57.89999997615814,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 886.5,
+          "durationMs": 58.700000047683716,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 944.6000000238419,
+          "durationMs": 2.700000047683716,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 947.3999999761581,
+          "durationMs": 6.800000071525574,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 955,
+          "durationMs": 14.700000047683716,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 981.8999999761581,
+          "durationMs": 34.90000009536743,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1022.8000000715256,
+          "durationMs": 36.09999990463257,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1065.8000000715256,
+          "durationMs": 32,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1104.1000000238419,
+          "durationMs": 36.799999952316284,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 1147.1000000238419,
+          "durationMs": 27.399999976158142,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": null,
+          "panel": null
+        },
+        {
+          "startedAtMs": 61198.800000071526,
+          "durationMs": 44.39999997615814,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": "quality-service",
+          "panel": "staged"
+        },
+        {
+          "startedAtMs": 61263.10000002384,
+          "durationMs": 0.7000000476837158,
+          "active": false,
+          "status": "fulfilled",
+          "worldId": "quality-service",
+          "panel": "next"
+        }
+      ],
+      "worldTransitions": [
+        {
+          "worldId": "order-process",
+          "atMs": 26360.800000071526,
+          "phase": "game",
+          "paused": false
+        },
+        {
+          "worldId": "quality-service",
+          "atMs": 50298.60000002384,
+          "phase": "game",
+          "paused": false
+        }
+      ],
+      "diagnostics": {
+        "consoleErrors": [],
+        "externalRequests": []
+      },
+      "readiness": {
+        "coldStartMs": 855,
+        "criticalReadyMs": 350
+      },
+      "memory": {
+        "available": false,
+        "reason": "physical-device-process-memory-required",
+        "auxiliaryJsHeapStartBytes": 157000000,
+        "auxiliaryJsHeapEndBytes": 157000000
+      },
+      "offlineProductionParityPassed": null,
+      "visualFixturesPassed": null,
+      "view": "game",
+      "longFrames": [
+        {
+          "atMs": 31477,
+          "intervalMs": 49.29999999999927
+        },
+        {
+          "atMs": 45306.9,
+          "intervalMs": 33.400000000001455
+        }
+      ],
+      "qualityServiceWindow": {
+        "transitionAtMs": 50298.60000002384,
+        "sampleCount": 120,
+        "maxFrameMs": 9.30000000000291,
+        "activeDecodeCount": 0
+      },
+      "scenario": {
+        "checkpointsPassed": true,
+        "coveragePassed": true,
+        "digestPassed": true,
+        "finalDigest": "fnv1a32:232d8be0",
+        "replayValid": true,
+        "inputQueueOverflows": 0,
+        "session": {
+          "durationSeconds": 59.86,
+          "collisions": 1,
+          "ordersCollected": 78,
+          "replayValid": true,
+          "inputQueueOverflows": 0
+        }
+      }
+    }
+  },
+  "automatedChecks": {
+    "smoothRunPassed": true,
+    "audioIsolationPassed": true,
+    "gameplayContractPassed": true,
+    "visualContractPassed": null,
+    "diagnosticsPassed": true,
+    "offlineParityPassed": null,
+    "artifactBudgetPassed": true,
+    "artifactRegressionPassed": false,
+    "startBudgetPassed": true,
+    "startRegressionPassed": true
+  },
+  "releaseGate": {
+    "status": "fail",
+    "reasons": [
+      "automated-check-failed:artifactRegressionPassed",
+      "minimum-profile-device-unavailable",
+      "minimum-profile-report-unavailable",
+      "oneplus-report-unavailable",
+      "nokia-report-unavailable",
+      "iphone-safari-report-unavailable",
+      "visual-fixture-evidence-unavailable",
+      "offline-production-parity-evidence-unavailable",
+      "android-memory-evidence-unavailable"
+    ]
+  }
+}

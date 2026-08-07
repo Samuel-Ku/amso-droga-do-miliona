@@ -582,6 +582,8 @@ export class CampaignController {
         qaMode: "performance",
         scenarioId: this.runtime.qa.scenarioId,
         scenarioConfigVersion: PERFORMANCE_REFERENCE_V1.configVersion,
+        seed: PERFORMANCE_REFERENCE_V1.seed,
+        inputTraceDigest: exactDeterminismArtifact(PERFORMANCE_REFERENCE_V1.inputs).digest,
         challengeWorldDurationSeconds:
           PERFORMANCE_REFERENCE_V1.challengeWorldDurationSeconds,
         qualityRequest: this.runtime.qa.quality,
