@@ -120,6 +120,7 @@ export class WorldVisualLayer {
   private readonly panelAssignmentRevisions = new WeakMap<HTMLImageElement, number>();
   private scheduledPreloadPath: string | null = null;
   private scheduledPreloadAsset: DecodedWorldAsset | null = null;
+  private scheduledFallbackWorldId: CampaignWorldId | null = null;
   private preparedPanelAsset: DecodedWorldAsset | null = null;
   private preparedFallbackWorldId: CampaignWorldId | null = null;
   private panelPreparationScheduled = false;
@@ -293,6 +294,7 @@ export class WorldVisualLayer {
     this.clearPendingTransition();
     this.scheduledPreloadPath = null;
     this.scheduledPreloadAsset = null;
+    this.scheduledFallbackWorldId = null;
     this.preparedPanelAsset = null;
     this.preparedFallbackWorldId = null;
     const view = this.host.ownerDocument.defaultView;
@@ -525,7 +527,9 @@ export class WorldVisualLayer {
     this.requestedAssetPath = assetPath;
     const preparedPath = this.preparedPanelAsset?.path ??
       (this.preparedFallbackWorldId === null
-        ? this.scheduledPreloadPath
+        ? (this.scheduledFallbackWorldId === null
+            ? this.scheduledPreloadPath
+            : campaignWorld(this.scheduledFallbackWorldId).assetPath)
         : campaignWorld(this.preparedFallbackWorldId).assetPath);
     if (preparedPath !== null && preparedPath !== assetPath) {
       this.clearPreparedPanel();
@@ -639,6 +643,10 @@ export class WorldVisualLayer {
     const index = CAMPAIGN_WORLDS.findIndex(({ assetPath: candidate }) => candidate === assetPath);
     if (index < 0) return;
     const next = CAMPAIGN_WORLDS[(index + 1) % CAMPAIGN_WORLDS.length];
+    if (next !== undefined && this.scheduledFallbackWorldId === next.worldId) {
+      this.prepareScheduledFallback();
+      return;
+    }
     if (next === undefined || this.preparedPanelAsset?.path === next.assetPath ||
         this.scheduledPreloadPath === next.assetPath) {
       if (this.scheduledPreloadPath === next?.assetPath) this.schedulePreparedPanelWork();
@@ -658,7 +666,7 @@ export class WorldVisualLayer {
         this.scheduledPreloadPath === null || this.panelPreparationScheduled ||
         this.panelPreparationPath !== null) return;
     if (this.scheduledPreloadAsset !== null) {
-      if (!activeGameplay) this.prepareScheduledPanel();
+      this.prepareScheduledPanel();
       return;
     }
     this.panelPreparationScheduled = true;
@@ -682,8 +690,11 @@ export class WorldVisualLayer {
         if (this.host.dataset.phase !== "game" || this.paused) this.prepareScheduledPanel();
       }).catch(() => {
         if (this.scheduledPreloadPath === path) {
+          const failedWorld = CAMPAIGN_WORLDS.find(({ assetPath }) => assetPath === path);
           this.scheduledPreloadPath = null;
           this.scheduledPreloadAsset = null;
+          this.scheduledFallbackWorldId = failedWorld?.worldId ?? null;
+          this.prepareScheduledFallback();
         }
       });
     };
@@ -696,7 +707,10 @@ export class WorldVisualLayer {
 
   private prepareScheduledPanel(): void {
     const asset = this.scheduledPreloadAsset;
-    if (asset === null || !this.isPanelPreparationSafe() || this.panelPreparationPath !== null) {
+    const activeGameplay = this.host.dataset.phase === "game" && !this.paused;
+    const requestIdle = this.host.ownerDocument.defaultView?.requestIdleCallback;
+    if (asset === null || this.panelPreparationPath !== null ||
+        (activeGameplay && typeof requestIdle !== "function")) {
       return;
     }
     if (this.preparedPanelAsset !== null || this.preparedFallbackWorldId !== null) {
@@ -704,7 +718,10 @@ export class WorldVisualLayer {
     }
     const revision = ++this.panelPreparationRevision;
     this.panelPreparationPath = asset.path;
-    void this.drawPrecompositedPanelPair(asset).then((ready) => {
+    const preparation = activeGameplay
+      ? this.drawPrecompositedPanelPairDuringActiveIdle(asset)
+      : this.drawPrecompositedPanelPair(asset);
+    void preparation.then((ready) => {
       if (revision !== this.panelPreparationRevision) {
         return;
       }
@@ -725,6 +742,20 @@ export class WorldVisualLayer {
     });
   }
 
+  private prepareScheduledFallback(): void {
+    const worldId = this.scheduledFallbackWorldId;
+    if (worldId === null || this.preparedPanelAsset !== null ||
+        this.preparedFallbackWorldId !== null) return;
+    void this.runInPanelPreparationWindow(() => {
+      if (this.scheduledFallbackWorldId !== worldId) return false;
+      this.assignFallback(this.panels[1], worldId);
+      this.assignFallback(this.stagedPanel, worldId);
+      this.preparedFallbackWorldId = worldId;
+      this.scheduledFallbackWorldId = null;
+      return true;
+    });
+  }
+
   private resumePanelPreparation(): void {
     if (!this.isPanelPreparationSafe()) {
       this.schedulePreparedPanelWork();
@@ -736,6 +767,10 @@ export class WorldVisualLayer {
     }
     if (this.pendingAsset !== null && !this.pendingPanelPrepared) {
       this.preparePendingPanel();
+      return;
+    }
+    if (this.scheduledFallbackWorldId !== null) {
+      this.prepareScheduledFallback();
       return;
     }
     this.schedulePreparedPanelWork();
@@ -794,6 +829,78 @@ export class WorldVisualLayer {
     return this.drawPrecompositedPanel(this.panels[1], asset);
   }
 
+  private async drawPrecompositedPanelPairDuringActiveIdle(
+    asset: DecodedWorldAsset
+  ): Promise<boolean> {
+    if (!await this.drawPrecompositedPanelDuringActiveIdle(this.stagedPanel, asset)) return false;
+    return this.drawPrecompositedPanelDuringActiveIdle(this.panels[1], asset);
+  }
+
+  private async drawPrecompositedPanelDuringActiveIdle(
+    panel: HTMLImageElement,
+    asset: DecodedWorldAsset
+  ): Promise<boolean> {
+    let assignment = 0;
+    const decoded = await this.runInPanelPreparationWindow(() => {
+      panel.style.willChange = "transform";
+      assignment = this.assignDecodedPanel(panel, asset);
+      panel.hidden = true;
+      return panel.decode().then(() => true, () => false);
+    });
+    if (!decoded) return false;
+    const exposed = await this.runInPanelPreparationWindow(() => {
+      if (!this.isPanelAssignmentCurrent(panel, asset, assignment)) return false;
+      panel.hidden = false;
+      panel.getBoundingClientRect();
+      return true;
+    });
+    if (!exposed) return false;
+    await this.waitForCompositeFrame();
+    await this.waitForCompositeFrame();
+    return this.runInPanelPreparationWindow(() => {
+      if (!this.isPanelAssignmentCurrent(panel, asset, assignment)) {
+        if (assignment === this.panelAssignmentRevisions.get(panel)) panel.hidden = true;
+        return false;
+      }
+      panel.dataset.presentationReady = "true";
+      return true;
+    });
+  }
+
+  private runInPanelPreparationWindow(
+    operation: () => boolean | Promise<boolean>
+  ): Promise<boolean> {
+    const view = this.host.ownerDocument.defaultView;
+    if (this.isPanelPreparationSafe()) return Promise.resolve(operation());
+    if (view === null || typeof view.requestIdleCallback !== "function") {
+      return Promise.resolve(false);
+    }
+    return new Promise((resolve) => {
+      const attempt = (): void => {
+        if (this.destroyed) {
+          resolve(false);
+          return;
+        }
+        if (this.isPanelPreparationSafe()) {
+          Promise.resolve(operation()).then(resolve, () => resolve(false));
+          return;
+        }
+        view.requestIdleCallback((deadline) => {
+          if (!deadline.didTimeout && deadline.timeRemaining() < 8) {
+            view.setTimeout(attempt, 250);
+            return;
+          }
+          try {
+            Promise.resolve(operation()).then(resolve, () => resolve(false));
+          } catch {
+            resolve(false);
+          }
+        });
+      };
+      attempt();
+    });
+  }
+
   private preparedPanelsMatch(assetPath: string): boolean {
     return this.panels[1].dataset.assetPath === assetPath && !this.panels[1].hidden &&
       this.stagedPanel.dataset.assetPath === assetPath && !this.stagedPanel.hidden;
@@ -837,6 +944,7 @@ export class WorldVisualLayer {
     this.preparedFallbackWorldId = null;
     this.scheduledPreloadPath = null;
     this.scheduledPreloadAsset = null;
+    this.scheduledFallbackWorldId = null;
     this.panelPreparationPath = null;
     this.panelPreparationRevision += 1;
     const view = this.host.ownerDocument.defaultView;

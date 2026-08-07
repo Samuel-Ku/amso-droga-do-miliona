@@ -295,20 +295,90 @@ describe("edge-to-edge gameplay background", () => {
     expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
       ?.dataset.worldId).toBe("order-process");
 
-    if (idleCallbacks.length > 0) {
+    for (let stage = 0; stage < 8 &&
+        !(host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
+          ?.dataset.assetPath?.includes("world-03-quality-service") &&
+          host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
+            ?.dataset.presentationReady === "true"); stage += 1) {
+      await vi.waitFor(() => expect(idleCallbacks.length).toBeGreaterThan(0));
       idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 50 });
       await Promise.resolve();
     }
-    expect(host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
-      ?.dataset.assetPath).not.toContain("world-03-quality-service");
-    layer.setPaused(true);
     await vi.waitFor(() => {
       expect(host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
         ?.dataset.assetPath).toContain("world-03-quality-service");
       expect(host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
         ?.dataset.presentationReady).toBe("true");
     });
-    layer.setPaused(false);
+  });
+
+  it("stages a later queued fallback through active idle before its seam", async () => {
+    const idleCallbacks: IdleRequestCallback[] = [];
+    vi.stubGlobal("requestIdleCallback", vi.fn((callback: IdleRequestCallback) => {
+      idleCallbacks.push(callback);
+      return idleCallbacks.length;
+    }));
+    let imageIndex = 0;
+    const images: HTMLImageElement[] = [];
+    const store = new WorldAssetStore(() => {
+      const index = imageIndex++;
+      const image = new Image();
+      Object.defineProperties(image, {
+        complete: { configurable: true, value: true },
+        naturalWidth: { configurable: true, value: 1780 },
+        naturalHeight: { configurable: true, value: 941 }
+      });
+      image.decode = index === 2
+        ? vi.fn().mockRejectedValue(new Error("world_asset_decode_failed"))
+        : vi.fn().mockResolvedValue(undefined);
+      images.push(image);
+      return image;
+    });
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+    layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "landing" });
+    await layer.waitForCurrentPresentation();
+    await layer.prepareChallengeWorlds();
+    layer.show({
+      worldId: "first-mile",
+      stateId: "story.first_package",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    await vi.waitFor(() => expect(idleCallbacks).toHaveLength(1));
+    idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 50 });
+    await vi.waitFor(() => expect(images[2]?.decode).toHaveBeenCalledTimes(3));
+
+    layer.show({
+      worldId: "order-process",
+      stateId: "epoch_1.challenge",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    layer.setParallaxDistance(240, true);
+    layer.setParallaxDistance(961, true);
+    await vi.waitFor(() => expect(idleCallbacks).toHaveLength(1));
+    idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 50 });
+    await vi.waitFor(() => {
+      expect(host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
+        ?.dataset.worldId).toBe("quality-service");
+      expect(host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
+        ?.dataset.assetFallback).toBe("true");
+    });
+
+    layer.show({
+      worldId: "quality-service",
+      stateId: "epoch_2.resolve",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("fallback-pending"));
+    layer.setParallaxDistance(1_921, true);
+    expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
+      ?.dataset.worldId).toBe("quality-service");
+    expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
+      ?.dataset.assetFallback).toBe("true");
   });
 
   it("uses adjacent, equally oriented panels without overlap or crossfade", () => {
