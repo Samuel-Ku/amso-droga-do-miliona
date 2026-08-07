@@ -217,7 +217,12 @@ describe("edge-to-edge gameplay background", () => {
     await layer.prepareChallengeWorlds();
     expect(idleCallbacks).toHaveLength(0);
 
-    layer.setPhase("game");
+    layer.show({
+      worldId: "first-mile",
+      stateId: "story.first_package",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
     await vi.waitFor(() => expect(idleCallbacks).toHaveLength(1));
     idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 50 });
     await vi.waitFor(() => expect(images).toHaveLength(3));

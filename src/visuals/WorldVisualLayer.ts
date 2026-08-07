@@ -188,6 +188,7 @@ export class WorldVisualLayer {
     const world = campaignWorld(selection.worldId);
     const worldChanged = this.currentWorldId !== selection.worldId;
     const stateChanged = this.currentStateId !== selection.stateId;
+    const phaseChanged = this.lastPhaseValue !== selection.phase;
     this.transitionMode = selection.transitionMode ?? "story-linked";
     this.currentWorldId = selection.worldId;
     this.currentStateId = selection.stateId;
@@ -213,6 +214,7 @@ export class WorldVisualLayer {
       this.setDataset("reveal", state.revealMotion);
       this.setDataset("visualEvent", state.visualEvent);
     }
+    if (phaseChanged) this.resumePanelPreparation();
     return state;
   }
 
