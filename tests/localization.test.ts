@@ -37,6 +37,10 @@ describe("campaign locale contract", () => {
     expect(createCampaignI18n("pl").formatInteger(1_000_000)).toBe("1 000 000");
     expect(createCampaignI18n("en").formatInteger(1_000_000)).toBe("1,000,000");
     expect(createCampaignI18n("de").formatInteger(1_000_000)).toBe("1.000.000");
+    expect(createCampaignI18n("pl").formatMetres(2)).toBe("2 metry");
+    expect(createCampaignI18n("cs").formatMetres(2)).toBe("2 metry");
+    expect(createCampaignI18n("uk").formatMetres(2)).toBe("2 метри");
+    expect(createCampaignI18n("pl").formatMetres(5)).toBe("5 metrów");
   });
 
   it("keeps an identical, non-empty message contract in all catalogues", () => {

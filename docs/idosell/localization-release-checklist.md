@@ -1,7 +1,8 @@
 # Localization release checklist
 
 Automatyczna część: `npm test`, `npm run build`, `npm run build:single`,
-`npm run check:autonomic-html` i `npm run check:localization`.
+`npm run check:localization` oraz — z aktualnym plikiem wskazanym przez
+`AMSO_PERFORMANCE_EVIDENCE` — `npm run check:performance-release`.
 
 ## Macierz preview
 
@@ -19,8 +20,9 @@ clippingu i drugiej aktywnej wersji copy.
   neutralnych SVG placeholderów.
 - Zamknięty preview IdoSell: `LANGID`, direct URL, `<html lang>`, canonical,
   reciprocal `hreflang`, `x-default`, CTA/share URL oraz propagacja cache.
-- Referencyjny performance run i porównanie tego samego seed/input trace między
-  locale; lokalizacja nie może zmienić wyniku, kolizji ani kolejności zdarzeń.
+- Scenariusz wzorcowy i Kontrakt niezmienności gameplayu dla tego samego seeda
+  i śladu wejść między locale; lokalizacja nie może zmienić wyniku, kolizji ani
+  kolejności zdarzeń.
 
 Publikacja wszystkich wersji jest jednoczesną, ręczną decyzją. Otwarte ręczne
 bramki nie są automatycznie uznawane za zaliczone.

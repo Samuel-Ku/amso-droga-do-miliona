@@ -1235,11 +1235,11 @@ export class CampaignShell {
         `${waveResult.attempts}:${waveResult.passed}:${snapshot.authoredWave?.wavesCompleted}`;
       if (key !== this.lastWaveFeedbackKey) {
         this.lastWaveFeedbackKey = key;
-        this.showPickupNotice(waveResult.perfect
+        this.showPickupNotice(this.i18n.translate(waveResult.perfect
           ? "PERFEKCJA · bonus za pełną trasę"
           : waveResult.passed
             ? "FALA ZALICZONA"
-            : "POWTÓRZ FALĘ");
+            : "POWTÓRZ FALĘ"));
       }
     }
     if (snapshot.packagesCollected !== this.lastHudPackages) {
@@ -1463,7 +1463,7 @@ export class CampaignShell {
         );
         this.resultRecords.setHighlight(this.profile.playerName);
         this.resultRecords.renderFrom(board, playerEntry);
-        if (submitted) this.announce("Wpisano Cię na tablicę rekordów!");
+        if (submitted) this.announce(this.i18n.translate("Wpisano Cię na tablicę rekordów!"));
         return;
       } catch (error) {
         if (!(error instanceof RecordsNameTakenError) &&

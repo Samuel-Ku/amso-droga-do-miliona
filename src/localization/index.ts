@@ -63,15 +63,15 @@ export function createCampaignI18n(locale: CampaignLocale): CampaignI18n {
     fr: { zero: "commande", one: "commande", two: "commandes", few: "commandes", many: "commandes", other: "commandes" },
     uk: { zero: "замовлень", one: "замовлення", two: "замовлення", few: "замовлення", many: "замовлень", other: "замовлення" }
   };
-  const metreForms: Readonly<Record<CampaignLocale, readonly [one: string, other: string]>> = {
-    pl: ["metr", "metrów"],
-    de: ["Meter", "Meter"],
-    en: ["metre", "metres"],
-    es: ["metro", "metros"],
-    cs: ["metr", "metrů"],
-    it: ["metro", "metri"],
-    fr: ["mètre", "mètres"],
-    uk: ["метр", "метрів"]
+  const metreForms: Readonly<Record<CampaignLocale, Readonly<Record<Intl.LDMLPluralRule, string>>>> = {
+    pl: { zero: "metrów", one: "metr", two: "metry", few: "metry", many: "metrów", other: "metra" },
+    de: { zero: "Meter", one: "Meter", two: "Meter", few: "Meter", many: "Meter", other: "Meter" },
+    en: { zero: "metres", one: "metre", two: "metres", few: "metres", many: "metres", other: "metres" },
+    es: { zero: "metros", one: "metro", two: "metros", few: "metros", many: "metros", other: "metros" },
+    cs: { zero: "metrů", one: "metr", two: "metry", few: "metry", many: "metrů", other: "metru" },
+    it: { zero: "metri", one: "metro", two: "metri", few: "metri", many: "metri", other: "metri" },
+    fr: { zero: "mètres", one: "mètre", two: "mètres", few: "mètres", many: "mètres", other: "mètres" },
+    uk: { zero: "метрів", one: "метр", two: "метри", few: "метри", many: "метрів", other: "метра" }
   };
   const finiteInteger = (value: number): number =>
     Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
@@ -87,8 +87,7 @@ export function createCampaignI18n(locale: CampaignLocale): CampaignI18n {
     },
     formatMetres(value: number): string {
       const finite = finiteInteger(value);
-      const forms = metreForms[locale];
-      return `${formatter.format(finite)} ${pluralRules.select(finite) === "one" ? forms[0] : forms[1]}`;
+      return `${formatter.format(finite)} ${metreForms[locale][pluralRules.select(finite)]}`;
     },
     translate(source: string): string {
       return translations[source] ?? source;
@@ -166,6 +165,20 @@ function localizeScene(scene: StorySceneConfig, i18n: CampaignI18n): StorySceneC
   };
 }
 
+function localizeEpoch<TEpoch extends { name: string; year: string; challengeName?: string }>(
+  epoch: TEpoch,
+  i18n: CampaignI18n
+): TEpoch {
+  return {
+    ...epoch,
+    name: i18n.translate(epoch.name),
+    year: i18n.translate(epoch.year),
+    ...(epoch.challengeName === undefined
+      ? {}
+      : { challengeName: i18n.translate(epoch.challengeName) })
+  };
+}
+
 export function localizeRunnerConfig(config: RunnerConfig, i18n: CampaignI18n): RunnerConfig {
   return {
     ...config,
@@ -183,14 +196,7 @@ export function localizeRunnerConfig(config: RunnerConfig, i18n: CampaignI18n): 
     story: {
       ...config.story,
       scenes: config.story.scenes.map((scene) => localizeScene(scene, i18n)),
-      epochs: config.story.epochs.map((epoch) => ({
-        ...epoch,
-        name: i18n.translate(epoch.name),
-        year: i18n.translate(epoch.year),
-        ...(epoch.challengeName === undefined
-          ? {}
-          : { challengeName: i18n.translate(epoch.challengeName) })
-      }))
+      epochs: config.story.epochs.map((epoch) => localizeEpoch(epoch, i18n))
     },
     narrative: config.narrative === undefined
       ? undefined
@@ -201,12 +207,7 @@ export function localizeRunnerConfig(config: RunnerConfig, i18n: CampaignI18n): 
             text: i18n.translate(fact.text)
           })),
           epochs: config.narrative.epochs.map((epoch) => ({
-            ...epoch,
-            name: i18n.translate(epoch.name),
-            year: i18n.translate(epoch.year),
-            ...(epoch.challengeName === undefined
-              ? {}
-              : { challengeName: i18n.translate(epoch.challengeName) }),
+            ...localizeEpoch(epoch, i18n),
             beats: epoch.beats?.map((beat) => ({ ...beat, text: i18n.translate(beat.text) }))
           }))
         }
