@@ -62,6 +62,7 @@ export class DecodedImageStore {
     let lastError: unknown = new Error("image_decode_failed");
     const image = this.imageFactory();
     image.decoding = "async";
+    if (image.dataset !== undefined) image.dataset.assetId = assetId;
     for (let attempt = 1; attempt <= this.maxAttempts; attempt += 1) {
       image.src = source;
       try {

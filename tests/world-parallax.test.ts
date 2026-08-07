@@ -10,6 +10,7 @@ import {
   WorldVisualLayer,
   type WorldVisualSelection
 } from "../src/visuals/WorldVisualLayer";
+import { DecodedImageStore } from "../src/assets/DecodedImageStore";
 
 function imageHarness(): {
   store: WorldAssetStore;
@@ -55,6 +56,23 @@ function imageHarness(): {
 }
 
 describe("mobile-safe world assets", () => {
+  it("labels a decoded image with its canonical performance attribution", async () => {
+    const image = document.createElement("img");
+    Object.defineProperties(image, {
+      complete: { configurable: true, value: true },
+      naturalWidth: { configurable: true, value: 1780 }
+    });
+    image.decode = vi.fn().mockResolvedValue(undefined);
+    const store = new DecodedImageStore({ imageFactory: () => image });
+
+    await store.load(
+      "world-quality-service-v2",
+      "/assets/milion-runner/worlds/world-03-quality-service-v2.webp"
+    );
+
+    expect(image.dataset.assetId).toBe("world-quality-service-v2");
+  });
+
   it("decodes one resource per world and reuses it", async () => {
     const { store, images } = imageHarness();
     const first = store.load("data:image/webp;base64,AAA");
@@ -276,10 +294,9 @@ describe("edge-to-edge gameplay background", () => {
     expect(idleCallbacks).toHaveLength(0);
     await vi.waitFor(() => expect(idleCallbacks).toHaveLength(1));
     idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 0 });
-
-    layer.setPaused(true);
+    await vi.waitFor(() => expect(idleCallbacks).toHaveLength(1));
+    idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 50 });
     await vi.waitFor(() => expect(images).toHaveLength(3));
-    layer.setPaused(false);
     expect(host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
       ?.dataset.assetPath).toContain("world-02-order-process");
 
@@ -295,7 +312,7 @@ describe("edge-to-edge gameplay background", () => {
     expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
       ?.dataset.worldId).toBe("order-process");
 
-    for (let stage = 0; stage < 8 &&
+    for (let stage = 0; stage < 16 &&
         !(host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
           ?.dataset.assetPath?.includes("world-03-quality-service") &&
           host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
@@ -303,10 +320,87 @@ describe("edge-to-edge gameplay background", () => {
       await vi.waitFor(() => expect(idleCallbacks.length).toBeGreaterThan(0));
       idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 50 });
       await Promise.resolve();
+      await Promise.resolve();
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
     }
     await vi.waitFor(() => {
       expect(host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
         ?.dataset.assetPath).toContain("world-03-quality-service");
+      expect(host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
+        ?.dataset.presentationReady).toBe("true");
+    });
+  });
+
+  it("continues DOM preparation when a later world resolves during active idle", async () => {
+    const idleCallbacks: IdleRequestCallback[] = [];
+    const compositeFrames: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestIdleCallback", vi.fn((callback: IdleRequestCallback) => {
+      idleCallbacks.push(callback);
+      return idleCallbacks.length;
+    }));
+    const images: HTMLImageElement[] = [];
+    const store = new WorldAssetStore(() => {
+      const image = new Image();
+      Object.defineProperties(image, {
+        complete: { configurable: true, value: true },
+        naturalWidth: { configurable: true, value: 1780 },
+        naturalHeight: { configurable: true, value: 941 }
+      });
+      image.decode = vi.fn().mockResolvedValue(undefined);
+      images.push(image);
+      return image;
+    });
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+    layer.show({ worldId: "first-mile", stateId: "story.first_package", phase: "landing" });
+    await layer.waitForCurrentPresentation();
+    await layer.prepareChallengeWorlds();
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      compositeFrames.push(callback);
+      return compositeFrames.length;
+    });
+
+    layer.show({
+      worldId: "first-mile",
+      stateId: "story.first_package",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    layer.show({
+      worldId: "order-process",
+      stateId: "epoch_1.challenge",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    layer.setParallaxDistance(240, true);
+    layer.setParallaxDistance(961, true);
+
+    await vi.waitFor(() => expect(idleCallbacks.length).toBeGreaterThan(0));
+    idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 50 });
+    await vi.waitFor(() => expect(images).toHaveLength(3));
+    expect(images[2]?.src).toContain("world-03-quality-service");
+
+    await vi.waitFor(() => expect(idleCallbacks.length).toBeGreaterThan(0));
+    const panelsReady = (): boolean =>
+      host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
+        ?.dataset.presentationReady === "true" &&
+      host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
+        ?.dataset.presentationReady === "true";
+    for (let stage = 0; stage < 14 && !panelsReady(); stage += 1) {
+      await vi.waitFor(() => expect(idleCallbacks.length + compositeFrames.length)
+        .toBeGreaterThan(0));
+      if (idleCallbacks.length > 0) {
+        idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 50 });
+      } else {
+        compositeFrames.shift()?.(stage * 16);
+      }
+      await Promise.resolve();
+      await Promise.resolve();
+    }
+    await vi.waitFor(() => {
+      expect(host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
+        ?.dataset.presentationReady).toBe("true");
       expect(host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
         ?.dataset.presentationReady).toBe("true");
     });

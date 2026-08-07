@@ -8,6 +8,16 @@ npm run check:cold-start-qualification -- \
   --output-dir .scratch/cold-start-qualification
 ```
 
+For a Vercel deployment protected by Deployment Protection, provide its
+automation bypass through the process environment; the secret is sent only as
+an HTTP header and is never written to the plan or evidence:
+
+```sh
+VERCEL_AUTOMATION_BYPASS_SECRET=... npm run check:cold-start-qualification -- \
+  --target https://deployment.example/campaign \
+  --output-dir .scratch/cold-start-qualification
+```
+
 The command captures, in order:
 
 1. cold process with audio enabled;

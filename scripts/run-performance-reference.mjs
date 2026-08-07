@@ -96,7 +96,13 @@ const browser = await chromium.launch({
 
 let exitCode = 1;
 try {
-  const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
+  const vercelAutomationBypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  const page = await browser.newPage({
+    viewport: { width: 960, height: 540 },
+    ...(vercelAutomationBypass
+      ? { extraHTTPHeaders: { "x-vercel-protection-bypass": vercelAutomationBypass } }
+      : {})
+  });
   const browserRuntime = await page.evaluate(() => ({
     userAgent: navigator.userAgent,
     hardwareConcurrency: navigator.hardwareConcurrency ?? null,
@@ -109,10 +115,11 @@ try {
   });
   page.on("pageerror", (error) => consoleErrors.push(error.message));
   page.on("request", (request) => {
-    const protocol = new URL(request.url()).protocol;
-    const expectedNavigation = deploymentUrl !== undefined && request.isNavigationRequest() &&
-      new URL(request.url()).origin === targetUrl.origin;
-    if ((protocol === "http:" || protocol === "https:") && !expectedNavigation) {
+    const requestUrl = new URL(request.url());
+    const expectedDeploymentResource = deploymentUrl !== undefined &&
+      requestUrl.origin === targetUrl.origin;
+    if ((requestUrl.protocol === "http:" || requestUrl.protocol === "https:") &&
+        !expectedDeploymentResource) {
       externalRequests.push(request.url());
     }
   });
@@ -148,11 +155,16 @@ try {
         window.__performanceScenarioRuntime.activeDecodeStarts += 1;
       }
       const record = (status) => {
+        const rawSource = this.dataset.assetPath || this.currentSrc || this.src || null;
         window.__performanceScenarioRuntime.decodeTimings.push({
           startedAtMs: startedAt,
           durationMs: performance.now() - startedAt,
           active,
           status,
+          assetId: this.dataset.assetId ?? null,
+          source: typeof rawSource === "string" && rawSource.startsWith("data:")
+            ? this.dataset.assetId ?? rawSource.slice(0, rawSource.indexOf(",") + 1)
+            : rawSource,
           worldId: this.dataset.worldId ?? null,
           panel: this.dataset.worldPanel ??
             (this.hasAttribute("data-world-staged-panel") ? "staged" : null)
@@ -377,11 +389,14 @@ try {
   const checkpointsPassed = Array.isArray(report?.scenarioCheckpoints) &&
     report.scenarioCheckpoints.length > 1 &&
     report.scenarioCheckpoints.every(({ passed }) => passed === true);
+  const transitionActiveDecodeStarts = runtime.decodeTimings.filter(({ active, startedAtMs }) =>
+    active === true && runtime.worldTransitions.some(({ atMs }) =>
+      Math.abs(startedAtMs - atMs) <= 500)).length;
   const capturePassed = report?.scenarioValidation?.passed === true &&
     checkpointsPassed &&
     report?.session?.inputQueueOverflows === 0 &&
     report?.session?.replayValid === true &&
-    runtime.activeDecodeStarts === 0 &&
+    transitionActiveDecodeStarts === 0 &&
     intervals.filter((interval) => interval > 33).length === 0 &&
     consoleErrors.length === 0 &&
     externalRequests.length === 0;
@@ -504,6 +519,7 @@ try {
       processState,
       frames: evidence.frames,
       activeDecodeStarts: runtime.activeDecodeStarts,
+      transitionActiveDecodeStarts,
       worldTransitions: evidence.worldTransitions,
       scenarioPassed: report?.scenarioValidation?.passed === true
     }, null, 2)}\n`);

@@ -690,7 +690,7 @@ export class WorldVisualLayer {
       void this.assets.load(path).then((asset) => {
         if (this.destroyed || this.scheduledPreloadPath !== path) return;
         this.scheduledPreloadAsset = asset;
-        if (this.host.dataset.phase !== "game" || this.paused) this.prepareScheduledPanel();
+        this.prepareScheduledPanel();
       }).catch(() => {
         if (this.scheduledPreloadPath === path) {
           const failedWorld = CAMPAIGN_WORLDS.find(({ assetPath }) => assetPath === path);
@@ -716,7 +716,9 @@ export class WorldVisualLayer {
         (activeGameplay && typeof requestIdle !== "function")) {
       return;
     }
-    if (this.preparedPanelAsset !== null || this.preparedFallbackWorldId !== null) {
+    if (this.preparedPanelAsset !== null || this.preparedFallbackWorldId !== null ||
+        this.pendingAsset !== null || this.pendingFallbackWorldId !== null ||
+        this.pendingPanelPrepared || this.pendingPanelPreparing) {
       return;
     }
     const revision = ++this.panelPreparationRevision;
