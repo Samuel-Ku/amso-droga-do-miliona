@@ -25,32 +25,43 @@ export interface ScenarioValidationResult {
 }
 
 const authoredInputs = [
-  [60, "jump", true],
-  [100, "crouch", true],
-  [120, "crouch", false],
-  [180, "jump", true],
-  [220, "crouch", true],
-  [240, "crouch", false],
-  [300, "jump", true],
-  [340, "crouch", true],
-  [360, "crouch", false],
-  [420, "jump", true],
-  [652, "jump", true],
-  [1162, "crouch", true],
-  [1262, "crouch", false],
-  [1709, "jump", true],
-  [2306, "crouch", true],
-  [2406, "crouch", false],
-  [2935, "jump", true],
-  [3555, "crouch", true],
-  [3655, "crouch", false],
-  [4059, "jump", true],
-  [4569, "crouch", true],
-  [4669, "crouch", false],
-  [5185, "jump", true],
-  [5724, "crouch", true],
-  [5824, "crouch", false],
-  [6202, "jump", true]
+  [644, "jump", true],
+  [726, "jump", true],
+  [1199, "crouch", true],
+  [1251, "crouch", false],
+  [1253, "crouch", true],
+  [1275, "crouch", false],
+  [1285, "crouch", true],
+  [1729, "jump", true],
+  [1811, "jump", true],
+  [2432, "crouch", false],
+  [2434, "crouch", true],
+  [2456, "crouch", false],
+  [2466, "crouch", true],
+  [3002, "jump", true],
+  [3084, "jump", true],
+  [3732, "crouch", false],
+  [3734, "crouch", true],
+  [3756, "crouch", false],
+  [3766, "crouch", true],
+  [4178, "jump", true],
+  [4260, "jump", true],
+  [4803, "crouch", false],
+  [4805, "crouch", true],
+  [4827, "crouch", false],
+  [4837, "crouch", true],
+  [5363, "jump", true],
+  [5445, "jump", true],
+  [6007, "crouch", false],
+  [6009, "crouch", true],
+  [6031, "crouch", false],
+  [6041, "crouch", true],
+  [6431, "jump", true],
+  [6513, "jump", true],
+  [7097, "crouch", false],
+  [7099, "crouch", true],
+  [7121, "crouch", false],
+  [7131, "crouch", true]
 ] as const satisfies readonly (
   readonly [stepIndex: number, action: GameplayInputAction, active: boolean]
 )[];
@@ -83,11 +94,11 @@ export const PERFORMANCE_REFERENCE_V1: PerformanceScenarioManifest = Object.free
   inputs: Object.freeze(inputs),
   expectedCheckpoints: Object.freeze([
     { completedThroughStep: -1, expected: Object.freeze({ score: 0, collisionCount: 0, pickupCount: 0, worldIndex: 0 }) },
-    { completedThroughStep: 2399, expected: Object.freeze({ simulationStep: 2400, score: 3759, collisionCount: 0, pickupCount: 14, worldIndex: 0 }) },
-    { completedThroughStep: 4799, expected: Object.freeze({ simulationStep: 4800, score: 9099, collisionCount: 0, pickupCount: 36, worldIndex: 1 }) }
+    { completedThroughStep: 2399, expected: Object.freeze({ simulationStep: 2400, score: 5645, collisionCount: 0, pickupCount: 16, worldIndex: 0 }) },
+    { completedThroughStep: 4799, expected: Object.freeze({ simulationStep: 4800, score: 10747, collisionCount: 0, pickupCount: 37, worldIndex: 1 }) }
   ]),
   requiredCoverage: Object.freeze(requiredCoverage),
-  expectedFinalDigest: "fnv1a32:232d8be0"
+  expectedFinalDigest: "fnv1a32:84331d55"
 });
 
 export function checkpointMatches(

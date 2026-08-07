@@ -22,13 +22,14 @@
     "pauseAction": "Pauza",
     "storyMode": "Droga do Miliona",
     "challengeMode": "Szybki start — Tryb Wyzwania",
+    "challengeCta": "Szybki start",
     "landingEyebrow": "Jubileuszowa historia AMSO",
     "landingTitle": "AMSO —",
     "landingTitleAccent": "Droga do Miliona",
     "landingMeta": "Około 6 minut · historia w Twoim tempie · skok i ślizg",
-    "startStory": "Rozpocznij historię",
+    "startStory": "Zagraj z historią AMSO",
     "choosePath": "Wybierz swoją drogę",
-    "replayStory": "Pełna historia i instrukcja",
+    "replayStory": "Powtórz historię AMSO",
     "orientationEyebrow": "Szerszy kadr",
     "orientationTitle": "Chcesz zobaczyć szerszy kadr?",
     "orientationBody": "Obróć telefon i włącz pełny ekran. Możesz też grać pionowo.",
@@ -106,8 +107,8 @@
           { "id": "obstacle-overhead-conveyor", "type": "image", "source": "/assets/milion-runner/obstacles/overhead-conveyor.webp", "critical": true },
           { "id": "base-ui", "type": "procedural", "source": "procedural:base-ui", "critical": true },
           { "id": "first-audio-cues", "type": "procedural", "source": "procedural:first-audio-cues", "critical": true },
-          { "id": "mz-main-lockup-v1", "type": "image", "source": "/assets/milion-runner/brand/mz-main-lockup-v1.avif", "critical": false },
-          { "id": "mz-compact-lockup-v1", "type": "image", "source": "/assets/milion-runner/brand/mz-compact-lockup-v1.avif", "critical": false }
+          { "id": "million-neutral-main", "type": "image", "source": "/assets/milion-runner/brand/million-neutral-main.svg", "critical": false },
+          { "id": "million-neutral-compact", "type": "image", "source": "/assets/milion-runner/brand/million-neutral-compact.svg", "critical": false }
         ]
       },
       {
@@ -308,8 +309,9 @@
   },
   "challenge": {
     "mode": "challenge",
+    "challengeRuleVersion": 13,
     "speedStartMultiplier": 1.85,
-    "speedMaxMultiplier": 3.5,
+    "speedMaxMultiplier": 4,
     "logisticWaveMinSeconds": 20,
     "logisticWaveMaxSeconds": 30,
     "warrantyOneUse": true

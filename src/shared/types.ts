@@ -192,6 +192,8 @@ export interface StoryConfig {
 
 export interface ChallengeConfig {
   mode: "challenge";
+  /** Identifies the rule set so that results, records and leaderboard queries are versioned. */
+  challengeRuleVersion: number;
   speedStartMultiplier: number;
   speedMaxMultiplier: number;
   logisticWaveMinSeconds: number;

@@ -556,21 +556,24 @@ function parseChallenge(value: unknown): ChallengeConfig | null {
   if (!isRecord(value) || !hasExactKeys(
     value,
     [
-      "mode", "speedStartMultiplier", "speedMaxMultiplier", "logisticWaveMinSeconds",
-      "logisticWaveMaxSeconds", "warrantyOneUse"
+      "mode", "challengeRuleVersion", "speedStartMultiplier", "speedMaxMultiplier",
+      "logisticWaveMinSeconds", "logisticWaveMaxSeconds", "warrantyOneUse"
     ],
     [
-      "mode", "speedStartMultiplier", "speedMaxMultiplier", "logisticWaveMinSeconds",
-      "logisticWaveMaxSeconds", "warrantyOneUse"
+      "mode", "challengeRuleVersion", "speedStartMultiplier", "speedMaxMultiplier",
+      "logisticWaveMinSeconds", "logisticWaveMaxSeconds", "warrantyOneUse"
     ]
   )) return null;
-  if (value.mode !== "challenge" || !finiteInRange(value.speedStartMultiplier, 0.8, 2) ||
-      !finiteInRange(value.speedMaxMultiplier, value.speedStartMultiplier, 3.5) ||
+  if (value.mode !== "challenge" || !Number.isInteger(value.challengeRuleVersion) ||
+      !finiteInRange(value.challengeRuleVersion, 1, 999) ||
+      !finiteInRange(value.speedStartMultiplier, 0.8, 2) ||
+      !finiteInRange(value.speedMaxMultiplier, value.speedStartMultiplier, 4) ||
       !finiteInRange(value.logisticWaveMinSeconds, 20, 90) ||
       !finiteInRange(value.logisticWaveMaxSeconds, value.logisticWaveMinSeconds, 120) ||
       value.warrantyOneUse !== true) return null;
   return {
     mode: "challenge",
+    challengeRuleVersion: value.challengeRuleVersion as number,
     speedStartMultiplier: value.speedStartMultiplier,
     speedMaxMultiplier: value.speedMaxMultiplier,
     logisticWaveMinSeconds: value.logisticWaveMinSeconds,

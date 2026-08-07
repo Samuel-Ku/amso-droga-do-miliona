@@ -51,8 +51,9 @@ export const DEFAULT_DISABLED_RUNNER_CONFIG: Readonly<RunnerConfig> = Object.fre
   }),
   challenge: Object.freeze({
     mode: "challenge",
+    challengeRuleVersion: 13,
     speedStartMultiplier: 1.85,
-    speedMaxMultiplier: 3.5,
+    speedMaxMultiplier: 4,
     logisticWaveMinSeconds: 20,
     logisticWaveMaxSeconds: 30,
     warrantyOneUse: true

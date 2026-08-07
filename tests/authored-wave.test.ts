@@ -164,11 +164,15 @@ describe("v7 authored story waves", () => {
   it("follows the approved story and challenge speed points", () => {
     expect(getAuthoredStoryDifficulty(0, 25, 0.95, 1.15).speedMultiplier).toBe(0.95);
     expect(getAuthoredStoryDifficulty(25, 25, 0.95, 1.15).speedMultiplier).toBe(1.15);
-    const challenge = { speedStartMultiplier: 1.85, speedMaxMultiplier: 3.5 };
+    const challenge = { speedStartMultiplier: 1.85, speedMaxMultiplier: 4 };
     expect(getChallengeDifficulty(0, challenge).speedMultiplier).toBe(1.85);
-    expect(getChallengeDifficulty(60, challenge).speedMultiplier).toBe(2.4);
-    expect(getChallengeDifficulty(120, challenge).speedMultiplier).toBe(3);
-    expect(getChallengeDifficulty(180, challenge).speedMultiplier).toBe(3.5);
-    expect(getChallengeDifficulty(300, challenge).speedMultiplier).toBe(3.5);
+    // smootherstep at 60/240=0.25 → 0.1035 → lerp(1.85, 4, 0.1035) ≈ 2.07
+    expect(getChallengeDifficulty(60, challenge).speedMultiplier).toBeCloseTo(2.07, 1);
+    // smootherstep at 120/240=0.5 → 0.5 → lerp(1.85, 4, 0.5) = 2.925
+    expect(getChallengeDifficulty(120, challenge).speedMultiplier).toBeCloseTo(2.93, 1);
+    // smootherstep at 180/240=0.75 → 0.8965 → lerp(1.85, 4, 0.8965) ≈ 3.73
+    expect(getChallengeDifficulty(180, challenge).speedMultiplier).toBeCloseTo(3.73, 1);
+    expect(getChallengeDifficulty(240, challenge).speedMultiplier).toBeCloseTo(4, 1);
+    expect(getChallengeDifficulty(300, challenge).speedMultiplier).toBeCloseTo(4, 1);
   });
 });
