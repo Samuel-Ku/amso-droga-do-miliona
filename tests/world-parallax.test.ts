@@ -224,7 +224,7 @@ describe("edge-to-edge gameplay background", () => {
       transitionMode: "offscreen"
     });
     await vi.waitFor(() => expect(idleCallbacks).toHaveLength(1));
-    idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 50 });
+    idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 0 });
     await vi.waitFor(() => expect(images).toHaveLength(3));
     expect(host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
       ?.dataset.assetPath).toContain("world-02-order-process");
