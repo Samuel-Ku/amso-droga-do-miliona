@@ -36,6 +36,22 @@ describe("sanitizePlayerName", () => {
 });
 
 describe("RecordsClient.submitIfBest", () => {
+  it("accepts the Worker's semantic moderated-name row without an original name", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      entries: [{
+        id: "record-1",
+        nameModerated: true,
+        challengeScore: 700,
+        orders: 20,
+        updatedAt: 1,
+        rank: 1
+      }]
+    }), { status: 200 })));
+    const board = await new RecordsClient("/api/records").fetchBoard();
+    expect(board[0]).toMatchObject({ name: "", nameModerated: true, challengeScore: 700 });
+    vi.unstubAllGlobals();
+  });
+
   it("keeps a disabled QA board fully offline", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

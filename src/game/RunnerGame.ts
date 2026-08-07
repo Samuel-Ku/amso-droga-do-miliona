@@ -308,7 +308,12 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     if (!context) throw new Error("RunnerGame requires a Canvas 2D context.");
 
     this.context = context;
-    this.renderer = new WarehouseRenderer(undefined, options.runnerArtwork ?? undefined);
+    this.renderer = new WarehouseRenderer(
+      undefined,
+      options.runnerArtwork ?? undefined,
+      options.formatInteger,
+      options.millionCounterLabel
+    );
     this.bufferWidth = canvas.width;
     this.bufferHeight = canvas.height;
     this.callbacks = callbacks;

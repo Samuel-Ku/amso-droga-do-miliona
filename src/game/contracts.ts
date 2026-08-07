@@ -164,6 +164,10 @@ export interface RunnerGameOptions {
   qualityCommitContext?: () => QualityCommitContext;
   qualityMode?: QualityMode;
   runnerArtwork?: RunnerArtwork;
+  /** Locale-bound canvas formatter, created once outside the render loop. */
+  formatInteger?: (value: number) => string;
+  /** Locale-bound label displayed below the million counter. */
+  millionCounterLabel?: string;
   replayInputs?: readonly {
     readonly stepIndex: number;
     readonly sequence: number;

@@ -3,6 +3,11 @@ import {
   PLAYER_NAME_TOO_LONG_MESSAGE,
   validatePlayerName
 } from "../moderation/player-name-policy";
+import {
+  createCampaignI18n,
+  localizeElementTree,
+  type CampaignI18n
+} from "../localization";
 
 export interface NamePromptResult {
   name: string;
@@ -18,7 +23,10 @@ export class NamePrompt {
   private readonly overlay: HTMLElement;
   private resolver: ((result: NamePromptResult) => void) | null = null;
 
-  public constructor(host: HTMLElement) {
+  public constructor(
+    host: HTMLElement,
+    private readonly i18n: CampaignI18n = createCampaignI18n("pl")
+  ) {
     this.overlay = document.createElement("div");
     this.overlay.className = "amso-name-prompt";
     this.overlay.hidden = true;
@@ -45,6 +53,7 @@ export class NamePrompt {
           </div>
         </form>
       </div>`;
+    localizeElementTree(this.overlay, this.i18n);
     host.appendChild(this.overlay);
 
     const form = this.overlay.querySelector<HTMLFormElement>("[data-campaign-name-form]")!;
@@ -60,8 +69,8 @@ export class NamePrompt {
         return result;
       }
       error.textContent = result.reason === "too_long"
-        ? PLAYER_NAME_TOO_LONG_MESSAGE
-        : PLAYER_NAME_DISALLOWED_MESSAGE;
+        ? this.i18n.translate(PLAYER_NAME_TOO_LONG_MESSAGE)
+        : this.i18n.translate(PLAYER_NAME_DISALLOWED_MESSAGE);
       error.hidden = false;
       return result;
     };
@@ -72,7 +81,7 @@ export class NamePrompt {
       const result = showValidation();
       if (!result.valid) {
         if (input.value.length === 0) {
-          error.textContent = PLAYER_NAME_DISALLOWED_MESSAGE;
+          error.textContent = this.i18n.translate(PLAYER_NAME_DISALLOWED_MESSAGE);
           error.hidden = false;
         }
         input.focus();

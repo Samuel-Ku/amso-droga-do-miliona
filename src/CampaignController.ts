@@ -54,6 +54,8 @@ import {
 } from "./qa/performance-reference-v1";
 import { exactDeterminismArtifact, type ExactDeterminismArtifact } from "./qa/determinism";
 import { evaluatePerformanceReleaseGate } from "./qa/release-gate";
+import { createCampaignI18n, type CampaignI18n } from "./localization";
+import { campaignUrl } from "./localization/idosell-deployment";
 
 export interface CampaignRuntimeOptions {
   readonly qa?: QaBootConfig;
@@ -159,7 +161,8 @@ export class CampaignController {
     private readonly config: RunnerConfig,
     profile = new PlayerProfileStore(),
     assetLoader?: AssetBundleLoader,
-    private readonly runtime: CampaignRuntimeOptions = {}
+    private readonly runtime: CampaignRuntimeOptions = {},
+    private readonly i18n: CampaignI18n = createCampaignI18n("pl")
   ) {
     this.profile = profile;
     this.recordsClient = new RecordsClient(config.recordsApi ?? "/api/records", {
@@ -168,6 +171,7 @@ export class CampaignController {
     });
     this.tracker = new DataLayerTracker({
       gameVersion: config.gameVersion,
+      locale: i18n.locale,
       consentGranted: runtime.qa === undefined && hasAnalyticsConsent
     });
     this.audio = new CampaignAudio({
@@ -210,8 +214,8 @@ export class CampaignController {
         this.game?.continueStoryScene(sceneId);
       }
     }, {
-      campaignUrl: config.cta.path,
-      fullStoryUrl: config.cta.path,
+      campaignUrl: campaignUrl(this.i18n.locale),
+      fullStoryUrl: campaignUrl(this.i18n.locale),
       recordsClient: this.recordsClient,
       profile: this.profile,
       copy: {
@@ -223,7 +227,8 @@ export class CampaignController {
         qaDpr: runtime.qa.dpr,
         qaBadgeText: `QA PERFORMANCE\n${runtime.qa.scenarioId}\n${runtime.qa.quality.toUpperCase()} · ${runtime.qa.motion.toUpperCase()} · AUDIO ${runtime.qa.audio.toUpperCase()} · DPR ${runtime.qa.dpr}`
       }),
-      decodedImageStore: this.decodedImageStore
+      decodedImageStore: this.decodedImageStore,
+      i18n: this.i18n
     });
 
     this.showLanding();
@@ -317,6 +322,8 @@ export class CampaignController {
             this.uiCopy("parcelSecondLifeLine2", "PUNKTY")
           ]
         },
+        formatInteger: this.i18n.formatInteger,
+        millionCounterLabel: this.i18n.translate("ZAMÓWIEŃ").toLocaleUpperCase(this.i18n.intlLocale),
         visualFrameSink: (visualDistancePixels, interpolationAlpha) => {
           this.shell.updateVisualFrame(
             visualDistancePixels,
@@ -416,7 +423,7 @@ export class CampaignController {
           "epoch_4.order_peak_final": "Szczyt Zamówień opanowany.",
           "epoch_5.million_threshold": "1 000 000 zamówień. Droga trwa dalej."
         }[objectiveId];
-        this.shell.announce(label);
+        this.shell.announce(this.i18n.translate(label));
       },
       onSpecialPickup: (kind) => {
         if (this.shownPowerUpHints.has(kind)) return;
@@ -428,7 +435,7 @@ export class CampaignController {
             "GWARANCJA AMSO CARE — uratuje jedną próbę w Trybie Wyzwania."
           )
         } as const;
-        this.shell.showPickupNotice(copy[kind]);
+        this.shell.showPickupNotice(this.i18n.translate(copy[kind]));
       },
       onCollectiblePickup: (pickup) => {
         if (pickup.collectibleClass === "equipment") {
@@ -442,15 +449,15 @@ export class CampaignController {
       onMilestoneCelebration: (celebration) => {
         this.audio.playMilestoneCue(celebration.kind, celebration.intensity);
         if (celebration.achievement === "record") this.audio.playRecordCue();
-        this.shell.announce(celebration.text);
+        this.shell.announce(this.i18n.translate(celebration.text));
       },
       onModeChange: (mode) => {
         this.shell.showStoryObjective(null);
         this.shell.showGame(mode);
         if (mode === "challenge") {
-          this.shell.announce(
+          this.shell.announce(this.i18n.translate(
             "Tryb Wyzwania. Wynik i zamówienia zostały zachowane. Tempo rośnie, a pierwsze niezabezpieczone zderzenie kończy bieg."
-          );
+          ));
         }
         this.tracker.track("game_started", { mode });
       }

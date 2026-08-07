@@ -21,16 +21,29 @@ import {
 } from "./story-presentation";
 import { RecordBoard } from "./record-board";
 import { NamePrompt } from "./name-prompt";
-import { RecordsClient, RecordsNameTakenError } from "../records-client";
+import {
+  RecordsClient,
+  RecordsNameTakenError,
+  RecordsNameValidationError
+} from "../records-client";
+import {
+  PLAYER_NAME_DISALLOWED_MESSAGE,
+  PLAYER_NAME_TOO_LONG_MESSAGE
+} from "../moderation/player-name-policy";
 import type { PlayerProfileStore } from "../profile";
 import type { QualityCommitContext } from "../performance/visual-quality-coordinator";
 import { DecodedImageStore } from "../assets/DecodedImageStore";
 import { GAME_INSTRUCTION_COPY } from "../config/game-instructions-copy";
+import {
+  createCampaignI18n,
+  localizeElementTree,
+  type CampaignI18n
+} from "../localization";
 
 export type { CampaignStoryScene, CampaignStorySceneInput } from "./story-presentation";
 
-const MAIN_LOCKUP_PATH = "/assets/milion-runner/brand/mz-main-lockup-v1.avif";
-const COMPACT_LOCKUP_PATH = "/assets/milion-runner/brand/mz-compact-lockup-v1.avif";
+const MAIN_LOCKUP_PATH = "/assets/milion-runner/brand/million-neutral-main.svg";
+const COMPACT_LOCKUP_PATH = "/assets/milion-runner/brand/million-neutral-compact.svg";
 
 export type CampaignMode = "story" | "challenge";
 
@@ -176,10 +189,12 @@ export interface CampaignShellOptions {
   qaDpr?: 1 | 2;
   qaBadgeText?: string;
   decodedImageStore?: DecodedImageStore;
+  i18n?: CampaignI18n;
 }
 
 export interface CampaignShareCardOptions {
   canonicalUrl: string;
+  i18n?: CampaignI18n;
   title?: string;
   scoreLabel?: string;
   ordersLabel?: string;
@@ -194,10 +209,10 @@ export interface CampaignShareRequest extends CampaignShareCardOptions {
 
 type CampaignShareResult = CampaignShareRequest["result"];
 
-const integerFormatter = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
+const DEFAULT_I18N = createCampaignI18n("pl");
 
-function formatInteger(value: number): string {
-  return integerFormatter.format(Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0);
+function formatInteger(value: number, i18n: CampaignI18n = DEFAULT_I18N): string {
+  return i18n.formatInteger(value);
 }
 
 export function campaignVisualStateAtProgress(
@@ -303,6 +318,7 @@ function drawShareCard(
   options: CampaignShareCardOptions,
   lockup: HTMLImageElement | null,
 ): void {
+  const i18n = options.i18n ?? DEFAULT_I18N;
   const { canvas } = context;
   context.fillStyle = "#faf7f0";
   context.fillRect(0, 0, canvas.width, canvas.height);
@@ -318,20 +334,20 @@ function drawShareCard(
   context.fillRect(0, 22, canvas.width, 296);
   context.fillStyle = "#faf7f0";
   context.font = "800 26px system-ui, sans-serif";
-  context.fillText("KARTA WYNIKU", 72, 99);
+  context.fillText(i18n.translate("KARTA WYNIKU"), 72, 99);
   context.font = "950 58px system-ui, sans-serif";
-  context.fillText(options.title ?? "Droga do Miliona", 72, 170, 470);
+  context.fillText(options.title ?? i18n.translate("Droga do Miliona"), 72, 170, 470);
   context.fillStyle = "#d8d2c8";
   context.font = "650 24px system-ui, sans-serif";
-  context.fillText("Jubileuszowa gra", 72, 222);
+  context.fillText(i18n.translate("Jubileuszowa gra"), 72, 222);
   drawShareCardLockup(context, lockup);
 
   context.fillStyle = "#45413b";
   context.font = "750 29px system-ui, sans-serif";
-  context.fillText(options.scoreLabel ?? "MÓJ WYNIK", 72, 407);
+  context.fillText(options.scoreLabel ?? i18n.translate("MÓJ WYNIK"), 72, 407);
   context.fillStyle = "#171717";
   context.font = "950 142px system-ui, sans-serif";
-  context.fillText(formatInteger(result.score), 66, 548, 940);
+  context.fillText(formatInteger(result.score, options.i18n), 66, 548, 940);
 
   context.fillStyle = brandGradient;
   context.fillRect(72, 581, 936, 12);
@@ -342,10 +358,10 @@ function drawShareCard(
   context.fill();
   context.fillStyle = "#d8d2c8";
   context.font = "800 28px system-ui, sans-serif";
-  context.fillText(options.ordersLabel ?? "ZREALIZOWANE ZAMÓWIENIA", 120, 705);
+  context.fillText(options.ordersLabel ?? i18n.translate("ZREALIZOWANE ZAMÓWIENIA"), 120, 705);
   context.fillStyle = "#faf7f0";
   context.font = "950 78px system-ui, sans-serif";
-  context.fillText(formatInteger(result.orders), 120, 797, 560);
+  context.fillText(formatInteger(result.orders, options.i18n), 120, 797, 560);
 
   context.fillStyle = brandGradient;
   context.beginPath();
@@ -359,11 +375,11 @@ function drawShareCard(
 
   context.fillStyle = "#171717";
   context.font = "900 50px system-ui, sans-serif";
-  context.fillText(options.callToAction ?? "Teraz Twoja kolej.", 72, 978, 936);
+  context.fillText(options.callToAction ?? i18n.translate("Teraz Twoja kolej."), 72, 978, 936);
   context.fillStyle = "#45413b";
   context.font = "650 27px system-ui, sans-serif";
   const publicationText = options.publicationText
-    ?? "Sprawdź, jak daleko dojdziesz w Drodze do Miliona.";
+    ?? i18n.translate("Sprawdź, jak daleko dojdziesz w Drodze do Miliona.");
   context.fillText(publicationText, 72, 1034, 936);
 
   context.fillStyle = "#171717";
@@ -420,14 +436,15 @@ function downloadBlob(blob: Blob, filename: string): void {
 }
 
 export async function shareCampaignResult(request: CampaignShareRequest): Promise<CampaignShareMethod> {
-  const text = request.publicationText ?? "Sprawdź, jak daleko dojdziesz w Drodze do Miliona.";
+  const i18n = request.i18n ?? DEFAULT_I18N;
+  const text = request.publicationText ?? i18n.translate("Sprawdź, jak daleko dojdziesz w Drodze do Miliona.");
   const blob = await createCampaignShareCard(request.result, request);
   const filename = `amso-droga-do-miliona-${Math.floor(request.result.score)}.png`;
   const file = typeof File === "function"
     ? new File([blob], filename, { type: "image/png" })
     : null;
   const shareData: ShareData = {
-    title: request.title ?? "AMSO — Droga do Miliona",
+    title: request.title ?? `AMSO — ${i18n.translate("Droga do Miliona")}`,
     text,
     url: request.canonicalUrl,
     ...(file === null ? {} : { files: [file] }),
@@ -525,6 +542,7 @@ export class CampaignShell {
   private readonly campaignUrl: string;
   private readonly fullStoryUrl: string;
   private readonly copy: CampaignShellCopy;
+  private readonly i18n: CampaignI18n;
   private activeMode: CampaignMode | null = null;
   private orientationState: CampaignOrientationState = { phase: "idle" };
   private orientationDebounceTimer: ReturnType<typeof setTimeout> | undefined;
@@ -562,10 +580,14 @@ export class CampaignShell {
     private readonly callbacks: CampaignShellCallbacks,
     options: CampaignShellOptions = {},
   ) {
+    this.i18n = options.i18n ?? DEFAULT_I18N;
     this.canonicalUrl = options.canonicalUrl ?? canonicalPageUrl();
     this.campaignUrl = options.campaignUrl ?? "/milion";
     this.fullStoryUrl = options.fullStoryUrl ?? this.campaignUrl;
-    this.copy = { ...DEFAULT_CAMPAIGN_SHELL_COPY, ...options.copy };
+    this.copy = Object.fromEntries(
+      Object.entries({ ...DEFAULT_CAMPAIGN_SHELL_COPY, ...options.copy })
+        .map(([key, value]) => [key, this.i18n.translate(value)])
+    ) as CampaignShellCopy;
     this.root = document.createElement("div");
     this.root.className = "amso-campaign";
     this.root.dataset.view = "landing";
@@ -839,12 +861,14 @@ export class CampaignShell {
 
       <div class="amso-campaign__sr-only" data-campaign-live aria-live="polite" aria-atomic="true"></div>
     `;
+    localizeElementTree(this.root, this.i18n);
     host.replaceChildren(this.root);
 
     this.stage = requiredElement(this.root, "[data-campaign-stage]");
     this.worldVisualLayer = new WorldVisualLayer(
       requiredElement(this.root, "[data-campaign-world-visual]"),
-      options.decodedImageStore ? new WorldAssetStore(options.decodedImageStore) : undefined
+      options.decodedImageStore ? new WorldAssetStore(options.decodedImageStore) : undefined,
+      this.i18n
     );
     this.worldGeometryCoordinator = new WorldGeometryCoordinator(
       this.stage,
@@ -904,13 +928,19 @@ export class CampaignShell {
       const landingHost = this.root.querySelector<HTMLElement>("[data-campaign-landing-records]");
       const resultHost = this.root.querySelector<HTMLElement>("[data-campaign-result-records]");
       this.landingRecords = landingHost
-        ? new RecordBoard(landingHost, this.recordsClient, { context: "landing" })
+        ? new RecordBoard(landingHost, this.recordsClient, {
+            context: "landing",
+            i18n: this.i18n
+          })
         : null;
       this.resultRecords = resultHost
-        ? new RecordBoard(resultHost, this.recordsClient, { context: "result" })
+        ? new RecordBoard(resultHost, this.recordsClient, {
+            context: "result",
+            i18n: this.i18n
+          })
         : null;
       this.resultRecords?.setPlayerId(this.profile?.playerId ?? null);
-      this.namePrompt = new NamePrompt(this.root);
+      this.namePrompt = new NamePrompt(this.root, this.i18n);
     } else {
       this.landingRecords = null;
       this.resultRecords = null;
@@ -959,7 +989,7 @@ export class CampaignShell {
     this.renderLandingActions(options);
     this.canvas.tabIndex = -1;
     this.landingActions.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
-    this.announce("Gra gotowa. Wybierz swoją drogę.");
+    this.announce(this.i18n.translate("Gra gotowa. Wybierz swoją drogę."));
     void this.refreshLandingRecords();
   }
 
@@ -1214,15 +1244,15 @@ export class CampaignShell {
     }
     if (snapshot.packagesCollected !== this.lastHudPackages) {
       this.lastHudPackages = snapshot.packagesCollected;
-      this.hudPackages.textContent = formatInteger(snapshot.packagesCollected);
+      this.hudPackages.textContent = formatInteger(snapshot.packagesCollected, this.i18n);
     }
     if (snapshot.score !== this.lastHudScore) {
       this.lastHudScore = snapshot.score;
-      this.hudScore.textContent = formatInteger(snapshot.score);
+      this.hudScore.textContent = formatInteger(snapshot.score, this.i18n);
     }
     if (snapshot.combo !== this.lastHudCombo) {
       this.lastHudCombo = snapshot.combo;
-      this.hudCombo.textContent = `×${formatInteger(snapshot.combo)}`;
+      this.hudCombo.textContent = `×${formatInteger(snapshot.combo, this.i18n)}`;
     }
     const powerUpsKey = `${snapshot.activePowerUps.join(",")}|` +
       snapshot.activePowerUpStatuses.map(({ kind, remainingSeconds }) =>
@@ -1233,7 +1263,8 @@ export class CampaignShell {
       const activePowerUps = formatPowerUpHud(
         snapshot.activePowerUps,
         snapshot.activePowerUpStatuses,
-        { gwarancja_48: this.copy.powerupWarrantyHud }
+        { gwarancja_48: this.copy.powerupWarrantyHud },
+        this.i18n.translate
       );
       this.hudPowerUps.textContent = activePowerUps;
       this.hudPowerUps.hidden = activePowerUps.length === 0;
@@ -1262,8 +1293,12 @@ export class CampaignShell {
         this.hudEpoch.textContent = epoch;
       }
       this.showStoryObjective(
-        formatAuthoredWaveHud(snapshot.authoredWave) ??
-          formatStoryObjectiveHud(snapshot.storyObjectives, snapshot.activeStoryOrderTypes)
+        formatAuthoredWaveHud(snapshot.authoredWave, this.i18n.translate) ??
+          formatStoryObjectiveHud(
+            snapshot.storyObjectives,
+            snapshot.activeStoryOrderTypes,
+            this.i18n.translate
+          )
       );
     }
   }
@@ -1358,14 +1393,14 @@ export class CampaignShell {
     if (this.destroyed) return;
     this.activeMode = "story";
     this.applyWorldVisual("million-finale", "story.million_finale", "result");
-    requiredElement(this.storyResultScreen, "[data-campaign-story-packages]").textContent = formatInteger(result.orders);
-    requiredElement(this.storyResultScreen, "[data-campaign-story-score]").textContent = formatInteger(result.score);
-    requiredElement(this.storyResultScreen, "[data-campaign-story-combo]").textContent = `×${formatInteger(result.bestCombo)}`;
+    requiredElement(this.storyResultScreen, "[data-campaign-story-packages]").textContent = formatInteger(result.orders, this.i18n);
+    requiredElement(this.storyResultScreen, "[data-campaign-story-score]").textContent = formatInteger(result.score, this.i18n);
+    requiredElement(this.storyResultScreen, "[data-campaign-story-combo]").textContent = `×${formatInteger(result.bestCombo, this.i18n)}`;
     this.setView("story_result", this.storyResultScreen);
     requiredElement<HTMLButtonElement>(this.storyResultScreen, "[data-campaign-start-challenge]").focus({ preventScroll: true });
     this.announce(
-      `${this.copy.storyResultTitle}. ${this.copy.resultPackages}: ${formatInteger(result.orders)}. ` +
-      `${this.copy.resultScore}: ${formatInteger(result.score)}.`
+      `${this.copy.storyResultTitle}. ${this.copy.resultPackages}: ${formatInteger(result.orders, this.i18n)}. ` +
+      `${this.copy.resultScore}: ${formatInteger(result.score, this.i18n)}.`
     );
   }
 
@@ -1374,23 +1409,25 @@ export class CampaignShell {
     this.activeMode = "challenge";
     this.applyWorldVisual("million-finale", "story.million_finale", "result");
     this.challengeResult = result;
-    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-packages]").textContent = formatInteger(result.orders);
-    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-total]").textContent = formatInteger(result.totalScore);
-    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-score]").textContent = formatInteger(result.challengeScore);
-    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-best]").textContent = formatInteger(result.bestScore);
-    const bestLabel = result.firstChallengeResult ? "Pierwszy wynik wyzwania" : "Twój rekord wyzwania";
+    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-packages]").textContent = formatInteger(result.orders, this.i18n);
+    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-total]").textContent = formatInteger(result.totalScore, this.i18n);
+    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-score]").textContent = formatInteger(result.challengeScore, this.i18n);
+    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-best]").textContent = formatInteger(result.bestScore, this.i18n);
+    const bestLabel = this.i18n.translate(
+      result.firstChallengeResult ? "Pierwszy wynik wyzwania" : "Twój rekord wyzwania"
+    );
     requiredElement(this.challengeResultScreen, "[data-campaign-challenge-best-label]").textContent = bestLabel;
-    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-distance]").textContent = formatInteger(result.distanceM);
+    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-distance]").textContent = formatInteger(result.distanceM, this.i18n);
     requiredElement(this.challengeResultScreen, "[data-campaign-result-metric='orders']")
-      .setAttribute("aria-label", `${this.copy.resultPackages}: ${formatInteger(result.orders)}`);
+      .setAttribute("aria-label", `${this.copy.resultPackages}: ${formatInteger(result.orders, this.i18n)}`);
     requiredElement(this.challengeResultScreen, "[data-campaign-result-metric='total']")
-      .setAttribute("aria-label", `Wynik łączny: ${formatInteger(result.totalScore)}`);
+      .setAttribute("aria-label", `${this.i18n.translate("Wynik łączny")}: ${formatInteger(result.totalScore, this.i18n)}`);
     requiredElement(this.challengeResultScreen, "[data-campaign-result-metric='challenge']")
-      .setAttribute("aria-label", `Wynik wyzwania: ${formatInteger(result.challengeScore)}`);
+      .setAttribute("aria-label", `${this.i18n.translate("Wynik wyzwania")}: ${formatInteger(result.challengeScore, this.i18n)}`);
     requiredElement(this.challengeResultScreen, "[data-campaign-result-metric='best']")
-      .setAttribute("aria-label", `${bestLabel}: ${formatInteger(result.bestScore)}`);
+      .setAttribute("aria-label", `${bestLabel}: ${formatInteger(result.bestScore, this.i18n)}`);
     requiredElement(this.challengeResultScreen, "[data-campaign-result-metric='distance']")
-      .setAttribute("aria-label", `${this.copy.resultDistance}: ${formatInteger(result.distanceM)} m`);
+      .setAttribute("aria-label", `${this.copy.resultDistance}: ${this.i18n.formatMetres(result.distanceM)}`);
     this.sharePanel.hidden = true;
     this.shareStatus.textContent = "";
     requiredElement<HTMLButtonElement>(this.challengeResultScreen, "[data-campaign-toggle-share]")
@@ -1398,9 +1435,9 @@ export class CampaignShell {
     this.setView("challenge_result", this.challengeResultScreen);
     requiredElement<HTMLButtonElement>(this.challengeResultScreen, "[data-campaign-restart-challenge]").focus({ preventScroll: true });
     this.announce(
-      `${this.copy.challengeResultTitle}. Wynik łączny: ${formatInteger(result.totalScore)}. ` +
-      `Wynik wyzwania: ${formatInteger(result.challengeScore)}. ` +
-      `${this.copy.resultPackages}: ${formatInteger(result.orders)}.`
+      `${this.copy.challengeResultTitle}. ${this.i18n.translate("Wynik łączny")}: ${formatInteger(result.totalScore, this.i18n)}. ` +
+      `${this.i18n.translate("Wynik wyzwania")}: ${formatInteger(result.challengeScore, this.i18n)}. ` +
+      `${this.copy.resultPackages}: ${formatInteger(result.orders, this.i18n)}.`
     );
     void this.syncChallengeRecord(result.challengeScore, result.orders);
   }
@@ -1429,15 +1466,21 @@ export class CampaignShell {
         if (submitted) this.announce("Wpisano Cię na tablicę rekordów!");
         return;
       } catch (error) {
-        if (!(error instanceof RecordsNameTakenError)) {
+        if (!(error instanceof RecordsNameTakenError) &&
+            !(error instanceof RecordsNameValidationError)) {
           await this.resultRecords.refresh();
           return;
         }
         const rejectedName = this.profile.playerName ?? "";
         this.profile.setPlayerName(null);
+        const message = error instanceof RecordsNameValidationError
+          ? this.i18n.translate(error.reason === "too_long"
+            ? PLAYER_NAME_TOO_LONG_MESSAGE
+            : PLAYER_NAME_DISALLOWED_MESSAGE)
+          : this.i18n.translate("Ta nazwa jest już zajęta. Wybierz inną.");
         const answer = await this.namePrompt.ask(
           rejectedName,
-          "Ta nazwa jest już zajęta. Wybierz inną."
+          message
         );
         if (answer.skipped) {
           await this.resultRecords.refresh();
@@ -1831,8 +1874,10 @@ export class CampaignShell {
           orders: this.challengeResult.orders
         },
         canonicalUrl: this.canonicalUrl,
-        scoreLabel: this.copy.shareScoreLabel.toLocaleUpperCase("pl-PL"),
-        ordersLabel: this.copy.resultPackages.toLocaleUpperCase("pl-PL"),
+        i18n: this.i18n,
+        title: this.copy.brandEdition,
+        scoreLabel: this.copy.shareScoreLabel.toLocaleUpperCase(this.i18n.intlLocale),
+        ordersLabel: this.copy.resultPackages.toLocaleUpperCase(this.i18n.intlLocale),
         callToAction: this.copy.shareTurn,
         publicationText: this.copy.sharePublication,
       });

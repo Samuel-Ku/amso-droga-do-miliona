@@ -1,4 +1,4 @@
-export const PLAYER_NAME_POLICY_VERSION = "2026-07-23.2";
+export const PLAYER_NAME_POLICY_VERSION = "2026-08-07.1";
 
 export type PlayerNameModerationCategory =
   | "format"
@@ -34,6 +34,12 @@ export const PLAYER_NAME_BLOCKED_PHRASES: readonly PlayerNamePhraseCategory[] = 
       "administrator",
       "moderator",
       "support",
+      "offiziell",
+      "oficial",
+      "ufficiale",
+      "officiel",
+      "офіційний",
+      "адміністратор",
       "customer support",
       "obsługa klienta",
       "biuro obsługi"
@@ -77,7 +83,15 @@ export const PLAYER_NAME_BLOCKED_PHRASES: readonly PlayerNamePhraseCategory[] = 
       "shit",
       "bitch",
       "cunt",
-      "motherfucker"
+      "motherfucker",
+      "scheisse",
+      "mierda",
+      "puta",
+      "cazzo",
+      "merde",
+      "putain",
+      "сука",
+      "блядь"
     ])
   },
   {
@@ -94,7 +108,7 @@ export const PLAYER_NAME_BLOCKED_PHRASES: readonly PlayerNamePhraseCategory[] = 
   },
   {
     category: "sexual",
-    phrases: Object.freeze(["porn", "porno", "sex", "seks", "xxx"])
+    phrases: Object.freeze(["porn", "porno", "sex", "seks", "xxx", "sexe", "секс"])
   },
   {
     category: "violence",
@@ -105,7 +119,12 @@ export const PLAYER_NAME_BLOCKED_PHRASES: readonly PlayerNamePhraseCategory[] = 
       "zabiję",
       "zabic",
       "zabić",
-      "bomb threat"
+      "bomb threat",
+      "toete",
+      "matar",
+      "uccidere",
+      "tuer",
+      "убити"
     ])
   },
   {

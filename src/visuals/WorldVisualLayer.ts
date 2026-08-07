@@ -13,6 +13,7 @@ import {
   type WorldPlateTransform
 } from "./world-plate-transform";
 import { DecodedImageStore } from "../assets/DecodedImageStore";
+import type { CampaignI18n } from "../localization";
 
 export type WorldVisualPhase = "landing" | "story" | "game" | "result";
 export type WorldTransitionMode = "story-linked" | "offscreen";
@@ -94,9 +95,6 @@ export class WorldVisualLayer {
   private readonly plate: HTMLElement;
   private readonly route: SVGElement;
   private readonly counter: HTMLElement;
-  private readonly numberFormatter = new Intl.NumberFormat("pl-PL", {
-    maximumFractionDigits: 0
-  });
   private lastCounterValue: number | null = null;
   private lastPhaseValue = "";
   private lastMotionState = "";
@@ -126,7 +124,8 @@ export class WorldVisualLayer {
 
   public constructor(
     private readonly host: HTMLElement,
-    private readonly assets = new WorldAssetStore()
+    private readonly assets = new WorldAssetStore(),
+    private readonly i18n?: CampaignI18n
   ) {
     host.innerHTML = `
       <div class="amso-world-visual__image-stack" data-world-plate aria-hidden="true">
@@ -208,8 +207,7 @@ export class WorldVisualLayer {
     const safeValue = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
     if (safeValue === this.lastCounterValue) return;
     this.lastCounterValue = safeValue;
-    const text = this.numberFormatter
-      .format(safeValue)
+    const text = (this.i18n?.formatInteger(safeValue) ?? safeValue.toLocaleString("pl-PL"))
       .replace(/[\u00a0\u202f]/gu, " ");
     if (this.counter.textContent !== text) this.counter.textContent = text;
   }

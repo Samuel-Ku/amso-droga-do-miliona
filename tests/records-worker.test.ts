@@ -35,7 +35,7 @@ describe("records worker", () => {
   it.each(disallowedPlayerNames)("rejects a direct moderated POST for %s", async (name) => {
     const response = await worker.fetch(jsonRequest(submission(name)), env(), {});
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: "invalid_name" });
+    expect(await response.json()).toEqual({ error: "name_disallowed" });
   });
 
   it.each(allowedPlayerNames)("accepts the shared allowed fixture %s", async (name) => {
@@ -55,6 +55,34 @@ describe("records worker", () => {
 
     const tooLong = await worker.fetch(jsonRequest(submission("a".repeat(15))), env(), {});
     expect(tooLong.status).toBe(400);
+    expect(await tooLong.json()).toEqual({ error: "name_too_long" });
+  });
+
+  it("allows only configured AMSO browser origins", async () => {
+    const bindings = env();
+    const allowed = await worker.fetch(new Request("https://x.test/api/records", {
+      headers: { origin: "https://amso.eu" }
+    }), bindings, {});
+    const denied = await worker.fetch(new Request("https://x.test/api/records", {
+      headers: { origin: "https://evil.example" }
+    }), bindings, {});
+
+    expect(allowed.headers.get("access-control-allow-origin")).toBe("https://amso.eu");
+    expect(allowed.headers.get("vary")).toContain("Origin");
+    expect(denied.status).toBe(403);
+    expect(denied.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  it("rejects a preflight for an unsupported method", async () => {
+    const response = await worker.fetch(new Request("https://x.test/api/records", {
+      method: "OPTIONS",
+      headers: {
+        origin: "https://amso.pl",
+        "access-control-request-method": "DELETE"
+      }
+    }), env(), {});
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "preflight_not_allowed" });
   });
 
   it("updates only a better result owned by the same player", async () => {

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1460" role="img" aria-label="">
+  <defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#ff7200"/><stop offset="1" stop-color="#eb32a4"/></linearGradient></defs>
+  <rect x="90" y="90" width="1420" height="1280" rx="150" fill="#fffaf3" stroke="#171717" stroke-width="18"/>
+  <text x="800" y="535" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="230" fill="#171717">AMSO</text>
+  <path d="M300 670h1000" stroke="url(#g)" stroke-width="28" stroke-linecap="round"/>
+  <text x="800" y="1030" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="245" fill="url(#g)">1 000 000</text>
+</svg>

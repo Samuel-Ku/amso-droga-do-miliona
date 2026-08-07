@@ -23,8 +23,8 @@ const campaignStyles = readFileSync(
 );
 
 const campaignImagePaths = [
-  "/assets/milion-runner/brand/mz-main-lockup-v1.avif",
-  "/assets/milion-runner/brand/mz-compact-lockup-v1.avif",
+  "/assets/milion-runner/brand/million-neutral-main.svg",
+  "/assets/milion-runner/brand/million-neutral-compact.svg",
   "/assets/milion-runner/courier/courier-run-sheet.webp",
   "/assets/milion-runner/courier/courier-jump-sheet.webp",
   "/assets/milion-runner/worlds/world-01-first-mile-v2.webp",
@@ -101,7 +101,7 @@ describe("single-file QA artwork", () => {
       '<section class="amso-campaign-boot" data-campaign-boot'
     );
     const watchdogPosition = qaPreview.indexOf("campaignScripting");
-    const appPosition = qaPreview.indexOf("AMSO campaign bootstrap failed");
+    const appPosition = qaPreview.lastIndexOf("AMSO campaign bootstrap failed");
     expect(bootMarkupPosition).toBeGreaterThan(-1);
     expect(watchdogPosition).toBeGreaterThan(bootMarkupPosition);
     expect(appPosition).toBeGreaterThan(watchdogPosition);
@@ -119,7 +119,7 @@ describe("single-file QA artwork", () => {
       qaPreview.match(/data:image\/avif;base64,[A-Za-z0-9+/=]+/g) ?? []
     );
 
-    expect(embeddedAvifs.size).toBe(2);
+    expect(embeddedAvifs.size).toBe(0);
     for (const embeddedAvif of embeddedAvifs) {
       expect(embeddedAvif.length).toBeLessThanOrEqual(
         EMBEDDED_AVIF_MAX_LENGTH
@@ -139,7 +139,7 @@ describe("single-file QA artwork", () => {
     const embeddedSvgs = new Set(
       qaPreview.match(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+/g) ?? []
     );
-    expect(embeddedSvgs.size).toBe(0);
+    expect(embeddedSvgs.size).toBe(2);
   });
 
   it("embeds the runner config so it can load from a file:// origin", () => {

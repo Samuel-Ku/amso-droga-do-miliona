@@ -169,7 +169,10 @@ describe("D1 records worker HTTP contract", () => {
     const board = await worker.fetch(new Request("https://x.test/api/records"), bindings, {});
 
     expect(await raw.first()).toEqual({ name: blockedName });
-    expect((await board.json()).entries[0].name).toBe("Gracz");
+    const publicEntry = (await board.json()).entries[0];
+    expect(publicEntry).toMatchObject({ nameModerated: true });
+    expect(publicEntry).not.toHaveProperty("name");
+    expect(JSON.stringify(publicEntry)).not.toContain(blockedName);
     expect(legacy.raw).toContain(blockedName);
   });
 

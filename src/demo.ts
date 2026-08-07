@@ -1,6 +1,7 @@
 import { demoConfig } from "./demo-config";
 import { mountCampaign } from "./index";
 import { parseQaBootConfig, QaBootConfigError } from "./qa/boot-config";
+import { campaignI18nFromDocument, localizeElementTree } from "./localization";
 
 const host = document.querySelector<HTMLElement>("#amso-campaign-root");
 if (host === null) throw new Error("campaign_root_missing");
@@ -40,6 +41,7 @@ try {
       </div>
     </section>
   `;
+  localizeElementTree(host, campaignI18nFromDocument(document));
 }
 
 if (import.meta.hot && campaign !== null) {

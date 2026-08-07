@@ -78,7 +78,7 @@ describe("canonical game instructions", () => {
       updatedAt: Date.UTC(2026, 6, 23, 8)
     }]);
     expect(boardHost.querySelector("[data-record-orders]")?.textContent)
-      .toBe("2 zamówień");
+      .toBe("2 zamówienia");
 
     shell.destroy();
   });

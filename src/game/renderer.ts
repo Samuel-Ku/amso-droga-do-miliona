@@ -108,7 +108,7 @@ export class RendererResourceCache {
   }
 }
 
-const INTEGER_FORMATTER = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
+const DEFAULT_INTEGER_FORMATTER = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
 
 interface BackgroundTheme {
   wall: string;
@@ -633,7 +633,9 @@ function drawScaleVignette(
 function drawMillionVignette(
   context: CanvasRenderingContext2D,
   scene: Readonly<RenderScene>,
-  completedGradient: CanvasGradient
+  completedGradient: CanvasGradient,
+  formatInteger: (value: number) => string,
+  counterLabel: string
 ): void {
   const finale = scene.storyObjectives?.epoch5.millionThreshold;
   const completed = finale?.completed === true || scene.storyPhase === "finale" ||
@@ -649,10 +651,10 @@ function drawMillionVignette(
   context.fillStyle = frame;
   context.font = "950 44px ui-monospace, monospace";
   context.textAlign = "center";
-  context.fillText(INTEGER_FORMATTER.format(counter), 739, 133);
+  context.fillText(formatInteger(counter), 739, 133);
   context.fillStyle = COLORS.inkSoft;
   context.font = "850 16px system-ui, sans-serif";
-  context.fillText("ZAMÓWIEŃ", 739, 163);
+  context.fillText(counterLabel, 739, 163);
 
   for (let index = 0; index < (completed ? 8 : 4); index += 1) {
     const x = 579 + index * 43;
@@ -706,7 +708,9 @@ function drawNarrativeVignette(
   context: CanvasRenderingContext2D,
   scene: Readonly<RenderScene>,
   theme: Readonly<BackgroundTheme>,
-  resources: RendererResourceCache
+  resources: RendererResourceCache,
+  formatInteger: (value: number) => string,
+  millionCounterLabel: string
 ): void {
   if (scene.mode === "challenge") {
     drawChallengeVignette(context, scene, theme);
@@ -730,7 +734,13 @@ function drawNarrativeVignette(
       drawScaleVignette(context, scene, theme);
       break;
     case 4:
-      drawMillionVignette(context, scene, resources.completedMillionGradient);
+      drawMillionVignette(
+        context,
+        scene,
+        resources.completedMillionGradient,
+        formatInteger,
+        millionCounterLabel
+      );
       break;
   }
 }
@@ -1876,7 +1886,10 @@ export class WarehouseRenderer {
 
   public constructor(
     _brandArtwork: CourierBrandArtwork = DEFAULT_COURIER_BRAND_ARTWORK,
-    private readonly artwork: RunnerArtwork = new RunnerArtwork({})
+    private readonly artwork: RunnerArtwork = new RunnerArtwork({}),
+    private readonly formatInteger: (value: number) => string = (value) =>
+      DEFAULT_INTEGER_FORMATTER.format(value),
+    private readonly millionCounterLabel = "ZAMÓWIEŃ"
   ) {}
 
   public applyGeometry(
@@ -1948,7 +1961,14 @@ export class WarehouseRenderer {
         scene.reducedMotion,
         theme
       );
-      drawNarrativeVignette(context, scene, theme, resources);
+      drawNarrativeVignette(
+        context,
+        scene,
+        theme,
+        resources,
+        this.formatInteger,
+        this.millionCounterLabel
+      );
     }
     drawGameplayRoute(context, resources.routeGradient);
     drawCelebrationEffects(context, scene, resources);

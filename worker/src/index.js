@@ -17,11 +17,40 @@ function headers() {
   return {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
-    "x-moderation-policy-version": PLAYER_NAME_POLICY_VERSION,
-    "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET, POST, OPTIONS",
-    "access-control-allow-headers": "content-type, authorization"
+    "x-moderation-policy-version": PLAYER_NAME_POLICY_VERSION
   };
+}
+
+function allowedOrigins(env) {
+  const configured = typeof env.CORS_ALLOWED_ORIGINS === "string"
+    ? env.CORS_ALLOWED_ORIGINS.split(",").map((value) => value.trim()).filter(Boolean)
+    : [];
+  return new Set(["https://amso.pl", "https://amso.eu", ...configured]);
+}
+
+function originAllowed(request, env) {
+  const origin = request.headers.get("origin");
+  return origin === null || allowedOrigins(env).has(origin);
+}
+
+function withCors(response, request, env) {
+  const headers = new Headers(response.headers);
+  headers.append("vary", "Origin");
+  const origin = request.headers.get("origin");
+  if (origin && allowedOrigins(env).has(origin)) {
+    headers.set("access-control-allow-origin", origin);
+    headers.set("access-control-allow-methods", "GET, POST, OPTIONS");
+    headers.set("access-control-allow-headers", "content-type, authorization");
+  }
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+function validPreflight(request) {
+  const method = request.headers.get("access-control-request-method");
+  if (method !== null && method !== "GET" && method !== "POST") return false;
+  const requestedHeaders = (request.headers.get("access-control-request-headers") ?? "")
+    .split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
+  return requestedHeaders.every((header) => header === "content-type" || header === "authorization");
 }
 
 function json(body, status = 200) {
@@ -51,7 +80,7 @@ function publicRow(row) {
   const validation = validatePlayerName(String(row.name));
   return {
     id: String(row.id),
-    name: validation.valid ? validation.name : "Gracz",
+    ...(validation.valid ? { name: validation.name } : { nameModerated: true }),
     challengeScore: Number(row.challenge_score),
     orders: Number(row.orders),
     updatedAt: Number(row.updated_at),
@@ -161,7 +190,9 @@ async function handlePost(request, env) {
   }
 
   const validation = validatePlayerName(typeof payload?.name === "string" ? payload.name : "");
-  if (!validation.valid) return json({ error: "invalid_name" }, 400);
+  if (!validation.valid) {
+    return json({ error: validation.reason === "too_long" ? "name_too_long" : "name_disallowed" }, 400);
+  }
 
   const name = validation.name;
   const canonical = canonicalName(name);
@@ -291,14 +322,21 @@ export default {
     if (!url.pathname.startsWith("/api/records")) {
       return new Response("Not found", { status: 404 });
     }
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: headers() });
-    if (!env.DB) return json({ error: "records_unavailable" }, 503);
-    if (url.pathname === "/api/records/migrate" && request.method === "POST") {
-      return handleMigration(request, env);
+    if (!originAllowed(request, env)) return json({ error: "origin_not_allowed" }, 403);
+    if (request.method === "OPTIONS") {
+      if (!validPreflight(request)) {
+        return withCors(json({ error: "preflight_not_allowed" }, 403), request, env);
+      }
+      return withCors(new Response(null, { status: 204, headers: headers() }), request, env);
     }
-    if (url.pathname !== "/api/records") return json({ error: "not_found" }, 404);
-    if (request.method === "GET") return handleGet(request, env.DB);
-    if (request.method === "POST") return handlePost(request, env);
-    return json({ error: "method_not_allowed" }, 405);
+    let response;
+    if (!env.DB) response = json({ error: "records_unavailable" }, 503);
+    else if (url.pathname === "/api/records/migrate" && request.method === "POST") {
+      response = await handleMigration(request, env);
+    } else if (url.pathname !== "/api/records") response = json({ error: "not_found" }, 404);
+    else if (request.method === "GET") response = await handleGet(request, env.DB);
+    else if (request.method === "POST") response = await handlePost(request, env);
+    else response = json({ error: "method_not_allowed" }, 405);
+    return withCors(response, request, env);
   }
 };

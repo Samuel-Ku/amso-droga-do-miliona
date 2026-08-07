@@ -68,8 +68,8 @@ describe("campaign visual scene manifest", () => {
 
   it("keeps the full art set under 24 MB and the first two worlds under 3 MB", () => {
     const brandPaths = [
-      "/assets/milion-runner/brand/mz-main-lockup-v1.avif",
-      "/assets/milion-runner/brand/mz-compact-lockup-v1.avif"
+      "/assets/milion-runner/brand/million-neutral-main.svg",
+      "/assets/milion-runner/brand/million-neutral-compact.svg"
     ];
     const localSize = (assetPath: string): number => statSync(
       new URL(`../public${assetPath}`, import.meta.url)

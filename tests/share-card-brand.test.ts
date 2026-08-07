@@ -81,7 +81,7 @@ describe("campaign result share card brand", () => {
     );
 
     expect(card.type).toBe("image/png");
-    expect(harness.image.src).toBe("/assets/milion-runner/brand/mz-compact-lockup-v1.avif");
+    expect(harness.image.src).toBe("/assets/milion-runner/brand/million-neutral-compact.svg");
     expect(harness.drawImage).toHaveBeenCalledTimes(1);
     const [image, x, y, width, height] = harness.drawImage.mock.calls[0] ?? [];
     expect([image, x, y, width]).toEqual([harness.image, 596, 43, 430]);

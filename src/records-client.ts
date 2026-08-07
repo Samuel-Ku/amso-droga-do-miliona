@@ -23,6 +23,13 @@ export class RecordsNameTakenError extends Error {
   }
 }
 
+export class RecordsNameValidationError extends Error {
+  public constructor(public readonly reason: "disallowed" | "too_long") {
+    super(reason === "too_long" ? "name_too_long" : "name_disallowed");
+    this.name = "RecordsNameValidationError";
+  }
+}
+
 export class RecordsClient {
   private readonly endpoint: string;
   private readonly readsEnabled: boolean;
@@ -116,6 +123,11 @@ export class RecordsClient {
     if (!res.ok) {
       const error = await res.json().catch(() => ({})) as { error?: string };
       if (res.status === 409 && error.error === "name_taken") throw new RecordsNameTakenError();
+      if (res.status === 400 && (error.error === "name_disallowed" || error.error === "name_too_long")) {
+        throw new RecordsNameValidationError(
+          error.error === "name_too_long" ? "too_long" : "disallowed"
+        );
+      }
       throw new Error(`records POST ${res.status}`);
     }
     const data = (await res.json()) as Partial<BoardResponse>;
@@ -128,11 +140,13 @@ export class RecordsClient {
 
 function normalizeEntry(value: unknown, fallbackRank: number): RecordBoardEntry | null {
   if (!value || typeof value !== "object") return null;
-  const entry = value as Partial<RecordBoardEntry>;
-  if (typeof entry.name !== "string" || typeof entry.challengeScore !== "number") return null;
+  const entry = value as Partial<RecordBoardEntry> & { nameModerated?: unknown };
+  const moderated = entry.nameModerated === true;
+  if ((!moderated && typeof entry.name !== "string") || typeof entry.challengeScore !== "number") return null;
   return {
     ...(typeof entry.id === "string" ? { id: entry.id } : {}),
-    name: entry.name,
+    name: moderated ? "" : entry.name!,
+    ...(moderated ? { nameModerated: true as const } : {}),
     challengeScore: Math.round(entry.challengeScore),
     orders: Math.round(Number(entry.orders) || 0),
     updatedAt: Number(entry.updatedAt) || 0,

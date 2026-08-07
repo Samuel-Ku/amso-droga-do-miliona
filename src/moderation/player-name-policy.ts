@@ -142,15 +142,6 @@ function blockedCategory(forms: readonly ComparisonForm[]): PlayerNameModeration
 
 export function validatePlayerName(raw: string): PlayerNameValidationResult {
   const name = normalizePlayerName(raw);
-  if (graphemeCount(name) > PLAYER_NAME_MAX_GRAPHEMES) {
-    return {
-      valid: false,
-      reason: "too_long",
-      category: "format",
-      policyVersion: PLAYER_NAME_POLICY_VERSION
-    };
-  }
-
   for (const risk of PLAYER_NAME_RISK_PATTERNS) {
     if (risk.pattern.test(name)) {
       return {
@@ -178,6 +169,15 @@ export function validatePlayerName(raw: string): PlayerNameValidationResult {
       valid: false,
       reason: "disallowed",
       category,
+      policyVersion: PLAYER_NAME_POLICY_VERSION
+    };
+  }
+
+  if (graphemeCount(name) > PLAYER_NAME_MAX_GRAPHEMES) {
+    return {
+      valid: false,
+      reason: "too_long",
+      category: "format",
       policyVersion: PLAYER_NAME_POLICY_VERSION
     };
   }

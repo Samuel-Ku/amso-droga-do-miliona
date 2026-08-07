@@ -16,6 +16,8 @@ export type PackageType = "notebook" | "telefon" | "pc" | "lcd";
 export interface RecordBoardEntry {
   id?: string;
   name: string;
+  /** Worker omitted an unsafe source name; UI supplies its locale-neutral replacement. */
+  nameModerated?: true;
   challengeScore: number;
   orders: number;
   updatedAt: number;

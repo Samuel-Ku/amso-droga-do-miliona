@@ -7,6 +7,7 @@ import type {
   RunnerOpenOptions,
   RunnerPublicApi
 } from "./shared/types";
+import { campaignI18nFromDocument, localizeRunnerConfig } from "./localization";
 
 export interface CampaignMountApi {
   destroy(): void;
@@ -42,9 +43,10 @@ export function mountCampaign(
   host: HTMLElement,
   runtime: CampaignRuntimeOptions = {}
 ): CampaignMountApi {
-  const config = requireEnabledConfig(configValue);
+  const i18n = campaignI18nFromDocument(host.ownerDocument);
+  const config = localizeRunnerConfig(requireEnabledConfig(configValue), i18n);
   mountedCampaign?.destroy();
-  const controller = new CampaignController(host, config, undefined, undefined, runtime);
+  const controller = new CampaignController(host, config, undefined, undefined, runtime, i18n);
   mountedCampaign = controller;
 
   return {

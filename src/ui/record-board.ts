@@ -1,14 +1,12 @@
 import { RecordsClient, sanitizePlayerName } from "../records-client";
 import type { RecordBoardEntry } from "../shared/types";
-
-function formatInt(number: number): string {
-  return Math.round(number).toLocaleString("pl-PL");
-}
+import { createCampaignI18n, type CampaignI18n } from "../localization";
 
 export type RecordBoardContext = "landing" | "result";
 
 export interface RecordBoardOptions {
   context?: RecordBoardContext;
+  i18n?: CampaignI18n;
 }
 
 /** One semantic leaderboard table with context-specific, bounded row selection. */
@@ -16,6 +14,7 @@ export class RecordBoard {
   private readonly client: RecordsClient;
   private readonly host: HTMLElement;
   private readonly context: RecordBoardContext;
+  private readonly i18n: CampaignI18n;
   private entries: RecordBoardEntry[] = [];
   private playerEntry: RecordBoardEntry | null = null;
   private highlightedName: string | null = null;
@@ -27,6 +26,7 @@ export class RecordBoard {
     this.host = host;
     this.client = client;
     this.context = options.context ?? "landing";
+    this.i18n = options.i18n ?? createCampaignI18n("pl");
   }
 
   public setHighlight(name: string | null): void {
@@ -71,12 +71,14 @@ export class RecordBoard {
   }
 
   private renderLoading(): void {
-    this.host.innerHTML = this.wrap(`<p class="amso-records__status">Ładowanie tablicy…</p>`);
+    this.host.innerHTML = this.wrap(
+      `<p class="amso-records__status">${escapeHtml(this.i18n.translate("Ładowanie tablicy…"))}</p>`
+    );
   }
 
   private renderError(): void {
     this.host.innerHTML = this.wrap(
-      `<p class="amso-records__status amso-records__status--error">Tablica niedostępna.</p>`
+      `<p class="amso-records__status amso-records__status--error">${escapeHtml(this.i18n.translate("Tablica niedostępna."))}</p>`
     );
   }
 
@@ -84,8 +86,8 @@ export class RecordBoard {
     return `
       <div class="amso-records" data-campaign-records data-records-context="${this.context}"${this.compact ? " data-records-compact=\"true\"" : ""}>
         <div class="amso-records__heading">
-          <h2 class="amso-records__title">Tablica rekordów</h2>
-          <span class="amso-records__badge">Tryb Wyzwania</span>
+          <h2 class="amso-records__title">${escapeHtml(this.i18n.translate("Tablica rekordów"))}</h2>
+          <span class="amso-records__badge">${escapeHtml(this.i18n.translate("Tryb Wyzwania"))}</span>
         </div>
         <div class="amso-records__body">${inner}</div>
       </div>`;
@@ -120,22 +122,25 @@ export class RecordBoard {
   private row(entry: RecordBoardEntry, fallbackRank: number): string {
     const rank = Math.max(1, Math.round(Number(entry.rank) || fallbackRank));
     const current = this.isCurrent(entry);
-    const safeName = escapeHtml(entry.name);
+    const displayName = entry.nameModerated ? this.i18n.translate("Gracz") : entry.name;
+    const safeName = escapeHtml(displayName);
     const podium = rank <= 3 ? ` amso-records__row--podium amso-records__row--rank-${rank}` : "";
     return `
       <tr class="amso-records__row${podium}${current ? " amso-records__row--me" : ""}">
-        <td class="amso-records__rank"><span class="amso-records__rank-value" aria-label="Miejsce ${rank}">${rank}</span></td>
-        <th class="amso-records__name" scope="row" title="${safeName}"><span>${safeName}</span>${current ? `<small data-record-current-label>Ty</small>` : ""}</th>
+        <td class="amso-records__rank"><span class="amso-records__rank-value" aria-label="${escapeHtml(this.i18n.translate("Miejsce"))} ${rank}">${rank}</span></td>
+        <th class="amso-records__name" scope="row" title="${safeName}"><span>${safeName}</span>${current ? `<small data-record-current-label>${escapeHtml(this.i18n.translate("Ty"))}</small>` : ""}</th>
         <td class="amso-records__score">
-          <strong data-record-score>${formatInt(entry.challengeScore)}</strong>
-          <small data-record-orders>${formatInt(entry.orders)} zamówień</small>
+          <strong data-record-score>${this.i18n.formatInteger(entry.challengeScore)}</strong>
+          <small data-record-orders>${this.i18n.formatOrders(entry.orders)}</small>
         </td>
       </tr>`;
   }
 
   private render(): void {
     if (this.entries.length === 0 && !this.playerEntry) {
-      this.host.innerHTML = this.wrap(`<p class="amso-records__status">Bądź pierwszy na liście!</p>`);
+      this.host.innerHTML = this.wrap(
+        `<p class="amso-records__status">${escapeHtml(this.i18n.translate("Bądź pierwszy na liście!"))}</p>`
+      );
       return;
     }
     const selection = this.visibleRows();
@@ -145,9 +150,9 @@ export class RecordBoard {
       : "";
     this.host.innerHTML = this.wrap(`
       <table class="amso-records__table">
-        <caption class="amso-records__caption">Tablica rekordów — Tryb Wyzwania</caption>
+        <caption class="amso-records__caption">${escapeHtml(this.i18n.translate("Tablica rekordów — Tryb Wyzwania"))}</caption>
         <thead>
-          <tr><th scope="col">#</th><th scope="col">Gracz</th><th scope="col">Wynik</th></tr>
+          <tr><th scope="col">#</th><th scope="col">${escapeHtml(this.i18n.translate("Gracz"))}</th><th scope="col">${escapeHtml(this.i18n.translate("Wynik"))}</th></tr>
         </thead>
         <tbody>${rows}${separated}</tbody>
       </table>`);
