@@ -154,6 +154,90 @@ describe("edge-to-edge gameplay background", () => {
     observer.disconnect();
   });
 
+  it("prepares only the current and next challenge world before gameplay", async () => {
+    const images: HTMLImageElement[] = [];
+    const store = new WorldAssetStore(() => {
+      const image = new Image();
+      Object.defineProperties(image, {
+        complete: { configurable: true, value: true },
+        naturalWidth: { configurable: true, value: 1780 },
+        naturalHeight: { configurable: true, value: 941 }
+      });
+      image.decode = vi.fn().mockResolvedValue(undefined);
+      images.push(image);
+      return image;
+    });
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+    layer.show({
+      worldId: "first-mile",
+      stateId: "story.first_package",
+      phase: "landing"
+    });
+    await layer.waitForCurrentPresentation();
+
+    await layer.prepareChallengeWorlds();
+
+    expect(images.map(({ src }) => src.match(/world-\d{2}/u)?.[0])).toEqual([
+      "world-01",
+      "world-02"
+    ]);
+    expect(host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
+      ?.dataset.presentationReady).toBe("true");
+    expect(host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
+      ?.dataset.assetPath).toContain("world-02-order-process");
+  });
+
+  it("continues the one-world warmup queue in an active idle budget", async () => {
+    const idleCallbacks: IdleRequestCallback[] = [];
+    vi.stubGlobal("requestIdleCallback", vi.fn((callback: IdleRequestCallback) => {
+      idleCallbacks.push(callback);
+      return idleCallbacks.length;
+    }));
+    const images: HTMLImageElement[] = [];
+    const store = new WorldAssetStore(() => {
+      const image = new Image();
+      Object.defineProperties(image, {
+        complete: { configurable: true, value: true },
+        naturalWidth: { configurable: true, value: 1780 },
+        naturalHeight: { configurable: true, value: 941 }
+      });
+      image.decode = vi.fn().mockResolvedValue(undefined);
+      images.push(image);
+      return image;
+    });
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+    layer.show({
+      worldId: "first-mile",
+      stateId: "story.first_package",
+      phase: "landing"
+    });
+    await layer.waitForCurrentPresentation();
+    await layer.prepareChallengeWorlds();
+    expect(idleCallbacks).toHaveLength(0);
+
+    layer.show({
+      worldId: "order-process",
+      stateId: "epoch_1.challenge",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    layer.setParallaxDistance(240, true);
+    layer.setParallaxDistance(961, true);
+
+    await vi.waitFor(() => expect(idleCallbacks).toHaveLength(1));
+    idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 50 });
+    await vi.waitFor(() => expect(images).toHaveLength(3));
+    await vi.waitFor(() => {
+      expect(host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
+        ?.dataset.assetPath).toContain("world-03-quality-service");
+      expect(host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
+        ?.dataset.presentationReady).toBe("true");
+    });
+  });
+
   it("uses adjacent, equally oriented panels without overlap or crossfade", () => {
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host);

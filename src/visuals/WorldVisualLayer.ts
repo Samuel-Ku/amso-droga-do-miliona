@@ -124,6 +124,7 @@ export class WorldVisualLayer {
   private panelPreparationScheduled = false;
   private panelPreparationPath: string | null = null;
   private panelPreparationRevision = 0;
+  private idlePreparationLease = false;
   private paused = false;
   private destroyed = false;
   private currentPresentationReady: Promise<void> = Promise.resolve();
@@ -237,8 +238,29 @@ export class WorldVisualLayer {
     this.resumePanelPreparation();
   }
 
-  public prepareChallengeWorlds(): Promise<void> {
-    return this.assets.prepareAll();
+  public async prepareChallengeWorlds(): Promise<void> {
+    await this.currentPresentationReady.catch(() => undefined);
+    if (this.destroyed) return;
+    const currentPath = this.currentAsset?.path ?? (this.currentWorldId === null
+      ? CAMPAIGN_WORLDS[0]?.assetPath
+      : campaignWorld(this.currentWorldId).assetPath);
+    const currentIndex = CAMPAIGN_WORLDS.findIndex(({ assetPath }) =>
+      assetPath === currentPath);
+    const next = CAMPAIGN_WORLDS[(Math.max(0, currentIndex) + 1) % CAMPAIGN_WORLDS.length];
+    if (next === undefined) return;
+    try {
+      const asset = await this.assets.load(next.assetPath);
+      if (this.destroyed || !this.isPanelPreparationSafe()) return;
+      const ready = await this.drawPrecompositedPanelPair(asset);
+      if (!ready || this.destroyed) return;
+      this.preparedPanelAsset = asset;
+      if (this.scheduledPreloadPath === asset.path) {
+        this.scheduledPreloadPath = null;
+        this.scheduledPreloadAsset = null;
+      }
+    } catch {
+      // Terminal optional-image failure is a ready semantic-fallback state.
+    }
   }
 
   public waitForCurrentPresentation(): Promise<void> {
@@ -264,6 +286,7 @@ export class WorldVisualLayer {
     this.scheduledPreloadPath = null;
     this.scheduledPreloadAsset = null;
     this.preparedPanelAsset = null;
+    this.idlePreparationLease = false;
     this.panelPreparationRevision += 1;
     this.resolveCurrentPresentation = null;
     this.rejectCurrentPresentation = null;
@@ -598,7 +621,11 @@ export class WorldVisualLayer {
   }
 
   private schedulePreparedPanelWork(): void {
-    if (this.destroyed || !this.isPanelPreparationSafe() ||
+    if (this.host.dataset.phase === "landing") return;
+    const view = this.host.ownerDocument.defaultView;
+    const requestIdle = view?.requestIdleCallback;
+    const activeGameplay = this.host.dataset.phase === "game" && !this.paused;
+    if (this.destroyed || (activeGameplay && typeof requestIdle !== "function") ||
         this.scheduledPreloadPath === null || this.panelPreparationScheduled ||
         this.panelPreparationPath !== null) return;
     if (this.scheduledPreloadAsset !== null) {
@@ -607,27 +634,38 @@ export class WorldVisualLayer {
     }
     this.panelPreparationScheduled = true;
     const path = this.scheduledPreloadPath;
-    const view = this.host.ownerDocument.defaultView;
-    const run = (): void => {
+    const run = (deadline?: IdleDeadline): void => {
       this.panelPreparationScheduled = false;
-      if (this.destroyed || !this.isPanelPreparationSafe()) return;
+      if (this.destroyed) return;
+      const needsIdleLease = this.host.dataset.phase === "game" && !this.paused;
+      if (needsIdleLease && deadline !== undefined && !deadline.didTimeout &&
+          deadline.timeRemaining() < 8) {
+        this.schedulePreparedPanelWork();
+        return;
+      }
+      this.idlePreparationLease = needsIdleLease;
       if (this.scheduledPreloadPath !== path) {
+        this.idlePreparationLease = false;
         this.schedulePreparedPanelWork();
         return;
       }
       void this.assets.load(path).then((asset) => {
-        if (this.destroyed || this.scheduledPreloadPath !== path) return;
+        if (this.destroyed || this.scheduledPreloadPath !== path) {
+          this.idlePreparationLease = false;
+          return;
+        }
         this.scheduledPreloadAsset = asset;
         this.prepareScheduledPanel();
       }).catch(() => {
+        this.idlePreparationLease = false;
         if (this.scheduledPreloadPath === path) {
           this.scheduledPreloadPath = null;
           this.scheduledPreloadAsset = null;
         }
       });
     };
-    if (typeof view?.requestIdleCallback === "function") {
-      view.requestIdleCallback(() => run());
+    if (typeof requestIdle === "function") {
+      requestIdle((deadline) => run(deadline));
     } else {
       view?.setTimeout(run, 50);
     }
@@ -636,12 +674,16 @@ export class WorldVisualLayer {
   private prepareScheduledPanel(): void {
     const asset = this.scheduledPreloadAsset;
     if (asset === null || !this.isPanelPreparationSafe() || this.panelPreparationPath !== null) {
+      this.idlePreparationLease = false;
       return;
     }
     const revision = ++this.panelPreparationRevision;
     this.panelPreparationPath = asset.path;
     void this.drawPrecompositedPanelPair(asset).then((ready) => {
-      if (revision !== this.panelPreparationRevision) return;
+      if (revision !== this.panelPreparationRevision) {
+        this.idlePreparationLease = false;
+        return;
+      }
       this.panelPreparationPath = null;
       if (ready && this.scheduledPreloadPath === asset.path) {
         this.preparedPanelAsset = asset;
@@ -655,6 +697,7 @@ export class WorldVisualLayer {
       } else if (this.isPanelPreparationSafe()) {
         this.schedulePreparedPanelWork();
       }
+      this.idlePreparationLease = false;
       this.resumePanelPreparation();
     });
   }
@@ -673,7 +716,7 @@ export class WorldVisualLayer {
   }
 
   private isPanelPreparationSafe(): boolean {
-    return this.host.dataset.phase !== "game" || this.paused;
+    return this.host.dataset.phase !== "game" || this.paused || this.idlePreparationLease;
   }
 
   private async drawPrecompositedPanel(
@@ -752,6 +795,7 @@ export class WorldVisualLayer {
     this.scheduledPreloadAsset = null;
     this.panelPreparationPath = null;
     this.panelPreparationRevision += 1;
+    this.idlePreparationLease = false;
   }
 
   private setProperty(name: string, value: string): void {
