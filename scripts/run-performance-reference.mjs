@@ -9,6 +9,7 @@ import {
   headersForPerformanceRequest,
   isExpectedPerformanceRequest
 } from "./performance-request-policy.mjs";
+import { qualifiedPanelTransitions } from "./performance-transition-policy.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 
@@ -438,11 +439,12 @@ try {
   const checkpointsPassed = Array.isArray(report?.scenarioCheckpoints) &&
     report.scenarioCheckpoints.length > 1 &&
     report.scenarioCheckpoints.every(({ passed }) => passed === true);
+  const qualifiedTransitions = qualifiedPanelTransitions(runtime.panelTransitions);
   const transitionActiveDecodeStarts = runtime.decodeTimings.filter(({ active, startedAtMs }) =>
-    active === true && runtime.panelTransitions.some(({ atMs }) =>
+    active === true && qualifiedTransitions.some(({ atMs }) =>
       Math.abs(startedAtMs - atMs) <= 500)).length;
   const requiredPanelTransitionsPassed = ["order-process", "quality-service"].every((worldId) =>
-    runtime.panelTransitions.some((transition) => transition.worldId === worldId &&
+    qualifiedTransitions.some((transition) => transition.worldId === worldId &&
       transition.presentationReady === true && transition.hidden === false &&
       transition.assetPath?.includes(`world-0${worldId === "order-process" ? "2" : "3"}-`)));
   const capturePassed = report?.scenarioValidation?.passed === true &&
