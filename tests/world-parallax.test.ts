@@ -217,6 +217,13 @@ describe("edge-to-edge gameplay background", () => {
     await layer.prepareChallengeWorlds();
     expect(idleCallbacks).toHaveLength(0);
 
+    layer.setPhase("game");
+    await vi.waitFor(() => expect(idleCallbacks).toHaveLength(1));
+    idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 50 });
+    await vi.waitFor(() => expect(images).toHaveLength(3));
+    expect(host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
+      ?.dataset.assetPath).toContain("world-02-order-process");
+
     layer.show({
       worldId: "order-process",
       stateId: "epoch_1.challenge",
@@ -226,10 +233,11 @@ describe("edge-to-edge gameplay background", () => {
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
     layer.setParallaxDistance(240, true);
     layer.setParallaxDistance(961, true);
+    expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
+      ?.dataset.worldId).toBe("order-process");
 
     await vi.waitFor(() => expect(idleCallbacks).toHaveLength(1));
     idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 50 });
-    await vi.waitFor(() => expect(images).toHaveLength(3));
     await vi.waitFor(() => {
       expect(host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
         ?.dataset.assetPath).toContain("world-03-quality-service");
