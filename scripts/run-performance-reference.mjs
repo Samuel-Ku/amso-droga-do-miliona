@@ -5,6 +5,10 @@ import os from "node:os";
 import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { chromium } from "playwright";
+import {
+  headersForPerformanceRequest,
+  isExpectedPerformanceRequest
+} from "./performance-request-policy.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 
@@ -98,11 +102,19 @@ let exitCode = 1;
 try {
   const vercelAutomationBypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
   const page = await browser.newPage({
-    viewport: { width: 960, height: 540 },
-    ...(vercelAutomationBypass
-      ? { extraHTTPHeaders: { "x-vercel-protection-bypass": vercelAutomationBypass } }
-      : {})
+    viewport: { width: 960, height: 540 }
   });
+  if (vercelAutomationBypass) {
+    await page.route("**/*", async (route) => {
+      const request = route.request();
+      const requestUrl = new URL(request.url());
+      await route.continue({
+        headers: headersForPerformanceRequest(
+          requestUrl, targetUrl, request.headers(), vercelAutomationBypass
+        )
+      });
+    });
+  }
   const browserRuntime = await page.evaluate(() => ({
     userAgent: navigator.userAgent,
     hardwareConcurrency: navigator.hardwareConcurrency ?? null,
@@ -131,10 +143,7 @@ try {
   });
   page.on("request", (request) => {
     const requestUrl = new URL(request.url());
-    const expectedDeploymentResource = deploymentUrl !== undefined &&
-      requestUrl.origin === targetUrl.origin;
-    if ((requestUrl.protocol === "http:" || requestUrl.protocol === "https:") &&
-        !expectedDeploymentResource) {
+    if (!isExpectedPerformanceRequest(requestUrl, targetUrl)) {
       externalRequests.push(request.url());
     }
   });
@@ -147,6 +156,7 @@ try {
       maxActiveFrameMs: 0,
       decodeTimings: [],
       worldTransitions: [],
+      panelTransitions: [],
       qualityHistory: [{ level: "full", atMs: 0, reason: "force-full" }],
       longTasks: { support: "unsupported", count: 0, totalDurationMs: 0,
         maxDurationMs: 0, entries: [] },
@@ -304,6 +314,30 @@ try {
           paused: worldVisual.dataset.paused === "true"
         });
       }).observe(worldVisual, { attributes: true, attributeFilter: ["data-world-id"] });
+      let previousCurrentPanel = null;
+      let previousCurrentPanelWorldId = null;
+      const recordCurrentPanel = () => {
+        const panel = worldVisual.querySelector('[data-world-panel="current"]');
+        if (!(panel instanceof HTMLImageElement)) return;
+        const worldId = panel.dataset.worldId ?? null;
+        if (worldId === null ||
+            (panel === previousCurrentPanel && worldId === previousCurrentPanelWorldId)) return;
+        previousCurrentPanel = panel;
+        previousCurrentPanelWorldId = worldId;
+        runtime.panelTransitions.push({
+          worldId,
+          atMs: performance.now(),
+          assetPath: panel.dataset.assetPath ?? null,
+          presentationReady: panel.dataset.presentationReady === "true",
+          hidden: panel.hidden
+        });
+      };
+      recordCurrentPanel();
+      new MutationObserver(recordCurrentPanel).observe(worldVisual, {
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["data-world-panel", "data-world-id", "data-presentation-ready", "hidden"]
+      });
     }, { once: true });
   });
 
@@ -405,13 +439,18 @@ try {
     report.scenarioCheckpoints.length > 1 &&
     report.scenarioCheckpoints.every(({ passed }) => passed === true);
   const transitionActiveDecodeStarts = runtime.decodeTimings.filter(({ active, startedAtMs }) =>
-    active === true && runtime.worldTransitions.some(({ atMs }) =>
+    active === true && runtime.panelTransitions.some(({ atMs }) =>
       Math.abs(startedAtMs - atMs) <= 500)).length;
+  const requiredPanelTransitionsPassed = ["order-process", "quality-service"].every((worldId) =>
+    runtime.panelTransitions.some((transition) => transition.worldId === worldId &&
+      transition.presentationReady === true && transition.hidden === false &&
+      transition.assetPath?.includes(`world-0${worldId === "order-process" ? "2" : "3"}-`)));
   const capturePassed = report?.scenarioValidation?.passed === true &&
     checkpointsPassed &&
     report?.session?.inputQueueOverflows === 0 &&
     report?.session?.replayValid === true &&
     transitionActiveDecodeStarts === 0 &&
+    requiredPanelTransitionsPassed &&
     intervals.filter((interval) => interval > 33).length === 0 &&
     consoleErrors.length === 0 &&
     externalRequests.length === 0 &&
@@ -482,6 +521,7 @@ try {
     qualityHistory: runtime.qualityHistory,
     decodeTimings: runtime.decodeTimings,
     worldTransitions: runtime.worldTransitions,
+    panelTransitions: runtime.panelTransitions,
     longTasks: runtime.longTasks,
     longAnimationFrames: runtime.longAnimationFrames,
     resourceTimings: runtime.resourceTimings,

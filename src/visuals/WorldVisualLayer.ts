@@ -21,6 +21,7 @@ export type WorldTransitionMode = "story-linked" | "offscreen";
 // A 120 Hz frame leaves less than 8 ms total. Each preparation lease performs
 // only one small synchronous DOM operation; decode/composite completion stays async.
 const PANEL_PREPARATION_MIN_IDLE_MS = 2;
+const PANEL_PREPARATION_IDLE_TIMEOUT_MS = 1_000;
 
 export interface WorldVisualSelection {
   readonly worldId: CampaignWorldId;
@@ -585,9 +586,10 @@ export class WorldVisualLayer {
         this.pendingAsset = decodedAsset;
         this.queuedAsset = null;
         this.pendingFallbackWorldId = null;
-        this.pendingPanelPrepared = this.preparedPanelAsset?.path === decodedAsset.path &&
-          this.preparedPanelsMatch(decodedAsset.path);
-        if (this.pendingPanelPrepared) this.preparedPanelAsset = null;
+        this.pendingPanelPrepared = this.preparedPanelsMatch(decodedAsset.path);
+        if (this.pendingPanelPrepared && this.preparedPanelAsset?.path === decodedAsset.path) {
+          this.preparedPanelAsset = null;
+        }
         this.pendingPanelPreparing = false;
         this.transitionStartDistance = this.lastDistance - this.lastDistance % WORLD_WIDTH;
         this.resumePanelPreparation();
@@ -706,7 +708,7 @@ export class WorldVisualLayer {
       });
     };
     if (activeGameplay && typeof requestIdle === "function") {
-      requestIdle((deadline) => run(deadline));
+      requestIdle((deadline) => run(deadline), { timeout: PANEL_PREPARATION_IDLE_TIMEOUT_MS });
     } else {
       run();
     }
@@ -922,7 +924,7 @@ export class WorldVisualLayer {
           } catch {
             resolve(false);
           }
-        });
+        }, { timeout: PANEL_PREPARATION_IDLE_TIMEOUT_MS });
         this.panelStageIdleCallbacks.set(idleId, () => resolve(false));
       };
       attempt();
@@ -945,7 +947,9 @@ export class WorldVisualLayer {
 
   private preparedPanelsMatch(assetPath: string): boolean {
     return this.panels[1].dataset.assetPath === assetPath && !this.panels[1].hidden &&
-      this.stagedPanel.dataset.assetPath === assetPath && !this.stagedPanel.hidden;
+      this.panels[1].dataset.presentationReady === "true" &&
+      this.stagedPanel.dataset.assetPath === assetPath && !this.stagedPanel.hidden &&
+      this.stagedPanel.dataset.presentationReady === "true";
   }
 
   private preparedFallbackPanelsMatch(worldId: CampaignWorldId): boolean {

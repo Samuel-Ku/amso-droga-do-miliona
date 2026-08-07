@@ -333,9 +333,12 @@ describe("edge-to-edge gameplay background", () => {
 
   it("continues DOM preparation through short active idle budgets", async () => {
     const idleCallbacks: IdleRequestCallback[] = [];
+    const idleOptions: (IdleRequestOptions | undefined)[] = [];
     const compositeFrames: FrameRequestCallback[] = [];
-    vi.stubGlobal("requestIdleCallback", vi.fn((callback: IdleRequestCallback) => {
+    vi.stubGlobal("requestIdleCallback", vi.fn((callback: IdleRequestCallback,
+      options?: IdleRequestOptions) => {
       idleCallbacks.push(callback);
+      idleOptions.push(options);
       return idleCallbacks.length;
     }));
     const images: HTMLImageElement[] = [];
@@ -377,21 +380,27 @@ describe("edge-to-edge gameplay background", () => {
     layer.setParallaxDistance(961, true);
 
     await vi.waitFor(() => expect(idleCallbacks.length).toBeGreaterThan(0));
-    idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 4 });
+    expect(idleOptions.shift()).toMatchObject({ timeout: 1_000 });
+    idleCallbacks.shift()?.({ didTimeout: true, timeRemaining: () => 0 });
     await vi.waitFor(() => expect(images).toHaveLength(3));
     expect(images[2]?.src).toContain("world-03-quality-service");
 
     await vi.waitFor(() => expect(idleCallbacks.length).toBeGreaterThan(0));
     const panelsReady = (): boolean =>
       host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
+        ?.dataset.assetPath?.includes("world-03-quality-service") === true &&
+      host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
         ?.dataset.presentationReady === "true" &&
+      host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
+        ?.dataset.assetPath?.includes("world-03-quality-service") === true &&
       host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
         ?.dataset.presentationReady === "true";
     for (let stage = 0; stage < 14 && !panelsReady(); stage += 1) {
       await vi.waitFor(() => expect(idleCallbacks.length + compositeFrames.length)
         .toBeGreaterThan(0));
       if (idleCallbacks.length > 0) {
-        idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 4 });
+        expect(idleOptions.shift()).toMatchObject({ timeout: 1_000 });
+        idleCallbacks.shift()?.({ didTimeout: true, timeRemaining: () => 0 });
       } else {
         compositeFrames.shift()?.(stage * 16);
       }
@@ -400,10 +409,50 @@ describe("edge-to-edge gameplay background", () => {
     }
     await vi.waitFor(() => {
       expect(host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
-        ?.dataset.presentationReady).toBe("true");
+        ?.dataset.assetPath).toContain("world-03-quality-service");
       expect(host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
-        ?.dataset.presentationReady).toBe("true");
+        ?.dataset.assetPath).toContain("world-03-quality-service");
     });
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
+
+    const panelDecode = vi.mocked(HTMLImageElement.prototype.decode);
+    const decodeCountBeforeQualitySeam = panelDecode.mock.calls.length;
+    const preparedWorlds = () => ({
+      next: host.querySelector<HTMLImageElement>('[data-world-panel="next"]')?.dataset.worldId,
+      nextReady: host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
+        ?.dataset.presentationReady,
+      staged: host.querySelector<HTMLImageElement>("[data-world-staged-panel]")?.dataset.worldId,
+      stagedReady: host.querySelector<HTMLImageElement>("[data-world-staged-panel]")
+        ?.dataset.presentationReady
+    });
+    expect(preparedWorlds()).toEqual({
+      next: "quality-service", nextReady: "true",
+      staged: "quality-service", stagedReady: "true"
+    });
+    layer.show({
+      worldId: "quality-service",
+      stateId: "epoch_2.resolve",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    expect(host.dataset.assetState).toBe("loading");
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    expect(preparedWorlds()).toEqual({
+      next: "quality-service", nextReady: "true",
+      staged: "quality-service", stagedReady: "true"
+    });
+    layer.setParallaxDistance(1_200, true);
+    layer.setParallaxDistance(1_921, true);
+
+    const current = host.querySelector<HTMLImageElement>('[data-world-panel="current"]');
+    expect({
+      current: current?.dataset.worldId,
+      next: host.querySelector<HTMLImageElement>('[data-world-panel="next"]')?.dataset.worldId,
+      staged: host.querySelector<HTMLImageElement>("[data-world-staged-panel]")?.dataset.worldId
+    }).toEqual({ current: "quality-service", next: "quality-service", staged: "order-process" });
+    expect(current?.dataset.presentationReady).toBe("true");
+    expect(current?.hidden).toBe(false);
+    expect(panelDecode).toHaveBeenCalledTimes(decodeCountBeforeQualitySeam);
   });
 
   it("stages a later queued fallback through active idle before its seam", async () => {

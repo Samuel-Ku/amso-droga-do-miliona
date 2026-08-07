@@ -138,7 +138,7 @@ function summarizeFirstTenSeconds(run) {
 }
 
 function transitionWindow(run, worldId) {
-  const transition = run.worldTransitions.find((entry) => entry.worldId === worldId);
+  const transition = run.panelTransitions?.find((entry) => entry.worldId === worldId);
   if (transition === undefined) return null;
   const frames = frameWindow(run, transition.atMs - 500, transition.atMs + 500);
   const activeDecodes = run.decodeTimings.filter(({ active, startedAtMs }) =>
@@ -149,7 +149,11 @@ function transitionWindow(run, worldId) {
     sampleCount: frames.length,
     maxFrameMs: frames.length === 0 ? null : Math.max(...frames.map(({ intervalMs }) => intervalMs)),
     activeDecodeCount: activeDecodes.length,
+    presentationReady: transition.presentationReady === true,
+    visible: transition.hidden === false,
+    assetPath: transition.assetPath ?? null,
     passed: frames.length > 0 && activeDecodes.length === 0 &&
+      transition.presentationReady === true && transition.hidden === false &&
       frames.every(({ intervalMs }) => intervalMs <= 33)
   };
 }
@@ -270,8 +274,8 @@ const automatedChecks = {
   worldTransitionWindowsPassed: summaries["full-session"].transitionWindows
     .every((window) => window?.passed === true),
   fullSessionPassed: runs["full-session"].scenario.session?.durationSeconds >= 59.5 &&
-    runs["full-session"].worldTransitions.some(({ worldId }) => worldId === "order-process") &&
-    runs["full-session"].worldTransitions.some(({ worldId }) => worldId === "quality-service"),
+    runs["full-session"].panelTransitions?.some(({ worldId }) => worldId === "order-process") &&
+    runs["full-session"].panelTransitions?.some(({ worldId }) => worldId === "quality-service"),
   startBudgetsPassed: runValues.every(({ readiness }) =>
     readiness.coldStartMs <= 3_000 && readiness.criticalReadyMs <= 2_000),
   attributionComplete: runValues.every(({ attribution, longTasks, longAnimationFrames,

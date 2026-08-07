@@ -48,6 +48,12 @@ function evidence(audioMode: "enabled" | "disabled", variant: "before" | "after"
       { worldId: "order-process", atMs: 24_000 },
       { worldId: "quality-service", atMs: 48_000 }
     ],
+    panelTransitions: [
+      { worldId: "order-process", atMs: 24_000, presentationReady: true,
+        hidden: false, assetPath: "/assets/milion-runner/worlds/world-02-order-process-v2.webp" },
+      { worldId: "quality-service", atMs: 48_000, presentationReady: true,
+        hidden: false, assetPath: "/assets/milion-runner/worlds/world-03-quality-service-v2.webp" }
+    ],
     scenario: {
       checkpointsPassed: true,
       coveragePassed: true,
@@ -214,6 +220,28 @@ describe("performance comparison CLI", () => {
     expect(report.automatedChecks.firstTenSecondsPassed).toBe(false);
     expect(report.automatedChecks.worldTransitionWindowsPassed).toBe(false);
     expect(report.releaseGate.status).toBe("fail");
+  });
+
+  it("fails qualification when the promoted panel was not presentation-ready", () => {
+    const directory = mkdtempSync(path.join(tmpdir(), "amso-cold-start-qualification-"));
+    temporaryDirectories.push(directory);
+    for (const profile of ["cold-audio-enabled", "cold-audio-disabled",
+      "warm-audio-enabled", "full-session"] as const) {
+      const run = qualificationEvidence(profile);
+      if (profile === "full-session") run.panelTransitions[1].presentationReady = false;
+      writeFileSync(path.join(directory, `${profile}.json`), JSON.stringify(run));
+    }
+    const reportPath = path.join(directory, "qualification.json");
+    const result = spawnSync(process.execPath, [
+      "scripts/qualify-cold-start.mjs",
+      "--runs-dir", directory,
+      "--json-out", reportPath,
+      "--markdown-out", path.join(directory, "qualification.md")
+    ], { cwd: process.cwd(), encoding: "utf8" });
+
+    expect(result.status).toBe(1);
+    expect(JSON.parse(readFileSync(reportPath, "utf8")))
+      .toMatchObject({ automatedChecks: { worldTransitionWindowsPassed: false } });
   });
 
   it("fails qualification when a capture process reports failure", () => {
