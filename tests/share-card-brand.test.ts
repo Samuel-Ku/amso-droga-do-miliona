@@ -77,7 +77,7 @@ afterEach(() => {
 
 describe("campaign result share card brand", () => {
   it("renders the localized lockup for an international result card", async () => {
-    const harness = installShareCardHarness(true, { width: 1973, height: 1812 });
+    const harness = installShareCardHarness(true, { width: 1973, height: 1138 });
 
     const card = await createCampaignShareCard(
       { score: 1_234_567, orders: 42 },
@@ -85,14 +85,14 @@ describe("campaign result share card brand", () => {
     );
 
     expect(card.type).toBe("image/png");
-    expect(harness.image.src).toBe("/assets/milion-runner/brand/mz-main-lockup-en-v1.webp");
+    expect(harness.image.src).toBe("/assets/milion-runner/brand/mz-compact-lockup-en-v1.webp");
     expect(harness.drawImage).toHaveBeenCalledTimes(1);
     const [image, x, y, width, height] = harness.drawImage.mock.calls[0] ?? [];
     expect(image).toBe(harness.image);
-    expect(x).toBeCloseTo(664.01, 1);
+    expect(x).toBe(596);
     expect(y).toBe(43);
-    expect(width).toBeCloseTo(293.99, 1);
-    expect(height).toBe(270);
+    expect(width).toBe(430);
+    expect(height).toBeCloseTo(248.02, 1);
   });
 
   it("keeps the Polish compact lockup for a Polish result card", async () => {

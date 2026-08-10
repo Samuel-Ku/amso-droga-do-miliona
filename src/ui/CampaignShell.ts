@@ -52,20 +52,19 @@ const POLISH_LOCKUPS: CampaignLockups = Object.freeze({
   main: "/assets/milion-runner/brand/mz-main-lockup-v1.avif",
   compact: "/assets/milion-runner/brand/mz-compact-lockup-v1.avif"
 });
-const LOCALIZED_MAIN_LOCKUPS: Readonly<Record<Exclude<CampaignLocale, "pl">, string>> = Object.freeze({
-  de: "/assets/milion-runner/brand/mz-main-lockup-de-v1.webp",
-  en: "/assets/milion-runner/brand/mz-main-lockup-en-v1.webp",
-  es: "/assets/milion-runner/brand/mz-main-lockup-es-v1.webp",
-  cs: "/assets/milion-runner/brand/mz-main-lockup-cs-v1.webp",
-  it: "/assets/milion-runner/brand/mz-main-lockup-it-v1.webp",
-  fr: "/assets/milion-runner/brand/mz-main-lockup-fr-v1.webp",
-  uk: "/assets/milion-runner/brand/mz-main-lockup-uk-v1.webp"
+const LOCALIZED_LOCKUPS: Readonly<Record<Exclude<CampaignLocale, "pl">, CampaignLockups>> = Object.freeze({
+  de: { main: "/assets/milion-runner/brand/mz-main-lockup-de-v1.webp", compact: "/assets/milion-runner/brand/mz-compact-lockup-de-v1.webp" },
+  en: { main: "/assets/milion-runner/brand/mz-main-lockup-en-v1.webp", compact: "/assets/milion-runner/brand/mz-compact-lockup-en-v1.webp" },
+  es: { main: "/assets/milion-runner/brand/mz-main-lockup-es-v1.webp", compact: "/assets/milion-runner/brand/mz-compact-lockup-es-v1.webp" },
+  cs: { main: "/assets/milion-runner/brand/mz-main-lockup-cs-v1.webp", compact: "/assets/milion-runner/brand/mz-compact-lockup-cs-v1.webp" },
+  it: { main: "/assets/milion-runner/brand/mz-main-lockup-it-v1.webp", compact: "/assets/milion-runner/brand/mz-compact-lockup-it-v1.webp" },
+  fr: { main: "/assets/milion-runner/brand/mz-main-lockup-fr-v1.webp", compact: "/assets/milion-runner/brand/mz-compact-lockup-fr-v1.webp" },
+  uk: { main: "/assets/milion-runner/brand/mz-main-lockup-uk-v1.webp", compact: "/assets/milion-runner/brand/mz-compact-lockup-uk-v1.webp" }
 });
 
 function campaignLockups(i18n: CampaignI18n): CampaignLockups {
   if (i18n.locale === "pl") return POLISH_LOCKUPS;
-  const localizedLockup = LOCALIZED_MAIN_LOCKUPS[i18n.locale];
-  return { main: localizedLockup, compact: localizedLockup };
+  return LOCALIZED_LOCKUPS[i18n.locale];
 }
 
 export type CampaignMode = "story" | "challenge";

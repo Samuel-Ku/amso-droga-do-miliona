@@ -58,20 +58,22 @@ describe("localized campaign public UI", () => {
       .not.toBe("Jak działa gra?");
     expect(host.querySelector<HTMLImageElement>(".amso-campaign__main-lockup")?.getAttribute("src"))
       .toBe("/assets/milion-runner/brand/mz-main-lockup-en-v1.webp");
+    expect(host.querySelector<HTMLImageElement>(".amso-campaign__compact-lockup")?.getAttribute("src"))
+      .toBe("/assets/milion-runner/brand/mz-compact-lockup-en-v1.webp");
 
     shell.destroy();
   });
 
   it.each([
-    ["de", "/assets/milion-runner/brand/mz-main-lockup-de-v1.webp"],
-    ["es", "/assets/milion-runner/brand/mz-main-lockup-es-v1.webp"],
-    ["cs", "/assets/milion-runner/brand/mz-main-lockup-cs-v1.webp"],
-    ["it", "/assets/milion-runner/brand/mz-main-lockup-it-v1.webp"],
-    ["uk", "/assets/milion-runner/brand/mz-main-lockup-uk-v1.webp"],
-    ["fr", "/assets/milion-runner/brand/mz-main-lockup-fr-v1.webp"]
-  ] satisfies ReadonlyArray<readonly [CampaignLocale, string]>) (
-    "uses the matching %s lockup throughout the localized campaign UI",
-    (locale, expectedLandingLockup) => {
+    ["de", "/assets/milion-runner/brand/mz-main-lockup-de-v1.webp", "/assets/milion-runner/brand/mz-compact-lockup-de-v1.webp"],
+    ["es", "/assets/milion-runner/brand/mz-main-lockup-es-v1.webp", "/assets/milion-runner/brand/mz-compact-lockup-es-v1.webp"],
+    ["cs", "/assets/milion-runner/brand/mz-main-lockup-cs-v1.webp", "/assets/milion-runner/brand/mz-compact-lockup-cs-v1.webp"],
+    ["it", "/assets/milion-runner/brand/mz-main-lockup-it-v1.webp", "/assets/milion-runner/brand/mz-compact-lockup-it-v1.webp"],
+    ["uk", "/assets/milion-runner/brand/mz-main-lockup-uk-v1.webp", "/assets/milion-runner/brand/mz-compact-lockup-uk-v1.webp"],
+    ["fr", "/assets/milion-runner/brand/mz-main-lockup-fr-v1.webp", "/assets/milion-runner/brand/mz-compact-lockup-fr-v1.webp"]
+  ] satisfies ReadonlyArray<readonly [CampaignLocale, string, string]>) (
+    "uses the matching %s main and compact lockups throughout the localized campaign UI",
+    (locale, expectedLandingLockup, expectedCompactLockup) => {
       const callbacks: CampaignShellCallbacks = {
         onStart: vi.fn(), onPause: vi.fn(), onResume: vi.fn(), onRestart: vi.fn(),
         onReturnToMenu: vi.fn(), onRetryLoad: vi.fn(), onJump: vi.fn(), onSlide: vi.fn(),
@@ -85,14 +87,19 @@ describe("localized campaign public UI", () => {
         .toContain(expectedLandingLockup);
       for (const selector of [
         ".amso-campaign__main-lockup",
-        ".amso-campaign__compact-lockup",
         ".amso-campaign__result-lockup--main",
-        ".amso-campaign__result-lockup:not(.amso-campaign__result-lockup--main)",
-        ".amso-campaign__share-lockup",
         ".amso-campaign__story-final-lockup"
       ]) {
         expect(host.querySelector<HTMLImageElement>(selector)?.src)
           .toContain(expectedLandingLockup);
+      }
+      for (const selector of [
+        ".amso-campaign__compact-lockup",
+        ".amso-campaign__result-lockup:not(.amso-campaign__result-lockup--main)",
+        ".amso-campaign__share-lockup"
+      ]) {
+        expect(host.querySelector<HTMLImageElement>(selector)?.src)
+          .toContain(expectedCompactLockup);
       }
 
       shell.destroy();
