@@ -31,9 +31,9 @@ npm test
 npm run build:all
 ~~~
 
-`npm run build:demo` tworzy dedykowaną stronę w `dist-demo/`.
-`npm run build:single` dodatkowo składa wersję testową do
-`droga-do-miliona-qa.html`, którą można otworzyć bez serwera.
+`npm run build:demo` tworzy lokalny preview w `dist-demo/`.
+`npm run build:single` składa jedyny produkcyjny frontend do
+`million-idosell.html`, który można wkleić do IdoSell albo otworzyć bez serwera.
 
 ## Co jest zaimplementowane
 
@@ -70,7 +70,7 @@ public/assets/milion-runner/
 ~~~
 
 Kanoniczne doświadczenie montuje `mountCampaign()` na osobnej stronie. Stare
-triggery sklepu korzystają wyłącznie z adaptera przekierowującego do `/milion`;
+triggery sklepu korzystają wyłącznie z adaptera przekierowującego do `/million`;
 pełna modalna kopia gry nie jest utrzymywana.
 
 ## Przed publikacją

@@ -78,7 +78,7 @@ describe("campaign result share card brand", () => {
 
     const card = await createCampaignShareCard(
       { score: 1_234_567, orders: 42 },
-      { canonicalUrl: "https://amso.eu/en/road-to-a-million", i18n: createCampaignI18n("en") },
+      { canonicalUrl: "https://amso.eu/en/million", i18n: createCampaignI18n("en") },
     );
 
     expect(card.type).toBe("image/png");
@@ -94,7 +94,7 @@ describe("campaign result share card brand", () => {
 
     await createCampaignShareCard(
       { score: 1_234_567, orders: 42 },
-      { canonicalUrl: "https://amso.pl/droga-do-miliona", i18n: createCampaignI18n("pl") },
+      { canonicalUrl: "https://amso.pl/million", i18n: createCampaignI18n("pl") },
     );
 
     expect(harness.image.src).toBe("/assets/milion-runner/brand/mz-compact-lockup-v1.avif");

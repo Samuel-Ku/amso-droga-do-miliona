@@ -91,7 +91,7 @@ Zamiast standardowego "Koniec gry, wynik: X", finał (po przejściu 5 epok lub p
 - Nagłówek: "Przeszedłeś z nami kawałek drogi do miliona."
 - Krótkie podsumowanie: liczba zebranych paczek w sesji + liczba odblokowanych faktów.
 - Realny kontekst: "Razem z Tobą — już ponad 1 000 000 zamówień."
-- CTA: link do amso.pl/milion, opcjonalny kod rabatowy (do potwierdzenia z marketingiem), przycisk "Zagraj znowu" (od epoki 1) lub "Udostępnij swój wynik".
+- CTA: link do amso.pl/million, opcjonalny kod rabatowy (do potwierdzenia z marketingiem), przycisk "Zagraj znowu" (od epoki 1) lub "Udostępnij swój wynik".
 
 Jeśli gracz przegra w środku epoki (kolizja), gra NIE kończy się nagle na czarnym ekranie — pojawia się to samo podsumowanie, ale z adnotacją, na którym etapie historii gracz "wypadł" (np. "Zatrzymałeś się w 2015 roku — spróbuj dojść dalej!").
 

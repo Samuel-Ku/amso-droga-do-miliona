@@ -49,7 +49,7 @@ describe("mobile campaign shell", () => {
     expect(document.querySelector(".amso-campaign__landing-campaign-link")).toBeNull();
     expect(document.querySelector<HTMLAnchorElement>(
       ".amso-campaign__brand[data-campaign-link]"
-    )?.getAttribute("href")).toBe("/milion");
+    )?.getAttribute("href")).toBe("/million");
     shell.destroy();
   });
 

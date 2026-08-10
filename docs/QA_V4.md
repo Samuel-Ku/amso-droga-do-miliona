@@ -44,8 +44,8 @@ gest ślizgu, fullscreen, obrót bez resetu i płynność przy 1,55×.
     startuje dopiero w końcowej 1/5 czasu segmentu także po zmianie jego długości.
 18. Wszystkie 7 światów ma konkretną ilustrację i semantic fallback; challenge
     zmienia świat mniej więcej co 45 s dopiero na czystej trasie.
-19. `droga-do-miliona-qa.html` działa offline z osadzonymi ilustracjami, a build
-    produkcyjny pozostawia je jako zewnętrzne, wersjonowane pliki AVIF.
+19. `million-idosell.html` działa offline i w IdoSell z osadzonymi ilustracjami;
+    tylko lokalny preview `dist-demo/` pozostawia assety jako zewnętrzne pliki.
 
 ## Treść
 

@@ -316,7 +316,8 @@ describe("runner config v5 story validation", () => {
   });
 
   it("keeps the campaign CTA and asset paths same-origin and allowlisted", () => {
-    expect(isAllowedRelativePath("/milion")).toBe(true);
+    expect(isAllowedRelativePath("/million")).toBe(true);
+    expect(isAllowedRelativePath("/milion")).toBe(false);
     expect(isAllowedRelativePath("https://example.com/milion")).toBe(false);
     expect(isAllowedRelativePath("//example.com/milion")).toBe(false);
     expect(isAllowedRelativePath("/milion?email=a@example.com")).toBe(false);

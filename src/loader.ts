@@ -318,6 +318,9 @@ function loadStyle(
       return Promise.resolve();
     }
     const style = documentReference.createElement("style");
+    const nonce = documentReference.currentScript?.nonce ??
+      documentReference.querySelector<HTMLScriptElement>("script[nonce]")?.nonce ?? "";
+    if (nonce !== "") style.nonce = nonce;
     style.dataset.amsoMillionRunnerStyle = "";
     style.textContent = inlinedStyle;
     documentReference.head.append(style);

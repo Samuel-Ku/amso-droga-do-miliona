@@ -38,7 +38,7 @@ if (process.argv.includes("--help")) {
 
 const deploymentUrl = option("url");
 const artifactPath = deploymentUrl === undefined
-  ? path.resolve(root, option("artifact", "droga-do-miliona-qa.html"))
+  ? path.resolve(root, option("artifact", "million-idosell.html"))
   : null;
 const audioMode = option("audio", "enabled");
 const processState = option("process", "cold");

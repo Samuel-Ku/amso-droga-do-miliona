@@ -3,6 +3,19 @@ import { CAMPAIGN_LOCALES } from "../src/localization";
 import { IDOSELL_HREFLANG, IDOSELL_LOCALE_ROWS } from "../src/localization/idosell-deployment";
 
 describe("IdoSell localization deployment package", () => {
+  it("uses the universal English million slug for every CMS locale", () => {
+    expect(IDOSELL_LOCALE_ROWS.map(({ url }) => url)).toEqual([
+      "https://amso.pl/million",
+      "https://amso.eu/million",
+      "https://amso.eu/en/million",
+      "https://amso.eu/es/million",
+      "https://amso.eu/cs/million",
+      "https://amso.eu/it/million",
+      "https://amso.eu/fr/million",
+      "https://amso.eu/uk/million"
+    ]);
+  });
+
   it("defines one complete, self-canonical row per locale", () => {
     expect(IDOSELL_LOCALE_ROWS.map(({ locale }) => locale)).toEqual(CAMPAIGN_LOCALES);
     for (const row of IDOSELL_LOCALE_ROWS) {

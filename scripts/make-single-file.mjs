@@ -4,9 +4,9 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
-const demoDir = path.join(root, "dist-demo");
-const indexPath = path.join(demoDir, "index.html");
-const outputPath = path.join(root, "droga-do-miliona-qa.html");
+const builtDir = path.join(root, "dist-demo");
+const indexPath = path.join(builtDir, "index.html");
+const outputPath = path.join(root, "million-idosell.html");
 const embeddedResourcePolicyPath = path.join(
   root,
   "src",
@@ -42,7 +42,7 @@ function collectFiles(directory) {
 
 function builtAssetPath(source) {
   const cleanSource = source.split(/[?#]/u, 1)[0].replace(/^\.?\//u, "");
-  return path.join(demoDir, cleanSource);
+  return path.join(builtDir, cleanSource);
 }
 
 function inlineCampaignImageAssets(document) {
@@ -105,13 +105,21 @@ function inlineCampaignImageAssets(document) {
 }
 
 let html = fs.readFileSync(indexPath, "utf8");
+
+// IdoSell owns the outer document locale and all indexable metadata. Keeping
+// those values inside the reusable fragment would force localized pages to
+// inherit Polish metadata.
+html = html.replace(/\s*<meta\s+name="description"[\s\S]*?>/giu, "");
+html = html.replace(/\s*<link\s+rel="canonical"[\s\S]*?>/giu, "");
+html = html.replace(/\s*<meta\s+property="og:[^"]+"[\s\S]*?>/giu, "");
+html = html.replace(/\s*<title>[\s\S]*?<\/title>/iu, "");
 const scriptMatches = [
   ...html.matchAll(/<script[^>]+src="([^"]+)"[^>]*><\/script>/giu),
 ];
 const styleMatch = html.match(/<link[^>]+href="([^"]+\.css)"[^>]*>/iu);
 
 if (scriptMatches.length === 0 || !styleMatch?.[1]) {
-  throw new Error("Nie znaleziono bundli JS/CSS w dist-demo/index.html");
+  throw new Error(`Nie znaleziono bundli JS/CSS w ${path.basename(builtDir)}/index.html`);
 }
 
 const style = fs.readFileSync(builtAssetPath(styleMatch[1]), "utf8");
@@ -147,7 +155,7 @@ html = html.replace(
 );
 html = html.replace(styleMatch[0], () => `<style>\n${style}\n</style>`);
 
-// Embed the runner config inline so the loader can run from a file:// origin
+// Embed the runner config inline so the packaged frontend can run from a file:// origin
 // where fetching /assets/... is blocked by the browser's unique-origin policy.
 // It is injected BEFORE the artwork inlining below so the config's own asset
 // source URLs (bundles, worlds) are also rewritten to data: URIs, keeping the
@@ -172,21 +180,54 @@ const embeddedStyleScript = `<script>window.__RUNNER_STYLE__=${JSON.stringify(
 
 html = html.replace(
   "</head>",
-  `${embeddedConfigScript}\n${embeddedRuntimeScript}\n${embeddedStyleScript}\n<meta name="generator" content="AMSO QA preview">\n</head>`,
+  `${embeddedConfigScript}\n${embeddedRuntimeScript}\n${embeddedStyleScript}\n<meta name="generator" content="AMSO IdoSell autonomous campaign">\n</head>`,
 );
 
-// Vite intentionally leaves files from public/ as external URLs. The production
-// demo keeps that behaviour, while this QA artifact embeds the campaign artwork
-// so it remains complete when opened directly via file:// without a web server.
+// Vite intentionally leaves files from public/ as external URLs. Both generated
+// autonomous artifacts embed the campaign artwork for file:// and CMS use.
 const inlineResult = inlineCampaignImageAssets(html);
 html = inlineResult.html;
-const assetBootstrap = `<script>(()=>{const assets=${JSON.stringify(inlineResult.embeddedAssets)};const replace=(value)=>typeof value==="string"?value.replace(/__AMSO_EMBEDDED_ASSET_\\d+__/g,(token)=>assets[token]||token):value;const resolve=(value)=>{if(Array.isArray(value)){for(let i=0;i<value.length;i+=1)value[i]=resolve(value[i]);return value}if(value&&typeof value==="object"){for(const key of Object.keys(value))value[key]=resolve(value[key]);return value}return replace(value)};window.__RUNNER_CONFIG__=resolve(window.__RUNNER_CONFIG__);window.__RUNNER_MODULE__=replace(window.__RUNNER_MODULE__);window.__RUNNER_STYLE__=replace(window.__RUNNER_STYLE__);const holder=document.getElementById("amso-deferred-scripts");const sources=holder?JSON.parse(holder.textContent||"[]"):[];holder?.remove();for(const source of sources){const script=document.createElement("script");script.text=replace(source);document.body.appendChild(script)}})();</script>`;
+const assetBootstrap = `<script>(()=>{const nonce=document.currentScript?.nonce||"";const assets=${JSON.stringify(inlineResult.embeddedAssets)};const replace=(value)=>typeof value==="string"?value.replace(/__AMSO_EMBEDDED_ASSET_\\d+__/g,(token)=>assets[token]||token):value;const resolve=(value)=>{if(Array.isArray(value)){for(let i=0;i<value.length;i+=1)value[i]=resolve(value[i]);return value}if(value&&typeof value==="object"){for(const key of Object.keys(value))value[key]=resolve(value[key]);return value}return replace(value)};window.__RUNNER_CONFIG__=resolve(window.__RUNNER_CONFIG__);window.__RUNNER_MODULE__=replace(window.__RUNNER_MODULE__);window.__RUNNER_STYLE__=replace(window.__RUNNER_STYLE__);const holder=document.getElementById("amso-deferred-scripts");const sources=holder?JSON.parse(holder.textContent||"[]"):[];holder?.remove();for(const source of sources){const script=document.createElement("script");if(nonce)script.nonce=nonce;script.text=replace(source);document.body.appendChild(script)}})();</script>`;
 html = html.replace("</body>", `${assetBootstrap}\n</body>`);
 html = html.replace(/^[\t ]+$/gmu, "");
 
+{
+  const headStart = html.indexOf("<head>");
+  const headEnd = html.indexOf("</head>", headStart);
+  const bodyStart = html.indexOf("<body>", headEnd);
+  const bodyEnd = html.lastIndexOf("</body>");
+  if (headStart < 0 || headEnd < 0 || bodyStart < 0 || bodyEnd < 0) {
+    throw new Error("Nie znaleziono powloki dokumentu dla fragmentu IdoSell");
+  }
+  const head = html.slice(headStart + "<head>".length, headEnd);
+  const body = html.slice(bodyStart + "<body>".length, bodyEnd);
+  const executableHead = [];
+  let cursor = 0;
+  while (cursor < head.length) {
+    const styleStart = head.indexOf("<style", cursor);
+    const scriptStart = head.indexOf("<script", cursor);
+    const start = [styleStart, scriptStart]
+      .filter((position) => position >= 0)
+      .sort((left, right) => left - right)[0];
+    if (start === undefined) break;
+    const tag = start === styleStart ? "style" : "script";
+    const endTag = `</${tag}>`;
+    const end = head.indexOf(endTag, start);
+    if (end < 0) throw new Error(`Nie zamknieto elementu ${tag} w pakiecie IdoSell`);
+    executableHead.push(head.slice(start, end + endTag.length));
+    cursor = end + endTag.length;
+  }
+  html = [
+    "<!-- AMSO Million: autonomous IdoSell CMS fragment -->",
+    ...executableHead,
+    body.trim(),
+    ""
+  ].join("\n");
+}
+
 fs.writeFileSync(outputPath, html, "utf8");
 console.log(
-  "single-file QA preview:",
+  "IdoSell autonomous HTML:",
   path.basename(outputPath),
   fs.statSync(outputPath).size,
   "bytes; embedded",

@@ -17,7 +17,11 @@ declare global {
 try {
   const boot = parseQaBootConfig(new URL(window.location.href));
   campaign = mountCampaign(demoConfig, host, boot.kind === "performance" ? { qa: boot.config } : {});
-  window.AMSOMillionRunnerQA = campaign;
+  if (boot.kind === "performance") {
+    window.AMSOMillionRunnerQA = campaign;
+  } else {
+    delete window.AMSOMillionRunnerQA;
+  }
 } catch (error: unknown) {
   console.error("AMSO campaign bootstrap failed", error);
   host.innerHTML = `

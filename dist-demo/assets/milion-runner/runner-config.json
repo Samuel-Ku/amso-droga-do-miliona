@@ -9,7 +9,7 @@
   "cta": {
     "campaignLabel": "Poznaj pełną historię AMSO",
     "challengeLabel": "Gramy dalej — tryb wyzwania",
-    "path": "/milion"
+    "path": "/million"
   },
   "recordsApi": "https://droga-do-miliona-records.s-kutsenko.workers.dev/api/records",
   "ui": {

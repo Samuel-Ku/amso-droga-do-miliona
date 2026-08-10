@@ -1,4 +1,4 @@
-:root {
+#amso-campaign-root {
   color: #171717;
   background: #faf7f0;
   color-scheme: only light;
@@ -8,27 +8,20 @@
   text-rendering: optimizeLegibility;
 }
 
-* {
+#amso-campaign-root,
+#amso-campaign-root * {
   box-sizing: border-box;
 }
 
-html,
-body,
 #amso-campaign-root {
   width: 100%;
   min-height: 100%;
   margin: 0;
-}
-
-body {
-  min-height: 100vh;
-  min-height: 100dvh;
-  overflow: hidden;
   background: #faf7f0;
 }
 
-button,
-a {
+#amso-campaign-root button,
+#amso-campaign-root a {
   -webkit-tap-highlight-color: transparent;
 }
 

@@ -598,7 +598,7 @@ export class CampaignShell {
     this.i18n = options.i18n ?? DEFAULT_I18N;
     const lockups = campaignLockups(this.i18n);
     this.canonicalUrl = options.canonicalUrl ?? canonicalPageUrl();
-    this.campaignUrl = options.campaignUrl ?? "/milion";
+    this.campaignUrl = options.campaignUrl ?? "/million";
     this.fullStoryUrl = options.fullStoryUrl ?? this.campaignUrl;
     this.copy = Object.fromEntries(
       Object.entries({ ...DEFAULT_CAMPAIGN_SHELL_COPY, ...options.copy })

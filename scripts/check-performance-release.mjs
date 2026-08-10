@@ -4,7 +4,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const artifactPath = path.join(root, "droga-do-miliona-qa.html");
+const artifactPath = path.join(root, "million-idosell.html");
 const maxBytes = 24 * 1024 * 1024;
 
 if (!fs.existsSync(artifactPath)) {

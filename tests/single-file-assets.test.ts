@@ -9,8 +9,8 @@ import {
   calculateWorldPlateTransform
 } from "../src/visuals/world-plate-transform";
 
-const qaPreview = readFileSync(
-  new URL("../droga-do-miliona-qa.html", import.meta.url),
+const autonomousHtml = readFileSync(
+  new URL("../million-idosell.html", import.meta.url),
   "utf8"
 );
 const productionEntry = readFileSync(
@@ -36,7 +36,29 @@ const campaignImagePaths = [
   "/assets/milion-runner/worlds/world-07-million-finale-v2.webp"
 ] as const;
 
-describe("single-file QA artwork", () => {
+describe("IdoSell autonomous HTML", () => {
+  it("leaves locale and indexable metadata under CMS ownership", () => {
+    expect(productionEntry).toContain(
+      '<link rel="canonical" href="https://amso.pl/million" />'
+    );
+    expect(autonomousHtml).toContain("AMSO Million: autonomous IdoSell CMS fragment");
+    expect(autonomousHtml.trimStart().startsWith(
+      "<!-- AMSO Million: autonomous IdoSell CMS fragment -->\n<style>"
+    )).toBe(true);
+    expect(autonomousHtml).not.toMatch(/<link[^>]+rel="canonical"/i);
+    expect(autonomousHtml).not.toMatch(/<meta[^>]+property="og:/i);
+    expect(autonomousHtml).not.toMatch(/<meta[^>]+name="description"/i);
+    expect(autonomousHtml).not.toContain("<title>");
+    expect(autonomousHtml).toContain('const nonce=document.currentScript?.nonce||""');
+    expect(autonomousHtml).toContain("if(nonce)script.nonce=nonce");
+
+    const match = autonomousHtml.match(
+      /window\.__RUNNER_CONFIG__=([^]*?)<\/script>/
+    );
+    const embedded = JSON.parse(match?.[1] ?? "null");
+    expect(embedded.cta.path).toBe("/million");
+  });
+
   it("keeps the production entry compatible with a self-only script and style CSP", () => {
     expect(productionEntry).not.toContain("<style");
     const scripts = [...productionEntry.matchAll(/<script([^>]*)><\/script>/gi)];
@@ -44,6 +66,15 @@ describe("single-file QA artwork", () => {
     for (const script of scripts) {
       expect(script[1]).toMatch(/\bsrc="[^"]+"/i);
     }
+  });
+
+  it("scopes base styles to the campaign root instead of the IdoSell storefront", () => {
+    expect(campaignStyles).toContain("#amso-campaign-root,");
+    expect(campaignStyles).toContain("#amso-campaign-root * {");
+    expect(campaignStyles).toContain("#amso-campaign-root button,");
+    expect(campaignStyles).not.toMatch(/^:root\s*\{/mu);
+    expect(campaignStyles).not.toMatch(/^\*\s*\{/mu);
+    expect(campaignStyles).not.toMatch(/^body\s*\{/mu);
   });
 
   it("parses the visible boot fallback before loading its watchdog", () => {
@@ -61,7 +92,7 @@ describe("single-file QA artwork", () => {
   });
 
   it("shows a readable boot state before JavaScript initializes the campaign", () => {
-    const campaignRoot = qaPreview.match(
+    const campaignRoot = autonomousHtml.match(
       /<main id="amso-campaign-root"[^>]*>([\s\S]*?)<\/main>/
     )?.[1];
 
@@ -70,9 +101,9 @@ describe("single-file QA artwork", () => {
   });
 
   it("provides recovery states when campaign JavaScript fails or is disabled", () => {
-    expect(qaPreview).toContain("campaignScripting");
-    expect(qaPreview).toContain("data-campaign-noscript");
-    expect(qaPreview).toContain("otwórz ją w innej przeglądarce");
+    expect(autonomousHtml).toContain("campaignScripting");
+    expect(autonomousHtml).toContain("data-campaign-noscript");
+    expect(autonomousHtml).toContain("otwórz ją w innej przeglądarce");
     expect(campaignStyles).toMatch(
       /\[data-campaign-js-only\]\s*{\s*display:\s*none;/
     );
@@ -85,11 +116,11 @@ describe("single-file QA artwork", () => {
   });
 
   it("inlines parseable watchdog and app scripts for direct file opening", () => {
-    expect(qaPreview).not.toMatch(/<script[^>]+src=/i);
-    expect(qaPreview).not.toMatch(/<link[^>]+rel="stylesheet"/i);
+    expect(autonomousHtml).not.toMatch(/<script[^>]+src=/i);
+    expect(autonomousHtml).not.toMatch(/<link[^>]+rel="stylesheet"/i);
 
     const inlineScripts = [
-      ...qaPreview.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)
+      ...autonomousHtml.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)
     ];
     // watchdog + embedded runner config + app bundle
     expect(inlineScripts.length).toBeGreaterThanOrEqual(3);
@@ -103,11 +134,11 @@ describe("single-file QA artwork", () => {
       script[1]?.includes("AMSO campaign bootstrap failed")
     );
     expect(appScript?.[1]).toContain("AMSO campaign bootstrap failed");
-    const bootMarkupPosition = qaPreview.indexOf(
+    const bootMarkupPosition = autonomousHtml.indexOf(
       '<section class="amso-campaign-boot" data-campaign-boot'
     );
-    const watchdogPosition = qaPreview.indexOf("campaignScripting");
-    const appPosition = qaPreview.lastIndexOf("AMSO campaign bootstrap failed");
+    const watchdogPosition = autonomousHtml.indexOf("campaignScripting");
+    const appPosition = autonomousHtml.lastIndexOf("AMSO campaign bootstrap failed");
     expect(bootMarkupPosition).toBeGreaterThan(-1);
     expect(watchdogPosition).toBeGreaterThan(bootMarkupPosition);
     expect(appPosition).toBeGreaterThan(watchdogPosition);
@@ -118,21 +149,22 @@ describe("single-file QA artwork", () => {
 
   it("embeds every campaign image instead of retaining public URLs", () => {
     for (const assetPath of campaignImagePaths) {
-      expect(qaPreview).not.toContain(assetPath);
+      expect(autonomousHtml).not.toContain(assetPath);
     }
 
     const embeddedAvifs = new Set(
-      qaPreview.match(/data:image\/avif;base64,[A-Za-z0-9+/=]+/g) ?? []
+      autonomousHtml.match(/data:image\/avif;base64,[A-Za-z0-9+/=]+/g) ?? []
     );
 
-    expect(embeddedAvifs.size).toBe(0);
+    // Main and compact localized campaign lockups are the only embedded AVIFs.
+    expect(embeddedAvifs.size).toBe(2);
     for (const embeddedAvif of embeddedAvifs) {
       expect(embeddedAvif.length).toBeLessThanOrEqual(
         EMBEDDED_AVIF_MAX_LENGTH
       );
     }
     const embeddedWebps = new Set(
-      qaPreview.match(/data:image\/webp;base64,[A-Za-z0-9+/=]+/g) ?? []
+      autonomousHtml.match(/data:image\/webp;base64,[A-Za-z0-9+/=]+/g) ?? []
     );
     for (const embeddedWebp of embeddedWebps) {
       expect(embeddedWebp.length).toBeLessThanOrEqual(
@@ -143,13 +175,13 @@ describe("single-file QA artwork", () => {
     // four ground/primary obstacles, two extra overhead variants and exact A.
     expect(embeddedWebps.size).toBe(20);
     const embeddedSvgs = new Set(
-      qaPreview.match(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+/g) ?? []
+      autonomousHtml.match(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+/g) ?? []
     );
     expect(embeddedSvgs.size).toBe(2);
   });
 
   it("embeds the runner config so it can load from a file:// origin", () => {
-    const match = qaPreview.match(
+    const match = autonomousHtml.match(
       /window\.__RUNNER_CONFIG__=([^]*?)<\/script>/
     );
     expect(match).not.toBeNull();
@@ -164,10 +196,10 @@ describe("single-file QA artwork", () => {
 
   it("contains the same canonical geometry runtime as the development build", () => {
     const assignment = "window.__RUNNER_MODULE__=";
-    const assignmentStart = qaPreview.indexOf(assignment);
+    const assignmentStart = autonomousHtml.indexOf(assignment);
     const valueStart = assignmentStart + assignment.length;
-    const valueEnd = qaPreview.indexOf("</script>", valueStart);
-    const moduleSource = JSON.parse(qaPreview.slice(valueStart, valueEnd)) as string;
+    const valueEnd = autonomousHtml.indexOf("</script>", valueStart);
+    const moduleSource = JSON.parse(autonomousHtml.slice(valueStart, valueEnd)) as string;
     const metadataIndex = moduleSource.indexOf("artWidth: 1780");
     const sectionEnd = moduleSource.indexOf("//#endregion", metadataIndex);
     const geometrySection = moduleSource.slice(metadataIndex - 100, sectionEnd);

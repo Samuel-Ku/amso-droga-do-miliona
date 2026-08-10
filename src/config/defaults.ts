@@ -6,7 +6,7 @@ export const RUNNER_CONFIG_TTL_MS = 60_000;
 export const DEFAULT_RUNNER_MODULE_PATH = "/assets/milion-runner/runner.js";
 export const DEFAULT_RUNNER_STYLE_PATH = "/assets/milion-runner/runner.css";
 export const DEFAULT_RUNNER_TRIGGER_SELECTOR = "[data-amso-million-runner]";
-export const RUNNER_CTA_PATH_ALLOWLIST = Object.freeze(["/milion"] as const);
+export const RUNNER_CTA_PATH_ALLOWLIST = Object.freeze(["/million"] as const);
 
 /** Fail-closed value used before a validated external campaign config is available. */
 export const DEFAULT_DISABLED_RUNNER_CONFIG: Readonly<RunnerConfig> = Object.freeze({

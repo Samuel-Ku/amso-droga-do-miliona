@@ -101,7 +101,7 @@ describe("v4 migration boundary", () => {
       enabled: true,
       gameVersion: "0.1.0",
       claim: "1 000 000+",
-      cta: { id: "c", label: "CTA", path: "/milion" },
+      cta: { id: "c", label: "CTA", path: "/million" },
       facts: [{ id: "legacy", text: "legacy", enabled: true }],
       narrativeMode: true,
       discountCode: { code: "TEST123", label: "Kod testowy" }

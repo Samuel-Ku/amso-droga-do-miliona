@@ -1,14 +1,14 @@
 # IdoSell: wielojęzyczna kampania „Droga do Miliona”
 
-Wersja pakietu: `2026-08-07.1`. Źródłem pól CMS i URL jest
+Wersja pakietu: `2026-08-10.1`. Źródłem pól CMS i URL jest
 `src/localization/idosell-deployment.ts`.
 
 ## Konfiguracja
 
-1. Utwórz polską stronę na `amso.pl/droga-do-miliona` oraz stronę bazową DE na
-   `amso.eu/road-to-a-million`.
+1. Utwórz polską stronę na `amso.pl/million` oraz stronę bazową DE na
+   `amso.eu/million`.
 2. Wersje EN, ES, CS, IT, FR i UK utwórz pod prefiksem języka i wspólnym slugiem
-   `road-to-a-million` zgodnie z tabelą w kodzie.
+   `million` zgodnie z tabelą w kodzie.
 3. Dla każdej strony ustaw self-canonical oraz cały wzajemny zestaw `hreflang`.
    `x-default` wskazuje EN.
 4. IdoSell pozostaje właścicielem `LANGID`, nawigacji i `<html lang>`. Gra nie

@@ -312,7 +312,7 @@ Treść, CTA i aktywacja znajdują się w małym, zewnętrznym runner-config.jso
   "claim": "1 000 000+",
   "cta": {
     "id": "million_landing",
-    "path": "/milion"
+    "path": "/million"
   },
   "facts": [
     {
@@ -327,7 +327,7 @@ Treść, CTA i aktywacja znajdują się w małym, zewnętrznym runner-config.jso
 }
 ~~~
 
-Loader pobiera konfigurację z tej samej domeny przed podpięciem triggera oraz rewaliduje ją przed otwarciem, jeśli lokalna kopia ma ponad 60 sekund. Plik ma rewalidację lub maksymalny TTL 60 sekund, dzięki czemu ustawienie enabled=false działa jako kill switch bez nowego builda gry także w długo otwartej karcie. Właścicielem publikacji konfiguracji jest e-commerce/IT; marketing zatwierdza treść i moment zmiany flagi. Przy błędzie pobrania, niezgodnej wersji schematu albo błędzie walidacji loader działa fail-closed: nie otwiera gry, a link logo prowadzi normalnie do /milion.
+Loader pobiera konfigurację z tej samej domeny przed podpięciem triggera oraz rewaliduje ją przed otwarciem, jeśli lokalna kopia ma ponad 60 sekund. Plik ma rewalidację lub maksymalny TTL 60 sekund, dzięki czemu ustawienie enabled=false działa jako kill switch bez nowego builda gry także w długo otwartej karcie. Właścicielem publikacji konfiguracji jest e-commerce/IT; marketing zatwierdza treść i moment zmiany flagi. Przy błędzie pobrania, niezgodnej wersji schematu albo błędzie walidacji loader działa fail-closed: nie otwiera gry, a link logo prowadzi normalnie do /million.
 
 Zasady bezpieczeństwa konfiguracji:
 
@@ -445,7 +445,7 @@ Przykładowy kontrakt szablonu:
 
 ~~~html
 <a
-  href="/milion"
+  href="/million"
   data-amso-million-runner
   data-runner-source="homepage_logo"
 >
@@ -837,7 +837,7 @@ Jeśli nagrody są częścią kampanii, logika JavaScript po stronie klienta nie
 
 ### P0 — przed rozpoczęciem sprintu
 
-1. Czy gra jest na stronie głównej, /milion, czy w obu miejscach?
+1. Czy gra jest na stronie głównej, /million, czy w obu miejscach?
 2. Który dokładnie element jest triggerem i jaki ma fallback link?
 3. Czy zespół potwierdza IdoSell i zapewnia kopię szablonu/staging?
 4. Kto publikuje pliki i kto ma uprawnienia do GTM?
