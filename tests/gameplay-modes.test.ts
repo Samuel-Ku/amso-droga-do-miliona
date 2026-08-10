@@ -886,6 +886,46 @@ describe("direct slide control", () => {
 });
 
 describe("story lifecycle pauses", () => {
+  it("does not carry legacy generated obstacle motifs into the return countdown", () => {
+    const harness = createGameHarness("story");
+    harness.game.start("keyboard");
+    harness.continueCurrentSceneFully();
+    harness.advance(STORY_REFRAME_SECONDS + 3.1);
+
+    const internals = harness.game as unknown as {
+      obstacles: Array<{
+        active: boolean;
+        kind: "box-stack" | "pallet" | "trolley" | "overhead";
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      }>;
+      storyTimeline: { forceCompletePlayStep(): void };
+      storyObstacleTransformer: { models: readonly unknown[] };
+    };
+    expect(harness.storyUpdates.at(-1)?.state).toBe("play");
+    Object.assign(internals.obstacles[0]!, {
+      active: true,
+      kind: "box-stack",
+      x: 640,
+      y: 380,
+      width: 64,
+      height: 70,
+    });
+
+    internals.storyTimeline.forceCompletePlayStep();
+    harness.advance(0.05);
+    expect(harness.storyUpdates.at(-1)?.state).toBe("scene");
+    expect(internals.storyObstacleTransformer.models.length).toBeGreaterThan(0);
+
+    harness.continueCurrentSceneFully();
+    harness.advance(STORY_REFRAME_SECONDS + 0.05);
+    expect(harness.storyUpdates.at(-1)?.state).toBe("countdown");
+    expect(internals.storyObstacleTransformer.models).toHaveLength(0);
+    harness.game.destroy();
+  });
+
   it("keeps countdown controls and visual travel frozen until play resumes", () => {
     const config = parseRunnerConfig(productionConfig);
     if (!config) throw new Error("production config should parse");

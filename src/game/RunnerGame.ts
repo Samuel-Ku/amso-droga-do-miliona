@@ -987,6 +987,10 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       this.syncStorySection(previousStory, nextStory);
       if (previousStory.state !== "countdown" && nextStory.state === "countdown") {
         this.visualElapsedSeconds = 0;
+        // Legacy positive-motif transforms are presentation-only remnants of
+        // the completed wave. Narrative time does not advance them, so without
+        // an explicit reset they leak behind the next 3–2–1 countdown.
+        this.storyObstacleTransformer.reset();
       }
       this.authoredWaveDirector?.advance(activeDeltaSeconds);
       this.beginFinaleRewardRunIfReady();
