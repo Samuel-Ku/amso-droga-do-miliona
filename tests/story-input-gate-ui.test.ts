@@ -3,9 +3,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DecodedImageStore } from "../src/assets/DecodedImageStore";
 import type { GameSnapshot } from "../src/game/contracts";
-import { CampaignShell, type CampaignShellCallbacks } from "../src/ui/CampaignShell";
+import {
+  CampaignShell,
+  type CampaignShellCallbacks,
+  type CampaignShellOptions
+} from "../src/ui/CampaignShell";
 
-function createShell(): {
+function createShell(options: CampaignShellOptions = {}): {
   shell: CampaignShell;
   callbacks: CampaignShellCallbacks;
   onStoryContinue: ReturnType<typeof vi.fn>;
@@ -42,7 +46,7 @@ function createShell(): {
     },
   });
   return {
-    shell: new CampaignShell(host, callbacks, { decodedImageStore }),
+    shell: new CampaignShell(host, callbacks, { decodedImageStore, ...options }),
     callbacks,
     onStoryContinue,
     onJump,
@@ -201,6 +205,32 @@ describe("story input safety gate", () => {
     shell.destroy();
   });
 
+  it("uses ArrowUp and ArrowDown as gameplay controls in the Vercel profile", () => {
+    const { shell, onJump, onSlide } = createShell({ keyboardProfile: "vercel" });
+    shell.showGame("story");
+    const up = new KeyboardEvent("keydown", {
+      code: "ArrowUp", key: "ArrowUp", bubbles: true, cancelable: true
+    });
+    const down = new KeyboardEvent("keydown", {
+      code: "ArrowDown", key: "ArrowDown", bubbles: true, cancelable: true
+    });
+
+    document.dispatchEvent(up);
+    document.dispatchEvent(down);
+    document.dispatchEvent(new KeyboardEvent("keyup", {
+      code: "ArrowDown", key: "ArrowDown", bubbles: true
+    }));
+
+    expect(onJump.mock.calls).toEqual([["keyboard"]]);
+    expect(onSlide.mock.calls).toEqual([
+      [true, "keyboard"],
+      [false, "keyboard"]
+    ]);
+    expect(up.defaultPrevented).toBe(true);
+    expect(down.defaultPrevented).toBe(true);
+    shell.destroy();
+  });
+
   it("documents Space, W, S and touch without advertising arrow controls", () => {
     const { shell } = createShell();
     const canvas = document.querySelector<HTMLCanvasElement>("[data-campaign-canvas]");
@@ -210,6 +240,15 @@ describe("story input safety gate", () => {
     expect(canvas?.getAttribute("aria-label")).toContain("Ślizg: S");
     expect(canvas?.getAttribute("aria-label")).toContain("przesuń palcem w dół");
     expect(canvas?.getAttribute("aria-label")).not.toMatch(/[↑↓]/u);
+    shell.destroy();
+  });
+
+  it("documents the restored arrow controls only in the Vercel profile", () => {
+    const { shell } = createShell({ keyboardProfile: "vercel" });
+    const canvas = document.querySelector<HTMLCanvasElement>("[data-campaign-canvas]");
+
+    expect(canvas?.getAttribute("aria-label")).toContain("↑");
+    expect(canvas?.getAttribute("aria-label")).toContain("↓");
     shell.destroy();
   });
 

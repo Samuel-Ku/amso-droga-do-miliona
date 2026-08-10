@@ -211,6 +211,7 @@ export interface CampaignShellOptions {
   qaBadgeText?: string;
   decodedImageStore?: DecodedImageStore;
   i18n?: CampaignI18n;
+  keyboardProfile?: "idosell" | "vercel";
 }
 
 export interface CampaignShareCardOptions {
@@ -603,12 +604,14 @@ export class CampaignShell {
   private readonly storyContinuationGate = new StoryContinuationGate();
   private readonly orientationQuery: MediaQueryList | null;
   private readonly layoutObserver: ResizeObserver | null;
+  private readonly keyboardProfile: "idosell" | "vercel";
 
   public constructor(
     host: HTMLElement,
     private readonly callbacks: CampaignShellCallbacks,
     options: CampaignShellOptions = {},
   ) {
+    this.keyboardProfile = options.keyboardProfile ?? "idosell";
     this.i18n = options.i18n ?? DEFAULT_I18N;
     const lockups = campaignLockups(this.i18n);
     this.canonicalUrl = options.canonicalUrl ?? canonicalPageUrl();
@@ -649,7 +652,7 @@ export class CampaignShell {
             height="540"
             tabindex="-1"
             aria-hidden="true"
-            aria-label="Pole gry. ${GAME_INSTRUCTION_COPY.jump} ${GAME_INSTRUCTION_COPY.slide}"
+            aria-label="Pole gry. ${this.keyboardInstruction(GAME_INSTRUCTION_COPY.jump)} ${this.keyboardInstruction(GAME_INSTRUCTION_COPY.slide)}"
           ></canvas>
           <div class="amso-million-runner-2026__milestone-message" data-campaign-milestone-message hidden aria-hidden="true"></div>
           <section class="amso-million-runner-2026__hud" data-campaign-hud hidden aria-label="Wynik biegu">
@@ -689,7 +692,7 @@ export class CampaignShell {
                 <div>
                   <p>${GAME_INSTRUCTION_COPY.modeDifference}</p>
                   <p>${GAME_INSTRUCTION_COPY.storySafety}</p>
-                  <p>${GAME_INSTRUCTION_COPY.controls}</p>
+                  <p>${this.keyboardInstruction(GAME_INSTRUCTION_COPY.controls)}</p>
                   <p>${GAME_INSTRUCTION_COPY.ordersAndCombo}</p>
                 </div>
               </details>
@@ -706,7 +709,7 @@ export class CampaignShell {
               <div class="amso-million-runner-2026__overlay-copy">
                 <p>${GAME_INSTRUCTION_COPY.modeDifference}</p>
                 <p>${GAME_INSTRUCTION_COPY.storySafety}</p>
-                <p>${GAME_INSTRUCTION_COPY.controls}</p>
+                <p>${this.keyboardInstruction(GAME_INSTRUCTION_COPY.controls)}</p>
                 <p>${GAME_INSTRUCTION_COPY.ordersAndCombo}</p>
               </div>
             </div>
@@ -1309,7 +1312,7 @@ export class CampaignShell {
       const controls = formatStoryControlsHud(
         snapshot.storyObjectiveSegmentId,
         snapshot.authoredWave,
-        GAME_INSTRUCTION_COPY.compactControls
+        this.keyboardInstruction(GAME_INSTRUCTION_COPY.compactControls)
       );
       this.hudControls.textContent = controls ?? "";
       this.hudControls.hidden = controls === null;
@@ -1962,7 +1965,8 @@ export class CampaignShell {
   private readonly handleKeydown = (event: KeyboardEvent): void => {
     const isTextEntry = event.target instanceof Element &&
       event.target.closest('input, textarea, select, [contenteditable="true"]') !== null;
-    if (!isTextEntry && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)) {
+    if (this.keyboardProfile === "idosell" && !isTextEntry &&
+        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)) {
       event.preventDefault();
       return;
     }
@@ -2014,8 +2018,10 @@ export class CampaignShell {
     if (!this.canControl() || event.repeat) return;
     const interactive = event.target instanceof Element && event.target.closest("button, a, input") !== null;
     if (interactive) return;
-    const jump = event.code === "Space" || event.key === " " || event.code === "KeyW";
-    const slide = event.code === "KeyS";
+    const jump = event.code === "Space" || event.key === " " || event.code === "KeyW" ||
+      (this.keyboardProfile === "vercel" && event.code === "ArrowUp");
+    const slide = event.code === "KeyS" ||
+      (this.keyboardProfile === "vercel" && event.code === "ArrowDown");
     if (jump) {
       event.preventDefault();
       this.callbacks.onJump("keyboard");
@@ -2025,8 +2031,17 @@ export class CampaignShell {
     }
   };
 
+  private keyboardInstruction(source: string): string {
+    const localized = this.i18n.translate(source);
+    if (this.keyboardProfile !== "vercel") return localized;
+    return localized
+      .replace(/\bW\b/u, "W/↑")
+      .replace(/\bS\b/u, "S/↓");
+  }
+
   private readonly handleKeyup = (event: KeyboardEvent): void => {
-    if (this.activeMode !== null && event.code === "KeyS") {
+    if (this.activeMode !== null && (event.code === "KeyS" ||
+        (this.keyboardProfile === "vercel" && event.code === "ArrowDown"))) {
       this.callbacks.onSlide(false, "keyboard");
     }
   };

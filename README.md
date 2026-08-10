@@ -29,22 +29,27 @@ Kontrole jakości:
 npm run typecheck
 npm test
 npm run build:all
+npm run check:vercel
 ~~~
 
 `npm run build:demo` tworzy lokalny preview w `dist-demo/`.
-`npm run build:single` składa jedyny produkcyjny frontend do
-`million-idosell.html`, który można wkleić do IdoSell albo otworzyć bez serwera.
+`npm run build:idosell-external` tworzy produkcyjny Pakiet zewnętrzny IdoSell.
+`npm run build:vercel` tworzy zoptymalizowany wariant awaryjny w `dist-vercel/`;
+ten profil obsługuje również strzałki `↑` i `↓`.
+`npm run build:single` składa autonomiczny artefakt QA `million-idosell.html`,
+którego nie należy wklejać do formularza CMS.
 
 ## Co jest zaimplementowane
 
 - zewnętrzny config z całym polskim copy, 18 scenami i tuningiem czasu/trudności;
 - trzyczęściowe intro, pięć epok i finał uruchamiany wyłącznie przyciskiem gracza;
 - pełnoekranowe, czytelne sceny, autopilot 0,3×, pusta trasa i odliczanie 3–2–1;
-- skok oraz ślizg na klawiaturze, pointerze i touchu;
+- skok oraz ślizg na klawiaturze, pointerze i touchu; wariant Vercel dodatkowo
+  obsługuje `↑` i `↓`, a osadzony IdoSell blokuje strzałki chroniąc scroll CMS;
 - fabularna regeneracja po kolizji bez zmiany prędkości ani trajektorii;
 - cele wszystkich epok z postępem w HUD, typowana kolejka zamówień, trzy power-upy
   i finalna Fala Miliona;
-- cztery różne mikro-kulminacje, transformacje przeszkód i pozytywne motywy;
+- cztery różne mikro-kulminacje bez dawnych proceduralnych nakładek na świat;
 - osiem fizycznie zbieranych symboli finału z uczciwym ponownym spawnem po pominięciu;
 - przejście do Próby Miliona w tym samym biegu, bez resetu wyniku, paczek i aktywnych bonusów;
 - brak checkpointów story; profil zapisuje ukończenie, rekord, mute i preferencję fullscreen;

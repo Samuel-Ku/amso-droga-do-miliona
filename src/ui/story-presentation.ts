@@ -131,7 +131,7 @@ export function formatPowerUpHud(
 export function formatStoryControlsHud(
   segmentId: string,
   authoredProgress?: Readonly<AuthoredWaveProgressSnapshot> | null,
-  copy = GAME_INSTRUCTION_COPY.compactControls
+  copy: string = GAME_INSTRUCTION_COPY.compactControls
 ): string | null {
   return segmentId === "epoch_1.training" ||
     (authoredProgress?.microlevelId === "first-package" &&

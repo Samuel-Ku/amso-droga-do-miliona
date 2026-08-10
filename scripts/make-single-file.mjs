@@ -106,6 +106,17 @@ function inlineCampaignImageAssets(document) {
 
 let html = fs.readFileSync(indexPath, "utf8");
 
+// The standalone/Vercel page owns its viewport, so arrow controls are safe
+// there. IdoSell embeds the same runtime in a scrollable CMS shell and must
+// reserve every arrow key to prevent the storefront from moving away.
+if (!html.includes('data-campaign-keyboard-profile="vercel"')) {
+  throw new Error("Brak profilu klawiatury Vercel w zrodle kampanii");
+}
+html = html.replace(
+  'data-campaign-keyboard-profile="vercel"',
+  'data-campaign-keyboard-profile="idosell"'
+);
+
 // IdoSell owns the outer document locale and all indexable metadata. Keeping
 // those values inside the reusable fragment would force localized pages to
 // inherit Polish metadata.

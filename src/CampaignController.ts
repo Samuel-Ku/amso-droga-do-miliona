@@ -214,6 +214,9 @@ export class CampaignController {
         this.game?.continueStoryScene(sceneId);
       }
     }, {
+      keyboardProfile: host.dataset.campaignKeyboardProfile === "vercel"
+        ? "vercel"
+        : "idosell",
       campaignUrl: campaignUrl(this.i18n.locale),
       fullStoryUrl: campaignUrl(this.i18n.locale),
       recordsClient: this.recordsClient,

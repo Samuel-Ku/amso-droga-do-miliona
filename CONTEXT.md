@@ -36,6 +36,10 @@ _Avoid_: QA-only implementation, ręcznie rozjechany build
 Produkcyjny zestaw generowany z Autonomicznego HTML: mały snippet CMS z inline watchdogiem oraz stabilne pliki `million.css` i `million.js` na otwartej domenie HTTPS. Skrypt zawiera obrazy jako data URI, a IdoSell pozostaje właścicielem powłoki dokumentu i metadanych.
 _Avoid_: Wklejenie całego bundle do CMS, zależne ścieżki assetów
 
+**Wariant Vercel**:
+Niezależny fallback publikacyjny pod `/million`, budowany do `dist-vercel/` bez source map i bez nieużywanych assetów źródłowych. Dzieli gameplay oraz lokalizacje z Pakietem zewnętrznym IdoSell, lecz jako samodzielna strona przywraca `↑` dla skoku i `↓` dla ślizgu; profil IdoSell nadal blokuje wszystkie strzałki, aby chronić scroll CMS.
+_Avoid_: Druga implementacja gry, kopia z rozjechanym gameplayem
+
 **Gotowość startowa**:
 Stan, w którym Autonomiczny HTML pokazuje interaktywny ekran startowy w ciągu 3 sekund od zimnego otwarcia, a gameplay jest gotowy najwyżej 2 sekundy po wybraniu Start na Urządzeniu bazowym. Assety dalszych światów mogą być osadzone, lecz nie są wcześniej dekodowane.
 _Avoid_: Załadowana strona, widoczny loader
@@ -61,7 +65,7 @@ Sekwencyjny mechanizm dekodowania assetów wewnątrz Autonomicznego HTML. Ekran 
 _Avoid_: Preload wszystkiego, równoległy decode
 
 **Bramka wydania**:
-Warunek dopuszczenia kampanii do publikacji. Automatycznie sprawdza poprawność konfiguracji, Autonomiczny HTML, Pakiet zewnętrzny IdoSell, Scenariusz wzorcowy i brak błędów konsoli; następnie wymaga ręcznego raportu ze Scenariusza wzorcowego na Urządzeniu bazowym oraz Safari na iPhonie, obejmującego płynność, pamięć, start i przejścia światów. Wynik wyłącznie desktopowego lub headless benchmarku nie zastępuje testu mobilnego.
+Warunek dopuszczenia kampanii do publikacji. Automatycznie sprawdza poprawność konfiguracji, Autonomiczny HTML, Pakiet zewnętrzny IdoSell, Wariant Vercel, Scenariusz wzorcowy i brak błędów konsoli; następnie wymaga ręcznego raportu ze Scenariusza wzorcowego na Urządzeniu bazowym oraz Safari na iPhonie, obejmującego płynność, pamięć, start i przejścia światów. Wynik wyłącznie desktopowego lub headless benchmarku nie zastępuje testu mobilnego.
 _Avoid_: CI performance, test na komputerze
 
 **Kontrakt niezmienności gameplayu**:

@@ -83,6 +83,8 @@ describe("IdoSell autonomous HTML", () => {
     expect(autonomousHtml).not.toContain("<title>");
     expect(autonomousHtml).toContain('const nonce=document.currentScript?.nonce||""');
     expect(autonomousHtml).toContain("if(nonce)script.nonce=nonce");
+    expect(autonomousHtml).toContain('data-campaign-keyboard-profile="idosell"');
+    expect(autonomousHtml).not.toContain('data-campaign-keyboard-profile="vercel"');
 
     expect(embeddedApplicationSource).toContain("/million");
   });

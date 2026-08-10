@@ -21,7 +21,13 @@ jej publiczne klasy CSS i identyfikatory zaczynają się od unikalnego prefiksu
 Plik `million-idosell.html` pozostaje autonomicznym artefaktem odbiorowym i
 offline QA. Nie należy go wklejać do IdoSell: formularz CMS odrzuca tak duży
 payload odpowiedzią `413 Request Entity Too Large` albo nie zapisuje zawartości.
-`dist-demo/` służy wyłącznie do lokalnego preview/developmentu.
+`dist-demo/` służy wyłącznie do lokalnego preview/developmentu. Jeżeli integracja
+CMS nadal będzie niestabilna, `npm run build:vercel` tworzy niezależny fallback
+w `dist-vercel/`, publikowany przez konfigurację `vercel.json` pod `/million`.
+
+Profil IdoSell blokuje wszystkie klawisze strzałek, aby osadzona kampania nie
+przewijała sklepu. Samodzielny profil Vercel przywraca `↑` jako skok i `↓` jako
+ślizg; `Spacja`, `W`, `S`, pointer i touch pozostają wspólne dla obu wariantów.
 
 Użyj wspólnego angielskiego slugu `million`: `amso.pl/million`, `amso.eu/million`
 oraz odpowiednio `/en/million`, `/es/million`, `/cs/million`, `/it/million`,

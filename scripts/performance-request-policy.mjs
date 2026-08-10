@@ -1,4 +1,4 @@
-const EXPECTED_CAMPAIGN_ASSETS = new Set([
+export const EXPECTED_CAMPAIGN_ASSETS = new Set([
   "/assets/milion-runner/boot-watchdog.js",
   "/assets/milion-runner/brand/million-neutral-compact.svg",
   "/assets/milion-runner/brand/million-neutral-main.svg",
