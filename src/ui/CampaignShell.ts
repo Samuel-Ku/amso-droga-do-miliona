@@ -1,5 +1,4 @@
 import "../styles/campaign.css";
-import { AMSO_LOGO_DATA_URI } from "./brandLogo";
 import type { ControlMethod, GameSnapshot } from "../game/contracts";
 import { WorldAssetStore, WorldVisualLayer } from "../visuals/WorldVisualLayer";
 import {
@@ -626,8 +625,7 @@ export class CampaignShell {
       <div class="amso-campaign__backdrop" aria-hidden="true"></div>
       <header class="amso-campaign__header">
         <a class="amso-campaign__brand" data-campaign-link>
-          <img class="amso-campaign__brand-logo" src="${AMSO_LOGO_DATA_URI}" alt="AMSO" />
-          <span class="amso-campaign__brand-edition" data-campaign-copy="brandEdition">Droga do Miliona</span>
+          <img class="amso-campaign__brand-logo" src="${lockups.compact}" alt="AMSO — ${this.copy.brandEdition}" width="1973" height="1138" />
         </a>
         <div class="amso-campaign__tools">
           <button class="amso-campaign__icon-button" type="button" data-campaign-mute aria-pressed="false">
@@ -1962,6 +1960,12 @@ export class CampaignShell {
   };
 
   private readonly handleKeydown = (event: KeyboardEvent): void => {
+    const isTextEntry = event.target instanceof Element &&
+      event.target.closest('input, textarea, select, [contenteditable="true"]') !== null;
+    if (!isTextEntry && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)) {
+      event.preventDefault();
+      return;
+    }
     const activeDialog = this.activeKeyboardDialog();
     if (activeDialog !== null && event.key === "Escape" && this.activeOverlay) {
       event.preventDefault();
@@ -2010,9 +2014,8 @@ export class CampaignShell {
     if (!this.canControl() || event.repeat) return;
     const interactive = event.target instanceof Element && event.target.closest("button, a, input") !== null;
     if (interactive) return;
-    const jump = event.code === "Space" || event.key === " " ||
-      event.code === "ArrowUp" || event.code === "KeyW";
-    const slide = event.code === "ArrowDown" || event.code === "KeyS";
+    const jump = event.code === "Space" || event.key === " " || event.code === "KeyW";
+    const slide = event.code === "KeyS";
     if (jump) {
       event.preventDefault();
       this.callbacks.onJump("keyboard");
@@ -2023,7 +2026,7 @@ export class CampaignShell {
   };
 
   private readonly handleKeyup = (event: KeyboardEvent): void => {
-    if (this.activeMode !== null && (event.code === "ArrowDown" || event.code === "KeyS")) {
+    if (this.activeMode !== null && event.code === "KeyS") {
       this.callbacks.onSlide(false, "keyboard");
     }
   };

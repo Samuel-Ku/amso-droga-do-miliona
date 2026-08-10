@@ -62,20 +62,44 @@ try {
   await page.getByText("Tablica niedostępna.", { exact: true })
     .waitFor({ state: "visible" });
 
+  // Reproduce the CMS shell: the storefront remains taller than the campaign.
+  await page.addStyleTag({ content: "body { min-height: 200vh; }" });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await page.waitForTimeout(100);
+
   const state = await page.evaluate(() => ({
     campaignScripting: document.documentElement.dataset.campaignScripting,
     externalScripts: [...document.scripts].filter((script) => script.src).length,
     inlineScripts: [...document.scripts].filter((script) => !script.src).length,
     qaGlobal: "AMSOMillionRunnerQA" in window,
+    scrollY: window.scrollY,
+    headerLockup: (() => {
+      const image = document.querySelector(".amso-campaign__brand-logo");
+      if (!(image instanceof HTMLImageElement)) return null;
+      return {
+        alt: image.alt,
+        renderedWidth: image.getBoundingClientRect().width,
+        renderedHeight: image.getBoundingClientRect().height,
+      };
+    })(),
   }));
   if (state.campaignScripting !== "enabled") failures.push("watchdog did not execute");
   if (state.externalScripts !== 1) failures.push("preview must load one external application script");
   if (state.inlineScripts !== 1) failures.push("preview must contain one inline watchdog");
   if (state.qaGlobal) failures.push("production preview exposed QA global");
+  if (state.scrollY !== 0) failures.push(`arrow keys scrolled the CMS shell to ${state.scrollY}px`);
+  if (state.headerLockup?.alt !== "AMSO — Droga do Miliona") {
+    failures.push("header did not expose the localized campaign lockup");
+  }
+  if ((state.headerLockup?.renderedWidth ?? 0) < 118 || (state.headerLockup?.renderedHeight ?? 0) < 60) {
+    failures.push("header campaign lockup is not readable at its rendered size");
+  }
   if (failures.length > 0) throw new Error(failures.join("\n"));
 
   console.log(
-    "IdoSell external browser smoke: landing mounted without errors; optional records Worker unavailable",
+    "IdoSell external browser smoke: landing mounted, arrows locked, localized header readable; optional records Worker unavailable",
   );
 } finally {
   await browser?.close();

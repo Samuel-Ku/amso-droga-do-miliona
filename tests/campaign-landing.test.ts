@@ -104,14 +104,18 @@ describe("campaign landing composition", () => {
     shell.destroy();
   });
 
-  it("keeps branding and two text-labelled header actions in separate groups", () => {
+  it("uses the localized horizontal campaign lockup beside two header actions", () => {
     const shell = createShell();
     const header = document.querySelector<HTMLElement>(".amso-campaign__header")!;
     const brand = header.querySelector<HTMLElement>(".amso-campaign__brand")!;
+    const brandLogo = brand.querySelector<HTMLImageElement>(".amso-campaign__brand-logo")!;
     const tools = header.querySelector<HTMLElement>(".amso-campaign__tools")!;
     const buttons = tools.querySelectorAll("button");
 
-    expect(brand.textContent).toContain("Droga do Miliona");
+    expect(brandLogo.getAttribute("src"))
+      .toBe("/assets/milion-runner/brand/mz-compact-lockup-v1.avif");
+    expect(brandLogo.getAttribute("alt")).toBe("AMSO — Droga do Miliona");
+    expect(brand.querySelector(".amso-campaign__brand-edition")).toBeNull();
     expect(buttons).toHaveLength(2);
     expect(buttons[0]?.textContent).toContain("Wycisz");
     expect(buttons[1]?.textContent).toMatch(/Pełny ekran|Tryb gry/);

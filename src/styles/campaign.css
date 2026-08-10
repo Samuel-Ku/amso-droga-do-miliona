@@ -313,19 +313,9 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 
 .amso-campaign__brand-logo {
   display: block;
-  height: clamp(20px, 3.4vw, 30px);
-  width: auto;
-}
-
-.amso-campaign__brand-edition {
-  overflow: hidden;
-  color: #dce6f1;
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
+  width: clamp(132px, 12vw, 160px);
+  height: auto;
+  object-fit: contain;
 }
 
 .amso-campaign__tools {
@@ -3841,12 +3831,8 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   }
 
   .amso-campaign__brand-logo {
-    height: 24px;
-  }
-
-  .amso-campaign__brand-edition {
-    max-width: none;
-    font-size: 0.72rem;
+    width: clamp(118px, 38vw, 160px);
+    height: auto;
   }
 
   .amso-campaign__tools {

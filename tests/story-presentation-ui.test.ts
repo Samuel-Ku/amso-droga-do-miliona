@@ -117,7 +117,7 @@ describe("player-paced story presentation", () => {
       ...base,
       microlevelId: "order-backlog",
       currentActions: ["jump", "slide"]
-    })).toBe("📦 FALE ZATORU 3/8 · ↑ SKOK + ↓ ŚLIZG");
+    })).toBe("📦 FALE ZATORU 3/8 · W SKOK + S ŚLIZG");
     expect(formatAuthoredWaveHud({
       ...base,
       microlevelId: "million-threshold",
@@ -138,7 +138,7 @@ describe("player-paced story presentation", () => {
 
   it("keeps controls in the top HUD and removes visible bottom gameplay text", () => {
     expect(formatStoryControlsHud("epoch_1.training"))
-      .toBe("Skok: Spacja/W/↑/tap · Ślizg: S/↓/swipe ↓");
+      .toBe("Skok: Spacja/W/tap · Ślizg: S/swipe w dół");
     expect(formatStoryControlsHud("epoch_2.quality_series")).toBeNull();
     expect(campaignShellSource).toContain("data-campaign-hud-controls");
     expect(campaignShellSource).not.toContain("data-campaign-gameplay-hint");

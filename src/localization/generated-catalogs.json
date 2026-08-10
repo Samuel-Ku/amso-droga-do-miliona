@@ -230,9 +230,6 @@
     "Skala potrzebuje systemu.": "Skala potrzebuje systemu.",
     "Skala Zamówień": "Skala Zamówień",
     "Skok i ślizg opanowane.": "Skok i ślizg opanowane.",
-    "Skok: Spacja, W lub ↑; na telefonie dotknij ekranu. Ślizg: S lub ↓; na telefonie przesuń palcem w dół.": "Skok: Spacja, W lub ↑; na telefonie dotknij ekranu. Ślizg: S lub ↓; na telefonie przesuń palcem w dół.",
-    "Skok: Spacja, W lub ↑. Na urządzeniu mobilnym dotknij ekranu.": "Skok: Spacja, W lub ↑. Na urządzeniu mobilnym dotknij ekranu.",
-    "Skok: Spacja/W/↑/tap · Ślizg: S/↓/swipe ↓": "Skok: Spacja/W/↑/tap · Ślizg: S/↓/swipe ↓",
     "SPRAWDZONY — cztery serie ukończone.": "SPRAWDZONY — cztery serie ukończone.",
     "Sprawdzony laptop zmieścił się w budżecie i pozwolił rozpocząć pracę bez nadmiernego obciążania młodej firmy.": "Sprawdzony laptop zmieścił się w budżecie i pozwolił rozpocząć pracę bez nadmiernego obciążania młodej firmy.",
     "Sprawdź połączenie i spróbuj ponownie.": "Sprawdź połączenie i spróbuj ponownie.",
@@ -246,7 +243,6 @@
     "Sześć zamówień gotowych.": "Sześć zamówień gotowych.",
     "Szybki start": "Szybki start",
     "Szybki start — Tryb Wyzwania": "Szybki start — Tryb Wyzwania",
-    "Ślizg: S lub ↓. Na urządzeniu mobilnym przesuń palcem w dół.": "Ślizg: S lub ↓. Na urządzeniu mobilnym przesuń palcem w dół.",
     "Świąteczny znak 1 000 000, milionowa paczka i zespół AMSO tworzą jeden centralny kadr.": "Świąteczny znak 1 000 000, milionowa paczka i zespół AMSO tworzą jeden centralny kadr.",
     "Ta nazwa jest już zajęta. Wybierz inną.": "Ta nazwa jest już zajęta. Wybierz inną.",
     "Ta nazwa jest niedozwolona.": "Ta nazwa jest niedozwolona.",
@@ -330,7 +326,11 @@
     "ZREALIZOWANE ZAMÓWIENIA": "ZREALIZOWANE ZAMÓWIENIA",
     "Zrealizuj ostatnie 50 zamówień i doprowadź licznik do miliona.": "Zrealizuj ostatnie 50 zamówień i doprowadź licznik do miliona.",
     "Маршрут тимчасово недоступний": "Маршрут тимчасово недоступний",
-    "Не вдалося запустити гру.": "Не вдалося запустити гру."
+    "Не вдалося запустити гру.": "Не вдалося запустити гру.",
+    "Skok: Spacja lub W. Na urządzeniu mobilnym dotknij ekranu.": "Skok: Spacja lub W. Na urządzeniu mobilnym dotknij ekranu.",
+    "Ślizg: S. Na urządzeniu mobilnym przesuń palcem w dół.": "Ślizg: S. Na urządzeniu mobilnym przesuń palcem w dół.",
+    "Skok: Spacja lub W; na telefonie dotknij ekranu. Ślizg: S; na telefonie przesuń palcem w dół.": "Skok: Spacja lub W; na telefonie dotknij ekranu. Ślizg: S; na telefonie przesuń palcem w dół.",
+    "Skok: Spacja/W/tap · Ślizg: S/swipe w dół": "Skok: Spacja/W/tap · Ślizg: S/swipe w dół"
   },
   "de": {
     "(orientation: landscape)": "(Ausrichtung: Querformat)",
@@ -563,9 +563,6 @@
     "Skala potrzebuje systemu.": "Maßstab braucht ein System.",
     "Skala Zamówień": "Bestellskala",
     "Skok i ślizg opanowane.": "Springen und Rutschen gemeistert.",
-    "Skok: Spacja, W lub ↑; na telefonie dotknij ekranu. Ślizg: S lub ↓; na telefonie przesuń palcem w dół.": "Springen: Leertaste, W oder ↑; Tippen Sie auf Ihrem Telefon auf den Bildschirm. Basis: S oder ↓; Wischen Sie auf Ihrem Telefon nach unten.",
-    "Skok: Spacja, W lub ↑. Na urządzeniu mobilnym dotknij ekranu.": "Springen: Leertaste, W oder ↑. Tippen Sie auf Ihrem Mobilgerät auf den Bildschirm.",
-    "Skok: Spacja/W/↑/tap · Ślizg: S/↓/swipe ↓": "Springen: Leertaste/W/ ↑/Tippen · Schieben: S/↓/Wischen ↓",
     "SPRAWDZONY — cztery serie ukończone.": "ÜBERPRÜFT – Vier Sätze abgeschlossen.",
     "Sprawdzony laptop zmieścił się w budżecie i pozwolił rozpocząć pracę bez nadmiernego obciążania młodej firmy.": "Der bewährte Laptop passte ins Budget und ermöglichte den Einstieg in die Arbeit, ohne das junge Unternehmen übermäßig zu belasten.",
     "Sprawdź połączenie i spróbuj ponownie.": "Bitte überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
@@ -579,7 +576,6 @@
     "Sześć zamówień gotowych.": "Sechs Bestellungen bereit.",
     "Szybki start": "Schnellstart",
     "Szybki start — Tryb Wyzwania": "Schnellstart – Herausforderungsmodus",
-    "Ślizg: S lub ↓. Na urządzeniu mobilnym przesuń palcem w dół.": "Basis: S oder ↓. Wischen Sie auf Mobilgeräten nach unten.",
     "Świąteczny znak 1 000 000, milionowa paczka i zespół AMSO tworzą jeden centralny kadr.": "Die 1.000.000-Weihnachtsmarke, das millionste Paket und das AMSO-Team bilden einen zentralen Rahmen.",
     "Ta nazwa jest już zajęta. Wybierz inną.": "Dieser Name ist bereits vergeben. Wählen Sie ein anderes.",
     "Ta nazwa jest niedozwolona.": "Dieser Name ist nicht zulässig.",
@@ -663,7 +659,11 @@
     "ZREALIZOWANE ZAMÓWIENIA": "ABGESCHLOSSENE BESTELLUNGEN",
     "Zrealizuj ostatnie 50 zamówień i doprowadź licznik do miliona.": "Schließen Sie die letzten 50 Bestellungen ab und erreichen Sie den Zähler auf eine Million.",
     "Маршрут тимчасово недоступний": "März-Route vorübergehend nicht verfügbar",
-    "Не вдалося запустити гру.": "Не вдалося запустити гру."
+    "Не вдалося запустити гру.": "Не вдалося запустити гру.",
+    "Skok: Spacja lub W. Na urządzeniu mobilnym dotknij ekranu.": "Sprung: Leertaste oder W. Tippe auf Mobilgeräten auf den Bildschirm.",
+    "Ślizg: S. Na urządzeniu mobilnym przesuń palcem w dół.": "Rutschen: S. Wische auf Mobilgeräten nach unten.",
+    "Skok: Spacja lub W; na telefonie dotknij ekranu. Ślizg: S; na telefonie przesuń palcem w dół.": "Sprung: Leertaste oder W; tippe auf dem Handy auf den Bildschirm. Rutschen: S; wische auf dem Handy nach unten.",
+    "Skok: Spacja/W/tap · Ślizg: S/swipe w dół": "Sprung: Leertaste/W/Tippen · Rutschen: S/Wischen nach unten"
   },
   "en": {
     "(orientation: landscape)": "(orientation: landscape)",
@@ -896,9 +896,6 @@
     "Skala potrzebuje systemu.": "Scale needs a system.",
     "Skala Zamówień": "Order Scale",
     "Skok i ślizg opanowane.": "Jump and slide mastered.",
-    "Skok: Spacja, W lub ↑; na telefonie dotknij ekranu. Ślizg: S lub ↓; na telefonie przesuń palcem w dół.": "Jump: Space, W or ↑; on your phone, tap the screen. Base: S or ↓; on your phone, swipe down.",
-    "Skok: Spacja, W lub ↑. Na urządzeniu mobilnym dotknij ekranu.": "Jump: Space, W or ↑. On your mobile device, tap the screen.",
-    "Skok: Spacja/W/↑/tap · Ślizg: S/↓/swipe ↓": "Jump: Space/W/↑/tap · Slide: S/↓/swipe ↓",
     "SPRAWDZONY — cztery serie ukończone.": "CHECKED - Four sets completed.",
     "Sprawdzony laptop zmieścił się w budżecie i pozwolił rozpocząć pracę bez nadmiernego obciążania młodej firmy.": "The proven laptop fit the budget and allowed you to start working without excessive burden on the young company.",
     "Sprawdź połączenie i spróbuj ponownie.": "Please check your connection and try again.",
@@ -912,7 +909,6 @@
     "Sześć zamówień gotowych.": "Six orders ready.",
     "Szybki start": "Quick start",
     "Szybki start — Tryb Wyzwania": "Quick Start - Challenge Mode",
-    "Ślizg: S lub ↓. Na urządzeniu mobilnym przesuń palcem w dół.": "Base: S or ↓. On mobile, swipe down.",
     "Świąteczny znak 1 000 000, milionowa paczka i zespół AMSO tworzą jeden centralny kadr.": "The 1,000,000 Christmas mark, the millionth package and the AMSO team form one central frame.",
     "Ta nazwa jest już zajęta. Wybierz inną.": "This name is already taken. Choose another one.",
     "Ta nazwa jest niedozwolona.": "This name is not allowed.",
@@ -996,7 +992,11 @@
     "ZREALIZOWANE ZAMÓWIENIA": "COMPLETED ORDERS",
     "Zrealizuj ostatnie 50 zamówień i doprowadź licznik do miliona.": "Complete the last 50 orders and get the counter to one million.",
     "Маршрут тимчасово недоступний": "March route temporarily unavailable",
-    "Не вдалося запустити гру.": "Не вдалося запустити гру."
+    "Не вдалося запустити гру.": "Не вдалося запустити гру.",
+    "Skok: Spacja lub W. Na urządzeniu mobilnym dotknij ekranu.": "Jump: Space or W. On mobile, tap the screen.",
+    "Ślizg: S. Na urządzeniu mobilnym przesuń palcem w dół.": "Slide: S. On mobile, swipe down.",
+    "Skok: Spacja lub W; na telefonie dotknij ekranu. Ślizg: S; na telefonie przesuń palcem w dół.": "Jump: Space or W; on mobile, tap the screen. Slide: S; on mobile, swipe down.",
+    "Skok: Spacja/W/tap · Ślizg: S/swipe w dół": "Jump: Space/W/tap · Slide: S/swipe down"
   },
   "es": {
     "(orientation: landscape)": "(orientación: paisaje)",
@@ -1229,9 +1229,6 @@
     "Skala potrzebuje systemu.": "La escala necesita un sistema.",
     "Skala Zamówień": "Escala de pedidos",
     "Skok i ślizg opanowane.": "Salta y deslízate dominado.",
-    "Skok: Spacja, W lub ↑; na telefonie dotknij ekranu. Ślizg: S lub ↓; na telefonie przesuń palcem w dół.": "Saltar: Espacio, W o ↑; en tu teléfono, toca la pantalla. Base: S o ↓; en tu teléfono, desliza hacia abajo.",
-    "Skok: Spacja, W lub ↑. Na urządzeniu mobilnym dotknij ekranu.": "Saltar: Espacio, W o ↑. En su dispositivo móvil, toque la pantalla.",
-    "Skok: Spacja/W/↑/tap · Ślizg: S/↓/swipe ↓": "Saltar: Espacio/W/ ↑/tocar · Deslizar: S/↓/deslizar ↓",
     "SPRAWDZONY — cztery serie ukończone.": "COMPROBADO - Cuatro juegos completados.",
     "Sprawdzony laptop zmieścił się w budżecie i pozwolił rozpocząć pracę bez nadmiernego obciążania młodej firmy.": "El portátil probado se ajustaba al presupuesto y permitía empezar a trabajar sin una carga excesiva para la joven empresa.",
     "Sprawdź połączenie i spróbuj ponownie.": "Por favor verifique su conexión e inténtelo nuevamente.",
@@ -1245,7 +1242,6 @@
     "Sześć zamówień gotowych.": "Seis pedidos listos.",
     "Szybki start": "Inicio rápido",
     "Szybki start — Tryb Wyzwania": "Inicio rápido: modo desafío",
-    "Ślizg: S lub ↓. Na urządzeniu mobilnym przesuń palcem w dół.": "Base: S o ↓. En el móvil, desliza hacia abajo.",
     "Świąteczny znak 1 000 000, milionowa paczka i zespół AMSO tworzą jeden centralny kadr.": "La marca navideña número 1.000.000, el paquete millonésimo y el equipo AMSO forman un marco central.",
     "Ta nazwa jest już zajęta. Wybierz inną.": "Este nombre ya está en uso. Elige otro.",
     "Ta nazwa jest niedozwolona.": "Este nombre no está permitido.",
@@ -1329,7 +1325,11 @@
     "ZREALIZOWANE ZAMÓWIENIA": "PEDIDOS COMPLETADOS",
     "Zrealizuj ostatnie 50 zamówień i doprowadź licznik do miliona.": "Completa los últimos 50 pedidos y lleva el contador a un millón.",
     "Маршрут тимчасово недоступний": "Ruta de marzo temporalmente no disponible",
-    "Не вдалося запустити гру.": "Ne вдалося запустити гру."
+    "Не вдалося запустити гру.": "Ne вдалося запустити гру.",
+    "Skok: Spacja lub W. Na urządzeniu mobilnym dotknij ekranu.": "Salto: Espacio o W. En móvil, toca la pantalla.",
+    "Ślizg: S. Na urządzeniu mobilnym przesuń palcem w dół.": "Deslizarse: S. En móvil, desliza hacia abajo.",
+    "Skok: Spacja lub W; na telefonie dotknij ekranu. Ślizg: S; na telefonie przesuń palcem w dół.": "Salto: Espacio o W; en móvil, toca la pantalla. Deslizarse: S; en móvil, desliza hacia abajo.",
+    "Skok: Spacja/W/tap · Ślizg: S/swipe w dół": "Salto: Espacio/W/toque · Deslizarse: S/deslizar hacia abajo"
   },
   "cs": {
     "(orientation: landscape)": "(orientace: na šířku)",
@@ -1562,9 +1562,6 @@
     "Skala potrzebuje systemu.": "Váha potřebuje systém.",
     "Skala Zamówień": "Měřítko objednávky",
     "Skok i ślizg opanowane.": "Skák a skluz zvládnutý.",
-    "Skok: Spacja, W lub ↑; na telefonie dotknij ekranu. Ślizg: S lub ↓; na telefonie przesuń palcem w dół.": "Skok: Mezerník, W nebo ↑; na telefonu klepněte na obrazovku. Báze: S nebo ↓; na telefonu přejeďte prstem dolů.",
-    "Skok: Spacja, W lub ↑. Na urządzeniu mobilnym dotknij ekranu.": "Skok: Mezerník, W nebo ↑. Na svém mobilním zařízení klepněte na obrazovku.",
-    "Skok: Spacja/W/↑/tap · Ślizg: S/↓/swipe ↓": "Skok: Mezerník/W/↑/klepnutí · Posunutí: S/↓/přejetí ↓",
     "SPRAWDZONY — cztery serie ukończone.": "KONTROLA - Dokončeny čtyři sady.",
     "Sprawdzony laptop zmieścił się w budżecie i pozwolił rozpocząć pracę bez nadmiernego obciążania młodej firmy.": "Osvědčený notebook odpovídal rozpočtu a umožnil vám začít pracovat bez nadměrné zátěže mladé společnosti.",
     "Sprawdź połączenie i spróbuj ponownie.": "Zkontrolujte připojení a zkuste to znovu.",
@@ -1578,7 +1575,6 @@
     "Sześć zamówień gotowych.": "Šest objednávek připraveno.",
     "Szybki start": "Rychlý start",
     "Szybki start — Tryb Wyzwania": "Rychlý start – režim výzvy",
-    "Ślizg: S lub ↓. Na urządzeniu mobilnym przesuń palcem w dół.": "Základ: S nebo ↓. Na mobilu přejeďte dolů.",
     "Świąteczny znak 1 000 000, milionowa paczka i zespół AMSO tworzą jeden centralny kadr.": "Vánoční 1 000 000, miliontý balíček a tým AMSO tvoří jeden centrální rámec.",
     "Ta nazwa jest już zajęta. Wybierz inną.": "Toto jméno je již obsazeno. Vyberte jiný.",
     "Ta nazwa jest niedozwolona.": "Toto jméno není povoleno.",
@@ -1662,7 +1658,11 @@
     "ZREALIZOWANE ZAMÓWIENIA": "DOKONČENÉ OBJEDNÁVKY",
     "Zrealizuj ostatnie 50 zamówień i doprowadź licznik do miliona.": "Dokončete posledních 50 objednávek a získejte počítadlo na jeden milion.",
     "Маршрут тимчасово недоступний": "Trasa března dočasně nedostupná",
-    "Не вдалося запустити гру.": "Не вдалося запустити гру."
+    "Не вдалося запустити гру.": "Не вдалося запустити гру.",
+    "Skok: Spacja lub W. Na urządzeniu mobilnym dotknij ekranu.": "Skok: Mezerník nebo W. Na mobilu klepněte na obrazovku.",
+    "Ślizg: S. Na urządzeniu mobilnym przesuń palcem w dół.": "Skluz: S. Na mobilu přejeďte prstem dolů.",
+    "Skok: Spacja lub W; na telefonie dotknij ekranu. Ślizg: S; na telefonie przesuń palcem w dół.": "Skok: Mezerník nebo W; na mobilu klepněte na obrazovku. Skluz: S; na mobilu přejeďte dolů.",
+    "Skok: Spacja/W/tap · Ślizg: S/swipe w dół": "Skok: Mezerník/W/klepnutí · Skluz: S/přejetí dolů"
   },
   "it": {
     "(orientation: landscape)": "(orientamento: orizzontale)",
@@ -1895,9 +1895,6 @@
     "Skala potrzebuje systemu.": "La scala ha bisogno di un sistema.",
     "Skala Zamówień": "Scala dell'ordine",
     "Skok i ślizg opanowane.": "Salta e scivola con maestria.",
-    "Skok: Spacja, W lub ↑; na telefonie dotknij ekranu. Ślizg: S lub ↓; na telefonie przesuń palcem w dół.": "Salta: Spazio, W o ↑; sul telefono, tocca lo schermo. Base: S o ↓; sul telefono, scorri verso il basso.",
-    "Skok: Spacja, W lub ↑. Na urządzeniu mobilnym dotknij ekranu.": "Salta: Spazio, W o ↑. Sul tuo dispositivo mobile, tocca lo schermo.",
-    "Skok: Spacja/W/↑/tap · Ślizg: S/↓/swipe ↓": "Salta: Spazio/W/↑/tocca · Scorri: S/↓/scorri ↓",
     "SPRAWDZONY — cztery serie ukończone.": "CONTROLLATO – Quattro set completati.",
     "Sprawdzony laptop zmieścił się w budżecie i pozwolił rozpocząć pracę bez nadmiernego obciążania młodej firmy.": "Il collaudato laptop rientrava nel budget e ti ha permesso di iniziare a lavorare senza oneri eccessivi per la giovane azienda.",
     "Sprawdź połączenie i spróbuj ponownie.": "Controlla la connessione e riprova.",
@@ -1911,7 +1908,6 @@
     "Sześć zamówień gotowych.": "Sei ordini pronti.",
     "Szybki start": "Avvio rapido",
     "Szybki start — Tryb Wyzwania": "Avvio rapido - Modalità sfida",
-    "Ślizg: S lub ↓. Na urządzeniu mobilnym przesuń palcem w dół.": "Base: S o ↓. Sul cellulare, scorri verso il basso.",
     "Świąteczny znak 1 000 000, milionowa paczka i zespół AMSO tworzą jeden centralny kadr.": "Il milionesimo bollo di Natale, il milionesimo pacco e il team AMSO formano un'unica cornice centrale.",
     "Ta nazwa jest już zajęta. Wybierz inną.": "Questo nome è già preso. Scegline un altro.",
     "Ta nazwa jest niedozwolona.": "Questo nome non è consentito.",
@@ -1995,7 +1991,11 @@
     "ZREALIZOWANE ZAMÓWIENIA": "ORDINI COMPLETATI",
     "Zrealizuj ostatnie 50 zamówień i doprowadź licznik do miliona.": "Completa gli ultimi 50 ordini e porta il contatore a un milione.",
     "Маршрут тимчасово недоступний": "La tratta di marzo è temporaneamente non disponibile",
-    "Не вдалося запустити гру.": "Non caricare il gruppo."
+    "Не вдалося запустити гру.": "Non caricare il gruppo.",
+    "Skok: Spacja lub W. Na urządzeniu mobilnym dotknij ekranu.": "Salto: Spazio o W. Su mobile, tocca lo schermo.",
+    "Ślizg: S. Na urządzeniu mobilnym przesuń palcem w dół.": "Scivolata: S. Su mobile, scorri verso il basso.",
+    "Skok: Spacja lub W; na telefonie dotknij ekranu. Ślizg: S; na telefonie przesuń palcem w dół.": "Salto: Spazio o W; su mobile, tocca lo schermo. Scivolata: S; su mobile, scorri verso il basso.",
+    "Skok: Spacja/W/tap · Ślizg: S/swipe w dół": "Salto: Spazio/W/tocco · Scivolata: S/scorri in basso"
   },
   "fr": {
     "(orientation: landscape)": "(orientation : paysage)",
@@ -2228,9 +2228,6 @@
     "Skala potrzebuje systemu.": "L’échelle a besoin d’un système.",
     "Skala Zamówień": "Échelle de commande",
     "Skok i ślizg opanowane.": "Sauter et glisser maîtrisé.",
-    "Skok: Spacja, W lub ↑; na telefonie dotknij ekranu. Ślizg: S lub ↓; na telefonie przesuń palcem w dół.": "Sauter : Espace, W ou ↑ ; sur votre téléphone, appuyez sur l'écran. Base : S ou ↓ ; sur votre téléphone, faites glisser votre doigt vers le bas.",
-    "Skok: Spacja, W lub ↑. Na urządzeniu mobilnym dotknij ekranu.": "Saut : Espace, W ou ↑. Sur votre appareil mobile, appuyez sur l'écran.",
-    "Skok: Spacja/W/↑/tap · Ślizg: S/↓/swipe ↓": "Sauter : Espace/W/↑/appuyer · Glisser : S/↓/glisser ↓",
     "SPRAWDZONY — cztery serie ukończone.": "VÉRIFIÉ – Quatre sets terminés.",
     "Sprawdzony laptop zmieścił się w budżecie i pozwolił rozpocząć pracę bez nadmiernego obciążania młodej firmy.": "L'ordinateur portable éprouvé convenait au budget et vous permettait de commencer à travailler sans charge excessive pour la jeune entreprise.",
     "Sprawdź połączenie i spróbuj ponownie.": "Veuillez vérifier votre connexion et réessayer.",
@@ -2244,7 +2241,6 @@
     "Sześć zamówień gotowych.": "Six commandes prêtes.",
     "Szybki start": "Démarrage rapide",
     "Szybki start — Tryb Wyzwania": "Démarrage rapide - Mode Défi",
-    "Ślizg: S lub ↓. Na urządzeniu mobilnym przesuń palcem w dół.": "Base : S ou ↓. Sur mobile, faites glisser votre doigt vers le bas.",
     "Świąteczny znak 1 000 000, milionowa paczka i zespół AMSO tworzą jeden centralny kadr.": "La marque du million de Noël, le millionième colis et l'équipe AMSO forment un cadre central.",
     "Ta nazwa jest już zajęta. Wybierz inną.": "Ce nom est déjà pris. Choisissez-en un autre.",
     "Ta nazwa jest niedozwolona.": "Ce nom n'est pas autorisé.",
@@ -2328,7 +2324,11 @@
     "ZREALIZOWANE ZAMÓWIENIA": "COMMANDES COMPLÉTÉES",
     "Zrealizuj ostatnie 50 zamówień i doprowadź licznik do miliona.": "Complétez les 50 dernières commandes et obtenez le compteur à un million.",
     "Маршрут тимчасово недоступний": "Itinéraire de mars temporairement indisponible",
-    "Не вдалося запустити гру.": "Je n'ai pas de problème avec le groupe."
+    "Не вдалося запустити гру.": "Je n'ai pas de problème avec le groupe.",
+    "Skok: Spacja lub W. Na urządzeniu mobilnym dotknij ekranu.": "Saut : Espace ou W. Sur mobile, touchez l’écran.",
+    "Ślizg: S. Na urządzeniu mobilnym przesuń palcem w dół.": "Glissade : S. Sur mobile, balayez vers le bas.",
+    "Skok: Spacja lub W; na telefonie dotknij ekranu. Ślizg: S; na telefonie przesuń palcem w dół.": "Saut : Espace ou W ; sur mobile, touchez l’écran. Glissade : S ; sur mobile, balayez vers le bas.",
+    "Skok: Spacja/W/tap · Ślizg: S/swipe w dół": "Saut : Espace/W/toucher · Glissade : S/balayer vers le bas"
   },
   "uk": {
     "(orientation: landscape)": "(орієнтація: альбомна)",
@@ -2561,9 +2561,6 @@
     "Skala potrzebuje systemu.": "Масштаб потребує системи.",
     "Skala Zamówień": "Шкала замовлення",
     "Skok i ślizg opanowane.": "Опанував стрибки та ковзання.",
-    "Skok: Spacja, W lub ↑; na telefonie dotknij ekranu. Ślizg: S lub ↓; na telefonie przesuń palcem w dół.": "Перехід: Пробіл, W або ↑; на телефоні торкніться екрана. Основа: S або ↓; на телефоні проведіть пальцем вниз.",
-    "Skok: Spacja, W lub ↑. Na urządzeniu mobilnym dotknij ekranu.": "Стрибок: пробіл, W або ↑. На мобільному пристрої торкніться екрана.",
-    "Skok: Spacja/W/↑/tap · Ślizg: S/↓/swipe ↓": "Стрибок: Пробіл/W/↑/торкніться · Слайд: S/↓/проведіть ↓",
     "SPRAWDZONY — cztery serie ukończone.": "ПЕРЕВІРЕНО - виконано чотири підходи.",
     "Sprawdzony laptop zmieścił się w budżecie i pozwolił rozpocząć pracę bez nadmiernego obciążania młodej firmy.": "Перевірений ноутбук вписався в бюджет і дозволив почати роботу без зайвого навантаження на молоду компанію.",
     "Sprawdź połączenie i spróbuj ponownie.": "Перевірте підключення та повторіть спробу.",
@@ -2577,7 +2574,6 @@
     "Sześć zamówień gotowych.": "Готові шість замовлень.",
     "Szybki start": "Швидкий старт",
     "Szybki start — Tryb Wyzwania": "Швидкий старт - режим виклику",
-    "Ślizg: S lub ↓. Na urządzeniu mobilnym przesuń palcem w dół.": "Основа: S або ↓. На мобільному пристрої проведіть пальцем униз.",
     "Świąteczny znak 1 000 000, milionowa paczka i zespół AMSO tworzą jeden centralny kadr.": "1 000 000 Різдвяних знаків, мільйонний пакунок і команда AMSO формують одну центральну рамку.",
     "Ta nazwa jest już zajęta. Wybierz inną.": "Ця назва вже зайнята. Виберіть інший.",
     "Ta nazwa jest niedozwolona.": "Це ім'я заборонено.",
@@ -2661,6 +2657,10 @@
     "ZREALIZOWANE ZAMÓWIENIA": "ВИКОНАНІ ЗАМОВЛЕННЯ",
     "Zrealizuj ostatnie 50 zamówień i doprowadź licznik do miliona.": "Виконайте останні 50 замовлень і отримайте лічильник до мільйона.",
     "Маршрут тимчасово недоступний": "Березневий маршрут тимчасово недоступний",
-    "Не вдалося запустити гру.": "Невдома запустити гру."
+    "Не вдалося запустити гру.": "Невдома запустити гру.",
+    "Skok: Spacja lub W. Na urządzeniu mobilnym dotknij ekranu.": "Стрибок: пробіл або W. На мобільному пристрої торкніться екрана.",
+    "Ślizg: S. Na urządzeniu mobilnym przesuń palcem w dół.": "Ковзання: S. На мобільному пристрої проведіть пальцем униз.",
+    "Skok: Spacja lub W; na telefonie dotknij ekranu. Ślizg: S; na telefonie przesuń palcem w dół.": "Стрибок: пробіл або W; на телефоні торкніться екрана. Ковзання: S; на телефоні проведіть пальцем униз.",
+    "Skok: Spacja/W/tap · Ślizg: S/swipe w dół": "Стрибок: пробіл/W/дотик · Ковзання: S/свайп униз"
   }
 }

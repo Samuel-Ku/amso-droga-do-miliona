@@ -67,7 +67,7 @@ describe("canonical game instructions", () => {
     expect(document.querySelector("[data-campaign-canvas]")?.getAttribute("aria-label"))
       .toBe(`Pole gry. ${GAME_INSTRUCTION_COPY.jump} ${GAME_INSTRUCTION_COPY.slide}`);
     expect(GAME_INSTRUCTION_COPY.compactControls)
-      .toBe("Skok: Spacja/W/↑/tap · Ślizg: S/↓/swipe ↓");
+      .toBe("Skok: Spacja/W/tap · Ślizg: S/swipe w dół");
 
     const boardHost = document.createElement("div");
     const board = new RecordBoard(boardHost, new RecordsClient("/api/records"));

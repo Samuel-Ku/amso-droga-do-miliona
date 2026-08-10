@@ -12,15 +12,15 @@ export const GAME_INSTRUCTION_COPY = Object.freeze({
     "Historia prowadzi przez jubileuszowe etapy AMSO. Tryb Wyzwania to niekończący się bieg po jak najlepszy wynik.",
   storySafety:
     "Gdy pojawia się karta historii, trasa jest bezpieczna — nie musisz wtedy omijać przeszkód ani zbierać przedmiotów.",
-  jump: "Skok: Spacja, W lub ↑. Na urządzeniu mobilnym dotknij ekranu.",
-  slide: "Ślizg: S lub ↓. Na urządzeniu mobilnym przesuń palcem w dół.",
+  jump: "Skok: Spacja lub W. Na urządzeniu mobilnym dotknij ekranu.",
+  slide: "Ślizg: S. Na urządzeniu mobilnym przesuń palcem w dół.",
   controls:
-    "Skok: Spacja, W lub ↑; na telefonie dotknij ekranu. Ślizg: S lub ↓; na telefonie przesuń palcem w dół.",
+    "Skok: Spacja lub W; na telefonie dotknij ekranu. Ślizg: S; na telefonie przesuń palcem w dół.",
   ordersAndCombo:
     "Zbieraj paczki i urządzenia, realizuj zamówienia i buduj SERIĘ ×N kolejnymi czystymi akcjami.",
   introCta: "Rozpocznij historię",
   hudOrdersLabel: "Zamówienia",
-  compactControls: "Skok: Spacja/W/↑/tap · Ślizg: S/↓/swipe ↓"
+  compactControls: "Skok: Spacja/W/tap · Ślizg: S/swipe w dół"
 } as const);
 
 export const GAME_INTRODUCTION_COPY = Object.freeze({

@@ -36,8 +36,10 @@ describe("runner config v5 story validation", () => {
     expect(productionConfig.ui).not.toHaveProperty("controlsHud");
     expect(productionConfig.ui).not.toHaveProperty("landingLead");
     expect(productionConfig.ui).not.toHaveProperty("hudPackages");
-    expect(GAME_INSTRUCTION_COPY.jump).toContain("Spacja, W lub ↑");
-    expect(GAME_INSTRUCTION_COPY.slide).toContain("S lub ↓");
+    expect(GAME_INSTRUCTION_COPY.jump).toContain("Spacja lub W");
+    expect(GAME_INSTRUCTION_COPY.slide).toContain("Ślizg: S");
+    expect(`${GAME_INSTRUCTION_COPY.jump} ${GAME_INSTRUCTION_COPY.slide}`)
+      .not.toMatch(/[↑↓]/u);
     expect(productionConfig.ui?.powerupWarrantyHud).toBe("GWARANCJA AMSO CARE ×1");
     expect(productionConfig.ui?.warrantyConsumed).toContain("GWARANCJA AMSO CARE");
     expect(productionConfig.ui?.parcelWarrantyLine1).toBe("GWARANCJA");

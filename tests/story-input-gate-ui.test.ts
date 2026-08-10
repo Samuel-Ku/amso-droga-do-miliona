@@ -180,30 +180,36 @@ describe("story input safety gate", () => {
     shell.destroy();
   });
 
-  it("treats W and ArrowUp as the same jump control", () => {
+  it("keeps W as the jump key and blocks arrow keys without triggering gameplay", () => {
     const { shell, onJump } = createShell();
     shell.showGame("story");
     const w = new KeyboardEvent("keydown", { code: "KeyW", key: "w", bubbles: true, cancelable: true });
     const up = new KeyboardEvent("keydown", {
       code: "ArrowUp", key: "ArrowUp", bubbles: true, cancelable: true
     });
+    const left = new KeyboardEvent("keydown", {
+      code: "ArrowLeft", key: "ArrowLeft", bubbles: true, cancelable: true
+    });
 
     document.dispatchEvent(w);
     document.dispatchEvent(up);
+    document.dispatchEvent(left);
 
-    expect(onJump.mock.calls).toEqual([["keyboard"], ["keyboard"]]);
+    expect(onJump.mock.calls).toEqual([["keyboard"]]);
     expect(up.defaultPrevented).toBe(true);
+    expect(left.defaultPrevented).toBe(true);
     shell.destroy();
   });
 
-  it("documents both one-hand key pairs plus Space and touch", () => {
+  it("documents Space, W, S and touch without advertising arrow controls", () => {
     const { shell } = createShell();
     const canvas = document.querySelector<HTMLCanvasElement>("[data-campaign-canvas]");
 
-    expect(canvas?.getAttribute("aria-label")).toContain("Spacja, W lub ↑");
+    expect(canvas?.getAttribute("aria-label")).toContain("Spacja lub W");
     expect(canvas?.getAttribute("aria-label")).toContain("dotknij ekranu");
-    expect(canvas?.getAttribute("aria-label")).toContain("S lub ↓");
+    expect(canvas?.getAttribute("aria-label")).toContain("Ślizg: S");
     expect(canvas?.getAttribute("aria-label")).toContain("przesuń palcem w dół");
+    expect(canvas?.getAttribute("aria-label")).not.toMatch(/[↑↓]/u);
     shell.destroy();
   });
 
@@ -219,21 +225,37 @@ describe("story input safety gate", () => {
     shell.destroy();
   });
 
-  it("treats S and ArrowDown as the same held slide control", () => {
+  it("keeps S as the held slide key and blocks ArrowDown without sliding", () => {
     const { shell, onSlide } = createShell();
     shell.showGame("story");
 
     document.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyS", key: "s", bubbles: true }));
     document.dispatchEvent(new KeyboardEvent("keyup", { code: "KeyS", key: "s", bubbles: true }));
-    document.dispatchEvent(new KeyboardEvent("keydown", { code: "ArrowDown", key: "ArrowDown", bubbles: true }));
+    const down = new KeyboardEvent("keydown", {
+      code: "ArrowDown", key: "ArrowDown", bubbles: true, cancelable: true
+    });
+    document.dispatchEvent(down);
     document.dispatchEvent(new KeyboardEvent("keyup", { code: "ArrowDown", key: "ArrowDown", bubbles: true }));
 
     expect(onSlide.mock.calls).toEqual([
       [true, "keyboard"],
       [false, "keyboard"],
-      [true, "keyboard"],
-      [false, "keyboard"],
     ]);
+    expect(down.defaultPrevented).toBe(true);
+    shell.destroy();
+  });
+
+  it("blocks page-scrolling arrow defaults before gameplay starts", () => {
+    const { shell, onJump, onSlide } = createShell();
+    const arrows = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].map((code) =>
+      new KeyboardEvent("keydown", { code, key: code, bubbles: true, cancelable: true })
+    );
+
+    arrows.forEach((event) => document.dispatchEvent(event));
+
+    expect(arrows.every((event) => event.defaultPrevented)).toBe(true);
+    expect(onJump).not.toHaveBeenCalled();
+    expect(onSlide).not.toHaveBeenCalled();
     shell.destroy();
   });
 

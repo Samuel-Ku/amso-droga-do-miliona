@@ -154,7 +154,7 @@ export function formatAuthoredWaveHud(
   const actionCue = progress.currentObstacleVariant === "parcel-arc"
     ? translate("ZBIERZ ZAMÓWIENIA")
     : (progress.currentActions ?? [])
-      .map((action) => action === "jump" ? `↑ ${translate("SKOK")}` : `↓ ${translate("ŚLIZG")}`)
+      .map((action) => action === "jump" ? `W ${translate("SKOK")}` : `S ${translate("ŚLIZG")}`)
       .join(" + ");
   const actionSuffix = actionCue ? ` · ${actionCue}` : "";
   switch (progress.microlevelId) {

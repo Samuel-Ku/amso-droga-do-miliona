@@ -83,6 +83,8 @@ describe("localized campaign public UI", () => {
       document.body.append(host);
       const shell = new CampaignShell(host, callbacks, { i18n: createCampaignI18n(locale) });
 
+      expect(host.querySelector<HTMLImageElement>(".amso-campaign__brand-logo")?.src)
+        .toContain(expectedCompactLockup);
       expect(host.querySelector<HTMLImageElement>(".amso-campaign__main-lockup")?.src)
         .toContain(expectedLandingLockup);
       for (const selector of [
