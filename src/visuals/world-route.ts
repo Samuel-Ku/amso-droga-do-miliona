@@ -13,13 +13,13 @@ export const WORLD_ROUTE_GRADIENT_STOPS = routeData.gradientStops;
  * the world or presentation mode changes.
  */
 export const WORLD_ROUTE_SVG = `
-  <svg class="amso-world-visual__route" viewBox="0 0 ${routeData.width} ${routeData.height}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+  <svg class="amso-million-runner-2026-world-visual__route" viewBox="0 0 ${routeData.width} ${routeData.height}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
     <defs>
-      <linearGradient id="amso-world-route-gradient" x1="0" x2="1">
+      <linearGradient id="amso-million-runner-2026-world-route-gradient" x1="0" x2="1">
         ${WORLD_ROUTE_GRADIENT_STOPS.map(({ offset, color }) => `<stop offset="${offset}" stop-color="${color}" />`).join("\n        ")}
       </linearGradient>
     </defs>
     <path d="M-12 ${WORLD_ROUTE_Y + WORLD_ROUTE_BASE_OFFSET_Y}H${routeData.width + 12}" stroke="${WORLD_ROUTE_BASE_COLOR}" stroke-width="${WORLD_ROUTE_BASE_WIDTH}" stroke-linecap="round" />
-    <path d="M-12 ${WORLD_ROUTE_Y}H${routeData.width + 12}" stroke="url(#amso-world-route-gradient)" stroke-width="${WORLD_ROUTE_ACCENT_WIDTH}" stroke-linecap="round" />
+    <path d="M-12 ${WORLD_ROUTE_Y}H${routeData.width + 12}" stroke="url(#amso-million-runner-2026-world-route-gradient)" stroke-width="${WORLD_ROUTE_ACCENT_WIDTH}" stroke-linecap="round" />
   </svg>
 `;

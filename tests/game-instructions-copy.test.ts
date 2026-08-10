@@ -49,7 +49,7 @@ describe("canonical game instructions", () => {
   it("uses one approved Polish source across the landing, HUD and canvas", () => {
     const shell = createShell();
     const howToParagraphs = Array.from(
-      document.querySelectorAll(".amso-campaign__how-to p"),
+      document.querySelectorAll(".amso-million-runner-2026__how-to p"),
       (paragraph) => paragraph.textContent
     );
 

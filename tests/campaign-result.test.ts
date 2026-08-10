@@ -79,7 +79,7 @@ describe("challenge result screen", () => {
     shell.showChallengeResult(RESULT);
 
     const card = document.querySelector<HTMLElement>(
-      "[data-campaign-challenge-result] .amso-campaign__result-card"
+      "[data-campaign-challenge-result] .amso-million-runner-2026__result-card"
     )!;
     const actions = card.querySelector<HTMLElement>("[data-campaign-result-actions]")!;
     const toggle = actions.querySelector<HTMLButtonElement>("[data-campaign-toggle-share]")!;
@@ -114,11 +114,11 @@ describe("challenge result screen", () => {
     });
     const shell = createShell();
     shell.showChallengeResult(RESULT);
-    const root = document.querySelector<HTMLElement>(".amso-campaign")!;
+    const root = document.querySelector<HTMLElement>(".amso-million-runner-2026")!;
     const trigger = document.querySelector<HTMLButtonElement>("[data-campaign-toggle-share]")!;
     const panel = document.querySelector<HTMLElement>("[data-campaign-share-panel]")!;
     const stage = document.querySelector<HTMLElement>("[data-campaign-stage]")!;
-    const header = document.querySelector<HTMLElement>(".amso-campaign__header")!;
+    const header = document.querySelector<HTMLElement>(".amso-million-runner-2026__header")!;
 
     expect(root.dataset.mobileLayout).toBe("true");
     trigger.click();

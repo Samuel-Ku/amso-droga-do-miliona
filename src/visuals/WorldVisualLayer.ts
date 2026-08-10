@@ -145,14 +145,14 @@ export class WorldVisualLayer {
     private readonly i18n?: CampaignI18n
   ) {
     host.innerHTML = `
-      <div class="amso-world-visual__image-stack" data-world-plate aria-hidden="true">
-        <img class="amso-world-visual__panel" data-world-panel="current" alt="" width="1780" height="941" draggable="false" />
-        <img class="amso-world-visual__panel" data-world-panel="next" alt="" width="1780" height="941" draggable="false" />
-        <img class="amso-world-visual__panel" data-world-staged-panel alt="" width="1780" height="941" draggable="false" />
-        <div class="amso-world-visual__seam-blur" data-world-seam-blur hidden></div>
+      <div class="amso-million-runner-2026-world-visual__image-stack" data-world-plate aria-hidden="true">
+        <img class="amso-million-runner-2026-world-visual__panel" data-world-panel="current" alt="" width="1780" height="941" draggable="false" />
+        <img class="amso-million-runner-2026-world-visual__panel" data-world-panel="next" alt="" width="1780" height="941" draggable="false" />
+        <img class="amso-million-runner-2026-world-visual__panel" data-world-staged-panel alt="" width="1780" height="941" draggable="false" />
+        <div class="amso-million-runner-2026-world-visual__seam-blur" data-world-seam-blur hidden></div>
         ${WORLD_ROUTE_SVG}
       </div>
-      <div class="amso-world-visual__counter" aria-hidden="true">
+      <div class="amso-million-runner-2026-world-visual__counter" aria-hidden="true">
          <span data-world-counter>999 950</span>
       </div>
     `;
@@ -163,7 +163,7 @@ export class WorldVisualLayer {
     this.stagedPanel = requiredElement<HTMLImageElement>(host, "[data-world-staged-panel]");
     this.seamBlur = requiredElement<HTMLElement>(host, "[data-world-seam-blur]");
     this.plate = requiredElement<HTMLElement>(host, "[data-world-plate]");
-    this.route = requiredElement<SVGElement>(this.plate, ".amso-world-visual__route");
+    this.route = requiredElement<SVGElement>(this.plate, ".amso-million-runner-2026-world-visual__route");
     this.counter = requiredElement<HTMLElement>(host, "[data-world-counter]");
     this.host.style.setProperty("--world-overlap", "0px");
     this.panels[0].style.transition = "none";

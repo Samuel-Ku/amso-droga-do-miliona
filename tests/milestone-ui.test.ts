@@ -54,7 +54,7 @@ describe("responsive milestone message", () => {
       innerHeight: { configurable: true, value: 844 }
     });
     const shell = createShell();
-    const root = document.querySelector<HTMLElement>(".amso-campaign")!;
+    const root = document.querySelector<HTMLElement>(".amso-million-runner-2026")!;
     expect(root.style.getPropertyValue("--campaign-milestone-top")).toBe("132px");
     expect(root.style.getPropertyValue("--campaign-milestone-max-width")).toBe("340px");
     shell.destroy();

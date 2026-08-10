@@ -72,24 +72,24 @@ export class RecordBoard {
 
   private renderLoading(): void {
     this.host.innerHTML = this.wrap(
-      `<p class="amso-records__status">${escapeHtml(this.i18n.translate("Ładowanie tablicy…"))}</p>`
+      `<p class="amso-million-runner-2026-records__status">${escapeHtml(this.i18n.translate("Ładowanie tablicy…"))}</p>`
     );
   }
 
   private renderError(): void {
     this.host.innerHTML = this.wrap(
-      `<p class="amso-records__status amso-records__status--error">${escapeHtml(this.i18n.translate("Tablica niedostępna."))}</p>`
+      `<p class="amso-million-runner-2026-records__status amso-million-runner-2026-records__status--error">${escapeHtml(this.i18n.translate("Tablica niedostępna."))}</p>`
     );
   }
 
   private wrap(inner: string): string {
     return `
-      <div class="amso-records" data-campaign-records data-records-context="${this.context}"${this.compact ? " data-records-compact=\"true\"" : ""}>
-        <div class="amso-records__heading">
-          <h2 class="amso-records__title">${escapeHtml(this.i18n.translate("Tablica rekordów"))}</h2>
-          <span class="amso-records__badge">${escapeHtml(this.i18n.translate("Tryb Wyzwania"))}</span>
+      <div class="amso-million-runner-2026-records" data-campaign-records data-records-context="${this.context}"${this.compact ? " data-records-compact=\"true\"" : ""}>
+        <div class="amso-million-runner-2026-records__heading">
+          <h2 class="amso-million-runner-2026-records__title">${escapeHtml(this.i18n.translate("Tablica rekordów"))}</h2>
+          <span class="amso-million-runner-2026-records__badge">${escapeHtml(this.i18n.translate("Tryb Wyzwania"))}</span>
         </div>
-        <div class="amso-records__body">${inner}</div>
+        <div class="amso-million-runner-2026-records__body">${inner}</div>
       </div>`;
   }
 
@@ -124,12 +124,12 @@ export class RecordBoard {
     const current = this.isCurrent(entry);
     const displayName = entry.nameModerated ? this.i18n.translate("Gracz") : entry.name;
     const safeName = escapeHtml(displayName);
-    const podium = rank <= 3 ? ` amso-records__row--podium amso-records__row--rank-${rank}` : "";
+    const podium = rank <= 3 ? ` amso-million-runner-2026-records__row--podium amso-million-runner-2026-records__row--rank-${rank}` : "";
     return `
-      <tr class="amso-records__row${podium}${current ? " amso-records__row--me" : ""}">
-        <td class="amso-records__rank"><span class="amso-records__rank-value" aria-label="${escapeHtml(this.i18n.translate("Miejsce"))} ${rank}">${rank}</span></td>
-        <th class="amso-records__name" scope="row" title="${safeName}"><span>${safeName}</span>${current ? `<small data-record-current-label>${escapeHtml(this.i18n.translate("Ty"))}</small>` : ""}</th>
-        <td class="amso-records__score">
+      <tr class="amso-million-runner-2026-records__row${podium}${current ? " amso-million-runner-2026-records__row--me" : ""}">
+        <td class="amso-million-runner-2026-records__rank"><span class="amso-million-runner-2026-records__rank-value" aria-label="${escapeHtml(this.i18n.translate("Miejsce"))} ${rank}">${rank}</span></td>
+        <th class="amso-million-runner-2026-records__name" scope="row" title="${safeName}"><span>${safeName}</span>${current ? `<small data-record-current-label>${escapeHtml(this.i18n.translate("Ty"))}</small>` : ""}</th>
+        <td class="amso-million-runner-2026-records__score">
           <strong data-record-score>${this.i18n.formatInteger(entry.challengeScore)}</strong>
           <small data-record-orders>${this.i18n.formatOrders(entry.orders)}</small>
         </td>
@@ -139,18 +139,18 @@ export class RecordBoard {
   private render(): void {
     if (this.entries.length === 0 && !this.playerEntry) {
       this.host.innerHTML = this.wrap(
-        `<p class="amso-records__status">${escapeHtml(this.i18n.translate("Bądź pierwszy na liście!"))}</p>`
+        `<p class="amso-million-runner-2026-records__status">${escapeHtml(this.i18n.translate("Bądź pierwszy na liście!"))}</p>`
       );
       return;
     }
     const selection = this.visibleRows();
     const rows = selection.entries.map((entry, index) => this.row(entry, index + 1)).join("");
     const separated = selection.separatedPlayer
-      ? `<tr class="amso-records__row--separator" aria-hidden="true"><td colspan="3">…</td></tr>${this.row(selection.separatedPlayer, selection.separatedPlayer.rank ?? 1)}`
+      ? `<tr class="amso-million-runner-2026-records__row--separator" aria-hidden="true"><td colspan="3">…</td></tr>${this.row(selection.separatedPlayer, selection.separatedPlayer.rank ?? 1)}`
       : "";
     this.host.innerHTML = this.wrap(`
-      <table class="amso-records__table">
-        <caption class="amso-records__caption">${escapeHtml(this.i18n.translate("Tablica rekordów — Tryb Wyzwania"))}</caption>
+      <table class="amso-million-runner-2026-records__table">
+        <caption class="amso-million-runner-2026-records__caption">${escapeHtml(this.i18n.translate("Tablica rekordów — Tryb Wyzwania"))}</caption>
         <thead>
           <tr><th scope="col">#</th><th scope="col">${escapeHtml(this.i18n.translate("Gracz"))}</th><th scope="col">${escapeHtml(this.i18n.translate("Wynik"))}</th></tr>
         </thead>

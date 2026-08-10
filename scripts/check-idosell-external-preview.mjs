@@ -7,6 +7,7 @@ import { chromium } from "playwright";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const packageDirectory = path.resolve(here, "..", "dist-idosell-external");
 const recordsWorkerOrigin = "https://droga-do-miliona-records.s-kutsenko.workers.dev";
+const campaignNamespace = "amso-million-runner-2026";
 const contentTypes = new Map([
   [".css", "text/css; charset=utf-8"],
   [".html", "text/html; charset=utf-8"],
@@ -57,7 +58,7 @@ try {
   await page.goto(`http://127.0.0.1:${address.port}/preview.html`, {
     waitUntil: "networkidle",
   });
-  await page.locator("#amso-campaign-root .amso-campaign[data-view=landing]")
+  await page.locator(`#${campaignNamespace}-root .${campaignNamespace}[data-view=landing]`)
     .waitFor({ state: "visible" });
   await page.getByText("Tablica niedostępna.", { exact: true })
     .waitFor({ state: "visible" });
@@ -69,14 +70,14 @@ try {
   await page.keyboard.press("ArrowDown");
   await page.waitForTimeout(100);
 
-  const state = await page.evaluate(() => ({
+  const state = await page.evaluate((namespace) => ({
     campaignScripting: document.documentElement.dataset.campaignScripting,
     externalScripts: [...document.scripts].filter((script) => script.src).length,
     inlineScripts: [...document.scripts].filter((script) => !script.src).length,
     qaGlobal: "AMSOMillionRunnerQA" in window,
     scrollY: window.scrollY,
     headerLockup: (() => {
-      const image = document.querySelector(".amso-campaign__brand-logo");
+      const image = document.querySelector(`.${namespace}__brand-logo`);
       if (!(image instanceof HTMLImageElement)) return null;
       return {
         alt: image.alt,
@@ -84,7 +85,14 @@ try {
         renderedHeight: image.getBoundingClientRect().height,
       };
     })(),
-  }));
+    mainElements: document.querySelectorAll(`#${namespace}-root main`).length,
+    invalidDomNames: [...document.querySelectorAll(
+      `#${namespace}-root [class], #${namespace}-root [id]`,
+    )].flatMap((element) => [
+      ...element.classList,
+      ...(element.id ? [element.id] : []),
+    ]).filter((name) => !name.startsWith(namespace)),
+  }), campaignNamespace);
   if (state.campaignScripting !== "enabled") failures.push("watchdog did not execute");
   if (state.externalScripts !== 1) failures.push("preview must load one external application script");
   if (state.inlineScripts !== 1) failures.push("preview must contain one inline watchdog");
@@ -95,6 +103,10 @@ try {
   }
   if ((state.headerLockup?.renderedWidth ?? 0) < 118 || (state.headerLockup?.renderedHeight ?? 0) < 60) {
     failures.push("header campaign lockup is not readable at its rendered size");
+  }
+  if (state.mainElements !== 0) failures.push("campaign fragment must not add a nested main landmark");
+  if (state.invalidDomNames.length > 0) {
+    failures.push(`non-unique campaign class/id names: ${state.invalidDomNames.join(", ")}`);
   }
   if (failures.length > 0) throw new Error(failures.join("\n"));
 

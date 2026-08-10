@@ -18,8 +18,8 @@
     if (!(boot instanceof HTMLElement)) return false;
 
     boot.dataset.campaignBootState = "error";
-    const eyebrow = boot.querySelector(".amso-campaign-boot__eyebrow");
-    const status = boot.querySelector(".amso-campaign-boot__status");
+    const eyebrow = boot.querySelector(".amso-million-runner-2026-boot__eyebrow");
+    const status = boot.querySelector(".amso-million-runner-2026-boot__status");
     if (eyebrow) eyebrow.textContent = copy[0];
     if (status) status.textContent = copy[1];
     return true;

@@ -7,6 +7,7 @@ const readPackageFile = (name: string): string =>
   readFileSync(path.join(packageDirectory, name), "utf8");
 
 describe("IdoSell external deployment package", () => {
+  const namespace = "amso-million-runner-2026";
   it("contains the complete handoff with stable filenames", () => {
     for (const name of [
       "idosell-snippet.html",
@@ -23,7 +24,15 @@ describe("IdoSell external deployment package", () => {
     const snippet = readPackageFile("idosell-snippet.html");
 
     expect(Buffer.byteLength(snippet)).toBeLessThan(8 * 1024);
-    expect(snippet).toContain('id="amso-campaign-root"');
+    expect(snippet).toContain(`id="${namespace}-root"`);
+    expect(snippet).not.toMatch(/<\/?main\b/iu);
+    for (const match of snippet.matchAll(/\b(?:class|id)="([^"]+)"/giu)) {
+      for (const name of match[1]!.split(/\s+/u)) {
+        expect(name, `non-unique DOM name: ${name}`).toMatch(
+          new RegExp(`^${namespace}(?:-|__|$)`, "u"),
+        );
+      }
+    }
     expect(snippet).toContain("__AMSO_PUBLIC_BASE_URL__/million.css");
     expect(snippet).toContain("__AMSO_PUBLIC_BASE_URL__/million.js");
     expect(snippet).not.toMatch(/<style(?:\s|>)/iu);
@@ -53,7 +62,7 @@ describe("IdoSell external deployment package", () => {
     const css = readPackageFile("million.css");
     const preview = readPackageFile("preview.html");
 
-    expect(css).toContain("#amso-campaign-root");
+    expect(css).toContain(`#${namespace}-root`);
     expect(css).not.toMatch(/^body\s*\{/mu);
     expect(preview).toContain('<link rel="stylesheet" href="./million.css"');
     expect(preview).toContain('<script src="./million.js" defer></script>');

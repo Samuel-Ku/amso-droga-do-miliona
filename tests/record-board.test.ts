@@ -43,9 +43,9 @@ describe("RecordBoard.renderFrom", () => {
 
     const cells = Array.from(host.querySelector("tbody tr")!.children);
     expect(cells.map((cell) => cell.className)).toEqual([
-      "amso-records__rank",
-      "amso-records__name",
-      "amso-records__score"
+      "amso-million-runner-2026-records__rank",
+      "amso-million-runner-2026-records__name",
+      "amso-million-runner-2026-records__score"
     ]);
     expect(cells[2]?.querySelector("[data-record-score]")?.textContent).toBe("695 741");
     expect(cells[2]?.querySelector("[data-record-orders]")?.textContent).toBe("745 zamówień");
@@ -66,12 +66,12 @@ describe("RecordBoard.renderFrom", () => {
       }
     ]);
 
-    expect(host.querySelector(".amso-records__row--me")).not.toBeNull();
+    expect(host.querySelector(".amso-million-runner-2026-records__row--me")).not.toBeNull();
     expect(host.querySelector("[data-record-current-label]")?.textContent).toBe("Ty");
     expect(host.querySelector("img")).toBeNull();
-    expect(host.querySelector(".amso-records__name > span")?.textContent)
+    expect(host.querySelector(".amso-million-runner-2026-records__name > span")?.textContent)
       .toBe("<img src=x onerror=alert(1)>");
-    expect(host.querySelector(".amso-records__name")?.getAttribute("title"))
+    expect(host.querySelector(".amso-million-runner-2026-records__name")?.getAttribute("title"))
       .toBe("<img src=x onerror=alert(1)>");
   });
 
@@ -95,9 +95,9 @@ describe("RecordBoard.renderFrom", () => {
       rank: 184
     });
 
-    expect(host.querySelectorAll(".amso-records__row")).toHaveLength(10);
-    expect(host.querySelector(".amso-records__row--separator")?.textContent).toContain("…");
-    expect(host.querySelector(".amso-records__row--me .amso-records__rank")?.textContent)
+    expect(host.querySelectorAll(".amso-million-runner-2026-records__row")).toHaveLength(10);
+    expect(host.querySelector(".amso-million-runner-2026-records__row--separator")?.textContent).toContain("…");
+    expect(host.querySelector(".amso-million-runner-2026-records__row--me .amso-million-runner-2026-records__rank")?.textContent)
       .toContain("184");
   });
 
@@ -116,7 +116,7 @@ describe("RecordBoard.renderFrom", () => {
 
     board.renderFrom(entries, { name: "Kurier", challengeScore: 500, orders: 40, updatedAt: 99, rank: 184 });
 
-    expect(host.querySelectorAll(".amso-records__row")).toHaveLength(4);
-    expect(host.querySelector(".amso-records")?.getAttribute("data-records-context")).toBe("result");
+    expect(host.querySelectorAll(".amso-million-runner-2026-records__row")).toHaveLength(4);
+    expect(host.querySelector(".amso-million-runner-2026-records")?.getAttribute("data-records-context")).toBe("result");
   });
 });

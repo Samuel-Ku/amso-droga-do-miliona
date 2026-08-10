@@ -66,10 +66,10 @@ describe("campaign landing composition", () => {
       muted: false
     });
 
-    const copy = document.querySelector<HTMLElement>(".amso-campaign__landing-copy")!;
-    const cta = copy.querySelector<HTMLElement>(".amso-campaign__landing-cta-group")!;
+    const copy = document.querySelector<HTMLElement>(".amso-million-runner-2026__landing-copy")!;
+    const cta = copy.querySelector<HTMLElement>(".amso-million-runner-2026__landing-cta-group")!;
     const records = copy.querySelector<HTMLElement>("[data-campaign-landing-records]")!;
-    const instructions = copy.querySelector<HTMLDetailsElement>(".amso-campaign__how-to")!;
+    const instructions = copy.querySelector<HTMLDetailsElement>(".amso-million-runner-2026__how-to")!;
     const children = Array.from(copy.children);
 
     expect(children.indexOf(cta)).toBeLessThan(children.indexOf(records));
@@ -77,7 +77,7 @@ describe("campaign landing composition", () => {
     expect(instructions.open).toBe(false);
     expect(instructions.querySelector("summary")?.textContent).toBe("Jak działa gra?");
 
-    const art = document.querySelector<HTMLElement>(".amso-campaign__landing-art")!;
+    const art = document.querySelector<HTMLElement>(".amso-million-runner-2026__landing-art")!;
     expect(art.getAttribute("aria-hidden")).toBe("true");
     expect(art.querySelector("img")?.getAttribute("alt")).toBe("");
 
@@ -99,23 +99,23 @@ describe("campaign landing composition", () => {
       "Szybki start",
       "Powtórz historię AMSO"
     ]);
-    expect(buttons[0]?.classList.contains("amso-campaign__button--primary")).toBe(true);
-    expect(buttons[1]?.classList.contains("amso-campaign__button--secondary")).toBe(true);
+    expect(buttons[0]?.classList.contains("amso-million-runner-2026__button--primary")).toBe(true);
+    expect(buttons[1]?.classList.contains("amso-million-runner-2026__button--secondary")).toBe(true);
     shell.destroy();
   });
 
   it("uses the localized horizontal campaign lockup beside two header actions", () => {
     const shell = createShell();
-    const header = document.querySelector<HTMLElement>(".amso-campaign__header")!;
-    const brand = header.querySelector<HTMLElement>(".amso-campaign__brand")!;
-    const brandLogo = brand.querySelector<HTMLImageElement>(".amso-campaign__brand-logo")!;
-    const tools = header.querySelector<HTMLElement>(".amso-campaign__tools")!;
+    const header = document.querySelector<HTMLElement>(".amso-million-runner-2026__header")!;
+    const brand = header.querySelector<HTMLElement>(".amso-million-runner-2026__brand")!;
+    const brandLogo = brand.querySelector<HTMLImageElement>(".amso-million-runner-2026__brand-logo")!;
+    const tools = header.querySelector<HTMLElement>(".amso-million-runner-2026__tools")!;
     const buttons = tools.querySelectorAll("button");
 
     expect(brandLogo.getAttribute("src"))
       .toBe("/assets/milion-runner/brand/mz-compact-lockup-v1.avif");
     expect(brandLogo.getAttribute("alt")).toBe("AMSO — Droga do Miliona");
-    expect(brand.querySelector(".amso-campaign__brand-edition")).toBeNull();
+    expect(brand.querySelector(".amso-million-runner-2026__brand-edition")).toBeNull();
     expect(buttons).toHaveLength(2);
     expect(buttons[0]?.textContent).toContain("Wycisz");
     expect(buttons[1]?.textContent).toMatch(/Pełny ekran|Tryb gry/);
@@ -146,7 +146,7 @@ describe("campaign landing composition", () => {
     vi.stubGlobal("ResizeObserver", NarrowContainerObserver);
 
     const shell = createShell();
-    const root = document.querySelector<HTMLElement>(".amso-campaign")!;
+    const root = document.querySelector<HTMLElement>(".amso-million-runner-2026")!;
     expect(root.dataset.mobileLayout).toBe("true");
 
     shell.destroy();

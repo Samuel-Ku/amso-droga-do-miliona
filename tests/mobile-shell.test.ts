@@ -46,17 +46,17 @@ describe("mobile campaign shell", () => {
   it("uses the header logo instead of a duplicate landing campaign link", () => {
     const shell = createShell();
 
-    expect(document.querySelector(".amso-campaign__landing-campaign-link")).toBeNull();
+    expect(document.querySelector(".amso-million-runner-2026__landing-campaign-link")).toBeNull();
     expect(document.querySelector<HTMLAnchorElement>(
-      ".amso-campaign__brand[data-campaign-link]"
+      ".amso-million-runner-2026__brand[data-campaign-link]"
     )?.getAttribute("href")).toBe("/million");
     shell.destroy();
   });
 
   it("hides the contextual HUD panel while keeping gameplay stats available", () => {
     const shell = createShell();
-    const context = document.querySelector<HTMLElement>(".amso-campaign__hud-context")!;
-    const stats = document.querySelector<HTMLElement>(".amso-campaign__hud-stats")!;
+    const context = document.querySelector<HTMLElement>(".amso-million-runner-2026__hud-context")!;
+    const stats = document.querySelector<HTMLElement>(".amso-million-runner-2026__hud-stats")!;
 
     expect(context.hidden).toBe(true);
     expect(stats.hidden).toBe(false);
@@ -99,7 +99,7 @@ describe("mobile campaign shell", () => {
     });
     const shell = createShell();
     shell.showLanding({ challengeUnlocked: true, fullscreenPreference: null, muted: false });
-    const root = document.querySelector<HTMLElement>(".amso-campaign")!;
+    const root = document.querySelector<HTMLElement>(".amso-million-runner-2026")!;
     const trigger = document.querySelector<HTMLElement>("[data-campaign-how-to-trigger]")!;
     const overlay = document.querySelector<HTMLElement>("[data-campaign-how-to-panel]")!;
 
@@ -120,7 +120,7 @@ describe("mobile campaign shell", () => {
       value: false
     });
     const shell = createShell();
-    const root = document.querySelector<HTMLElement>(".amso-campaign")!;
+    const root = document.querySelector<HTMLElement>(".amso-million-runner-2026")!;
     const button = document.querySelector<HTMLButtonElement>("[data-campaign-fullscreen]")!;
 
     expect(button.textContent).toContain("Tryb gry");
@@ -141,7 +141,7 @@ describe("mobile campaign shell", () => {
     });
     const onFullscreenPreferenceChange = vi.fn();
     const shell = createShell({ onFullscreenPreferenceChange });
-    const root = document.querySelector<HTMLElement>(".amso-campaign")!;
+    const root = document.querySelector<HTMLElement>(".amso-million-runner-2026")!;
     Object.defineProperty(root, "requestFullscreen", {
       configurable: true,
       value: vi.fn().mockRejectedValue(new Error("fullscreen_denied"))
@@ -206,7 +206,7 @@ describe("mobile campaign shell", () => {
     expect(onJump).toHaveBeenCalledWith("pointer");
 
     shell.setPaused(true);
-    expect(document.querySelector<HTMLElement>(".amso-campaign__world-visual")
+    expect(document.querySelector<HTMLElement>(".amso-million-runner-2026__world-visual")
       ?.dataset.paused).toBe("true");
     canvas.dispatchEvent(new PointerEvent("pointerdown", {
       bubbles: true,
@@ -218,7 +218,7 @@ describe("mobile campaign shell", () => {
     }));
     expect(onJump).toHaveBeenCalledTimes(1);
     shell.showGame("challenge");
-    expect(document.querySelector<HTMLElement>(".amso-campaign__world-visual")
+    expect(document.querySelector<HTMLElement>(".amso-million-runner-2026__world-visual")
       ?.dataset.paused).toBe("false");
     shell.destroy();
   });

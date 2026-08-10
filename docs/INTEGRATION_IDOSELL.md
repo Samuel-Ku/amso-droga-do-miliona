@@ -13,6 +13,11 @@ wizualnego/WYSIWYG. Alternatywnie link CSS i skrypt aplikacji można dodać prze
 `Sklep > Dodatki HTML i JavaScript`, ograniczając dodatek do stron `/million`;
 inline watchdog pozostaje wtedy w małym snippecie strony.
 
+Fragment nie dodaje znacznika `<main>`, ponieważ główny landmark dokumentu należy
+do szablonu IdoSell. Kampania używa neutralnego `<div role="region">`. Wszystkie
+jej publiczne klasy CSS i identyfikatory zaczynają się od unikalnego prefiksu
+`amso-million-runner-2026`, aby style i skrypty sklepu nie mogły pomylić elementów.
+
 Plik `million-idosell.html` pozostaje autonomicznym artefaktem odbiorowym i
 offline QA. Nie należy go wklejać do IdoSell: formularz CMS odrzuca tak duży
 payload odpowiedzią `413 Request Entity Too Large` albo nie zapisuje zawartości.

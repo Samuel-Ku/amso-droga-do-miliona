@@ -221,7 +221,7 @@ describe("story input safety gate", () => {
     expect(description?.textContent).toContain("Klient przekazuje budżet");
     expect(description?.textContent).toContain("Ten sam klient siedzi przy biurku");
     expect(document.querySelector("[data-campaign-story-scene]")?.getAttribute("aria-describedby"))
-      .toContain("amso-campaign-story-visual-description");
+      .toContain("amso-million-runner-2026-story-visual-description");
     shell.destroy();
   });
 

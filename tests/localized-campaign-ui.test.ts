@@ -29,9 +29,9 @@ describe("localized campaign public UI", () => {
     document.body.append(host);
     const shell = new CampaignShell(host, callbacks, { i18n: createCampaignI18n("pl") });
 
-    expect(host.querySelector<HTMLImageElement>(".amso-campaign__main-lockup")?.getAttribute("src"))
+    expect(host.querySelector<HTMLImageElement>(".amso-million-runner-2026__main-lockup")?.getAttribute("src"))
       .toBe("/assets/milion-runner/brand/mz-main-lockup-v1.avif");
-    expect(host.querySelector<HTMLImageElement>(".amso-campaign__compact-lockup")?.getAttribute("src"))
+    expect(host.querySelector<HTMLImageElement>(".amso-million-runner-2026__compact-lockup")?.getAttribute("src"))
       .toBe("/assets/milion-runner/brand/mz-compact-lockup-v1.avif");
 
     shell.destroy();
@@ -56,9 +56,9 @@ describe("localized campaign public UI", () => {
     expect(host.textContent).not.toContain("Pomóż kurierowi");
     expect(host.querySelector("[data-campaign-how-to-trigger]")?.textContent)
       .not.toBe("Jak działa gra?");
-    expect(host.querySelector<HTMLImageElement>(".amso-campaign__main-lockup")?.getAttribute("src"))
+    expect(host.querySelector<HTMLImageElement>(".amso-million-runner-2026__main-lockup")?.getAttribute("src"))
       .toBe("/assets/milion-runner/brand/mz-main-lockup-en-v1.webp");
-    expect(host.querySelector<HTMLImageElement>(".amso-campaign__compact-lockup")?.getAttribute("src"))
+    expect(host.querySelector<HTMLImageElement>(".amso-million-runner-2026__compact-lockup")?.getAttribute("src"))
       .toBe("/assets/milion-runner/brand/mz-compact-lockup-en-v1.webp");
 
     shell.destroy();
@@ -83,22 +83,22 @@ describe("localized campaign public UI", () => {
       document.body.append(host);
       const shell = new CampaignShell(host, callbacks, { i18n: createCampaignI18n(locale) });
 
-      expect(host.querySelector<HTMLImageElement>(".amso-campaign__brand-logo")?.src)
+      expect(host.querySelector<HTMLImageElement>(".amso-million-runner-2026__brand-logo")?.src)
         .toContain(expectedCompactLockup);
-      expect(host.querySelector<HTMLImageElement>(".amso-campaign__main-lockup")?.src)
+      expect(host.querySelector<HTMLImageElement>(".amso-million-runner-2026__main-lockup")?.src)
         .toContain(expectedLandingLockup);
       for (const selector of [
-        ".amso-campaign__main-lockup",
-        ".amso-campaign__result-lockup--main",
-        ".amso-campaign__story-final-lockup"
+        ".amso-million-runner-2026__main-lockup",
+        ".amso-million-runner-2026__result-lockup--main",
+        ".amso-million-runner-2026__story-final-lockup"
       ]) {
         expect(host.querySelector<HTMLImageElement>(selector)?.src)
           .toContain(expectedLandingLockup);
       }
       for (const selector of [
-        ".amso-campaign__compact-lockup",
-        ".amso-campaign__result-lockup:not(.amso-campaign__result-lockup--main)",
-        ".amso-campaign__share-lockup"
+        ".amso-million-runner-2026__compact-lockup",
+        ".amso-million-runner-2026__result-lockup:not(.amso-million-runner-2026__result-lockup--main)",
+        ".amso-million-runner-2026__share-lockup"
       ]) {
         expect(host.querySelector<HTMLImageElement>(selector)?.src)
           .toContain(expectedCompactLockup);

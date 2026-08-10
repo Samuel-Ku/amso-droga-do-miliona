@@ -394,7 +394,7 @@ function createLoadingShell(
   const copy = LOADING_SHELL_COPY[locale as keyof typeof LOADING_SHELL_COPY] ??
     LOADING_SHELL_COPY.en;
   const root = documentReference.createElement("div");
-  root.className = "amso-runner-loading-shell";
+  root.className = "amso-million-runner-2026-loading-shell";
   root.setAttribute("role", "dialog");
   root.setAttribute("aria-modal", "true");
   root.setAttribute("aria-label", copy[0]);
@@ -403,24 +403,24 @@ function createLoadingShell(
     "background:#061426;color:#fff;font-family:system-ui,sans-serif;text-align:center";
 
   const card = documentReference.createElement("div");
-  card.className = "amso-runner-loading-shell__card";
+  card.className = "amso-million-runner-2026-loading-shell__card";
   card.style.cssText =
     "display:grid;gap:14px;min-width:min(340px,90vw);padding:30px;border:1px solid #ffffff26;" +
     "border-radius:20px;background:#0b2038;box-shadow:0 22px 70px #0008";
 
   const brand = documentReference.createElement("strong");
-  brand.className = "amso-runner-loading-shell__brand";
+  brand.className = "amso-million-runner-2026-loading-shell__brand";
   brand.textContent = "AMSO";
   brand.style.cssText = "color:#ff6b00;font-size:28px;letter-spacing:-1px";
 
   const status = documentReference.createElement("p");
-  status.className = "amso-runner-loading-shell__status";
+  status.className = "amso-million-runner-2026-loading-shell__status";
   status.setAttribute("role", "status");
   status.textContent = copy[1];
   status.style.cssText = "margin:0;font-weight:750";
 
   const cancel = documentReference.createElement("button");
-  cancel.className = "amso-runner-loading-shell__cancel";
+  cancel.className = "amso-million-runner-2026-loading-shell__cancel";
   cancel.type = "button";
   cancel.textContent = copy[2];
   cancel.style.cssText =

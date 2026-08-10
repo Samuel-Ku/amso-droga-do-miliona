@@ -26,16 +26,16 @@ describe("world visual continuity", () => {
     );
     const renderer = readFileSync(new URL("../src/game/renderer.ts", import.meta.url), "utf8");
 
-    expect(css).not.toMatch(/\.amso-world-visual__panel\s*\{[^}]*object-fit:/u);
-    expect(css).toMatch(/\.amso-world-visual__image-stack\s*\{[^}]*transition:\s*none/u);
+    expect(css).not.toMatch(/\.amso-million-runner-2026-world-visual__panel\s*\{[^}]*object-fit:/u);
+    expect(css).toMatch(/\.amso-million-runner-2026-world-visual__image-stack\s*\{[^}]*transition:\s*none/u);
     expect(css).toContain("--world-position-portrait");
     expect(css).toContain("--world-position-landscape");
     expect(css).not.toContain("--world-tile-blend-width");
-    expect(css).not.toMatch(/\.amso-world-visual__panel\.is-leaving\s*\{/u);
+    expect(css).not.toMatch(/\.amso-million-runner-2026-world-visual__panel\.is-leaving\s*\{/u);
     expect(worldLayer).toContain('this.host.style.setProperty("--world-overlap", "0px")');
     expect(worldLayer).toContain("data-world-plate");
     expect(worldLayer).toContain("public applyGeometry(");
-    expect(worldLayer).toContain('<img class="amso-world-visual__panel"');
+    expect(worldLayer).toContain('<img class="amso-million-runner-2026-world-visual__panel"');
     expect(worldLayer).not.toContain("context.drawImage(asset.image");
     expect(renderer).not.toContain("drawFullWidthGameplayRoute");
     expect(renderer).toContain("drawGameplayRoute(context, resources.routeGradient)");
@@ -64,12 +64,12 @@ describe("world visual continuity", () => {
   it("keeps system UI and the input canvas full-stage", () => {
     const css = readFileSync(new URL("../src/styles/campaign.css", import.meta.url), "utf8");
     expect(css).toMatch(
-      /\.amso-campaign__canvas\s*\{[^}]*inset:\s*0;[^}]*width:\s*100%;[^}]*height:\s*100%/su
+      /\.amso-million-runner-2026__canvas\s*\{[^}]*inset:\s*0;[^}]*width:\s*100%;[^}]*height:\s*100%/su
     );
     expect(css).toMatch(
       /\[data-campaign-pause-screen\]\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0/su
     );
-    expect(css).toMatch(/\.amso-world-visual__image-stack\s*\{[^}]*transition:\s*none/su);
+    expect(css).toMatch(/\.amso-million-runner-2026-world-visual__image-stack\s*\{[^}]*transition:\s*none/su);
   });
 
   it("uses generated plates without the removed semantic illustration layer", () => {
@@ -101,7 +101,7 @@ describe("world visual continuity", () => {
 
     expect(worldLayer.match(/<span data-world-counter/gu)).toHaveLength(1);
     expect(worldLayer).toContain("999 950");
-    expect(css).toContain(".amso-world-visual__counter");
+    expect(css).toContain(".amso-million-runner-2026-world-visual__counter");
     expect(css).toContain('[data-world-id="million-finale"]');
     expect(css).toContain("color-scheme: only light");
   });
@@ -115,7 +115,7 @@ describe("world visual continuity", () => {
     }
     expect(existsSync(new URL("../src/visuals/semantic-world-svg.ts", import.meta.url)))
       .toBe(false);
-    expect(css).not.toContain(".amso-world-visual__semantic");
+    expect(css).not.toContain(".amso-million-runner-2026-world-visual__semantic");
   });
 
   it("keeps the confirmed scale figures in editable story copy", () => {

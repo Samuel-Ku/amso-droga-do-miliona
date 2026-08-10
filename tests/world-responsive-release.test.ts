@@ -31,7 +31,7 @@ const campaignStyles = readFileSync(
   "src/styles/campaign.css",
   "utf8"
 );
-const PAUSE_ACTION_SELECTOR = "[data-campaign-pause-screen] .amso-campaign__actions";
+const PAUSE_ACTION_SELECTOR = "[data-campaign-pause-screen] .amso-million-runner-2026__actions";
 
 function isPauseActionRule(rule: CSSRule): rule is CSSStyleRule {
   return rule instanceof CSSStyleRule && rule.selectorText === PAUSE_ACTION_SELECTOR;
@@ -114,8 +114,8 @@ describe("responsive world release contract", () => {
     shell.setPaused(true);
 
     const pauseScreen = document.querySelector<HTMLElement>("[data-campaign-pause-screen]")!;
-    const pauseActions = pauseScreen.querySelector<HTMLElement>(".amso-campaign__actions")!;
-    const pauseBonuses = pauseScreen.querySelector<HTMLElement>(".amso-campaign__pause-bonuses")!;
+    const pauseActions = pauseScreen.querySelector<HTMLElement>(".amso-million-runner-2026__actions")!;
+    const pauseBonuses = pauseScreen.querySelector<HTMLElement>(".amso-million-runner-2026__pause-bonuses")!;
     const buttons = [...pauseActions.querySelectorAll<HTMLButtonElement>("button")];
     const rules = [...document.styleSheets].flatMap((sheet) => [...sheet.cssRules]);
     const baseRule = rules.find(isPauseActionRule);
@@ -215,7 +215,7 @@ describe("responsive world release contract", () => {
       "translate3d(-50%, 0, 0)",
       "translate3d(50%, 0, 0)"
     ]));
-    const route = plate.querySelector<SVGElement>(".amso-world-visual__route")!;
+    const route = plate.querySelector<SVGElement>(".amso-million-runner-2026-world-visual__route")!;
     const routeGroundY = transform.plateRect.y + Number.parseFloat(route.style.top) +
       432 * Number.parseFloat(route.style.height) / 540;
     expect(routeGroundY).toBeCloseTo(

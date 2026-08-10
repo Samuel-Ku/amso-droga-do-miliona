@@ -17,6 +17,9 @@ Frontend produkcyjny jest publikowany jako mały `idosell-snippet.html` z inline
 watchdogiem błędu oraz dwa pliki na otwartej domenie HTTPS: `million.css` i
 `million.js`. Skrypt aplikacji jest klasycznym bundle bez importów, zawiera
 wymagane obrazy jako data URI i nie zależy od ścieżek assetów hosta.
+Fragment pozostawia landmark `<main>` szablonowi IdoSell, montuje kampanię w
+neutralnym regionie i izoluje wszystkie publiczne klasy oraz ID prefiksem
+`amso-million-runner-2026`.
 
 Ten sam zestaw obsługuje wszystkie wersje językowe na podstawie `<html lang>`
 ustawionego przez IdoSell. CMS nadal odpowiada za title, canonical, Open Graph i

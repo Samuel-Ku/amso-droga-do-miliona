@@ -112,7 +112,7 @@ describe("world geometry coordinator", () => {
     expect(coordinator.snapshot?.plateRect.y).toBeCloseTo(69.370786, 5);
     expect(coordinator.snapshot?.plateRect.width).toBe(1440);
     expect(coordinator.snapshot?.plateRect.height).toBeCloseTo(761.258426, 5);
-    const route = plate!.querySelector<SVGElement>(".amso-world-visual__route")!;
+    const route = plate!.querySelector<SVGElement>(".amso-million-runner-2026-world-visual__route")!;
     expect(Number.parseFloat(route.style.top)).toBeCloseTo(-24.269663, 5);
     expect(route.style.width).toBe("1440px");
     expect(route.style.height).toBe("810px");

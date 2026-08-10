@@ -619,31 +619,31 @@ export class CampaignShell {
         .map(([key, value]) => [key, this.i18n.translate(value)])
     ) as CampaignShellCopy;
     this.root = document.createElement("div");
-    this.root.className = "amso-campaign";
+    this.root.className = "amso-million-runner-2026";
     this.root.dataset.view = "landing";
     this.root.innerHTML = `
-      <div class="amso-campaign__backdrop" aria-hidden="true"></div>
-      <header class="amso-campaign__header">
-        <a class="amso-campaign__brand" data-campaign-link>
-          <img class="amso-campaign__brand-logo" src="${lockups.compact}" alt="AMSO — ${this.copy.brandEdition}" width="1973" height="1138" />
+      <div class="amso-million-runner-2026__backdrop" aria-hidden="true"></div>
+      <header class="amso-million-runner-2026__header">
+        <a class="amso-million-runner-2026__brand" data-campaign-link>
+          <img class="amso-million-runner-2026__brand-logo" src="${lockups.compact}" alt="AMSO — ${this.copy.brandEdition}" width="1973" height="1138" />
         </a>
-        <div class="amso-campaign__tools">
-          <button class="amso-campaign__icon-button" type="button" data-campaign-mute aria-pressed="false">
+        <div class="amso-million-runner-2026__tools">
+          <button class="amso-million-runner-2026__icon-button" type="button" data-campaign-mute aria-pressed="false">
             <span aria-hidden="true" data-campaign-mute-icon>♪</span>
-            <span class="amso-campaign__tool-label" data-campaign-mute-label data-campaign-copy="soundOn">Wycisz</span>
+            <span class="amso-million-runner-2026__tool-label" data-campaign-mute-label data-campaign-copy="soundOn">Wycisz</span>
           </button>
-          <button class="amso-campaign__icon-button" type="button" data-campaign-fullscreen aria-pressed="false">
+          <button class="amso-million-runner-2026__icon-button" type="button" data-campaign-fullscreen aria-pressed="false">
             <span aria-hidden="true">⛶</span>
-            <span class="amso-campaign__tool-label" data-campaign-copy="fullscreenEnter">Pełny ekran</span>
+            <span class="amso-million-runner-2026__tool-label" data-campaign-copy="fullscreenEnter">Pełny ekran</span>
           </button>
         </div>
       </header>
 
-      <main class="amso-campaign__main">
-        <section class="amso-campaign__stage" data-campaign-stage>
-          <div class="amso-campaign__world-visual" data-campaign-world-visual aria-hidden="true"></div>
+      <div class="amso-million-runner-2026__main">
+        <section class="amso-million-runner-2026__stage" data-campaign-stage>
+          <div class="amso-million-runner-2026__world-visual" data-campaign-world-visual aria-hidden="true"></div>
           <canvas
-            class="amso-campaign__canvas"
+            class="amso-million-runner-2026__canvas"
             data-campaign-canvas
             width="960"
             height="540"
@@ -651,41 +651,41 @@ export class CampaignShell {
             aria-hidden="true"
             aria-label="Pole gry. ${GAME_INSTRUCTION_COPY.jump} ${GAME_INSTRUCTION_COPY.slide}"
           ></canvas>
-          <div class="amso-campaign__milestone-message" data-campaign-milestone-message hidden aria-hidden="true"></div>
-          <section class="amso-campaign__hud" data-campaign-hud hidden aria-label="Wynik biegu">
-            <div class="amso-campaign__hud-context" hidden>
+          <div class="amso-million-runner-2026__milestone-message" data-campaign-milestone-message hidden aria-hidden="true"></div>
+          <section class="amso-million-runner-2026__hud" data-campaign-hud hidden aria-label="Wynik biegu">
+            <div class="amso-million-runner-2026__hud-context" hidden>
               <strong data-campaign-hud-mode></strong>
               <span data-campaign-hud-epoch></span>
               <span data-campaign-hud-objective hidden></span>
               <span data-campaign-hud-controls hidden></span>
               <span data-campaign-hud-powerups hidden></span>
-              <span class="amso-campaign__hud-notice" data-campaign-hud-notice hidden role="status"></span>
+              <span class="amso-million-runner-2026__hud-notice" data-campaign-hud-notice hidden role="status"></span>
             </div>
-            <div class="amso-campaign__hud-stats">
+            <div class="amso-million-runner-2026__hud-stats">
               <span><small data-campaign-hud-orders-label>${GAME_INSTRUCTION_COPY.hudOrdersLabel}</small> <strong data-campaign-hud-packages>0</strong></span>
               <span><small data-campaign-copy="hudScore">Wynik</small> <strong data-campaign-hud-score>0</strong></span>
               <span><small>SERIA</small> <strong data-campaign-hud-combo>×1</strong></span>
             </div>
-            <button class="amso-campaign__pause-button" type="button" data-campaign-pause data-campaign-copy="pauseAction">Pauza</button>
+            <button class="amso-million-runner-2026__pause-button" type="button" data-campaign-pause data-campaign-copy="pauseAction">Pauza</button>
           </section>
 
-          <section class="amso-campaign__screen amso-campaign__screen--landing" data-campaign-landing>
-            <div class="amso-campaign__landing-copy">
-              <p class="amso-campaign__eyebrow" data-campaign-copy="landingEyebrow">Jubileuszowa historia AMSO</p>
+          <section class="amso-million-runner-2026__screen amso-million-runner-2026__screen--landing" data-campaign-landing>
+            <div class="amso-million-runner-2026__landing-copy">
+              <p class="amso-million-runner-2026__eyebrow" data-campaign-copy="landingEyebrow">Jubileuszowa historia AMSO</p>
               <h1><span data-campaign-copy="landingTitleAccent">Droga do Miliona</span></h1>
-              <p class="amso-campaign__lead amso-campaign__landing-goal--desktop" data-campaign-landing-goal="desktop">${GAME_INSTRUCTION_COPY.landingGoal}</p>
-              <p class="amso-campaign__lead amso-campaign__landing-goal--mobile" data-campaign-landing-goal="mobile">${GAME_INSTRUCTION_COPY.mobileLandingGoal}</p>
-              <p class="amso-campaign__meta" data-campaign-copy="landingMeta">Około 6 minut · historia w Twoim tempie · skok i ślizg</p>
-              <div class="amso-campaign__landing-cta-group">
-                <div class="amso-campaign__landing-actions" data-campaign-landing-actions></div>
-                <p class="amso-campaign__orientation-hint" aria-hidden="true">
+              <p class="amso-million-runner-2026__lead amso-million-runner-2026__landing-goal--desktop" data-campaign-landing-goal="desktop">${GAME_INSTRUCTION_COPY.landingGoal}</p>
+              <p class="amso-million-runner-2026__lead amso-million-runner-2026__landing-goal--mobile" data-campaign-landing-goal="mobile">${GAME_INSTRUCTION_COPY.mobileLandingGoal}</p>
+              <p class="amso-million-runner-2026__meta" data-campaign-copy="landingMeta">Około 6 minut · historia w Twoim tempie · skok i ślizg</p>
+              <div class="amso-million-runner-2026__landing-cta-group">
+                <div class="amso-million-runner-2026__landing-actions" data-campaign-landing-actions></div>
+                <p class="amso-million-runner-2026__orientation-hint" aria-hidden="true">
                   <span aria-hidden="true">↻</span>
                   <span data-campaign-copy="orientationHint">Do gry potrzebny jest tryb poziomy</span>
                 </p>
               </div>
               <div data-campaign-landing-records></div>
-              <details class="amso-campaign__how-to">
-                <summary data-campaign-how-to-trigger aria-controls="amso-campaign-how-to-panel">Jak działa gra?</summary>
+              <details class="amso-million-runner-2026__how-to">
+                <summary data-campaign-how-to-trigger aria-controls="amso-million-runner-2026-how-to-panel">Jak działa gra?</summary>
                 <div>
                   <p>${GAME_INSTRUCTION_COPY.modeDifference}</p>
                   <p>${GAME_INSTRUCTION_COPY.storySafety}</p>
@@ -694,16 +694,16 @@ export class CampaignShell {
                 </div>
               </details>
             </div>
-            <div class="amso-campaign__landing-art" aria-hidden="true">
-              <img class="amso-campaign__main-lockup" src="${lockups.main}" alt="" width="1600" height="1460" />
+            <div class="amso-million-runner-2026__landing-art" aria-hidden="true">
+              <img class="amso-million-runner-2026__main-lockup" src="${lockups.main}" alt="" width="1600" height="1460" />
             </div>
           </section>
 
-          <div class="amso-campaign__overlay" id="amso-campaign-how-to-panel" data-campaign-how-to-panel hidden role="dialog" aria-modal="true" aria-labelledby="amso-campaign-how-to-title">
-            <div class="amso-campaign__overlay-card">
-              <button class="amso-campaign__overlay-close" type="button" data-campaign-close-overlay aria-label="Zamknij instrukcję">×</button>
-              <h2 id="amso-campaign-how-to-title">Jak działa gra?</h2>
-              <div class="amso-campaign__overlay-copy">
+          <div class="amso-million-runner-2026__overlay" id="amso-million-runner-2026-how-to-panel" data-campaign-how-to-panel hidden role="dialog" aria-modal="true" aria-labelledby="amso-million-runner-2026-how-to-title">
+            <div class="amso-million-runner-2026__overlay-card">
+              <button class="amso-million-runner-2026__overlay-close" type="button" data-campaign-close-overlay aria-label="Zamknij instrukcję">×</button>
+              <h2 id="amso-million-runner-2026-how-to-title">Jak działa gra?</h2>
+              <div class="amso-million-runner-2026__overlay-copy">
                 <p>${GAME_INSTRUCTION_COPY.modeDifference}</p>
                 <p>${GAME_INSTRUCTION_COPY.storySafety}</p>
                 <p>${GAME_INSTRUCTION_COPY.controls}</p>
@@ -713,101 +713,101 @@ export class CampaignShell {
           </div>
 
           <div
-            class="amso-campaign__orientation-prompt"
+            class="amso-million-runner-2026__orientation-prompt"
             data-campaign-orientation-prompt
             role="dialog"
             aria-modal="true"
-            aria-labelledby="amso-campaign-orientation-title"
-            aria-describedby="amso-campaign-orientation-desc"
+            aria-labelledby="amso-million-runner-2026-orientation-title"
+            aria-describedby="amso-million-runner-2026-orientation-desc"
             hidden
           >
-            <div class="amso-campaign__orientation-prompt-content">
-              <svg class="amso-campaign__orientation-icon" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <g class="amso-campaign__orientation-icon__group">
+            <div class="amso-million-runner-2026__orientation-prompt-content">
+              <svg class="amso-million-runner-2026__orientation-icon" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <g class="amso-million-runner-2026__orientation-icon__group">
                   <rect x="35" y="10" width="50" height="100" rx="10" fill="none" stroke="currentColor" stroke-width="3"/>
                   <rect x="40" y="18" width="40" height="84" rx="4" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
                 </g>
-                <path d="M104 85 A48 48 0 0 0 104 35" fill="none" stroke="var(--campaign-orange)" stroke-width="4" stroke-linecap="round" class="amso-campaign__orientation-arrow"/>
-                <polygon points="108,33 100,39 106,27" fill="var(--campaign-orange)" class="amso-campaign__orientation-arrow-head"/>
+                <path d="M104 85 A48 48 0 0 0 104 35" fill="none" stroke="var(--campaign-orange)" stroke-width="4" stroke-linecap="round" class="amso-million-runner-2026__orientation-arrow"/>
+                <polygon points="108,33 100,39 106,27" fill="var(--campaign-orange)" class="amso-million-runner-2026__orientation-arrow-head"/>
               </svg>
-              <h2 id="amso-campaign-orientation-title" data-campaign-copy="orientationPromptTitle">Obróć telefon, aby zagrać</h2>
-              <p id="amso-campaign-orientation-desc" data-campaign-copy="orientationPromptBody">Gra „Droga do Miliona” działa w trybie poziomym.</p>
+              <h2 id="amso-million-runner-2026-orientation-title" data-campaign-copy="orientationPromptTitle">Obróć telefon, aby zagrać</h2>
+              <p id="amso-million-runner-2026-orientation-desc" data-campaign-copy="orientationPromptBody">Gra „Droga do Miliona” działa w trybie poziomym.</p>
             </div>
           </div>
 
-          <section class="amso-campaign__screen amso-campaign__screen--dialog" data-campaign-loading hidden>
-            <div class="amso-campaign__card amso-campaign__card--loading">
-              <img class="amso-campaign__compact-lockup" src="${lockups.compact}" alt="" width="1600" height="924" />
-              <span class="amso-campaign__loading-package" aria-hidden="true"></span>
+          <section class="amso-million-runner-2026__screen amso-million-runner-2026__screen--dialog" data-campaign-loading hidden>
+            <div class="amso-million-runner-2026__card amso-million-runner-2026__card--loading">
+              <img class="amso-million-runner-2026__compact-lockup" src="${lockups.compact}" alt="" width="1600" height="924" />
+              <span class="amso-million-runner-2026__loading-package" aria-hidden="true"></span>
               <h2 data-campaign-loading-text data-campaign-copy="loading">Przygotowujemy pierwszą paczkę…</h2>
               <progress data-campaign-loading-progress max="1"></progress>
             </div>
           </section>
 
-          <section class="amso-campaign__screen amso-campaign__screen--dialog" data-campaign-error hidden>
-            <div class="amso-campaign__card">
-              <p class="amso-campaign__eyebrow" data-campaign-copy="errorEyebrow">Trasa chwilowo niedostępna</p>
+          <section class="amso-million-runner-2026__screen amso-million-runner-2026__screen--dialog" data-campaign-error hidden>
+            <div class="amso-million-runner-2026__card">
+              <p class="amso-million-runner-2026__eyebrow" data-campaign-copy="errorEyebrow">Trasa chwilowo niedostępna</p>
               <h2 data-campaign-copy="errorTitle">Nie udało się przygotować gry.</h2>
               <p data-campaign-error-text data-campaign-copy="errorBody">Sprawdź połączenie i spróbuj ponownie.</p>
-              <div class="amso-campaign__actions">
-                <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-retry data-campaign-copy="retry">Spróbuj ponownie</button>
-                <a class="amso-campaign__button amso-campaign__button--secondary" data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
+              <div class="amso-million-runner-2026__actions">
+                <button class="amso-million-runner-2026__button amso-million-runner-2026__button--primary" type="button" data-campaign-retry data-campaign-copy="retry">Spróbuj ponownie</button>
+                <a class="amso-million-runner-2026__button amso-million-runner-2026__button--secondary" data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
               </div>
             </div>
           </section>
 
           <section
-            class="amso-campaign__screen amso-campaign__screen--dialog"
+            class="amso-million-runner-2026__screen amso-million-runner-2026__screen--dialog"
             data-campaign-pause-screen
             role="dialog"
             aria-modal="true"
-            aria-labelledby="amso-campaign-pause-title"
+            aria-labelledby="amso-million-runner-2026-pause-title"
             hidden
           >
-            <div class="amso-campaign__card">
-              <p class="amso-campaign__eyebrow" data-campaign-copy="pauseEyebrow">Bezpieczny przystanek</p>
-              <h2 id="amso-campaign-pause-title" data-campaign-copy="pauseTitle">Gra wstrzymana</h2>
+            <div class="amso-million-runner-2026__card">
+              <p class="amso-million-runner-2026__eyebrow" data-campaign-copy="pauseEyebrow">Bezpieczny przystanek</p>
+              <h2 id="amso-million-runner-2026-pause-title" data-campaign-copy="pauseTitle">Gra wstrzymana</h2>
               <p data-campaign-copy="pauseBody">Twój postęp jest bezpieczny.</p>
-              <div class="amso-campaign__pause-bonuses" aria-label="Bonusy">
+              <div class="amso-million-runner-2026__pause-bonuses" aria-label="Bonusy">
                 <strong>Bonusy</strong>
                 <span><b>×2 WYNIK</b> — przez 7 s podwaja punkty za zamówienia.</span>
                  <span data-campaign-copy="powerupWarranty">GWARANCJA AMSO CARE — uratuje jedną próbę w Trybie Wyzwania.</span>
               </div>
-              <div class="amso-campaign__actions">
-                <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-resume data-campaign-copy="resume">Wznów</button>
-                <button class="amso-campaign__button amso-campaign__button--secondary" type="button" data-campaign-menu data-campaign-copy="returnToMenu">Wróć do menu</button>
+              <div class="amso-million-runner-2026__actions">
+                <button class="amso-million-runner-2026__button amso-million-runner-2026__button--primary" type="button" data-campaign-resume data-campaign-copy="resume">Wznów</button>
+                <button class="amso-million-runner-2026__button amso-million-runner-2026__button--secondary" type="button" data-campaign-menu data-campaign-copy="returnToMenu">Wróć do menu</button>
               </div>
             </div>
           </section>
 
-          <section class="amso-campaign__screen amso-campaign__screen--result" data-campaign-story-result hidden>
-            <div class="amso-campaign__result-card">
-              <img class="amso-campaign__result-lockup amso-campaign__result-lockup--main" src="${lockups.main}" alt="" width="1600" height="1460" />
-              <p class="amso-campaign__eyebrow" data-campaign-copy="storyResultEyebrow">Dziękujemy za wspólną drogę</p>
+          <section class="amso-million-runner-2026__screen amso-million-runner-2026__screen--result" data-campaign-story-result hidden>
+            <div class="amso-million-runner-2026__result-card">
+              <img class="amso-million-runner-2026__result-lockup amso-million-runner-2026__result-lockup--main" src="${lockups.main}" alt="" width="1600" height="1460" />
+              <p class="amso-million-runner-2026__eyebrow" data-campaign-copy="storyResultEyebrow">Dziękujemy za wspólną drogę</p>
               <h2 data-campaign-copy="storyResultTitle">Twoja Droga do Miliona</h2>
-              <div class="amso-campaign__result-grid">
+              <div class="amso-million-runner-2026__result-grid">
                 <span><small data-campaign-copy="resultPackages">Zrealizowane zamówienia</small> <strong data-campaign-story-packages>0</strong></span>
                 <span><small data-campaign-copy="resultScore">Wynik</small> <strong data-campaign-story-score>0</strong></span>
                 <span><small data-campaign-copy="resultCombo">Najlepsza seria</small> <strong data-campaign-story-combo>×1</strong></span>
               </div>
-              <p class="amso-campaign__result-intro" data-campaign-copy="storyResultIntro">Biegnij do pierwszego niezabezpieczonego zderzenia i ustanów rekord.</p>
-              <div class="amso-campaign__actions">
-                <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-start-challenge data-campaign-copy="startChallenge">Gramy dalej — tryb wyzwania</button>
-                <a class="amso-campaign__button amso-campaign__button--secondary" data-campaign-full-story data-campaign-copy="fullStory">Poznaj pełną historię AMSO</a>
-                <a class="amso-campaign__text-link" data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
+              <p class="amso-million-runner-2026__result-intro" data-campaign-copy="storyResultIntro">Biegnij do pierwszego niezabezpieczonego zderzenia i ustanów rekord.</p>
+              <div class="amso-million-runner-2026__actions">
+                <button class="amso-million-runner-2026__button amso-million-runner-2026__button--primary" type="button" data-campaign-start-challenge data-campaign-copy="startChallenge">Gramy dalej — tryb wyzwania</button>
+                <a class="amso-million-runner-2026__button amso-million-runner-2026__button--secondary" data-campaign-full-story data-campaign-copy="fullStory">Poznaj pełną historię AMSO</a>
+                <a class="amso-million-runner-2026__text-link" data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
               </div>
             </div>
           </section>
 
-          <section class="amso-campaign__screen amso-campaign__screen--result" data-campaign-challenge-result hidden>
-            <div class="amso-campaign__result-card">
-              <img class="amso-campaign__result-lockup" src="${lockups.compact}" alt="" width="1600" height="924" />
-              <p class="amso-campaign__eyebrow" data-campaign-copy="challengeResultEyebrow">Próba Miliona</p>
+          <section class="amso-million-runner-2026__screen amso-million-runner-2026__screen--result" data-campaign-challenge-result hidden>
+            <div class="amso-million-runner-2026__result-card">
+              <img class="amso-million-runner-2026__result-lockup" src="${lockups.compact}" alt="" width="1600" height="924" />
+              <p class="amso-million-runner-2026__eyebrow" data-campaign-copy="challengeResultEyebrow">Próba Miliona</p>
               <h2 data-campaign-copy="challengeResultTitle">Koniec próby</h2>
-              <div class="amso-campaign__result-grid amso-campaign__result-grid--challenge">
+              <div class="amso-million-runner-2026__result-grid amso-million-runner-2026__result-grid--challenge">
                 <span data-campaign-result-metric="orders" role="group">
-                  <small class="amso-campaign__result-label--desktop" data-campaign-copy="resultPackages">Zrealizowane zamówienia</small>
-                  <small class="amso-campaign__result-label--mobile" data-campaign-mobile-label="orders" aria-hidden="true">Zamówienia</small>
+                  <small class="amso-million-runner-2026__result-label--desktop" data-campaign-copy="resultPackages">Zrealizowane zamówienia</small>
+                  <small class="amso-million-runner-2026__result-label--mobile" data-campaign-mobile-label="orders" aria-hidden="true">Zamówienia</small>
                   <strong data-campaign-challenge-packages>0</strong>
                 </span>
                 <span data-campaign-result-metric="total" role="group">
@@ -819,8 +819,8 @@ export class CampaignShell {
                   <strong data-campaign-challenge-score>0</strong>
                 </span>
                 <span data-campaign-result-metric="best" role="group">
-                  <small class="amso-campaign__result-label--desktop" data-campaign-challenge-best-label>Twój rekord wyzwania</small>
-                  <small class="amso-campaign__result-label--mobile" data-campaign-mobile-label="best" aria-hidden="true">Rekord</small>
+                  <small class="amso-million-runner-2026__result-label--desktop" data-campaign-challenge-best-label>Twój rekord wyzwania</small>
+                  <small class="amso-million-runner-2026__result-label--mobile" data-campaign-mobile-label="best" aria-hidden="true">Rekord</small>
                   <strong data-campaign-challenge-best>0</strong>
                 </span>
                 <span data-campaign-result-metric="distance" role="group">
@@ -828,67 +828,67 @@ export class CampaignShell {
                   <strong><i data-campaign-challenge-distance>0</i> m</strong>
                 </span>
               </div>
-              <div class="amso-campaign__actions amso-campaign__result-actions" data-campaign-result-actions>
-                <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-restart-challenge data-campaign-copy="retryChallenge">Spróbuj jeszcze raz</button>
-                <button class="amso-campaign__button amso-campaign__button--secondary" type="button" data-campaign-toggle-share data-campaign-copy="shareResult" aria-expanded="false" aria-controls="amso-campaign-share-panel">Udostępnij wynik</button>
+              <div class="amso-million-runner-2026__actions amso-million-runner-2026__result-actions" data-campaign-result-actions>
+                <button class="amso-million-runner-2026__button amso-million-runner-2026__button--primary" type="button" data-campaign-restart-challenge data-campaign-copy="retryChallenge">Spróbuj jeszcze raz</button>
+                <button class="amso-million-runner-2026__button amso-million-runner-2026__button--secondary" type="button" data-campaign-toggle-share data-campaign-copy="shareResult" aria-expanded="false" aria-controls="amso-million-runner-2026-share-panel">Udostępnij wynik</button>
               </div>
-              <div class="amso-campaign__share-panel" id="amso-campaign-share-panel" data-campaign-share-panel hidden role="region" aria-label="Udostępnij wynik">
-                <button class="amso-campaign__overlay-close" type="button" data-campaign-close-overlay aria-label="Zamknij udostępnianie">×</button>
-                <img class="amso-campaign__share-lockup" src="${lockups.compact}" alt="" width="1600" height="924" />
+              <div class="amso-million-runner-2026__share-panel" id="amso-million-runner-2026-share-panel" data-campaign-share-panel hidden role="region" aria-label="Udostępnij wynik">
+                <button class="amso-million-runner-2026__overlay-close" type="button" data-campaign-close-overlay aria-label="Zamknij udostępnianie">×</button>
+                <img class="amso-million-runner-2026__share-lockup" src="${lockups.compact}" alt="" width="1600" height="924" />
                 <p><strong data-campaign-copy="shareTurn">Teraz Twoja kolej.</strong> <span data-campaign-copy="shareLead">Wybierz, gdzie chcesz udostępnić kartę wyniku.</span></p>
-                <div class="amso-campaign__share-actions">
+                <div class="amso-million-runner-2026__share-actions">
                   <button type="button" data-campaign-share="facebook" data-campaign-copy="facebook">Facebook</button>
                   <button type="button" data-campaign-share="instagram" data-campaign-copy="instagram">Instagram</button>
                 </div>
-                <p class="amso-campaign__share-status" data-campaign-share-status role="status"></p>
+                <p class="amso-million-runner-2026__share-status" data-campaign-share-status role="status"></p>
               </div>
               <div data-campaign-result-records></div>
-              <a class="amso-campaign__text-link amso-campaign__result-exit" data-campaign-result-exit data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
+              <a class="amso-million-runner-2026__text-link amso-million-runner-2026__result-exit" data-campaign-result-exit data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
             </div>
           </section>
 
-          <section class="amso-campaign__story-presentation" data-campaign-story-presentation hidden>
-            <div class="amso-campaign__story-scrim" aria-hidden="true"></div>
+          <section class="amso-million-runner-2026__story-presentation" data-campaign-story-presentation hidden>
+            <div class="amso-million-runner-2026__story-scrim" aria-hidden="true"></div>
 
             <article
-              class="amso-campaign__story-scene-card"
+              class="amso-million-runner-2026__story-scene-card"
               data-campaign-story-scene
               role="dialog"
               aria-modal="true"
-              aria-labelledby="amso-campaign-story-scene-title"
-              aria-describedby="amso-campaign-story-scene-body amso-campaign-story-visual-description"
+              aria-labelledby="amso-million-runner-2026-story-scene-title"
+              aria-describedby="amso-million-runner-2026-story-scene-body amso-million-runner-2026-story-visual-description"
             >
-              <img class="amso-campaign__story-final-lockup" src="${lockups.main}" alt="" width="1600" height="1460" />
-              <p class="amso-campaign__story-scene-eyebrow" data-campaign-story-scene-eyebrow hidden></p>
-              <h2 id="amso-campaign-story-scene-title" data-campaign-story-scene-title></h2>
-              <div id="amso-campaign-story-scene-body" class="amso-campaign__story-scene-body" data-campaign-story-scene-body tabindex="0"></div>
-              <p id="amso-campaign-story-visual-description" class="amso-campaign__sr-only" data-campaign-story-visual-description></p>
+              <img class="amso-million-runner-2026__story-final-lockup" src="${lockups.main}" alt="" width="1600" height="1460" />
+              <p class="amso-million-runner-2026__story-scene-eyebrow" data-campaign-story-scene-eyebrow hidden></p>
+              <h2 id="amso-million-runner-2026-story-scene-title" data-campaign-story-scene-title></h2>
+              <div id="amso-million-runner-2026-story-scene-body" class="amso-million-runner-2026__story-scene-body" data-campaign-story-scene-body tabindex="0"></div>
+              <p id="amso-million-runner-2026-story-visual-description" class="amso-million-runner-2026__sr-only" data-campaign-story-visual-description></p>
               <button
-                class="amso-campaign__button amso-campaign__button--primary amso-campaign__story-continue"
+                class="amso-million-runner-2026__button amso-million-runner-2026__button--primary amso-million-runner-2026__story-continue"
                 type="button"
                 data-campaign-story-continue
               >Dalej</button>
             </article>
 
-            <div class="amso-campaign__story-countdown" data-campaign-story-countdown hidden tabindex="-1" role="status" aria-live="assertive" aria-atomic="true">
+            <div class="amso-million-runner-2026__story-countdown" data-campaign-story-countdown hidden tabindex="-1" role="status" aria-live="assertive" aria-atomic="true">
               <p data-campaign-story-countdown-label>Wracamy do gry</p>
               <strong data-campaign-story-countdown-value>3</strong>
             </div>
           </section>
 
-          <section class="amso-campaign__too-narrow" data-campaign-too-narrow hidden>
+          <section class="amso-million-runner-2026__too-narrow" data-campaign-too-narrow hidden>
             <strong data-campaign-copy="narrowTitle">Potrzebujemy trochę więcej miejsca.</strong>
             <span data-campaign-copy="narrowBody">Obróć urządzenie, żeby rozpocząć grę.</span>
           </section>
         </section>
-      </main>
+      </div>
 
-      <footer class="amso-campaign__footer">
+      <footer class="amso-million-runner-2026__footer">
         <span data-campaign-copy="footerTagline">AMSO. Sprzęt z przeszłością. Na przyszłość.</span>
         <a data-campaign-link data-campaign-copy="footerCampaign">Strona kampanii</a>
       </footer>
 
-      <div class="amso-campaign__sr-only" data-campaign-live aria-live="polite" aria-atomic="true"></div>
+      <div class="amso-million-runner-2026__sr-only" data-campaign-live aria-live="polite" aria-atomic="true"></div>
     `;
     localizeElementTree(this.root, this.i18n);
     host.replaceChildren(this.root);
@@ -907,7 +907,7 @@ export class CampaignShell {
     );
     if (options.qaBadgeText) {
       const badge = document.createElement("aside");
-      badge.className = "amso-campaign__qa-badge";
+      badge.className = "amso-million-runner-2026__qa-badge";
       badge.dataset.qaBadge = "performance";
       badge.textContent = options.qaBadgeText;
       this.root.append(badge);
@@ -976,8 +976,8 @@ export class CampaignShell {
       this.namePrompt = null;
     }
     this.presentationBackground = [
-      requiredElement(this.root, ".amso-campaign__header"),
-      requiredElement(this.root, ".amso-campaign__footer")
+      requiredElement(this.root, ".amso-million-runner-2026__header"),
+      requiredElement(this.root, ".amso-million-runner-2026__footer")
     ];
     this.orientationQuery = window.matchMedia?.("(orientation: landscape)") ?? null;
     this.updateResponsiveLayout(this.root.getBoundingClientRect().width || window.innerWidth);
@@ -1598,7 +1598,7 @@ export class CampaignShell {
       storyButton.addEventListener("click", () => this.queueStart({ mode: "story", restartStory: true }), { once: true });
       const challengeButton = this.createActionButton(this.copy.challengeCta, true);
       challengeButton.addEventListener("click", () => this.queueStart({ mode: "challenge", restartStory: false }), { once: true });
-      storyButton.className = "amso-campaign__button amso-campaign__button--secondary";
+      storyButton.className = "amso-million-runner-2026__button amso-million-runner-2026__button--secondary";
       this.landingActions.append(heading, challengeButton, storyButton);
       return;
     }
@@ -1611,7 +1611,7 @@ export class CampaignShell {
   private createActionButton(label: string, primary: boolean): HTMLButtonElement {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `amso-campaign__button amso-campaign__button--${primary ? "primary" : "secondary"}`;
+    button.className = `amso-million-runner-2026__button amso-million-runner-2026__button--${primary ? "primary" : "secondary"}`;
     button.textContent = label;
     return button;
   }
@@ -1652,7 +1652,7 @@ export class CampaignShell {
     const fullscreen = document.fullscreenElement === this.root;
     const cssGameMode = this.root.dataset.cssGameMode === "true";
     this.fullscreenButton.setAttribute("aria-pressed", String(fullscreen || cssGameMode));
-    requiredElement(this.fullscreenButton, ".amso-campaign__tool-label").textContent = fullscreen
+    requiredElement(this.fullscreenButton, ".amso-million-runner-2026__tool-label").textContent = fullscreen
       ? this.copy.fullscreenExit
       : cssGameMode
         ? this.copy.cssGameModeExit

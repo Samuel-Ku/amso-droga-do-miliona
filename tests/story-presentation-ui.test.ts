@@ -210,18 +210,18 @@ describe("player-paced story presentation", () => {
     expect(campaignCss).toContain("--campaign-orange: #f47100");
     expect(campaignCss).toContain("--campaign-coral: #f04f45");
     expect(campaignCss).toContain("--campaign-magenta: #eb32a4");
-    expect(campaignCss).toContain(".amso-campaign__world-visual");
-    expect(campaignCss).toContain(".amso-world-visual__image");
-    expect(campaignCss).toContain(".amso-world-visual__route");
+    expect(campaignCss).toContain(".amso-million-runner-2026__world-visual");
+    expect(campaignCss).toContain(".amso-million-runner-2026-world-visual__image");
+    expect(campaignCss).toContain(".amso-million-runner-2026-world-visual__route");
     expect(campaignShellSource).toContain("data-campaign-world-visual");
-    expect(campaignShellSource).toContain("amso-campaign__story-final-lockup");
+    expect(campaignShellSource).toContain("amso-million-runner-2026__story-final-lockup");
     expect(campaignShellSource).not.toContain("story-vignette");
   });
 
   it("grows milestone typography with its reward intensity", () => {
     for (const intensity of [2, 3, 4, 5, 6]) {
       expect(campaignCss).toContain(
-        `.amso-campaign__milestone-message[data-intensity="${intensity}"]`
+        `.amso-million-runner-2026__milestone-message[data-intensity="${intensity}"]`
       );
     }
   });
@@ -249,7 +249,7 @@ describe("player-paced story presentation", () => {
     );
     expect(worldLayerSource).toContain('dataset.assetState = "fallback"');
     expect(campaignCss).toContain("background: var(--campaign-paper)");
-    expect(campaignCss).toContain('[data-phase="story"] .amso-world-visual__image-stack');
+    expect(campaignCss).toContain('[data-phase="story"] .amso-million-runner-2026-world-visual__image-stack');
     expect(campaignCss).toContain("opacity: 0.8");
     expect(campaignCss).toContain("transition: none");
     expect(campaignCss).toContain("color-scheme: only light");
@@ -264,7 +264,7 @@ describe("player-paced story presentation", () => {
 
     expect(isCampaignViewportTooNarrow(844, 390)).toBe(false);
     expect(isCampaignViewportTooNarrow(960, 540)).toBe(false);
-    expect(phoneCss).toContain(".amso-campaign__how-to");
+    expect(phoneCss).toContain(".amso-million-runner-2026__how-to");
     expect(phoneCss).toContain("display: block");
     expect(phoneCss).toContain("font-size: 0.75rem");
     expect(phoneCss).toContain("min-height: 44px");
@@ -273,7 +273,7 @@ describe("player-paced story presentation", () => {
 
   it("keeps the countdown route visible after every responsive scrim rule", () => {
     const countdownOverride =
-      '.amso-campaign__story-presentation[data-state="countdown"][data-copy-placement="right"]';
+      '.amso-million-runner-2026__story-presentation[data-state="countdown"][data-copy-placement="right"]';
     expect(campaignCss.lastIndexOf(countdownOverride)).toBeGreaterThan(
       campaignCss.lastIndexOf("@media (orientation: portrait)")
     );
@@ -282,9 +282,9 @@ describe("player-paced story presentation", () => {
   });
 
   it("removes the runner from every reading card", () => {
-    expect(campaignCss).toContain('[data-view="story_scene"] .amso-campaign__canvas');
+    expect(campaignCss).toContain('[data-view="story_scene"] .amso-million-runner-2026__canvas');
     expect(campaignCss).toContain("visibility: hidden");
-    expect(campaignCss).toContain('[data-phase="story"] .amso-world-visual__image-stack');
+    expect(campaignCss).toContain('[data-phase="story"] .amso-million-runner-2026-world-visual__image-stack');
   });
 
   it("enforces a minimum viewport for the game container", () => {

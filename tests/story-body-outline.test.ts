@@ -12,9 +12,9 @@ describe("story body outline", () => {
     document.head.append(style);
 
     const campaign = document.createElement("main");
-    campaign.className = "amso-campaign";
+    campaign.className = "amso-million-runner-2026";
     const body = document.createElement("div");
-    body.className = "amso-campaign__story-scene-body";
+    body.className = "amso-million-runner-2026__story-scene-body";
     body.append(document.createElement("p"));
     campaign.append(body);
     document.body.append(campaign);

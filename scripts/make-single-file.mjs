@@ -151,7 +151,7 @@ if (deferredScripts.length === 0) {
 
 html = html.replace(
   "</body>",
-  () => `<script type="application/json" id="amso-deferred-scripts">${JSON.stringify(deferredScripts).replace(/<\/script/giu, "<\\/script")}</script>\n</body>`,
+  () => `<script type="application/json" id="amso-million-runner-2026-deferred-scripts">${JSON.stringify(deferredScripts).replace(/<\/script/giu, "<\\/script")}</script>\n</body>`,
 );
 html = html.replace(styleMatch[0], () => `<style>\n${style}\n</style>`);
 
@@ -164,7 +164,7 @@ html = html.replace(
 // autonomous artifacts embed the campaign artwork for file:// and CMS use.
 const inlineResult = inlineCampaignImageAssets(html);
 html = inlineResult.html;
-const assetBootstrap = `<script>(()=>{const nonce=document.currentScript?.nonce||"";const assets=${JSON.stringify(inlineResult.embeddedAssets)};const replace=(value)=>typeof value==="string"?value.replace(/__AMSO_EMBEDDED_ASSET_\\d+__/g,(token)=>assets[token]||token):value;const holder=document.getElementById("amso-deferred-scripts");const sources=holder?JSON.parse(holder.textContent||"[]"):[];holder?.remove();for(const source of sources){const script=document.createElement("script");if(nonce)script.nonce=nonce;script.text=replace(source);document.body.appendChild(script)}})();</script>`;
+const assetBootstrap = `<script>(()=>{const nonce=document.currentScript?.nonce||"";const assets=${JSON.stringify(inlineResult.embeddedAssets)};const replace=(value)=>typeof value==="string"?value.replace(/__AMSO_EMBEDDED_ASSET_\\d+__/g,(token)=>assets[token]||token):value;const holder=document.getElementById("amso-million-runner-2026-deferred-scripts");const sources=holder?JSON.parse(holder.textContent||"[]"):[];holder?.remove();for(const source of sources){const script=document.createElement("script");if(nonce)script.nonce=nonce;script.text=replace(source);document.body.appendChild(script)}})();</script>`;
 html = html.replace("</body>", `${assetBootstrap}\n</body>`);
 html = html.replace(/^[\t ]+$/gmu, "");
 

@@ -29,11 +29,11 @@ const packageFileNames = [
 const html = fs.readFileSync(sourcePath, "utf8");
 const styleMatch = html.match(/<style[^>]*>([\s\S]*?)<\/style>/iu);
 const deferredMatch = html.match(
-  /<script type="application\/json" id="amso-deferred-scripts">([\s\S]*?)<\/script>/iu,
+  /<script type="application\/json" id="amso-million-runner-2026-deferred-scripts">([\s\S]*?)<\/script>/iu,
 );
 const assetsMatch = html.match(/const assets=(\{[\s\S]*?\});const replace=/u);
 const rootMatch = html.match(
-  /<main id="amso-campaign-root"[\s\S]*?<\/main>/iu,
+  /<!-- AMSO MILLION RUNNER 2026 ROOT START -->[\s\S]*?<!-- AMSO MILLION RUNNER 2026 ROOT END -->/u,
 );
 
 if (!styleMatch?.[1] || !deferredMatch?.[1] || !assetsMatch?.[1] || !rootMatch?.[0]) {
@@ -130,6 +130,8 @@ IDOSELL
    Sklep > Dodatki HTML i JavaScript,
    ograniczajac dodatek do stron kampanii /million.
 5. IdoSell pozostaje wlascicielem lang, title, canonical, OG i hreflang.
+6. Snippet nie dodaje drugiego <main>. Klasy i ID kampanii sa odizolowane
+   prefiksem amso-million-runner-2026.
 
 CSP
 ---

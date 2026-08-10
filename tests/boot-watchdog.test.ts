@@ -29,8 +29,8 @@ describe("campaign boot watchdog", () => {
     const eyebrow = new FakeHTMLElement();
     const status = new FakeHTMLElement();
     const boot = new FakeHTMLElement({
-      ".amso-campaign-boot__eyebrow": eyebrow,
-      ".amso-campaign-boot__status": status
+      ".amso-million-runner-2026-boot__eyebrow": eyebrow,
+      ".amso-million-runner-2026-boot__status": status
     });
     let activeBoot: FakeHTMLElement | null = null;
 
@@ -69,8 +69,8 @@ describe("campaign boot watchdog", () => {
     const eyebrow = new FakeHTMLElement();
     const status = new FakeHTMLElement();
     const boot = new FakeHTMLElement({
-      ".amso-campaign-boot__eyebrow": eyebrow,
-      ".amso-campaign-boot__status": status
+      ".amso-million-runner-2026-boot__eyebrow": eyebrow,
+      ".amso-million-runner-2026-boot__status": status
     });
     const execute = new Function("window", "document", "HTMLElement", watchdogSource);
     execute({ addEventListener(type: string, listener: () => void) { listeners.set(type, listener); } }, {

@@ -28,28 +28,28 @@ export class NamePrompt {
     private readonly i18n: CampaignI18n = createCampaignI18n("pl")
   ) {
     this.overlay = document.createElement("div");
-    this.overlay.className = "amso-name-prompt";
+    this.overlay.className = "amso-million-runner-2026-name-prompt";
     this.overlay.hidden = true;
     this.overlay.innerHTML = `
-      <div class="amso-name-prompt__card" role="dialog" aria-modal="true" aria-labelledby="amso-name-prompt-title">
-        <p class="amso-name-prompt__eyebrow">Tablica rekordów</p>
-        <h2 class="amso-name-prompt__title" id="amso-name-prompt-title">Jak wpisać Cię na listę?</h2>
-        <p class="amso-name-prompt__lead">Podaj imię lub nick — pojawisz się w tablicy rekordów. Zapytamy tylko raz.</p>
-        <form class="amso-name-prompt__form" data-campaign-name-form>
+      <div class="amso-million-runner-2026-name-prompt__card" role="dialog" aria-modal="true" aria-labelledby="amso-million-runner-2026-name-prompt-title">
+        <p class="amso-million-runner-2026-name-prompt__eyebrow">Tablica rekordów</p>
+        <h2 class="amso-million-runner-2026-name-prompt__title" id="amso-million-runner-2026-name-prompt-title">Jak wpisać Cię na listę?</h2>
+        <p class="amso-million-runner-2026-name-prompt__lead">Podaj imię lub nick — pojawisz się w tablicy rekordów. Zapytamy tylko raz.</p>
+        <form class="amso-million-runner-2026-name-prompt__form" data-campaign-name-form>
           <input
-            class="amso-name-prompt__input"
+            class="amso-million-runner-2026-name-prompt__input"
             type="text"
             autocomplete="off"
             aria-label="Imię lub nick"
-            aria-describedby="amso-name-prompt-help amso-name-prompt-error"
+            aria-describedby="amso-million-runner-2026-name-prompt-help amso-million-runner-2026-name-prompt-error"
             data-campaign-name-input
             placeholder="np. Kurier_12"
           />
-          <p class="amso-name-prompt__help" id="amso-name-prompt-help">Maksymalnie 14 znaków: litery, cyfry, spacja, myślnik lub podkreślenie.</p>
-          <p class="amso-name-prompt__error" id="amso-name-prompt-error" data-campaign-name-error hidden role="alert"></p>
-          <div class="amso-name-prompt__actions">
-            <button type="button" class="amso-campaign__button amso-campaign__button--secondary" data-campaign-name-skip>Teraz nie</button>
-            <button type="submit" class="amso-campaign__button amso-campaign__button--primary" data-campaign-name-submit>Zapisz</button>
+          <p class="amso-million-runner-2026-name-prompt__help" id="amso-million-runner-2026-name-prompt-help">Maksymalnie 14 znaków: litery, cyfry, spacja, myślnik lub podkreślenie.</p>
+          <p class="amso-million-runner-2026-name-prompt__error" id="amso-million-runner-2026-name-prompt-error" data-campaign-name-error hidden role="alert"></p>
+          <div class="amso-million-runner-2026-name-prompt__actions">
+            <button type="button" class="amso-million-runner-2026__button amso-million-runner-2026__button--secondary" data-campaign-name-skip>Teraz nie</button>
+            <button type="submit" class="amso-million-runner-2026__button amso-million-runner-2026__button--primary" data-campaign-name-submit>Zapisz</button>
           </div>
         </form>
       </div>`;

@@ -169,7 +169,7 @@ try {
     };
     const isActiveGameplay = () => {
       const worldVisual = document.querySelector("[data-campaign-world-visual]");
-      return document.querySelector(".amso-campaign")?.getAttribute("data-view") === "game" &&
+      return document.querySelector(".amso-million-runner-2026")?.getAttribute("data-view") === "game" &&
         worldVisual?.getAttribute("data-phase") === "game" &&
         worldVisual.getAttribute("data-paused") !== "true";
     };
@@ -366,7 +366,7 @@ try {
   const startRequestedAt = Date.now();
   await page.click("[data-campaign-landing-actions] button");
   await page.waitForFunction(
-    () => document.querySelector(".amso-campaign")?.getAttribute("data-view") === "game",
+    () => document.querySelector(".amso-million-runner-2026")?.getAttribute("data-view") === "game",
     undefined,
     { timeout: 30_000 }
   );
@@ -385,7 +385,7 @@ try {
       () => window.AMSOMillionRunnerQA?.qaReport() ?? "null"
     ));
     if (report?.scenarioValidation !== null) break;
-    if (await page.locator(".amso-campaign").getAttribute("data-view") ===
+    if (await page.locator(".amso-million-runner-2026").getAttribute("data-view") ===
         "challenge_result") {
       break;
     }
@@ -562,7 +562,7 @@ try {
     },
     offlineProductionParityPassed: null,
     visualFixturesPassed: null,
-    view: await page.locator(".amso-campaign").getAttribute("data-view")
+    view: await page.locator(".amso-million-runner-2026").getAttribute("data-view")
   };
   const serializedEvidence = `${JSON.stringify(evidence, null, 2)}\n`;
   if (outputPath) {

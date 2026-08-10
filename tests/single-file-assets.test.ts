@@ -23,7 +23,7 @@ const campaignStyles = readFileSync(
 );
 const embeddedApplicationSource = (() => {
   const match = autonomousHtml.match(
-    /<script type="application\/json" id="amso-deferred-scripts">([^]*?)<\/script>/
+    /<script type="application\/json" id="amso-million-runner-2026-deferred-scripts">([^]*?)<\/script>/
   );
   const sources = JSON.parse(match?.[1] ?? "[]") as string[];
   return sources[0] ?? "";
@@ -97,9 +97,9 @@ describe("IdoSell autonomous HTML", () => {
   });
 
   it("scopes base styles to the campaign root instead of the IdoSell storefront", () => {
-    expect(campaignStyles).toContain("#amso-campaign-root,");
-    expect(campaignStyles).toContain("#amso-campaign-root * {");
-    expect(campaignStyles).toContain("#amso-campaign-root button,");
+    expect(campaignStyles).toContain("#amso-million-runner-2026-root,");
+    expect(campaignStyles).toContain("#amso-million-runner-2026-root * {");
+    expect(campaignStyles).toContain("#amso-million-runner-2026-root button,");
     expect(campaignStyles).not.toMatch(/^:root\s*\{/mu);
     expect(campaignStyles).not.toMatch(/^\*\s*\{/mu);
     expect(campaignStyles).not.toMatch(/^body\s*\{/mu);
@@ -121,11 +121,12 @@ describe("IdoSell autonomous HTML", () => {
 
   it("shows a readable boot state before JavaScript initializes the campaign", () => {
     const campaignRoot = autonomousHtml.match(
-      /<main id="amso-campaign-root"[^>]*>([\s\S]*?)<\/main>/
+      /<!-- AMSO MILLION RUNNER 2026 ROOT START -->([\s\S]*?)<!-- AMSO MILLION RUNNER 2026 ROOT END -->/
     )?.[1];
 
     expect(campaignRoot).toContain("data-campaign-boot");
     expect(campaignRoot).toContain("Droga do Miliona");
+    expect(autonomousHtml).not.toMatch(/<\/?main\b/iu);
   });
 
   it("provides recovery states when campaign JavaScript fails or is disabled", () => {
@@ -162,7 +163,7 @@ describe("IdoSell autonomous HTML", () => {
     );
     expect(appScript?.[1]).toContain("AMSO campaign bootstrap failed");
     const bootMarkupPosition = autonomousHtml.indexOf(
-      '<section class="amso-campaign-boot" data-campaign-boot'
+      '<section class="amso-million-runner-2026-boot" data-campaign-boot'
     );
     const watchdogPosition = autonomousHtml.indexOf("campaignScripting");
     const appPosition = autonomousHtml.lastIndexOf("AMSO campaign bootstrap failed");
