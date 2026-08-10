@@ -39,6 +39,8 @@ export const OVERHEAD_VARIANT_ASSET_PATHS = [
   "/assets/milion-runner/obstacles/overhead-door.webp",
   "/assets/milion-runner/obstacles/overhead-conveyor.webp"
 ] as const;
+
+const OVERHEAD_RAIL_INSET_RATIOS = [0.095, 0.05, 0.095] as const;
 export const COURIER_SPRITE_FRAME_COUNT = 8;
 export const COURIER_CROUCH_SPRITE_FRAME_COUNT = 8;
 export const COURIER_JUMP_SPRITE_FRAME_COUNT = 8;
@@ -230,10 +232,11 @@ export class RunnerArtwork {
     ceilingY = 0
   ): boolean {
     if (!obstacle.active) return true;
+    const overheadVariantIndex = obstacle.kind === "overhead"
+      ? Math.abs(Math.floor(obstacle.visualVariant ?? 0)) % this.overheadVariants.length
+      : 0;
     const image = obstacle.kind === "overhead"
-      ? this.overheadVariants[
-        Math.abs(Math.floor(obstacle.visualVariant ?? 0)) % this.overheadVariants.length
-      ] ?? this.obstacles.overhead
+      ? this.overheadVariants[overheadVariantIndex] ?? this.obstacles.overhead
       : this.obstacles[obstacle.kind];
     if (!drawable(image)) return false;
 
@@ -248,7 +251,7 @@ export class RunnerArtwork {
       const drawHeight = drawWidth * image.naturalHeight / image.naturalWidth;
       const drawX = obstacle.x - (drawWidth - obstacle.width) / 2;
       const drawY = obstacle.y + obstacle.height - drawHeight - OVERHEAD.visualLift;
-      const railInset = drawWidth * 0.095;
+      const railInset = drawWidth * (OVERHEAD_RAIL_INSET_RATIOS[overheadVariantIndex] ?? 0.095);
       context.strokeStyle = "#2d343b";
       context.lineWidth = 5;
       context.beginPath();

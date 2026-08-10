@@ -200,6 +200,48 @@ describe("v10 production artwork contract", () => {
     expect(moveTo.mock.calls.map(([, y]) => y)).toEqual([ceilingY, ceilingY]);
   });
 
+  it("aligns the door overhead rails with its outer artwork mounts", () => {
+    const moveTo = vi.fn();
+    const context = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo,
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      drawImage: vi.fn()
+    } as unknown as CanvasRenderingContext2D;
+    const image = (naturalWidth: number, naturalHeight: number) => ({
+      complete: true,
+      naturalWidth,
+      naturalHeight
+    }) as HTMLImageElement;
+    const ordinary = image(768, 185);
+    const artwork = new RunnerArtwork({
+      obstacles: { overhead: ordinary },
+      overheadVariants: [ordinary, image(768, 251), image(768, 201)]
+    });
+    const obstacle = {
+      active: true,
+      kind: "overhead" as const,
+      source: "normal" as const,
+      x: 420,
+      y: 200,
+      width: 76,
+      height: 178,
+      visualVariant: 1
+    };
+    const drawWidth = obstacle.width + 18;
+    const drawX = obstacle.x - (drawWidth - obstacle.width) / 2;
+
+    artwork.drawObstacle(context, obstacle, 0);
+
+    expect(moveTo.mock.calls.map(([x]) => x)).toEqual([
+      drawX + drawWidth * 0.05,
+      drawX + drawWidth * 0.95
+    ]);
+  });
+
   it("ships the selected Todd courier and preserves pose-state timing", () => {
     expect(existsSync(new URL(
       "../public/assets/milion-runner/courier/courier-reference.svg",
