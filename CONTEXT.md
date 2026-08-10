@@ -29,8 +29,12 @@ Jedna kompozytowana warstwa obrazu reprezentująca bieżący albo następny świ
 _Avoid_: Canvas tła, kopia świata
 
 **Autonomiczny HTML**:
-Jedyny wdrażalny artefakt kampanii, zawierający kod, konfigurację i wszystkie wymagane assety bez zewnętrznych plików ani połączeń sieciowych. Ten sam plik służy do produkcji i lokalnego odbioru.
-_Avoid_: QA build, multi-file production build
+Artefakt offline QA i odbioru zawierający kod, konfigurację i wszystkie wymagane assety bez zewnętrznych plików. Jest źródłem produkcyjnego Pakietu zewnętrznego IdoSell, lecz nie jest wklejany do formularza CMS z powodu limitu payloadu.
+_Avoid_: QA-only implementation, ręcznie rozjechany build
+
+**Pakiet zewnętrzny IdoSell**:
+Produkcyjny zestaw generowany z Autonomicznego HTML: mały snippet CMS z inline watchdogiem oraz stabilne pliki `million.css` i `million.js` na otwartej domenie HTTPS. Skrypt zawiera obrazy jako data URI, a IdoSell pozostaje właścicielem powłoki dokumentu i metadanych.
+_Avoid_: Wklejenie całego bundle do CMS, zależne ścieżki assetów
 
 **Gotowość startowa**:
 Stan, w którym Autonomiczny HTML pokazuje interaktywny ekran startowy w ciągu 3 sekund od zimnego otwarcia, a gameplay jest gotowy najwyżej 2 sekundy po wybraniu Start na Urządzeniu bazowym. Assety dalszych światów mogą być osadzone, lecz nie są wcześniej dekodowane.
@@ -49,7 +53,7 @@ Deterministyczna 60-sekundowa próba wydajności obejmująca maksymalną zatwier
 _Avoid_: Losowy benchmark, ręczny przebieg
 
 **Budżet Autonomicznego HTML**:
-Maksymalnie 14 MiB surowego HTML oraz 16 MiB po oszacowaniu kodowania pola formularza IdoSell dla jedynego artefaktu kampanii. Produkcyjne WebP zachowują zatwierdzoną rozdzielczość, a kompresja jest akceptowana wyłącznie wtedy, gdy różnica pozostaje niewidoczna w porównaniu story i gameplay na docelowym ekranie.
+Maksymalnie 14 MiB surowego HTML oraz 16 MiB po oszacowaniu kodowania formularza dla artefaktu offline QA; produkcyjne IdoSell korzysta z Pakietu zewnętrznego IdoSell. Produkcyjne WebP zachowują zatwierdzoną rozdzielczość, a kompresja jest akceptowana wyłącznie wtedy, gdy różnica pozostaje niewidoczna w porównaniu story i gameplay na docelowym ekranie.
 _Avoid_: Najmniejszy plik, kompresja bez odbioru wizualnego
 
 **Kolejka rozgrzewania**:
@@ -57,7 +61,7 @@ Sekwencyjny mechanizm dekodowania assetów wewnątrz Autonomicznego HTML. Ekran 
 _Avoid_: Preload wszystkiego, równoległy decode
 
 **Bramka wydania**:
-Warunek dopuszczenia Autonomicznego HTML do publikacji. Automatycznie sprawdza poprawność konfiguracji, Scenariusz wzorcowy, brak błędów konsoli i Budżet Autonomicznego HTML; następnie wymaga ręcznego raportu ze Scenariusza wzorcowego na Urządzeniu bazowym oraz Safari na iPhonie, obejmującego płynność, pamięć, start i przejścia światów. Wynik wyłącznie desktopowego lub headless benchmarku nie zastępuje testu mobilnego.
+Warunek dopuszczenia kampanii do publikacji. Automatycznie sprawdza poprawność konfiguracji, Autonomiczny HTML, Pakiet zewnętrzny IdoSell, Scenariusz wzorcowy i brak błędów konsoli; następnie wymaga ręcznego raportu ze Scenariusza wzorcowego na Urządzeniu bazowym oraz Safari na iPhonie, obejmującego płynność, pamięć, start i przejścia światów. Wynik wyłącznie desktopowego lub headless benchmarku nie zastępuje testu mobilnego.
 _Avoid_: CI performance, test na komputerze
 
 **Kontrakt niezmienności gameplayu**:
@@ -73,5 +77,5 @@ Ocena pojedynczej optymalizacji na podstawie raportów before/after wykonanych w
 _Avoid_: Optymalizacja na oko, szybszy kod
 
 **Gotowość wydajnościowa**:
-Stan zakończenia etapu optymalizacji: spełnione są budżety klatki, startu, pamięci i rozmiaru Autonomicznego HTML; Bramka wydania przechodzi na Urządzeniu bazowym oraz Safari na iPhonie; cztery cykle Trybu Wyzwania nie wykazują szarpnięć ani ponownego dekodowania światów; zachowane są oba kontrakty jakościowe; sterowanie nie zawiesza się, konsola pozostaje bez błędów, a lokalny i produkcyjny offline HTML zachowują się jednakowo. Raport wydajności zawiera wyniki before/after.
+Stan zakończenia etapu optymalizacji: spełnione są budżety klatki, startu, pamięci i rozmiaru Autonomicznego HTML; Bramka wydania przechodzi na Urządzeniu bazowym oraz Safari na iPhonie; cztery cykle Trybu Wyzwania nie wykazują szarpnięć ani ponownego dekodowania światów; zachowane są oba kontrakty jakościowe; sterowanie nie zawiesza się, konsola pozostaje bez błędów, a Autonomiczny HTML i preview Pakietu zewnętrznego IdoSell zachowują się jednakowo. Raport wydajności zawiera wyniki before/after.
 _Avoid_: Optymalizacja zakończona, działa szybciej

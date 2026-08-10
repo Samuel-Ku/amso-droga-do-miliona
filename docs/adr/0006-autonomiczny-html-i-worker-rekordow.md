@@ -2,11 +2,14 @@
 
 ## Status
 
-Przyjęte — doprecyzowuje ADR 0003; zaktualizowane 2026-08-06 dla D1.
+Przyjęte — zaktualizowane 2026-08-10 przez ADR 0007 dla granicy frontendu;
+kontrakt Workera i D1 pozostaje bez zmian.
 
 ## Decyzja
 
-Produkcyjny frontend kampanii nadal jest jednym autonomicznym plikiem HTML. Kod gry, style i assety nie wymagają dodatkowych plików ani połączenia sieciowego, więc podstawowa rozgrywka i ekran wyniku działają offline.
+Produkcyjny frontend IdoSell korzysta z Pakietu zewnętrznego IdoSell opisanego w
+ADR 0007. Autonomiczny HTML pozostaje artefaktem offline QA, więc podstawowa
+rozgrywka i ekran wyniku nadal mogą być odebrane bez Workera.
 
 Worker rekordów jest opcjonalną usługą sieciową, a nie drugim wariantem frontendu ani częścią wieloplikowego artefaktu kampanii. Gdy sieć lub Worker są niedostępne, leaderboard może być niedostępny, ale nie blokuje to uruchomienia gry, zakończenia próby ani lokalnego wyniku.
 
@@ -20,7 +23,7 @@ Jeżeli frontend korzysta z leaderboardu, Worker pozostaje źródłem prawdy dla
 
 ## Konsekwencje
 
-- ADR 0003 pozostaje obowiązujący dla artefaktu frontendowego.
+- ADR 0007 określa produkcyjną granicę artefaktu frontendowego IdoSell.
 - Wdrożenie Workera ma osobne release notes, testy kontraktu i rollback.
 - Migracje D1 i import legacy są jawne, idempotentne i wdrażane przed frontendem korzystającym z nowego kontraktu.
 - Publiczne odpowiedzi nie ujawniają anonimowego identyfikatora właściciela nazwy.

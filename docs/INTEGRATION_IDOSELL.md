@@ -2,17 +2,21 @@
 
 ## 1. Kanoniczna strona gry
 
-Uruchom `npm run build:single`, a następnie wklej cały fragment z
-`million-idosell.html` do pola HTML osobnej strony kampanii w IdoSell. Fragment nie
-zawiera `doctype`, `<html>`, `<head>` ani `<body>`, więc nie tworzy drugiej powłoki
-dokumentu. To jedyny produkcyjny artefakt frontendu; `dist-demo/` służy wyłącznie
-do lokalnego preview. Interfejs pomiarowy aktywuje się tylko przez zatwierdzony
-query QA i nie jest dostępny przy zwykłym wejściu.
+Produkcyjne wdrożenie IdoSell korzysta z małego fragmentu HTML oraz zewnętrznych
+plików CSS/JS. Uruchom `npm run build:idosell-external` i przekaż wygenerowany
+`amso-million-idosell-external.zip` osobie publikującej pliki na otwartej domenie
+HTTPS. Instrukcja operatora znajduje się w `README.txt` wewnątrz paczki.
 
-Artefakt musi przejść `npm run check:autonomic-html`: limit wynosi 14 MiB
-surowego fragmentu i 16 MiB po konserwatywnym oszacowaniu kodowania pola
-formularza. Ten zapas zapobiega odpowiedzi `413 Request Entity Too Large` po
-dodaniu narzutu żądania przez CMS.
+Do pola kodu HTML strony CMS wklej wyłącznie zawartość `idosell-snippet.html` po
+zamianie `__AMSO_PUBLIC_BASE_URL__` na publiczny URL katalogu. Nie używaj edytora
+wizualnego/WYSIWYG. Alternatywnie link CSS i skrypt aplikacji można dodać przez
+`Sklep > Dodatki HTML i JavaScript`, ograniczając dodatek do stron `/million`;
+inline watchdog pozostaje wtedy w małym snippecie strony.
+
+Plik `million-idosell.html` pozostaje autonomicznym artefaktem odbiorowym i
+offline QA. Nie należy go wklejać do IdoSell: formularz CMS odrzuca tak duży
+payload odpowiedzią `413 Request Entity Too Large` albo nie zapisuje zawartości.
+`dist-demo/` służy wyłącznie do lokalnego preview/developmentu.
 
 Użyj wspólnego angielskiego slugu `million`: `amso.pl/million`, `amso.eu/million`
 oraz odpowiednio `/en/million`, `/es/million`, `/cs/million`, `/it/million`,
@@ -30,19 +34,24 @@ bez JavaScriptu.
 ## 2. Pola należące do IdoSell
 
 IdoSell ustawia `LANGID`, `<html lang>`, title, meta description, self-canonical,
-Open Graph i cały wzajemny zestaw `hreflang`. Autonomiczny HTML celowo nie zawiera
-tych pól, więc ten sam plik można wkleić do każdej wersji językowej. Gra wiąże język
-z `document.documentElement.lang` podczas mountu, a link udostępniania bierze z
-bieżącego URL strony.
+Open Graph i cały wzajemny zestaw `hreflang`. Snippet i zewnętrzny bundle celowo
+nie zawierają tych pól, więc ten sam Pakiet zewnętrzny IdoSell można podłączyć do
+każdej wersji językowej. Gra wiąże język z `document.documentElement.lang` podczas
+mountu, a link udostępniania bierze z bieżącego URL strony.
 
-## 3. Cache i CSP
+## 3. Cache, CORS i CSP
 
-- HTML: krótki cache / rewalidacja;
-- inline `<script>` i `<style>` z fragmentu muszą otrzymać akceptowane przez IdoSell
-  nonce/hash; jeżeli CMS nie obsługuje nonce/hash, polityka musi jawnie dopuścić
-  inline script i style dla tej strony;
-- `script-src` obejmuje `blob:`, a `img-src` obejmuje `data:`; skrypt uruchamiający
-  aplikację dziedziczy nonce z bieżącego skryptu bootstrap;
+- snippet HTML: krótki cache / rewalidacja;
+- `million.css` i `million.js`: długi cache dopiero po
+  wersjonowaniu URL; podczas podmiany wydania aktualizuj CSS i JS razem;
+- mały watchdog błędu pozostaje inline w snippecie, więc awaria hosta statycznego
+  nadal kończy się czytelnym fallbackiem; jego dokładny hash `sha256-...` znajduje
+  się w `idosell-snippet.html` i `README.txt` paczki i musi wejść do `script-src`
+  (alternatywnie IdoSell może nadać temu elementowi własny nonce);
+- host zwraca poprawne typy `text/css` i `text/javascript` oraz pozwala stronie
+  AMSO pobrać pliki; `million.js` jest klasycznym skryptem i nie importuje modułów;
+- `script-src` i `style-src` dopuszczają domenę hostującą paczkę, a `img-src`
+  obejmuje `data:` dla osadzonych grafik;
 - gdy leaderboard jest aktywny, `connect-src` obejmuje
   `https://droga-do-miliona-records.s-kutsenko.workers.dev`;
 - Web Audio nie pobiera zewnętrznych ścieżek;
