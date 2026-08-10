@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { PARCEL_CELEBRATION_FRAME_PATHS } from "../src/game/runner-artwork";
 
 const outputDirectory = path.resolve("dist-vercel");
 
@@ -29,5 +30,12 @@ describe("optimized Vercel deployment", () => {
 
     expect(deployedBytes).toBeLessThan(8 * 1024 * 1024);
     expect(deployedFiles).not.toContainEqual(expect.stringMatching(/(?:\.DS_Store|\.map|\.png)$/u));
+  });
+
+  it("publishes every current parcel frame instead of falling back to the legacy atlas", () => {
+    for (const assetPath of PARCEL_CELEBRATION_FRAME_PATHS) {
+      expect(existsSync(path.join(outputDirectory, assetPath.replace(/^\//u, ""))), assetPath)
+        .toBe(true);
+    }
   });
 });
