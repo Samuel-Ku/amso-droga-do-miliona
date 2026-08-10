@@ -8,7 +8,6 @@ import type {
   RunnerModel
 } from "./types";
 import type { PackageType, PowerUpKind } from "../shared/types";
-import type { StoryObstacleTransformation } from "./story-effects";
 import type { EffectConfig } from "./celebration-manager";
 import {
   COURIER_PALETTE,
@@ -743,74 +742,6 @@ function drawNarrativeVignette(
       );
       break;
   }
-}
-
-function drawTransformedObstacle(
-  context: CanvasRenderingContext2D,
-  transformation: Readonly<StoryObstacleTransformation>,
-  reducedMotion: boolean
-): void {
-  if (!transformation.active) return;
-  const obstacle = transformation;
-  const lift = reducedMotion ? 0 : transformation.progress * 14;
-  context.save();
-  context.globalAlpha = 0.9 - transformation.progress * 0.24;
-  context.translate(0, -lift);
-  if (transformation.motif === "process-zones") {
-    const zoneWidth = Math.max(18, obstacle.width / 3);
-    for (let zone = 0; zone < 3; zone += 1) {
-      fillRoundedRectangle(
-        context,
-        obstacle.x + zone * zoneWidth,
-        obstacle.y + 8,
-        zoneWidth - 4,
-        Math.max(18, obstacle.height - 12),
-        4,
-        zone % 2 === 0 ? COLORS.white : "#fff0f8"
-      );
-    }
-  } else if (transformation.motif === "quality-mark") {
-    context.fillStyle = "rgba(255,240,248,0.94)";
-    context.beginPath();
-    context.arc(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2, 26, 0, Math.PI * 2);
-    context.fill();
-    drawCheckMark(context, obstacle.x + obstacle.width / 2 - 14, obstacle.y + obstacle.height / 2 - 12, 28);
-  } else if (transformation.motif === "matched-order") {
-    fillRoundedRectangle(
-      context,
-      obstacle.x + obstacle.width / 2 - 26,
-      GROUND_Y - 58,
-      52,
-      42,
-      5,
-      COLORS.cardboard
-    );
-    context.fillStyle = COLORS.white;
-    context.fillRect(obstacle.x + obstacle.width / 2 - 18, GROUND_Y - 44, 36, 13);
-    drawCheckMark(context, obstacle.x + obstacle.width / 2 - 8, GROUND_Y - 43, 16);
-  } else if (obstacle.obstacleKind === "overhead") {
-    context.strokeStyle = "#eb32a4";
-    context.lineWidth = 5;
-    context.beginPath();
-    context.moveTo(obstacle.x, obstacle.y + obstacle.height);
-    context.quadraticCurveTo(
-      obstacle.x + obstacle.width / 2,
-      obstacle.y - 24,
-      obstacle.x + obstacle.width,
-      obstacle.y + obstacle.height
-    );
-    context.stroke();
-    drawCheckMark(context, obstacle.x + obstacle.width / 2 - 10, obstacle.y + 8, 20);
-  } else {
-    context.fillStyle = COLORS.inkSoft;
-    context.fillRect(obstacle.x - 12, GROUND_Y - 14, obstacle.width + 24, 8);
-    context.fillStyle = COLORS.cardboard;
-    context.fillRect(obstacle.x + obstacle.width / 2 - 17, GROUND_Y - 43, 34, 28);
-    context.fillStyle = COLORS.white;
-    context.fillRect(obstacle.x + obstacle.width / 2 - 10, GROUND_Y - 36, 20, 7);
-    drawCheckMark(context, obstacle.x + obstacle.width / 2 - 8, GROUND_Y - 69, 17);
-  }
-  context.restore();
 }
 
 const POWER_UP_COLORS: Readonly<Record<PowerUpKind, string>> = {
@@ -2035,10 +1966,6 @@ export class WarehouseRenderer {
       context.translate(renderX - obstacle.x, renderY - obstacle.y);
       if (!this.artwork.drawObstacle(context, obstacle, ceilingY)) drawObstacle(context, obstacle, ceilingY);
       context.restore();
-    }
-    const transformations = scene.obstacleTransformations;
-    if (transformations !== undefined) for (const transformation of transformations) {
-      drawTransformedObstacle(context, transformation, scene.reducedMotion);
     }
     const runnerRenderX = (scene.runner.previousX ?? scene.runner.x) +
       (scene.runner.x - (scene.runner.previousX ?? scene.runner.x)) * alpha;

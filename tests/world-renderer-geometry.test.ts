@@ -47,6 +47,48 @@ function scene(): RenderScene {
 }
 
 describe("canonical world renderer geometry", () => {
+  it("does not draw legacy generated obstacle replacements over authored worlds", () => {
+    const renderTrace = (withLegacyReplacement: boolean): string[] => {
+      const trace: string[] = [];
+      const target: Record<PropertyKey, unknown> = {
+        createLinearGradient: () => ({ addColorStop(): void {} })
+      };
+      const context = new Proxy(target, {
+        get(record, key) {
+          if (key in record) return record[key];
+          return (...values: unknown[]) => trace.push(`${String(key)}:${JSON.stringify(values)}`);
+        },
+        set(record, key, value) { record[key] = value; return true; }
+      }) as unknown as CanvasRenderingContext2D;
+      const width = 1024;
+      const height = 1024;
+      const renderer = new WarehouseRenderer();
+      renderer.applyGeometry(
+        calculateWorldPlateTransform(width, height, WORLD_ARTWORK_CONTRACT)!,
+        { width, height, dpr: 1 }
+      );
+      renderer.render(context, width, height, {
+        ...scene(),
+        obstacles: [],
+        obstacleTransformations: withLegacyReplacement
+          ? [{
+              active: true,
+              motif: "quality-mark",
+              obstacleKind: "overhead",
+              x: 360,
+              y: 190,
+              width: 76,
+              height: 178,
+              progress: 0.2
+            }]
+          : []
+      });
+      return trace;
+    };
+
+    expect(renderTrace(true)).toEqual(renderTrace(false));
+  });
+
   it.each([
     [390, 844, 2],
     [1024, 1024, 1],
