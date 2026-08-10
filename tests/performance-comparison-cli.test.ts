@@ -10,7 +10,7 @@ function evidence(audioMode: "enabled" | "disabled", variant: "before" | "after"
   return {
     schema: "amso-performance-run-v1",
     variant,
-    artifact: { bytes: variant === "before" ? 18_000_000 : 17_900_000 },
+    artifact: { bytes: variant === "before" ? 13_800_000 : 13_700_000 },
     configuration: {
       scenarioId: "performance-reference-v1",
       scenarioConfigVersion: "runner-config-v4",

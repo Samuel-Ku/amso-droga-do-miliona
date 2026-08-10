@@ -5,20 +5,30 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const artifactPath = path.join(root, "million-idosell.html");
-const maxBytes = 24 * 1024 * 1024;
+const maxBytes = 14 * 1024 * 1024;
+const maxFormEncodedBytes = 16 * 1024 * 1024;
 
 if (!fs.existsSync(artifactPath)) {
   console.error("release gate incomplete: autonomous HTML artifact is missing");
   process.exitCode = 2;
 } else {
   const bytes = fs.statSync(artifactPath).size;
+  const html = fs.readFileSync(artifactPath, "utf8");
+  const formEncodedBytes = Buffer.byteLength(`html=${encodeURIComponent(html)}`, "utf8");
   if (bytes > maxBytes) {
     console.error(
-      `release gate failed: autonomous HTML is ${(bytes / 1024 / 1024).toFixed(2)} MB; budget is 24 MB`
+      `release gate failed: autonomous HTML is ${(bytes / 1024 / 1024).toFixed(2)} MB; raw IdoSell budget is 14 MB`
+    );
+    process.exitCode = 1;
+  } else if (formEncodedBytes > maxFormEncodedBytes) {
+    console.error(
+      `release gate failed: encoded IdoSell request is ${(formEncodedBytes / 1024 / 1024).toFixed(2)} MB; transport budget is 16 MB`
     );
     process.exitCode = 1;
   } else {
-    console.log(`autonomous HTML budget passed: ${(bytes / 1024 / 1024).toFixed(2)} MB`);
+    console.log(
+      `IdoSell HTML budget passed: ${(bytes / 1024 / 1024).toFixed(2)} MB raw, ${(formEncodedBytes / 1024 / 1024).toFixed(2)} MB form-encoded`
+    );
   }
 }
 

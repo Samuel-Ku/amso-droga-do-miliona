@@ -21,7 +21,7 @@ export interface ReleaseEvidence {
   androidCycleGrowthMb?: number;
 }
 
-const AUTONOMIC_HTML_BUDGET_MB = 24;
+const AUTONOMIC_HTML_BUDGET_MB = 14;
 
 export function evaluatePerformanceReleaseGate(evidence: ReleaseEvidence): { status: ReleaseGateStatus; reasons: string[] } {
   const failures: string[] = [];
@@ -33,7 +33,7 @@ export function evaluatePerformanceReleaseGate(evidence: ReleaseEvidence): { sta
   if (evidence.consoleErrorCount === undefined) missing.push("console-error-evidence-unavailable");
   else if (evidence.consoleErrorCount > 0) failures.push("console-errors-present");
   if (evidence.autonomicHtmlSizeMb === undefined) missing.push("autonomic-html-size-unavailable");
-  else if (evidence.autonomicHtmlSizeMb > AUTONOMIC_HTML_BUDGET_MB) failures.push("autonomic-html-over-24mb");
+  else if (evidence.autonomicHtmlSizeMb > AUTONOMIC_HTML_BUDGET_MB) failures.push("autonomic-html-over-14mb");
   if (evidence.visualRegressionPassed === undefined) missing.push("visual-regression-evidence-unavailable");
   else if (!evidence.visualRegressionPassed) failures.push("visual-regression-failed");
   const requirePassed = (value: boolean | undefined, unavailable: string, failed: string): void => {

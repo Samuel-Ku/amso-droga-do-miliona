@@ -21,6 +21,13 @@ const campaignStyles = readFileSync(
   new URL("../src/styles/campaign.css", import.meta.url),
   "utf8"
 );
+const embeddedApplicationSource = (() => {
+  const match = autonomousHtml.match(
+    /<script type="application\/json" id="amso-deferred-scripts">([^]*?)<\/script>/
+  );
+  const sources = JSON.parse(match?.[1] ?? "[]") as string[];
+  return sources[0] ?? "";
+})();
 
 const campaignImagePaths = [
   "/assets/milion-runner/brand/million-neutral-main.svg",
@@ -37,6 +44,17 @@ const campaignImagePaths = [
 ] as const;
 
 describe("IdoSell autonomous HTML", () => {
+  it("fits the IdoSell request body with encoding headroom", () => {
+    const rawBytes = Buffer.byteLength(autonomousHtml, "utf8");
+    const formEncodedBytes = Buffer.byteLength(
+      `html=${encodeURIComponent(autonomousHtml)}`,
+      "utf8"
+    );
+
+    expect(rawBytes).toBeLessThanOrEqual(14 * 1024 * 1024);
+    expect(formEncodedBytes).toBeLessThanOrEqual(16 * 1024 * 1024);
+  });
+
   it("leaves locale and indexable metadata under CMS ownership", () => {
     expect(productionEntry).toContain(
       '<link rel="canonical" href="https://amso.pl/million" />'
@@ -52,11 +70,7 @@ describe("IdoSell autonomous HTML", () => {
     expect(autonomousHtml).toContain('const nonce=document.currentScript?.nonce||""');
     expect(autonomousHtml).toContain("if(nonce)script.nonce=nonce");
 
-    const match = autonomousHtml.match(
-      /window\.__RUNNER_CONFIG__=([^]*?)<\/script>/
-    );
-    const embedded = JSON.parse(match?.[1] ?? "null");
-    expect(embedded.cta.path).toBe("/million");
+    expect(embeddedApplicationSource).toContain("/million");
   });
 
   it("keeps the production entry compatible with a self-only script and style CSP", () => {
@@ -122,14 +136,13 @@ describe("IdoSell autonomous HTML", () => {
     const inlineScripts = [
       ...autonomousHtml.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)
     ];
-    // watchdog + embedded runner config + app bundle
+    // watchdog + deferred app holder + asset bootstrap
     expect(inlineScripts.length).toBeGreaterThanOrEqual(3);
     expect(
       inlineScripts.some((script) => script[1]?.includes("campaignScripting"))
     ).toBe(true);
-    expect(
-      inlineScripts.some((script) => script[1]?.includes("__RUNNER_CONFIG__"))
-    ).toBe(true);
+    expect(autonomousHtml).not.toContain("window.__RUNNER_MODULE__=");
+    expect(autonomousHtml).not.toContain("window.__RUNNER_STYLE__=");
     const appScript = inlineScripts.find((script) =>
       script[1]?.includes("AMSO campaign bootstrap failed")
     );
@@ -180,34 +193,22 @@ describe("IdoSell autonomous HTML", () => {
     expect(embeddedSvgs.size).toBe(2);
   });
 
-  it("embeds the runner config so it can load from a file:// origin", () => {
-    const match = autonomousHtml.match(
-      /window\.__RUNNER_CONFIG__=([^]*?)<\/script>/
-    );
-    expect(match).not.toBeNull();
-    const embedded = JSON.parse(match?.[1] ?? "null");
-    expect(embedded.schemaVersion).toBe(4);
-    expect(embedded.enabled).toBe(true);
-    const threshold =
-      embedded.millionThreshold ?? embedded.story?.millionThreshold;
-    expect(threshold).toBeTruthy();
-    expect(threshold.orderTarget ?? threshold.counterTarget).toBeGreaterThan(0);
+  it("bundles the runner config into the deferred application", () => {
+    expect(embeddedApplicationSource).toContain("schemaVersion");
+    expect(embeddedApplicationSource).toContain("millionThreshold");
+    expect(embeddedApplicationSource).toContain("AMSO campaign bootstrap failed");
   });
 
   it("contains the same canonical geometry runtime as the development build", () => {
-    const assignment = "window.__RUNNER_MODULE__=";
-    const assignmentStart = autonomousHtml.indexOf(assignment);
-    const valueStart = assignmentStart + assignment.length;
-    const valueEnd = autonomousHtml.indexOf("</script>", valueStart);
-    const moduleSource = JSON.parse(autonomousHtml.slice(valueStart, valueEnd)) as string;
-    const metadataIndex = moduleSource.indexOf("artWidth: 1780");
-    const sectionEnd = moduleSource.indexOf("//#endregion", metadataIndex);
+    const moduleSource = embeddedApplicationSource;
+    const metadataIndex = moduleSource.search(/artWidth:\s*1780/u);
+    const sectionEnd = moduleSource.indexOf("var ", metadataIndex);
     const geometrySection = moduleSource.slice(metadataIndex - 100, sectionEnd);
     const metadataMatch = geometrySection.match(
       /([A-Za-z_$][\w$]*)\s*=\s*Object\.freeze\((\{\s*artWidth:\s*1780,\s*artHeight:\s*941,\s*artGroundY:\s*771\s*\})\);/u
     );
     const calculateMatch = geometrySection.match(
-      /(function\s+([A-Za-z_$][\w$]*)\(e, t, n\)\s*\{\s*if\s*\(!Number\.isFinite[\s\S]*\n\})\s*$/u
+      /(function\s+([A-Za-z_$][\w$]*)\(e,\s*t,\s*n\)\s*\{\s*if\s*\(!Number\.isFinite[\s\S]*\})\s*$/u
     );
     expect(metadataMatch).not.toBeNull();
     expect(calculateMatch).not.toBeNull();

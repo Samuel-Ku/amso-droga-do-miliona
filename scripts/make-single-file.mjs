@@ -155,39 +155,16 @@ html = html.replace(
 );
 html = html.replace(styleMatch[0], () => `<style>\n${style}\n</style>`);
 
-// Embed the runner config inline so the packaged frontend can run from a file:// origin
-// where fetching /assets/... is blocked by the browser's unique-origin policy.
-// It is injected BEFORE the artwork inlining below so the config's own asset
-// source URLs (bundles, worlds) are also rewritten to data: URIs, keeping the
-// artifact fully offline.
-const runnerConfigPath = path.join(campaignAssetDir, "runner-config.json");
-const runnerConfigJson = fs.readFileSync(runnerConfigPath, "utf8");
-const embeddedConfigScript = `<script>window.__RUNNER_CONFIG__=${JSON.stringify(
-  JSON.parse(runnerConfigJson)
-)}</script>`;
-
-// Embed the runtime module and stylesheet inline as strings so the loader can
-// boot them from a file:// origin (where /assets/... URLs are blocked) via Blob
-// URL / <style> injection instead of a same-origin fetch.
-const runtimeModulePath = path.join(root, "dist", "assets", "milion-runner", "runner.js");
-const runtimeStylePath = path.join(root, "dist", "assets", "milion-runner", "runner.css");
-const embeddedRuntimeScript = `<script>window.__RUNNER_MODULE__=${JSON.stringify(
-  fs.readFileSync(runtimeModulePath, "utf8")
-)}</script>`;
-const embeddedStyleScript = `<script>window.__RUNNER_STYLE__=${JSON.stringify(
-  fs.readFileSync(runtimeStylePath, "utf8")
-)}</script>`;
-
 html = html.replace(
   "</head>",
-  `${embeddedConfigScript}\n${embeddedRuntimeScript}\n${embeddedStyleScript}\n<meta name="generator" content="AMSO IdoSell autonomous campaign">\n</head>`,
+  `<meta name="generator" content="AMSO IdoSell autonomous campaign">\n</head>`,
 );
 
 // Vite intentionally leaves files from public/ as external URLs. Both generated
 // autonomous artifacts embed the campaign artwork for file:// and CMS use.
 const inlineResult = inlineCampaignImageAssets(html);
 html = inlineResult.html;
-const assetBootstrap = `<script>(()=>{const nonce=document.currentScript?.nonce||"";const assets=${JSON.stringify(inlineResult.embeddedAssets)};const replace=(value)=>typeof value==="string"?value.replace(/__AMSO_EMBEDDED_ASSET_\\d+__/g,(token)=>assets[token]||token):value;const resolve=(value)=>{if(Array.isArray(value)){for(let i=0;i<value.length;i+=1)value[i]=resolve(value[i]);return value}if(value&&typeof value==="object"){for(const key of Object.keys(value))value[key]=resolve(value[key]);return value}return replace(value)};window.__RUNNER_CONFIG__=resolve(window.__RUNNER_CONFIG__);window.__RUNNER_MODULE__=replace(window.__RUNNER_MODULE__);window.__RUNNER_STYLE__=replace(window.__RUNNER_STYLE__);const holder=document.getElementById("amso-deferred-scripts");const sources=holder?JSON.parse(holder.textContent||"[]"):[];holder?.remove();for(const source of sources){const script=document.createElement("script");if(nonce)script.nonce=nonce;script.text=replace(source);document.body.appendChild(script)}})();</script>`;
+const assetBootstrap = `<script>(()=>{const nonce=document.currentScript?.nonce||"";const assets=${JSON.stringify(inlineResult.embeddedAssets)};const replace=(value)=>typeof value==="string"?value.replace(/__AMSO_EMBEDDED_ASSET_\\d+__/g,(token)=>assets[token]||token):value;const holder=document.getElementById("amso-deferred-scripts");const sources=holder?JSON.parse(holder.textContent||"[]"):[];holder?.remove();for(const source of sources){const script=document.createElement("script");if(nonce)script.nonce=nonce;script.text=replace(source);document.body.appendChild(script)}})();</script>`;
 html = html.replace("</body>", `${assetBootstrap}\n</body>`);
 html = html.replace(/^[\t ]+$/gmu, "");
 

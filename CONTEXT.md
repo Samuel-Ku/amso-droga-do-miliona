@@ -49,7 +49,7 @@ Deterministyczna 60-sekundowa próba wydajności obejmująca maksymalną zatwier
 _Avoid_: Losowy benchmark, ręczny przebieg
 
 **Budżet Autonomicznego HTML**:
-Maksymalnie około 24 MB dla jedynego artefaktu kampanii. Produkcyjne WebP zachowują zatwierdzoną rozdzielczość, a kompresja jest akceptowana wyłącznie wtedy, gdy różnica pozostaje niewidoczna w porównaniu story i gameplay na docelowym ekranie.
+Maksymalnie 14 MiB surowego HTML oraz 16 MiB po oszacowaniu kodowania pola formularza IdoSell dla jedynego artefaktu kampanii. Produkcyjne WebP zachowują zatwierdzoną rozdzielczość, a kompresja jest akceptowana wyłącznie wtedy, gdy różnica pozostaje niewidoczna w porównaniu story i gameplay na docelowym ekranie.
 _Avoid_: Najmniejszy plik, kompresja bez odbioru wizualnego
 
 **Kolejka rozgrzewania**:

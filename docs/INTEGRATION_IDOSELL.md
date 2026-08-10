@@ -9,6 +9,11 @@ dokumentu. To jedyny produkcyjny artefakt frontendu; `dist-demo/` służy wyłą
 do lokalnego preview. Interfejs pomiarowy aktywuje się tylko przez zatwierdzony
 query QA i nie jest dostępny przy zwykłym wejściu.
 
+Artefakt musi przejść `npm run check:autonomic-html`: limit wynosi 14 MiB
+surowego fragmentu i 16 MiB po konserwatywnym oszacowaniu kodowania pola
+formularza. Ten zapas zapobiega odpowiedzi `413 Request Entity Too Large` po
+dodaniu narzutu żądania przez CMS.
+
 Użyj wspólnego angielskiego slugu `million`: `amso.pl/million`, `amso.eu/million`
 oraz odpowiednio `/en/million`, `/es/million`, `/cs/million`, `/it/million`,
 `/fr/million` i `/uk/million`.

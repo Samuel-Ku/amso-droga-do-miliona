@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
-const AUTONOMIC_HTML_BUDGET_BYTES = 24 * 1024 * 1024;
+const AUTONOMIC_HTML_BUDGET_BYTES = 14 * 1024 * 1024;
 const defaultPaths = {
   before: ".scratch/performance-comparison/before-audio-enabled.json",
   after: ".scratch/performance-comparison/after-audio-enabled.json",
