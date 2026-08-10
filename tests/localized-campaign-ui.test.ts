@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createCampaignI18n } from "../src/localization";
+import { createCampaignI18n, type CampaignLocale } from "../src/localization";
 import { CampaignShell, type CampaignShellCallbacks } from "../src/ui/CampaignShell";
 import { RecordsClient } from "../src/records-client";
 import { RecordBoard } from "../src/ui/record-board";
@@ -31,6 +31,8 @@ describe("localized campaign public UI", () => {
 
     expect(host.querySelector<HTMLImageElement>(".amso-campaign__main-lockup")?.getAttribute("src"))
       .toBe("/assets/milion-runner/brand/mz-main-lockup-v1.avif");
+    expect(host.querySelector<HTMLImageElement>(".amso-campaign__compact-lockup")?.getAttribute("src"))
+      .toBe("/assets/milion-runner/brand/mz-compact-lockup-v1.avif");
 
     shell.destroy();
   });
@@ -55,10 +57,47 @@ describe("localized campaign public UI", () => {
     expect(host.querySelector("[data-campaign-how-to-trigger]")?.textContent)
       .not.toBe("Jak działa gra?");
     expect(host.querySelector<HTMLImageElement>(".amso-campaign__main-lockup")?.getAttribute("src"))
-      .toBe("/assets/milion-runner/brand/million-neutral-main.svg");
+      .toBe("/assets/milion-runner/brand/mz-main-lockup-en-v1.webp");
 
     shell.destroy();
   });
+
+  it.each([
+    ["de", "/assets/milion-runner/brand/mz-main-lockup-de-v1.webp"],
+    ["es", "/assets/milion-runner/brand/mz-main-lockup-es-v1.webp"],
+    ["cs", "/assets/milion-runner/brand/mz-main-lockup-cs-v1.webp"],
+    ["it", "/assets/milion-runner/brand/mz-main-lockup-it-v1.webp"],
+    ["uk", "/assets/milion-runner/brand/mz-main-lockup-uk-v1.webp"],
+    ["fr", "/assets/milion-runner/brand/mz-main-lockup-fr-v1.webp"]
+  ] satisfies ReadonlyArray<readonly [CampaignLocale, string]>) (
+    "uses the matching %s lockup throughout the localized campaign UI",
+    (locale, expectedLandingLockup) => {
+      const callbacks: CampaignShellCallbacks = {
+        onStart: vi.fn(), onPause: vi.fn(), onResume: vi.fn(), onRestart: vi.fn(),
+        onReturnToMenu: vi.fn(), onRetryLoad: vi.fn(), onJump: vi.fn(), onSlide: vi.fn(),
+        onMuteChange: vi.fn(), onFullscreenPreferenceChange: vi.fn(), onStoryContinue: vi.fn()
+      };
+      const host = document.createElement("div");
+      document.body.append(host);
+      const shell = new CampaignShell(host, callbacks, { i18n: createCampaignI18n(locale) });
+
+      expect(host.querySelector<HTMLImageElement>(".amso-campaign__main-lockup")?.src)
+        .toContain(expectedLandingLockup);
+      for (const selector of [
+        ".amso-campaign__main-lockup",
+        ".amso-campaign__compact-lockup",
+        ".amso-campaign__result-lockup--main",
+        ".amso-campaign__result-lockup:not(.amso-campaign__result-lockup--main)",
+        ".amso-campaign__share-lockup",
+        ".amso-campaign__story-final-lockup"
+      ]) {
+        expect(host.querySelector<HTMLImageElement>(selector)?.src)
+          .toContain(expectedLandingLockup);
+      }
+
+      shell.destroy();
+    }
+  );
 
   it("formats and announces challenge results in the active German locale", () => {
     const callbacks: CampaignShellCallbacks = {

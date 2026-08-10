@@ -32,6 +32,13 @@ const embeddedApplicationSource = (() => {
 const campaignImagePaths = [
   "/assets/milion-runner/brand/million-neutral-main.svg",
   "/assets/milion-runner/brand/million-neutral-compact.svg",
+  "/assets/milion-runner/brand/mz-main-lockup-cs-v1.webp",
+  "/assets/milion-runner/brand/mz-main-lockup-de-v1.webp",
+  "/assets/milion-runner/brand/mz-main-lockup-en-v1.webp",
+  "/assets/milion-runner/brand/mz-main-lockup-es-v1.webp",
+  "/assets/milion-runner/brand/mz-main-lockup-fr-v1.webp",
+  "/assets/milion-runner/brand/mz-main-lockup-it-v1.webp",
+  "/assets/milion-runner/brand/mz-main-lockup-uk-v1.webp",
   "/assets/milion-runner/courier/courier-run-sheet.webp",
   "/assets/milion-runner/courier/courier-jump-sheet.webp",
   "/assets/milion-runner/worlds/world-01-first-mile-v2.webp",
@@ -184,9 +191,10 @@ describe("IdoSell autonomous HTML", () => {
         EMBEDDED_WEBP_MAX_LENGTH
       );
     }
-    // Seven worlds, two atlases, run + crouch + jump couriers, four parcel frames,
-    // four ground/primary obstacles, two extra overhead variants and exact A.
-    expect(embeddedWebps.size).toBe(20);
+    // Seven localized landing lockups, seven worlds, two atlases, run + crouch +
+    // jump couriers, four parcel frames, four ground/primary obstacles, two extra
+    // overhead variants and exact A.
+    expect(embeddedWebps.size).toBe(27);
     const embeddedSvgs = new Set(
       autonomousHtml.match(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+/g) ?? []
     );

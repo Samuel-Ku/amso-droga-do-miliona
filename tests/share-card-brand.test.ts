@@ -8,7 +8,10 @@ interface ShareCardHarness {
   image: HTMLImageElement;
 }
 
-function installShareCardHarness(imageLoads: boolean): ShareCardHarness {
+function installShareCardHarness(
+  imageLoads: boolean,
+  dimensions = { width: 1600, height: 924 }
+): ShareCardHarness {
   const drawImage = vi.fn();
   const fillText = vi.fn();
   const gradient = { addColorStop: vi.fn() };
@@ -18,8 +21,8 @@ function installShareCardHarness(imageLoads: boolean): ShareCardHarness {
     alt: "",
     decoding: "auto",
     complete: false,
-    naturalWidth: imageLoads ? 1600 : 0,
-    naturalHeight: imageLoads ? 924 : 0,
+    naturalWidth: imageLoads ? dimensions.width : 0,
+    naturalHeight: imageLoads ? dimensions.height : 0,
     onload: null,
     onerror: null,
     get src() {
@@ -73,8 +76,8 @@ afterEach(() => {
 });
 
 describe("campaign result share card brand", () => {
-  it("renders the neutral compact lockup for an international result card", async () => {
-    const harness = installShareCardHarness(true);
+  it("renders the localized lockup for an international result card", async () => {
+    const harness = installShareCardHarness(true, { width: 1973, height: 1812 });
 
     const card = await createCampaignShareCard(
       { score: 1_234_567, orders: 42 },
@@ -82,11 +85,14 @@ describe("campaign result share card brand", () => {
     );
 
     expect(card.type).toBe("image/png");
-    expect(harness.image.src).toBe("/assets/milion-runner/brand/million-neutral-compact.svg");
+    expect(harness.image.src).toBe("/assets/milion-runner/brand/mz-main-lockup-en-v1.webp");
     expect(harness.drawImage).toHaveBeenCalledTimes(1);
     const [image, x, y, width, height] = harness.drawImage.mock.calls[0] ?? [];
-    expect([image, x, y, width]).toEqual([harness.image, 596, 43, 430]);
-    expect(height).toBeCloseTo(248.325);
+    expect(image).toBe(harness.image);
+    expect(x).toBeCloseTo(664.01, 1);
+    expect(y).toBe(43);
+    expect(width).toBeCloseTo(293.99, 1);
+    expect(height).toBe(270);
   });
 
   it("keeps the Polish compact lockup for a Polish result card", async () => {

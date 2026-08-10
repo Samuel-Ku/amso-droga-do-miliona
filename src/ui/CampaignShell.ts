@@ -37,7 +37,8 @@ import { GAME_INSTRUCTION_COPY } from "../config/game-instructions-copy";
 import {
   createCampaignI18n,
   localizeElementTree,
-  type CampaignI18n
+  type CampaignI18n,
+  type CampaignLocale
 } from "../localization";
 
 export type { CampaignStoryScene, CampaignStorySceneInput } from "./story-presentation";
@@ -51,13 +52,20 @@ const POLISH_LOCKUPS: CampaignLockups = Object.freeze({
   main: "/assets/milion-runner/brand/mz-main-lockup-v1.avif",
   compact: "/assets/milion-runner/brand/mz-compact-lockup-v1.avif"
 });
-const INTERNATIONAL_LOCKUPS: CampaignLockups = Object.freeze({
-  main: "/assets/milion-runner/brand/million-neutral-main.svg",
-  compact: "/assets/milion-runner/brand/million-neutral-compact.svg"
+const LOCALIZED_MAIN_LOCKUPS: Readonly<Record<Exclude<CampaignLocale, "pl">, string>> = Object.freeze({
+  de: "/assets/milion-runner/brand/mz-main-lockup-de-v1.webp",
+  en: "/assets/milion-runner/brand/mz-main-lockup-en-v1.webp",
+  es: "/assets/milion-runner/brand/mz-main-lockup-es-v1.webp",
+  cs: "/assets/milion-runner/brand/mz-main-lockup-cs-v1.webp",
+  it: "/assets/milion-runner/brand/mz-main-lockup-it-v1.webp",
+  fr: "/assets/milion-runner/brand/mz-main-lockup-fr-v1.webp",
+  uk: "/assets/milion-runner/brand/mz-main-lockup-uk-v1.webp"
 });
 
 function campaignLockups(i18n: CampaignI18n): CampaignLockups {
-  return i18n.locale === "pl" ? POLISH_LOCKUPS : INTERNATIONAL_LOCKUPS;
+  if (i18n.locale === "pl") return POLISH_LOCKUPS;
+  const localizedLockup = LOCALIZED_MAIN_LOCKUPS[i18n.locale];
+  return { main: localizedLockup, compact: localizedLockup };
 }
 
 export type CampaignMode = "story" | "challenge";
@@ -304,9 +312,17 @@ function drawShareCardLockup(
   lockup: HTMLImageElement | null,
 ): void {
   if (lockup !== null) {
-    const lockupWidth = 430;
-    const lockupHeight = lockupWidth * (lockup.naturalHeight / lockup.naturalWidth);
-    context.drawImage(lockup, 596, 43, lockupWidth, lockupHeight);
+    const boxX = 596;
+    const boxWidth = 430;
+    const boxHeight = 270;
+    const scale = Math.min(
+      boxWidth / lockup.naturalWidth,
+      boxHeight / lockup.naturalHeight
+    );
+    const lockupWidth = lockup.naturalWidth * scale;
+    const lockupHeight = lockup.naturalHeight * scale;
+    const lockupX = boxX + ((boxWidth - lockupWidth) / 2);
+    context.drawImage(lockup, lockupX, 43, lockupWidth, lockupHeight);
     return;
   }
 
