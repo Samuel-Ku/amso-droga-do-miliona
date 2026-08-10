@@ -1963,9 +1963,7 @@ export class CampaignShell {
   };
 
   private readonly handleKeydown = (event: KeyboardEvent): void => {
-    const isTextEntry = event.target instanceof Element &&
-      event.target.closest('input, textarea, select, [contenteditable="true"]') !== null;
-    if (this.keyboardProfile === "idosell" && !isTextEntry &&
+    if (this.keyboardProfile === "idosell" &&
         ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)) {
       event.preventDefault();
       return;

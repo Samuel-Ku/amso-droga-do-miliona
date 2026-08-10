@@ -298,6 +298,20 @@ describe("story input safety gate", () => {
     shell.destroy();
   });
 
+  it("blocks IdoSell arrow defaults even when a form field owns focus", () => {
+    const { shell } = createShell();
+    const input = document.createElement("input");
+    document.body.append(input);
+    const down = new KeyboardEvent("keydown", {
+      code: "ArrowDown", key: "ArrowDown", bubbles: true, cancelable: true
+    });
+
+    input.dispatchEvent(down);
+
+    expect(down.defaultPrevented).toBe(true);
+    shell.destroy();
+  });
+
   it("releases a held slide when entering and leaving a story card", () => {
     const { shell, onSlide } = createShell();
     shell.showGame("story");
