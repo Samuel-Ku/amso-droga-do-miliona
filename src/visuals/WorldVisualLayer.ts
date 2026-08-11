@@ -96,7 +96,6 @@ function requiredElement<T extends Element>(root: ParentNode, selector: string):
 export class WorldVisualLayer {
   private panels: [HTMLImageElement, HTMLImageElement];
   private stagedPanel: HTMLImageElement;
-  private readonly seamBlur: HTMLElement;
   private readonly plate: HTMLElement;
   private readonly route: SVGElement;
   private readonly counter: HTMLElement;
@@ -105,8 +104,7 @@ export class WorldVisualLayer {
   private lastMotionState = "";
   private lastPhasePixels = "";
   private lastPanelTransforms: [string, string] = ["", ""];
-  private seamVisible = false;
-  private seamLeft = "";
+  private seamOverlap = "";
   private seamWorlds = "";
   private currentWorldId: CampaignWorldId | null = null;
   private currentStateId = "";
@@ -149,7 +147,6 @@ export class WorldVisualLayer {
         <img class="amso-million-runner-2026-world-visual__panel" data-world-panel="current" alt="" width="1780" height="941" draggable="false" />
         <img class="amso-million-runner-2026-world-visual__panel" data-world-panel="next" alt="" width="1780" height="941" draggable="false" />
         <img class="amso-million-runner-2026-world-visual__panel" data-world-staged-panel alt="" width="1780" height="941" draggable="false" />
-        <div class="amso-million-runner-2026-world-visual__seam-blur" data-world-seam-blur hidden></div>
         ${WORLD_ROUTE_SVG}
       </div>
       <div class="amso-million-runner-2026-world-visual__counter" aria-hidden="true">
@@ -161,7 +158,6 @@ export class WorldVisualLayer {
       requiredElement<HTMLImageElement>(host, '[data-world-panel="next"]')
     ];
     this.stagedPanel = requiredElement<HTMLImageElement>(host, "[data-world-staged-panel]");
-    this.seamBlur = requiredElement<HTMLElement>(host, "[data-world-seam-blur]");
     this.plate = requiredElement<HTMLElement>(host, "[data-world-plate]");
     this.route = requiredElement<SVGElement>(this.plate, ".amso-million-runner-2026-world-visual__route");
     this.counter = requiredElement<HTMLElement>(host, "[data-world-counter]");
@@ -425,9 +421,11 @@ export class WorldVisualLayer {
   }
 
   private placePanels(progress: number): void {
+    const betweenDifferentWorlds = this.isChallengeWorldSeam(progress);
+    const overlap = betweenDifferentWorlds ? this.seamOverlapPercent(progress) : 0;
     const travel = progress * 100;
-    const currentX = -travel;
-    const nextX = 100 - travel;
+    const currentX = -travel + overlap / 2;
+    const nextX = 100 - travel - overlap / 2;
     const currentTransform = `translate3d(${currentX}%, 0, 0)`;
     const nextTransform = `translate3d(${nextX}%, 0, 0)`;
     if (currentTransform !== this.lastPanelTransforms[0]) {
@@ -438,39 +436,61 @@ export class WorldVisualLayer {
       this.panels[1].style.transform = nextTransform;
       this.lastPanelTransforms[1] = nextTransform;
     }
-    this.updateSeamBlur(progress);
+    this.updateSeamBlend(progress, overlap, betweenDifferentWorlds);
   }
 
-  private updateSeamBlur(progress: number): void {
+  private isChallengeWorldSeam(progress: number): boolean {
     const currentWorldId = this.panels[0].dataset.worldId;
     const nextWorldId = this.panels[1].dataset.worldId;
-    const betweenDifferentWorlds = this.transitionMode === "offscreen" &&
+    return this.transitionMode === "offscreen" &&
       this.host.dataset.phase === "game" &&
       progress > Number.EPSILON * 8 &&
       progress < 1 - Number.EPSILON * 8 &&
       currentWorldId !== undefined &&
       nextWorldId !== undefined &&
       currentWorldId !== nextWorldId;
-    if (this.seamVisible !== betweenDifferentWorlds) {
-      this.seamVisible = betweenDifferentWorlds;
-      this.seamBlur.hidden = !betweenDifferentWorlds;
-    }
+  }
+
+  private seamOverlapPercent(progress: number): number {
+    const edgeRamp = Math.min(1, progress / 0.05, (1 - progress) / 0.05);
+    return 9 * Math.max(0, edgeRamp);
+  }
+
+  private updateSeamBlend(
+    progress: number,
+    overlap: number,
+    betweenDifferentWorlds = this.isChallengeWorldSeam(progress)
+  ): void {
     if (!betweenDifferentWorlds) {
       if (this.seamWorlds !== "") {
         this.seamWorlds = "";
-        delete this.seamBlur.dataset.betweenWorlds;
+        delete this.host.dataset.worldSeamBetween;
+        delete this.host.dataset.worldSeamDirection;
+        this.host.style.setProperty("--world-overlap", "0px");
+        this.seamOverlap = "";
+        for (const panel of this.panels) {
+          delete panel.dataset.worldSeamSide;
+          panel.style.removeProperty("--world-seam-overlap");
+        }
       }
       return;
     }
-    const left = `${(1 - progress) * 100}%`;
-    if (left !== this.seamLeft) {
-      this.seamLeft = left;
-      this.seamBlur.style.left = left;
+    const overlapValue = `${overlap}%`;
+    if (overlapValue !== this.seamOverlap) {
+      this.seamOverlap = overlapValue;
+      this.host.style.setProperty("--world-overlap", overlapValue);
+      this.panels[0].style.setProperty("--world-seam-overlap", overlapValue);
+      this.panels[1].style.setProperty("--world-seam-overlap", overlapValue);
     }
+    const currentWorldId = this.panels[0].dataset.worldId;
+    const nextWorldId = this.panels[1].dataset.worldId;
     const worlds = `${currentWorldId}:${nextWorldId}`;
     if (worlds !== this.seamWorlds) {
       this.seamWorlds = worlds;
-      this.seamBlur.dataset.betweenWorlds = worlds;
+      this.host.dataset.worldSeamBetween = worlds;
+      this.host.dataset.worldSeamDirection = "right-to-left";
+      this.panels[0].dataset.worldSeamSide = "outgoing";
+      this.panels[1].dataset.worldSeamSide = "incoming";
     }
   }
 
@@ -1057,7 +1077,8 @@ export class WorldVisualLayer {
           this.scheduledPreloadAsset = null;
         }
         this.host.dataset.assetState = "loaded";
-        this.updateSeamBlur((this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH);
+        const progress = (this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH;
+        this.placePanels(progress);
       } else if (this.isPanelPreparationSafe() &&
           (this.panels[1].dataset.assetPath === asset.path ||
             this.stagedPanel.dataset.assetPath === asset.path)) {
@@ -1077,7 +1098,8 @@ export class WorldVisualLayer {
     this.assignFallback(this.stagedPanel, worldId);
     this.pendingPanelPrepared = true;
     this.host.dataset.assetState = "fallback";
-    this.updateSeamBlur((this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH);
+    const progress = (this.lastDistance % WORLD_WIDTH) / WORLD_WIDTH;
+    this.placePanels(progress);
   }
 
   private commitPendingFallback(): void {

@@ -538,6 +538,84 @@ describe("edge-to-edge gameplay background", () => {
     expect(host.style.getPropertyValue("--world-overlap")).toBe("0px");
   });
 
+  it("softens the first challenge world boundary with a distance-driven directional mask", () => {
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host);
+    const panels = [...host.querySelectorAll<HTMLImageElement>("[data-world-panel]")];
+
+    layer.show({
+      worldId: "first-mile",
+      stateId: "story.first_package",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    panels[0]!.dataset.worldId = "first-mile";
+    panels[0]!.src = "/assets/milion-runner/worlds/world-01-first-mile-v2.webp";
+    panels[1]!.dataset.worldId = "order-process";
+    panels[1]!.src = "/assets/milion-runner/worlds/world-02-order-process-v2.webp";
+    const panelPositions = (): number[] =>
+      panels.map(({ style }) => {
+        const match = /translate3d\((-?[\d.]+)%/u.exec(style.transform);
+        return Number(match?.[1]);
+      });
+    const expectCoveredStage = (): void => {
+      const positions = panelPositions();
+      expect(panels.every(({ hidden }) => !hidden)).toBe(true);
+      expect(positions.every(Number.isFinite)).toBe(true);
+      expect(positions[0]!).toBeLessThanOrEqual(0);
+      expect(positions[0]! + 100).toBeGreaterThanOrEqual(positions[1]!);
+      expect(positions[1]! + 100).toBeGreaterThanOrEqual(100);
+    };
+
+    layer.setParallaxDistance(96, true);
+    expect(host.dataset.worldSeamBetween).toBe("first-mile:order-process");
+    expect(host.style.getPropertyValue("--world-overlap")).toBe("9%");
+    expect(panels.map(({ style }) => style.transform)).toEqual([
+      "translate3d(-5.5%, 0, 0)",
+      "translate3d(85.5%, 0, 0)"
+    ]);
+    expectCoveredStage();
+
+    layer.setParallaxDistance(480, true);
+
+    expect(host.dataset.worldSeamBetween).toBe("first-mile:order-process");
+    expect(host.dataset.worldSeamDirection).toBe("right-to-left");
+    expect(host.style.getPropertyValue("--world-overlap")).toBe("9%");
+    expect(panels.map(({ dataset }) => dataset.worldSeamSide))
+      .toEqual(["outgoing", "incoming"]);
+    expect(panels.map(({ style }) => style.getPropertyValue("--world-seam-overlap")))
+      .toEqual(["9%", "9%"]);
+    expect(panels.map(({ style }) => style.transform)).toEqual([
+      "translate3d(-45.5%, 0, 0)",
+      "translate3d(45.5%, 0, 0)"
+    ]);
+    expect(host.querySelectorAll("img")).toHaveLength(3);
+    expectCoveredStage();
+
+    layer.setParallaxDistance(864, true);
+    expect(host.dataset.worldSeamBetween).toBe("first-mile:order-process");
+    const endPositions = panelPositions();
+    expect(endPositions[0]).toBeCloseTo(-85.5, 6);
+    expect(endPositions[1]).toBeCloseTo(5.5, 6);
+    expectCoveredStage();
+
+    panels[1]!.dataset.worldId = "first-mile";
+    layer.setParallaxDistance(865, true);
+    expect(host.dataset.worldSeamBetween).toBeUndefined();
+    expect(host.style.getPropertyValue("--world-overlap")).toBe("0px");
+    expect(panels.every(({ dataset }) => dataset.worldSeamSide === undefined)).toBe(true);
+
+    layer.show({
+      worldId: "first-mile",
+      stateId: "story.first_package",
+      phase: "story",
+      transitionMode: "story-linked"
+    });
+    panels[1]!.dataset.worldId = "order-process";
+    layer.setParallaxDistance(480, false);
+    expect(host.dataset.worldSeamBetween).toBeUndefined();
+  });
+
   it("keeps the visible panel interpolated while recycling only the offscreen panel", () => {
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host);
@@ -652,7 +730,6 @@ describe("edge-to-edge gameplay background", () => {
     const { store, images } = imageHarness();
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host, store);
-    const seam = host.querySelector<HTMLElement>("[data-world-seam-blur]");
 
     layer.show({
       worldId: "first-mile",
@@ -663,7 +740,7 @@ describe("edge-to-edge gameplay background", () => {
     images[0]!.dispatchEvent(new Event("load"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
     layer.setParallaxDistance(240, true);
-    expect(seam?.hidden).toBe(true);
+    expect(host.dataset.worldSeamBetween).toBeUndefined();
 
     layer.show({
       worldId: "quality-service",
@@ -691,23 +768,21 @@ describe("edge-to-edge gameplay background", () => {
 
     layer.setParallaxDistance(961, true);
     await Promise.resolve();
-    expect(seam?.hidden).toBe(true);
-    expect(seam?.dataset.betweenWorlds).toBeUndefined();
+    expect(host.dataset.worldSeamBetween).toBeUndefined();
     expect(srcMutations).toEqual([]);
     observer.disconnect();
 
     layer.setParallaxDistance(3_000, true, true);
-    expect(seam?.hidden).toBe(true);
+    expect(host.dataset.worldSeamBetween).toBeUndefined();
 
     layer.setParallaxDistance(1_920, true);
-    expect(seam?.hidden).toBe(true);
+    expect(host.dataset.worldSeamBetween).toBeUndefined();
   });
 
   it("commits a failed challenge world fallback at the next safe seam", async () => {
     const { store, images } = imageHarness();
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host, store);
-    const seam = host.querySelector<HTMLElement>("[data-world-seam-blur]");
 
     layer.show({
       worldId: "first-mile",
@@ -741,7 +816,7 @@ describe("edge-to-edge gameplay background", () => {
       .every(({ dataset }) =>
         dataset.worldId === "quality-service" && dataset.assetFallback === "true"
       )).toBe(true);
-    expect(seam?.hidden).toBe(true);
+    expect(host.dataset.worldSeamBetween).toBeUndefined();
     expect(host.dataset.assetState).toBe("fallback");
   });
 

@@ -2583,21 +2583,18 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   will-change: transform;
 }
 
-.amso-million-runner-2026-world-visual__seam-blur {
-  position: absolute;
-  /* Panels paint at level 0 before this node; the route stays sharp above it at level 1. */
-  z-index: 0;
-  top: 0;
-  bottom: 0;
-  width: var(--world-seam-blur-width, clamp(48px, 10%, 112px));
-  pointer-events: none;
-  background: rgb(255 255 255 / 1%);
-  -webkit-backdrop-filter: blur(var(--world-seam-blur-radius, 8px));
-  backdrop-filter: blur(var(--world-seam-blur-radius, 8px));
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 42% 58%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 42% 58%, transparent);
-  transform: translateX(-50%);
-  will-change: left;
+.amso-million-runner-2026-world-visual__panel[data-world-seam-side] {
+  will-change: transform, mask-image;
+}
+
+.amso-million-runner-2026-world-visual__panel[data-world-seam-side="outgoing"] {
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 calc(100% - var(--world-seam-overlap)), transparent 100%);
+  mask-image: linear-gradient(90deg, #000 0%, #000 calc(100% - var(--world-seam-overlap)), transparent 100%);
+}
+
+.amso-million-runner-2026-world-visual__panel[data-world-seam-side="incoming"] {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 var(--world-seam-overlap), #000 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 var(--world-seam-overlap), #000 100%);
 }
 
 .amso-million-runner-2026__world-visual[data-phase="game"] .amso-million-runner-2026-world-visual__panel {
