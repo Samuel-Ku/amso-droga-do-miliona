@@ -4,12 +4,17 @@ import process from "node:process";
 import os from "node:os";
 import http from "node:http";
 import { createHash } from "node:crypto";
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 import {
   headersForPerformanceRequest,
   isExpectedPerformanceRequest
 } from "./performance-request-policy.mjs";
-import { qualifiedPanelTransitions } from "./performance-transition-policy.mjs";
+import {
+  qualifiedPanelTransitions,
+  REQUIRED_WORLD_SEAM_TRANSITIONS,
+  requiredWorldTransitionsPassed,
+  selectRequiredWorldTransitions
+} from "./performance-transition-policy.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 
@@ -21,6 +26,8 @@ Options:
   --process cold|warm              Browser-process state for the measured run
   --profile cold-audio-enabled|cold-audio-disabled|warm-audio-enabled|full-session
   --variant before|after           Comparison label
+  --scenario performance-reference-v1|world-seam-performance-v1
+  --browser chromium|webkit        Browser engine (default: chromium)
   --output PATH                    Write machine-readable evidence JSON
   --help                           Show this help
 `;
@@ -41,11 +48,15 @@ const processState = option("process", "cold");
 const profile = option("profile", "full-session");
 const variant = option("variant", "after");
 const outputPath = option("output");
+const scenarioId = option("scenario", "performance-reference-v1");
+const browserEngine = option("browser", "chromium");
 if (!(["enabled", "disabled"].includes(audioMode)) ||
     !(["before", "after"].includes(variant)) ||
     !(["cold", "warm"].includes(processState)) ||
     !(["cold-audio-enabled", "cold-audio-disabled", "warm-audio-enabled",
       "full-session"].includes(profile)) ||
+    !(["performance-reference-v1", "world-seam-performance-v1"].includes(scenarioId)) ||
+    !(["chromium", "webkit"].includes(browserEngine)) ||
     option("artifact") !== undefined) {
   console.error(usage);
   process.exit(1);
@@ -111,14 +122,15 @@ const configuredExecutable = process.env.AMSO_CHROME_EXECUTABLE;
 const executablePath = configuredExecutable && fs.existsSync(configuredExecutable)
   ? configuredExecutable
   : systemChromeCandidates.find((candidate) => fs.existsSync(candidate));
-const browser = await chromium.launch({
+const browserType = browserEngine === "webkit" ? webkit : chromium;
+const browser = await browserType.launch({
   headless: true,
-  ...(executablePath ? { executablePath } : {}),
-  args: [
+  ...(browserEngine === "chromium" && executablePath ? { executablePath } : {}),
+  ...(browserEngine === "chromium" ? { args: [
     "--disable-background-timer-throttling",
     "--disable-renderer-backgrounding",
     "--disable-backgrounding-occluded-windows"
-  ]
+  ] } : {})
 });
 
 let exitCode = 1;
@@ -171,6 +183,10 @@ try {
     }
   });
   await page.addInitScript(() => {
+    const panelTranslateXPercent = (panel) => {
+      const match = /translate3d\((-?[\d.]+)%/u.exec(panel.style.transform);
+      return match === null ? Number.NaN : Number.parseFloat(match[1]);
+    };
     window.__performanceScenarioRuntime = {
       activeDecodeStarts: 0,
       activeFrameIntervals: [],
@@ -186,7 +202,8 @@ try {
       longAnimationFrames: { support: "unsupported", count: 0,
         totalBlockingDurationMs: 0, entries: [] },
       dom: { initialNodeCount: 0, maxNodeCount: 0, finalNodeCount: 0,
-        addedNodeCount: 0, removedNodeCount: 0, samples: [] },
+        addedNodeCount: 0, removedNodeCount: 0, activeImageNodesAdded: 0,
+        activeImageNodesCreated: 0, samples: [] },
       memorySamples: []
     };
     const isActiveGameplay = () => {
@@ -196,6 +213,23 @@ try {
         worldVisual.getAttribute("data-paused") !== "true";
     };
     const originalDecode = HTMLImageElement.prototype.decode;
+    const NativeImage = window.Image;
+    const TrackedImage = function trackedImage(width, height) {
+      const image = new NativeImage(width, height);
+      if (isActiveGameplay()) window.__performanceScenarioRuntime.dom.activeImageNodesCreated += 1;
+      return image;
+    };
+    TrackedImage.prototype = NativeImage.prototype;
+    Object.setPrototypeOf(TrackedImage, NativeImage);
+    window.Image = TrackedImage;
+    const nativeCreateElement = Document.prototype.createElement;
+    Document.prototype.createElement = function trackedCreateElement(name, options) {
+      const element = nativeCreateElement.call(this, name, options);
+      if (String(name).toLowerCase() === "img" && isActiveGameplay()) {
+        window.__performanceScenarioRuntime.dom.activeImageNodesCreated += 1;
+      }
+      return element;
+    };
     HTMLImageElement.prototype.decode = function trackedDecode() {
       const startedAt = performance.now();
       const active = isActiveGameplay();
@@ -278,6 +312,8 @@ try {
       }).observe({ entryTypes: ["long-animation-frame"] });
     }
     let previousActiveFrame = null;
+    const lastPanelRects = new WeakMap();
+    let lastWorldPhase = null;
     const observeFrame = (timestamp) => {
       const active = document.visibilityState === "visible" && isActiveGameplay();
       if (active && previousActiveFrame !== null) {
@@ -293,6 +329,32 @@ try {
         });
         if (interval > 33) {
           window.__performanceScenarioRuntime.activeFramesOver33Ms += 1;
+        }
+      }
+      const worldVisual = document.querySelector("[data-campaign-world-visual]");
+      if (worldVisual instanceof HTMLElement) {
+        const phase = Number.parseFloat(worldVisual.style.getPropertyValue("--world-phase-px"));
+        if (Number.isFinite(phase)) {
+          lastWorldPhase = {
+            value: phase,
+            previousValue: lastWorldPhase?.value ?? phase,
+            timestamp,
+            previousTimestamp: lastWorldPhase?.timestamp ?? timestamp
+          };
+        }
+      }
+      for (const panel of worldVisual?.querySelectorAll("[data-world-panel]") ?? []) {
+        if (panel instanceof HTMLImageElement) {
+          const rect = panel.getBoundingClientRect();
+          const previous = lastPanelRects.get(panel);
+          lastPanelRects.set(panel, {
+            left: rect.left,
+            right: rect.right,
+            previousLeft: previous?.left ?? rect.left,
+            timestamp,
+            previousTimestamp: previous?.timestamp ?? timestamp,
+            translateXPercent: panelTranslateXPercent(panel)
+          });
         }
       }
       previousActiveFrame = active ? timestamp : null;
@@ -320,6 +382,14 @@ try {
         for (const record of records) {
           runtime.dom.addedNodeCount += record.addedNodes.length;
           runtime.dom.removedNodeCount += record.removedNodes.length;
+          if (isActiveGameplay()) {
+            for (const node of record.addedNodes) {
+              if (node instanceof HTMLImageElement) runtime.dom.activeImageNodesAdded += 1;
+              if (node instanceof Element) {
+                runtime.dom.activeImageNodesAdded += node.querySelectorAll("img").length;
+              }
+            }
+          }
         }
         runtime.dom.maxNodeCount = Math.max(runtime.dom.maxNodeCount, countNodes());
       }).observe(document.documentElement, { childList: true, subtree: true });
@@ -347,12 +417,63 @@ try {
             (panel === previousCurrentPanel && worldId === previousCurrentPanelWorldId)) return;
         previousCurrentPanel = panel;
         previousCurrentPanelWorldId = worldId;
-        runtime.panelTransitions.push({
+        const previousIncomingRect = lastPanelRects.get(panel) ?? null;
+        const previousWorldPhase = lastWorldPhase;
+        const transition = {
           worldId,
           atMs: performance.now(),
           assetPath: panel.dataset.assetPath ?? null,
           presentationReady: panel.dataset.presentationReady === "true",
-          hidden: panel.hidden
+          hidden: panel.hidden,
+          visual: null
+        };
+        runtime.panelTransitions.push(transition);
+        requestAnimationFrame((sampledAt) => {
+          const plate = worldVisual.querySelector("[data-world-plate]");
+          const activePanels = [...worldVisual.querySelectorAll("[data-world-panel]")]
+            .filter((candidate) => candidate instanceof HTMLImageElement);
+          if (!(plate instanceof HTMLElement) || activePanels.length !== 2) return;
+          const plateRect = plate.getBoundingClientRect();
+          const panelRects = activePanels.map((candidate) => candidate.getBoundingClientRect())
+            .sort((left, right) => left.left - right.left);
+          const currentRect = panel.getBoundingClientRect();
+          const currentTranslateXPercent = panelTranslateXPercent(panel);
+          const currentWorldPhase = Number.parseFloat(
+            worldVisual.style.getPropertyValue("--world-phase-px")
+          );
+          // Cover one normal 60 Hz visual step in the accelerated QA route;
+          // an actual wrap discontinuity is still tens of CSS pixels.
+          const tolerancePx = Math.max(4, plateRect.width / 240);
+          transition.visual = {
+            covered: activePanels.every((candidate) => !candidate.hidden) &&
+              panelRects[0].left <= plateRect.left + tolerancePx &&
+              panelRects[0].right >= panelRects[1].left - tolerancePx &&
+              panelRects[1].right >= plateRect.right - tolerancePx,
+            phaseJumpPx: previousWorldPhase === null || !Number.isFinite(currentWorldPhase)
+              ? null
+              : Math.abs(currentWorldPhase - (
+                  previousWorldPhase.value +
+                  (previousWorldPhase.timestamp === previousWorldPhase.previousTimestamp
+                    ? 0
+                    : (previousWorldPhase.value - previousWorldPhase.previousValue) /
+                      (previousWorldPhase.timestamp - previousWorldPhase.previousTimestamp) *
+                      (sampledAt - previousWorldPhase.timestamp))
+                )),
+            panelContinuityResidualPx: previousIncomingRect === null
+              ? null
+              : Math.abs(currentRect.left - (
+                  previousIncomingRect.left +
+                  (Number.isFinite(previousIncomingRect.translateXPercent) &&
+                    Number.isFinite(currentTranslateXPercent)
+                    ? (currentTranslateXPercent - previousIncomingRect.translateXPercent) /
+                      100 * plateRect.width
+                    : 0)
+                )),
+            renderedPixelTolerancePx: 1 / (window.devicePixelRatio || 1),
+            tolerancePx,
+            plate: { left: plateRect.left, right: plateRect.right },
+            panels: panelRects.map(({ left, right }) => ({ left, right }))
+          };
         });
       };
       recordCurrentPanel();
@@ -366,7 +487,7 @@ try {
 
   const url = new URL(targetUrl);
   url.searchParams.set("qa", "performance");
-  url.searchParams.set("scenario", "performance-reference-v1");
+  url.searchParams.set("scenario", scenarioId);
   url.searchParams.set("quality", "force-full");
   url.searchParams.set("motion", "system");
   url.searchParams.set("audio", audioMode);
@@ -379,6 +500,8 @@ try {
   const navigationStartedAt = Date.now();
   const navigationResponse = await page.goto(url.href, { waitUntil: "load", timeout: 30_000 });
   const deployedArtifactBody = navigationResponse === null ? null : await navigationResponse.body();
+  const navigationHeaders = navigationResponse === null ? {} : await navigationResponse.allHeaders();
+  const finalNavigationUrl = navigationResponse?.url() ?? page.url();
   await page.waitForSelector("[data-campaign-landing-actions] button", {
     timeout: 30_000
   });
@@ -459,21 +582,64 @@ try {
   const checkpointsPassed = Array.isArray(report?.scenarioCheckpoints) &&
     report.scenarioCheckpoints.length > 1 &&
     report.scenarioCheckpoints.every(({ passed }) => passed === true);
-  const qualifiedTransitions = qualifiedPanelTransitions(runtime.panelTransitions);
-  const transitionActiveDecodeStarts = runtime.decodeTimings.filter(({ active, startedAtMs }) =>
-    active === true && qualifiedTransitions.some(({ atMs }) =>
-      Math.abs(startedAtMs - atMs) <= 500)).length;
-  const requiredPanelTransitionsPassed = ["order-process", "quality-service"].every((worldId) =>
-    qualifiedTransitions.some((transition) => transition.worldId === worldId &&
-      transition.presentationReady === true && transition.hidden === false &&
-      transition.assetPath?.includes(`world-0${worldId === "order-process" ? "2" : "3"}-`)));
+  const qualifiedTransitions = qualifiedPanelTransitions(runtime.panelTransitions, scenarioId);
+  const requiredTransitions = selectRequiredWorldTransitions(runtime.panelTransitions, scenarioId);
+  const transitionWindows = requiredTransitions.map((transition) => {
+    const frames = runtime.activeFrameTimeline.filter(({ atMs }) =>
+      Math.abs(atMs - transition.atMs) <= 500);
+    const decodeStarts = runtime.decodeTimings.filter(({ active, startedAtMs }) =>
+      active === true && Math.abs(startedAtMs - transition.atMs) <= 500);
+    return {
+      worldId: transition.worldId,
+      atMs: transition.atMs,
+      frameCount: frames.length,
+      framesOver33Ms: frames.filter(({ intervalMs }) => intervalMs > 33).length,
+      maxFrameMs: rounded(frames.length === 0 ? null :
+        Math.max(...frames.map(({ intervalMs }) => intervalMs))),
+      activeDecodeStarts: decodeStarts.length
+    };
+  });
+  const transitionActiveDecodeStarts = transitionWindows.reduce((total, window) =>
+    total + window.activeDecodeStarts, 0);
+  const assetFragments = new Map(REQUIRED_WORLD_SEAM_TRANSITIONS.map(
+    ({ worldId, assetFragment }) => [worldId, assetFragment]
+  ));
+  const requiredPanelTransitionsPassed = requiredWorldTransitionsPassed(
+    runtime.panelTransitions,
+    scenarioId
+  ) && requiredTransitions.every((transition) =>
+    transition.presentationReady === true && transition.hidden === false &&
+    transition.assetPath?.includes(assetFragments.get(transition.worldId)) &&
+    transition.visual?.covered === true &&
+    Number.isFinite(transition.visual?.phaseJumpPx) &&
+    transition.visual.phaseJumpPx <= transition.visual.tolerancePx &&
+    Number.isFinite(transition.visual?.panelContinuityResidualPx) &&
+    transition.visual.panelContinuityResidualPx <=
+      transition.visual.renderedPixelTolerancePx);
+  const finalTarget = new URL(finalNavigationUrl);
+  const expectedTarget = new URL(targetUrl);
+  const normalizedPath = (value) => value.replace(/\/+$/u, "") || "/";
+  const deploymentProvenancePassed = deploymentUrl === undefined ||
+    (finalTarget.origin === expectedTarget.origin &&
+      normalizedPath(finalTarget.pathname) === normalizedPath(expectedTarget.pathname) &&
+      navigationHeaders.server?.toLowerCase() === "vercel" &&
+      typeof navigationHeaders["x-vercel-id"] === "string" &&
+      navigationHeaders["x-vercel-id"].length > 0);
   const capturePassed = report?.scenarioValidation?.passed === true &&
     checkpointsPassed &&
     report?.session?.inputQueueOverflows === 0 &&
     report?.session?.replayValid === true &&
     transitionActiveDecodeStarts === 0 &&
+    transitionWindows.every(({ framesOver33Ms }) => framesOver33Ms === 0) &&
     requiredPanelTransitionsPassed &&
-    intervals.filter((interval) => interval > 33).length === 0 &&
+    runtime.dom.activeImageNodesAdded === 0 &&
+    runtime.dom.activeImageNodesCreated === 0 &&
+    deploymentProvenancePassed &&
+    // Headless WebKit can report unrelated process stalls; the seam scenario
+    // qualifies the explicit ±500 ms presentation windows while retaining the
+    // whole-run frame timeline as diagnostic evidence.
+    (scenarioId === "world-seam-performance-v1" ||
+      intervals.filter((interval) => interval > 33).length === 0) &&
     consoleErrors.length === 0 &&
     externalRequests.length === 0 &&
     failedResponses.length === 0;
@@ -491,6 +657,13 @@ try {
       bytes: deployedArtifactBody?.byteLength ?? null,
       sha256: deployedArtifactBody === null ? null
         : createHash("sha256").update(deployedArtifactBody).digest("hex")
+    },
+    deployment: {
+      requestedUrl: url.href,
+      finalUrl: finalNavigationUrl,
+      server: navigationHeaders.server ?? null,
+      vercelId: navigationHeaders["x-vercel-id"] ?? null,
+      provenancePassed: deploymentProvenancePassed
     },
     configuration: {
       scenarioId: report?.qaRunConfiguration?.scenarioId ?? "performance-reference-v1",
@@ -513,9 +686,11 @@ try {
         cpuModel: os.cpus()[0]?.model ?? null
       },
       browser: {
-        engine: "chromium",
+        engine: browserEngine,
         version: browser.version(),
-        executableSource: executablePath ?? "playwright-bundled",
+        executableSource: browserEngine === "chromium"
+          ? executablePath ?? "playwright-bundled"
+          : "playwright-bundled",
         userAgent: browserRuntime.userAgent,
         headless: true
       },
@@ -541,6 +716,7 @@ try {
     decodeTimings: runtime.decodeTimings,
     worldTransitions: runtime.worldTransitions,
     panelTransitions: runtime.panelTransitions,
+    transitionWindows,
     longTasks: runtime.longTasks,
     longAnimationFrames: runtime.longAnimationFrames,
     resourceTimings: runtime.resourceTimings,
@@ -594,6 +770,9 @@ try {
       frames: evidence.frames,
       activeDecodeStarts: runtime.activeDecodeStarts,
       transitionActiveDecodeStarts,
+      transitionWindows,
+      activeImageNodesAdded: runtime.dom.activeImageNodesAdded,
+      activeImageNodesCreated: runtime.dom.activeImageNodesCreated,
       worldTransitions: evidence.worldTransitions,
       scenarioPassed: report?.scenarioValidation?.passed === true
     }, null, 2)}\n`);

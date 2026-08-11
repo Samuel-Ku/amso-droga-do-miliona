@@ -21,6 +21,11 @@ export type WorldTransitionMode = "story-linked" | "offscreen";
 // A 120 Hz frame leaves less than 8 ms total. Each preparation lease performs
 // only one small synchronous DOM operation; decode/composite completion stays async.
 const PANEL_PREPARATION_MIN_IDLE_MS = 2;
+const PANEL_PREPARATION_FALLBACK_STEP_MS = 50;
+const PANEL_PREPARATION_FRAME_BUDGET_MS = 8;
+// Keep decode/GPU preparation outside the qualified seam window. The next
+// world is still prepared several seconds before it can become visible.
+const PANEL_PREPARATION_SEAM_COOLDOWN_MS = 600;
 
 export interface WorldVisualSelection {
   readonly worldId: CampaignWorldId;
@@ -32,6 +37,11 @@ export interface WorldVisualSelection {
 export interface DecodedWorldAsset {
   readonly path: string;
   readonly image: HTMLImageElement;
+}
+
+function canonicalWorldAssetId(path: string): string {
+  const match = /\/world-\d{2}-(.+)\.webp$/u.exec(path);
+  return match?.[1] ? `world-${match[1]}` : `world:${path}`;
 }
 
 /** One decoded image object per world, retained for the complete campaign session. */
@@ -46,6 +56,11 @@ export class WorldAssetStore {
     this.store = source instanceof DecodedImageStore
       ? source
       : new DecodedImageStore({ imageFactory: source });
+    if (source instanceof DecodedImageStore) {
+      for (const { assetPath } of CAMPAIGN_WORLDS) {
+        source.reserve(canonicalWorldAssetId(assetPath), assetPath);
+      }
+    }
   }
 
   public load(path: string): Promise<DecodedWorldAsset> {
@@ -54,8 +69,7 @@ export class WorldAssetStore {
     }
     const pending = this.promises.get(path);
     if (pending) return pending;
-    const match = /\/world-\d{2}-(.+)\.webp$/u.exec(path);
-    const canonicalAssetId = match?.[1] ? `world-${match[1]}` : `world:${path}`;
+    const canonicalAssetId = canonicalWorldAssetId(path);
     const promise = this.store.load(canonicalAssetId, path)
       .then(({ image }) => ({ path, image }))
       .catch((error: unknown) => {
@@ -137,9 +151,12 @@ export class WorldVisualLayer {
   private preparedPanelAsset: DecodedWorldAsset | null = null;
   private preparedFallbackWorldId: CampaignWorldId | null = null;
   private panelPreparationScheduled = false;
+  private panelPreparationFallbackFrame: number | null = null;
   private panelPreparationRetryTimer: number | null = null;
+  private panelPreparationBlockedUntilMs = 0;
   private readonly panelStageRetryTimers = new Map<number, () => void>();
   private readonly panelStageIdleCallbacks = new Map<number, () => void>();
+  private readonly panelStageFrameCallbacks = new Map<number, () => void>();
   private panelPreparationPath: string | null = null;
   private panelPreparationRevision = 0;
   private paused = false;
@@ -318,6 +335,10 @@ export class WorldVisualLayer {
     if (this.panelPreparationRetryTimer !== null) {
       view?.clearTimeout(this.panelPreparationRetryTimer);
       this.panelPreparationRetryTimer = null;
+    }
+    if (this.panelPreparationFallbackFrame !== null) {
+      view?.cancelAnimationFrame(this.panelPreparationFallbackFrame);
+      this.panelPreparationFallbackFrame = null;
     }
     this.cancelPanelStageWork();
     this.panelPreparationRevision += 1;
@@ -549,6 +570,8 @@ export class WorldVisualLayer {
       preparedCurrent.style.transform,
       preparedNext.style.transform
     ];
+    this.panelPreparationBlockedUntilMs = this.nowMs() +
+      PANEL_PREPARATION_SEAM_COOLDOWN_MS;
   }
 
   private resynchronizePanels(progress: number): void {
@@ -724,9 +747,13 @@ export class WorldVisualLayer {
     const view = this.host.ownerDocument.defaultView;
     const requestIdle = view?.requestIdleCallback;
     const activeGameplay = this.host.dataset.phase === "game" && !this.paused;
-    if (this.destroyed || (activeGameplay && typeof requestIdle !== "function") ||
-        this.scheduledPreloadPath === null || this.panelPreparationScheduled ||
+    if (this.destroyed || this.scheduledPreloadPath === null || this.panelPreparationScheduled ||
         this.panelPreparationPath !== null) return;
+    const cooldownRemaining = this.panelPreparationCooldownRemainingMs();
+    if (activeGameplay && cooldownRemaining > 0) {
+      this.deferPanelPreparationRetry(cooldownRemaining);
+      return;
+    }
     if (this.scheduledPreloadAsset !== null) {
       this.prepareScheduledPanel();
       return;
@@ -737,6 +764,11 @@ export class WorldVisualLayer {
       this.panelPreparationScheduled = false;
       if (this.destroyed) return;
       const needsIdleLease = this.host.dataset.phase === "game" && !this.paused;
+      const runCooldownRemaining = this.panelPreparationCooldownRemainingMs();
+      if (needsIdleLease && runCooldownRemaining > 0) {
+        this.deferPanelPreparationRetry(runCooldownRemaining);
+        return;
+      }
       if (needsIdleLease && deadline !== undefined &&
           deadline.timeRemaining() < PANEL_PREPARATION_MIN_IDLE_MS) {
         this.deferPanelPreparationRetry();
@@ -762,6 +794,13 @@ export class WorldVisualLayer {
     };
     if (activeGameplay && typeof requestIdle === "function") {
       requestIdle((deadline) => run(deadline));
+    } else if (activeGameplay && view !== null) {
+      this.panelPreparationFallbackFrame = view.requestAnimationFrame((frameStartedAt) => {
+        this.panelPreparationFallbackFrame = null;
+        const remaining = Math.max(0,
+          PANEL_PREPARATION_FRAME_BUDGET_MS - (this.nowMs() - frameStartedAt));
+        run({ didTimeout: false, timeRemaining: () => remaining });
+      });
     } else {
       run();
     }
@@ -770,9 +809,7 @@ export class WorldVisualLayer {
   private prepareScheduledPanel(): void {
     const asset = this.scheduledPreloadAsset;
     const activeGameplay = this.host.dataset.phase === "game" && !this.paused;
-    const requestIdle = this.host.ownerDocument.defaultView?.requestIdleCallback;
-    if (asset === null || this.panelPreparationPath !== null ||
-        (activeGameplay && typeof requestIdle !== "function")) {
+    if (asset === null || this.panelPreparationPath !== null) {
       return;
     }
     if (this.preparedPanelAsset !== null || this.preparedFallbackWorldId !== null ||
@@ -844,14 +881,22 @@ export class WorldVisualLayer {
     return this.host.dataset.phase !== "game" || this.paused;
   }
 
-  private deferPanelPreparationRetry(): void {
+  private nowMs(): number {
+    return this.host.ownerDocument.defaultView?.performance.now() ?? performance.now();
+  }
+
+  private panelPreparationCooldownRemainingMs(): number {
+    return Math.max(0, Math.ceil(this.panelPreparationBlockedUntilMs - this.nowMs()));
+  }
+
+  private deferPanelPreparationRetry(delayMs = 250): void {
     if (this.panelPreparationRetryTimer !== null || this.destroyed) return;
     const view = this.host.ownerDocument.defaultView;
     if (view === null) return;
     this.panelPreparationRetryTimer = view.setTimeout(() => {
       this.panelPreparationRetryTimer = null;
       this.schedulePreparedPanelWork();
-    }, 250);
+    }, Math.max(1, delayMs));
   }
 
   private async drawPrecompositedPanel(
@@ -944,9 +989,7 @@ export class WorldVisualLayer {
     const view = this.host.ownerDocument.defaultView;
     if (this.destroyed || !isCurrent()) return Promise.resolve(false);
     if (this.isPanelPreparationSafe()) return Promise.resolve(operation());
-    if (view === null || typeof view.requestIdleCallback !== "function") {
-      return Promise.resolve(false);
-    }
+    if (view === null) return Promise.resolve(false);
     return new Promise((resolve) => {
       const attempt = (): void => {
         if (this.destroyed || !isCurrent()) {
@@ -955,6 +998,32 @@ export class WorldVisualLayer {
         }
         if (this.isPanelPreparationSafe()) {
           Promise.resolve(operation()).then(resolve, () => resolve(false));
+          return;
+        }
+        if (typeof view.requestIdleCallback !== "function") {
+          const frameId = view.requestAnimationFrame((frameStartedAt) => {
+            this.panelStageFrameCallbacks.delete(frameId);
+            if (this.destroyed || !isCurrent()) {
+              resolve(false);
+              return;
+            }
+            const remaining = PANEL_PREPARATION_FRAME_BUDGET_MS -
+              (this.nowMs() - frameStartedAt);
+            if (remaining < PANEL_PREPARATION_MIN_IDLE_MS) {
+              const timerId = view.setTimeout(() => {
+                this.panelStageRetryTimers.delete(timerId);
+                attempt();
+              }, PANEL_PREPARATION_FALLBACK_STEP_MS);
+              this.panelStageRetryTimers.set(timerId, () => resolve(false));
+              return;
+            }
+            try {
+              Promise.resolve(operation()).then(resolve, () => resolve(false));
+            } catch {
+              resolve(false);
+            }
+          });
+          this.panelStageFrameCallbacks.set(frameId, () => resolve(false));
           return;
         }
         const idleId = view.requestIdleCallback((deadline) => {
@@ -995,6 +1064,11 @@ export class WorldVisualLayer {
       cancel();
     }
     this.panelStageIdleCallbacks.clear();
+    for (const [frameId, cancel] of this.panelStageFrameCallbacks) {
+      view?.cancelAnimationFrame(frameId);
+      cancel();
+    }
+    this.panelStageFrameCallbacks.clear();
   }
 
   private preparedPanelsMatch(assetPath: string): boolean {

@@ -1,10 +1,13 @@
 export type QaQualityRequest = "auto" | "force-full" | "force-reduced";
 export type QaMotionRequest = "system" | "full" | "reduced";
 export type AudioRunMode = "enabled" | "muted" | "disabled";
+export type PerformanceScenarioId =
+  | "performance-reference-v1"
+  | "world-seam-performance-v1";
 
 export interface QaBootConfig {
   readonly mode: "performance";
-  readonly scenarioId: "performance-reference-v1";
+  readonly scenarioId: PerformanceScenarioId;
   readonly quality: QaQualityRequest;
   readonly motion: QaMotionRequest;
   readonly audio: AudioRunMode;
@@ -31,7 +34,10 @@ export function parseQaBootConfig(url: URL): QaBootResult {
   const qaMode = url.searchParams.get("qa");
   if (qaMode === null) return { kind: "production" };
   if (qaMode !== "performance") throw new QaBootConfigError("qa");
-  const scenarioId = oneOf(url.searchParams.get("scenario"), ["performance-reference-v1"] as const, "scenario");
+  const scenarioId = oneOf(url.searchParams.get("scenario"), [
+    "performance-reference-v1",
+    "world-seam-performance-v1"
+  ] as const, "scenario");
   const quality = oneOf(url.searchParams.get("quality"), ["auto", "force-full", "force-reduced"] as const, "quality");
   const motion = oneOf(url.searchParams.get("motion"), ["system", "full", "reduced"] as const, "motion");
   const audio = oneOf(url.searchParams.get("audio"), ["enabled", "muted", "disabled"] as const, "audio");

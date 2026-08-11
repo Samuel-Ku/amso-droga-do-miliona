@@ -5,7 +5,12 @@ import { FrameWindowTelemetry } from "../src/performance/frame-window-telemetry"
 import { VisualQualityCoordinator } from "../src/performance/visual-quality-coordinator";
 import { resolveVisualPolicy } from "../src/performance/visual-policy";
 import { compareSemanticState, exactDeterminismArtifact } from "../src/qa/determinism";
-import { PERFORMANCE_REFERENCE_V1, validateScenarioRun } from "../src/qa/performance-reference-v1";
+import {
+  PERFORMANCE_REFERENCE_V1,
+  WORLD_SEAM_PERFORMANCE_V1,
+  performanceScenario,
+  validateScenarioRun
+} from "../src/qa/performance-reference-v1";
 import { DecodedImageStore } from "../src/assets/DecodedImageStore";
 import { evaluatePerformanceReleaseGate } from "../src/qa/release-gate";
 import { validateVisualFixture, visualBaselineKey, type VisualRegressionFixture } from "../src/qa/visual-regression";
@@ -23,6 +28,19 @@ describe("performance contracts", () => {
         audio: "enabled",
         dpr: 2
       }
+    });
+  });
+
+  it("strictly parses the bounded all-world seam scenario", () => {
+    const result = parseQaBootConfig(new URL("https://example.test/?qa=performance&scenario=world-seam-performance-v1&quality=force-full&motion=system&audio=disabled&dpr=1"));
+    expect(result.kind).toBe("performance");
+    if (result.kind !== "performance") return;
+    expect(result.config.scenarioId).toBe("world-seam-performance-v1");
+    expect(performanceScenario(result.config.scenarioId)).toBe(WORLD_SEAM_PERFORMANCE_V1);
+    expect(WORLD_SEAM_PERFORMANCE_V1.challengeWorldDurationSeconds).toBeLessThanOrEqual(7);
+    expect(WORLD_SEAM_PERFORMANCE_V1.requiredCoverage).toContainEqual({
+      type: "world-change",
+      minCount: 8
     });
   });
 
@@ -151,6 +169,22 @@ describe("performance contracts", () => {
     expect(validateVisualFixture(fixture, {
       presentElements: ["runner"], semanticOcclusionViolations: [], panelCanvasSynchronized: true
     })).toMatchObject({ passed: false, reasons: ["missing:runner-shield:shield"] });
+  });
+
+  it("reserves image nodes before active loading and reuses them", async () => {
+    const images: HTMLImageElement[] = [];
+    const store = new DecodedImageStore({ imageFactory: () => {
+      const image = {
+        dataset: {}, decoding: "auto", src: "", complete: true, naturalWidth: 1780,
+        onload: null, onerror: null, decode: vi.fn().mockResolvedValue(undefined)
+      } as unknown as HTMLImageElement;
+      images.push(image);
+      return image;
+    } });
+    store.reserve("world-a", "/world-a.webp");
+    expect(images).toHaveLength(1);
+    await store.load("world-a", "/world-a.webp");
+    expect(images).toHaveLength(1);
   });
 
   it("deduplicates the canonical image decode promise", async () => {

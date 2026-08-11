@@ -178,6 +178,8 @@ export interface RunnerGameOptions {
   scenarioDurationSteps?: number;
   /** Versioned QA workload cadence; production Challenge keeps its authored default. */
   challengeWorldDurationSeconds?: number;
+  /** QA-only visual clock acceleration used to traverse every world seam in one bounded run. */
+  qaVisualDistanceMultiplier?: number;
   scenarioCheckpointSteps?: readonly number[];
   onScenarioCheckpoint?: (
     completedThroughStep: number,

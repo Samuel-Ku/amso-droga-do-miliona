@@ -40,6 +40,7 @@ async function waitForRenderableImage(image: HTMLImageElement): Promise<void> {
 export class DecodedImageStore {
   private readonly pending = new Map<string, Promise<DecodedImageAsset>>();
   private readonly decoded = new Map<string, DecodedImageAsset>();
+  private readonly reserved = new Map<string, HTMLImageElement>();
   private readonly imageFactory: () => HTMLImageElement;
   private readonly maxAttempts: number;
   private destroyed = false;
@@ -68,6 +69,16 @@ export class DecodedImageStore {
     return promise;
   }
 
+  public reserve(assetId: string, source: string, version = "1"): void {
+    if (this.destroyed) return;
+    const key = `${assetId}\u0000${source}\u0000${version}`;
+    if (this.decoded.has(key) || this.pending.has(key) || this.reserved.has(key)) return;
+    const image = this.imageFactory();
+    image.decoding = "async";
+    if (image.dataset !== undefined) image.dataset.assetId = assetId;
+    this.reserved.set(key, image);
+  }
+
   public getDecoded(assetId: string, source: string, version = "1"): DecodedImageAsset | undefined {
     return this.decoded.get(`${assetId}\u0000${source}\u0000${version}`);
   }
@@ -80,11 +91,14 @@ export class DecodedImageStore {
     }
     this.pending.clear();
     this.decoded.clear();
+    this.reserved.clear();
   }
 
   private async loadWithRetry(assetId: string, source: string, version: string): Promise<DecodedImageAsset> {
     let lastError: unknown = new Error("image_decode_failed");
-    const image = this.imageFactory();
+    const key = `${assetId}\u0000${source}\u0000${version}`;
+    const image = this.reserved.get(key) ?? this.imageFactory();
+    this.reserved.delete(key);
     image.decoding = "async";
     if (image.dataset !== undefined) image.dataset.assetId = assetId;
     for (let attempt = 1; attempt <= this.maxAttempts; attempt += 1) {

@@ -49,6 +49,7 @@ import {
 import {
   PERFORMANCE_REFERENCE_V1,
   checkpointMatches,
+  performanceScenario,
   validateScenarioRun,
   type ScenarioValidationResult
 } from "./qa/performance-reference-v1";
@@ -260,6 +261,9 @@ export class CampaignController {
   private async startRun(request: CampaignStartRequest): Promise<void> {
     if (this.destroyed) return;
     const qaScenario = this.runtime.qa !== undefined;
+    const scenario = this.runtime.qa === undefined
+      ? PERFORMANCE_REFERENCE_V1
+      : performanceScenario(this.runtime.qa.scenarioId);
     const requested = qaScenario ? { mode: "challenge" as const, restartStory: false } : request;
     const safeRequest = requested.mode === "challenge" && !this.profile.snapshot.storyCompleted && !qaScenario
       ? { mode: "story" as const, restartStory: false }
@@ -341,17 +345,18 @@ export class CampaignController {
         qualityMode: this.runtime.qa?.quality ?? "auto",
         runnerArtwork,
         ...(qaScenario ? {
-          seed: PERFORMANCE_REFERENCE_V1.seed,
+          seed: scenario.seed,
           qaScenarioActive: true,
-          replayInputs: PERFORMANCE_REFERENCE_V1.inputs,
-          scenarioDurationSteps: PERFORMANCE_REFERENCE_V1.durationSteps,
+          replayInputs: scenario.inputs,
+          scenarioDurationSteps: scenario.durationSteps,
           challengeWorldDurationSeconds:
-            PERFORMANCE_REFERENCE_V1.challengeWorldDurationSeconds,
-          scenarioCheckpointSteps: PERFORMANCE_REFERENCE_V1.expectedCheckpoints
+            scenario.challengeWorldDurationSeconds,
+          qaVisualDistanceMultiplier: scenario.visualDistanceMultiplier,
+          scenarioCheckpointSteps: scenario.expectedCheckpoints
             .map(({ completedThroughStep }) => completedThroughStep)
             .filter((completedThroughStep) => completedThroughStep >= 0),
           onScenarioCheckpoint: (completedThroughStep, canonicalState) => {
-            const checkpoint = PERFORMANCE_REFERENCE_V1.expectedCheckpoints.find(
+            const checkpoint = scenario.expectedCheckpoints.find(
               (candidate) => candidate.completedThroughStep === completedThroughStep
             );
             this.scenarioCheckpointResults.push({
@@ -366,12 +371,12 @@ export class CampaignController {
               this.scenarioArtifact = exactDeterminismArtifact(
                 this.game.canonicalDeterministicState()
               );
-              this.scenarioValidation = validateScenarioRun(PERFORMANCE_REFERENCE_V1, {
-                completedThroughStep: PERFORMANCE_REFERENCE_V1.durationSteps - 1,
+              this.scenarioValidation = validateScenarioRun(scenario, {
+                completedThroughStep: scenario.durationSteps - 1,
                 checkpointResults: this.scenarioCheckpointResults,
                 coverage: this.game.scenarioCoverage(),
                 finalDigest: this.scenarioArtifact.digest,
-                expectedFinalDigest: PERFORMANCE_REFERENCE_V1.expectedFinalDigest,
+                expectedFinalDigest: scenario.expectedFinalDigest,
                 inputQueueOverflows: 0
               });
             }
@@ -380,7 +385,7 @@ export class CampaignController {
         } : {})
       });
       if (qaScenario) {
-        const initial = PERFORMANCE_REFERENCE_V1.expectedCheckpoints[0];
+        const initial = scenario.expectedCheckpoints[0];
         this.scenarioInitialCheckpointPassed = initial !== undefined &&
           checkpointMatches(initial, this.game.canonicalDeterministicState());
         this.scenarioCheckpointResults.push({
@@ -582,16 +587,18 @@ export class CampaignController {
 
   public qaReportText(): string {
     if (this.runtime.qa === undefined) return this.qaReport.text(this.shell.geometryDiagnostics);
+    const scenario = performanceScenario(this.runtime.qa.scenarioId);
     const session = this.qaReport.snapshot(this.shell.geometryDiagnostics);
     return JSON.stringify({
       qaRunConfiguration: {
         qaMode: "performance",
         scenarioId: this.runtime.qa.scenarioId,
-        scenarioConfigVersion: PERFORMANCE_REFERENCE_V1.configVersion,
-        seed: PERFORMANCE_REFERENCE_V1.seed,
-        inputTraceDigest: exactDeterminismArtifact(PERFORMANCE_REFERENCE_V1.inputs).digest,
+        scenarioConfigVersion: scenario.configVersion,
+        seed: scenario.seed,
+        inputTraceDigest: exactDeterminismArtifact(scenario.inputs).digest,
         challengeWorldDurationSeconds:
-          PERFORMANCE_REFERENCE_V1.challengeWorldDurationSeconds,
+          scenario.challengeWorldDurationSeconds,
+        visualDistanceMultiplier: scenario.visualDistanceMultiplier,
         qualityRequest: this.runtime.qa.quality,
         motionRequest: this.runtime.qa.motion,
         resolvedMotionPreference: this.runtime.qa.motion === "reduced" ||

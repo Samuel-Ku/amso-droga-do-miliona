@@ -6,15 +6,20 @@ import { RunnerGame } from "../src/game/RunnerGame";
 import { exactDeterminismArtifact } from "../src/qa/determinism";
 import {
   PERFORMANCE_REFERENCE_V1,
+  WORLD_SEAM_PERFORMANCE_V1,
   checkpointMatches,
-  validateScenarioRun
+  validateScenarioRun,
+  type PerformanceScenarioManifest
 } from "../src/qa/performance-reference-v1";
 import {
   WORLD_ARTWORK_CONTRACT,
   calculateWorldPlateTransform
 } from "../src/visuals/world-plate-transform";
 
-function createScenarioHarness(reducedMotion = false) {
+function createScenarioHarness(
+  reducedMotion = false,
+  scenario: PerformanceScenarioManifest = PERFORMANCE_REFERENCE_V1
+) {
   const frames = new Map<number, FrameRequestCallback>();
   let nextFrameId = 0;
   const view = {
@@ -77,20 +82,20 @@ function createScenarioHarness(reducedMotion = false) {
       onGameOver: (result) => gameOvers.push(result)
     },
     {
-      seed: PERFORMANCE_REFERENCE_V1.seed,
+      seed: scenario.seed,
       reducedMotion,
       mode: "challenge",
       challenge: config.challenge,
       qaScenarioActive: true,
-      replayInputs: PERFORMANCE_REFERENCE_V1.inputs,
-      scenarioDurationSteps: PERFORMANCE_REFERENCE_V1.durationSteps,
+      replayInputs: scenario.inputs,
+      scenarioDurationSteps: scenario.durationSteps,
       challengeWorldDurationSeconds:
-        PERFORMANCE_REFERENCE_V1.challengeWorldDurationSeconds,
-      scenarioCheckpointSteps: PERFORMANCE_REFERENCE_V1.expectedCheckpoints
+        scenario.challengeWorldDurationSeconds,
+      scenarioCheckpointSteps: scenario.expectedCheckpoints
         .map(({ completedThroughStep: step }) => step)
         .filter((step) => step >= 0),
       onScenarioCheckpoint: (step, canonicalState) => {
-        const checkpoint = PERFORMANCE_REFERENCE_V1.expectedCheckpoints.find(
+        const checkpoint = scenario.expectedCheckpoints.find(
           ({ completedThroughStep: expectedStep }) => expectedStep === step
         );
         checkpointResults.push({
@@ -173,6 +178,35 @@ describe("performance-reference-v1 production gameplay flow", () => {
       coverage,
       finalDigest: artifact.digest,
       expectedFinalDigest: PERFORMANCE_REFERENCE_V1.expectedFinalDigest,
+      inputQueueOverflows: 0
+    }).passed).toBe(true);
+    harness.game.destroy();
+  });
+
+  it("completes the deterministic all-world seam scenario through 7→1", () => {
+    const scenario = WORLD_SEAM_PERFORMANCE_V1;
+    const harness = createScenarioHarness(false, scenario);
+    const initialCheckpoint = scenario.expectedCheckpoints[0];
+    harness.checkpointResults.push({
+      completedThroughStep: -1,
+      passed: initialCheckpoint !== undefined && checkpointMatches(
+        initialCheckpoint,
+        harness.game.canonicalDeterministicState()
+      )
+    });
+
+    harness.run();
+
+    const coverage = harness.game.scenarioCoverage();
+    const artifact = exactDeterminismArtifact(harness.game.canonicalDeterministicState());
+    expect(coverage["world-change"]).toBeGreaterThanOrEqual(8);
+    expect(artifact.digest).toBe(scenario.expectedFinalDigest);
+    expect(validateScenarioRun(scenario, {
+      completedThroughStep: harness.completedThroughStep ?? -1,
+      checkpointResults: harness.checkpointResults,
+      coverage,
+      finalDigest: artifact.digest,
+      expectedFinalDigest: scenario.expectedFinalDigest,
       inputQueueOverflows: 0
     }).passed).toBe(true);
     harness.game.destroy();

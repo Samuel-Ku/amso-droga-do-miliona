@@ -260,6 +260,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
   private readonly qaScenarioActive: boolean;
   private readonly onQaAbort: RunnerGameOptions["onQaAbort"];
   private readonly visualFrameSink: RunnerGameOptions["visualFrameSink"];
+  private readonly qaVisualDistanceMultiplier: number;
   private readonly qualityCommitContext: RunnerGameOptions["qualityCommitContext"];
   private readonly qualityMode: NonNullable<RunnerGameOptions["qualityMode"]>;
   private longFrameCount = 0;
@@ -332,6 +333,11 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     this.qaScenarioActive = options.qaScenarioActive === true;
     this.onQaAbort = options.onQaAbort;
     this.visualFrameSink = options.visualFrameSink;
+    this.qaVisualDistanceMultiplier = options.qaScenarioActive === true &&
+      Number.isFinite(options.qaVisualDistanceMultiplier) &&
+      (options.qaVisualDistanceMultiplier ?? 0) > 0
+      ? options.qaVisualDistanceMultiplier!
+      : 1;
     this.qualityCommitContext = options.qualityCommitContext;
     this.qualityMode = options.qualityMode ?? "auto";
     this.replayInputs = options.replayInputs ?? [];
@@ -2459,7 +2465,10 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     const interpolatedVisualDistance = this.previousVisualDistancePixels +
       (this.visualDistancePixels - this.previousVisualDistancePixels) * alpha;
     try {
-      this.visualFrameSink?.(backgroundTravelPixels(interpolatedVisualDistance), alpha);
+      this.visualFrameSink?.(
+        backgroundTravelPixels(interpolatedVisualDistance) * this.qaVisualDistanceMultiplier,
+        alpha
+      );
     } catch {
       // Presentation consumers cannot interrupt authoritative simulation.
     }

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { qualifiedPanelTransitions } from "../scripts/performance-transition-policy.mjs";
+import {
+  REQUIRED_WORLD_SEAM_DESTINATIONS,
+  qualifiedPanelTransitions,
+  requiredWorldTransitionsPassed
+} from "../scripts/performance-transition-policy.mjs";
 
 describe("performance transition policy", () => {
   it("qualifies only the required visible world seams", () => {
@@ -12,5 +16,21 @@ describe("performance transition policy", () => {
       { worldId: "order-process", atMs: 19_400 },
       { worldId: "quality-service", atMs: 37_600 }
     ]);
+  });
+
+  it("requires one ordered challenge world cycle including 7→1", () => {
+    const transitions = [
+      "first-mile",
+      ...REQUIRED_WORLD_SEAM_DESTINATIONS,
+      "order-process"
+    ].map((worldId, index) => ({ worldId, atMs: index * 1_000 }));
+    expect(requiredWorldTransitionsPassed(
+      transitions,
+      "world-seam-performance-v1"
+    )).toBe(true);
+    expect(requiredWorldTransitionsPassed(
+      transitions.filter(({ worldId }) => worldId !== "first-mile"),
+      "world-seam-performance-v1"
+    )).toBe(false);
   });
 });

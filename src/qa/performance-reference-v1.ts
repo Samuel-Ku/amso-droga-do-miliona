@@ -1,5 +1,6 @@
 import type { ControlMethod } from "../game/contracts";
 import type { GameplayInputAction } from "../game/input-queue";
+import type { PerformanceScenarioId } from "./boot-config";
 
 export interface ReplayInputEvent { readonly stepIndex: number; readonly sequence: number; readonly action: GameplayInputAction; readonly active: boolean; readonly controlMethod: ControlMethod; }
 export type ScenarioCoverageRequirement =
@@ -7,7 +8,7 @@ export type ScenarioCoverageRequirement =
   | { readonly type: "power-up"; readonly id: string; readonly minCount: number }
   | { readonly type: "max-approved-density"; readonly minDurationSteps: number };
 export interface ScenarioCheckpoint { readonly completedThroughStep: number; readonly expected: Readonly<Record<string, unknown>>; }
-export interface PerformanceScenarioManifest { readonly id: "performance-reference-v1"; readonly durationSteps: 7200; readonly seed: number; readonly mode: "challenge"; readonly configVersion: string; readonly challengeWorldDurationSeconds: number; readonly inputs: readonly ReplayInputEvent[]; readonly expectedCheckpoints: readonly ScenarioCheckpoint[]; readonly requiredCoverage: readonly ScenarioCoverageRequirement[]; readonly expectedFinalDigest: string | null; }
+export interface PerformanceScenarioManifest { readonly id: PerformanceScenarioId; readonly durationSteps: 7200; readonly seed: number; readonly mode: "challenge"; readonly configVersion: string; readonly challengeWorldDurationSeconds: number; readonly visualDistanceMultiplier: number; readonly inputs: readonly ReplayInputEvent[]; readonly expectedCheckpoints: readonly ScenarioCheckpoint[]; readonly requiredCoverage: readonly ScenarioCoverageRequirement[]; readonly expectedFinalDigest: string | null; }
 export interface ScenarioRunEvidence {
   readonly completedThroughStep: number;
   readonly checkpointResults: readonly { completedThroughStep: number; passed: boolean }[];
@@ -91,6 +92,7 @@ export const PERFORMANCE_REFERENCE_V1: PerformanceScenarioManifest = Object.free
   mode: "challenge",
   configVersion: "runner-config-v4",
   challengeWorldDurationSeconds: 24,
+  visualDistanceMultiplier: 1,
   inputs: Object.freeze(inputs),
   expectedCheckpoints: Object.freeze([
     { completedThroughStep: -1, expected: Object.freeze({ score: 0, collisionCount: 0, pickupCount: 0, worldIndex: 0 }) },
@@ -100,6 +102,30 @@ export const PERFORMANCE_REFERENCE_V1: PerformanceScenarioManifest = Object.free
   requiredCoverage: Object.freeze(requiredCoverage),
   expectedFinalDigest: "fnv1a32:84331d55"
 });
+
+export const WORLD_SEAM_PERFORMANCE_V1: PerformanceScenarioManifest = Object.freeze({
+  ...PERFORMANCE_REFERENCE_V1,
+  id: "world-seam-performance-v1",
+  configVersion: "world-seam-performance-v1",
+  challengeWorldDurationSeconds: 7,
+  visualDistanceMultiplier: 3,
+  expectedCheckpoints: Object.freeze([
+    { completedThroughStep: -1, expected: Object.freeze({ score: 0, collisionCount: 0, pickupCount: 0 }) },
+    { completedThroughStep: 2399, expected: Object.freeze({ simulationStep: 2400, score: 5645, collisionCount: 0, pickupCount: 16 }) },
+    { completedThroughStep: 4799, expected: Object.freeze({ simulationStep: 4800, score: 10747, collisionCount: 0, pickupCount: 37 }) }
+  ]),
+  requiredCoverage: Object.freeze(PERFORMANCE_REFERENCE_V1.requiredCoverage.map((requirement) =>
+    requirement.type === "world-change"
+      ? Object.freeze({ type: "world-change" as const, minCount: 8 })
+      : requirement)),
+  expectedFinalDigest: "fnv1a32:842f4bbe"
+});
+
+export function performanceScenario(id: PerformanceScenarioId): PerformanceScenarioManifest {
+  return id === "world-seam-performance-v1"
+    ? WORLD_SEAM_PERFORMANCE_V1
+    : PERFORMANCE_REFERENCE_V1;
+}
 
 export function checkpointMatches(
   checkpoint: ScenarioCheckpoint,
