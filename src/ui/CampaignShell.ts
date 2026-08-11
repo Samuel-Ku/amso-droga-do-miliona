@@ -219,7 +219,7 @@ export interface CampaignShellOptions {
   qaBadgeText?: string;
   decodedImageStore?: DecodedImageStore;
   i18n?: CampaignI18n;
-  keyboardProfile?: "idosell" | "vercel";
+  keyboardProfile?: "vercel";
   languageSelector?: boolean;
 }
 
@@ -616,14 +616,14 @@ export class CampaignShell {
   private readonly storyContinuationGate = new StoryContinuationGate();
   private readonly orientationQuery: MediaQueryList | null;
   private readonly layoutObserver: ResizeObserver | null;
-  private readonly keyboardProfile: "idosell" | "vercel";
+  private readonly keyboardProfile: "vercel";
 
   public constructor(
     host: HTMLElement,
     private readonly callbacks: CampaignShellCallbacks,
     options: CampaignShellOptions = {},
   ) {
-    this.keyboardProfile = options.keyboardProfile ?? "idosell";
+    this.keyboardProfile = options.keyboardProfile ?? "vercel";
     this.i18n = options.i18n ?? DEFAULT_I18N;
     const lockups = campaignLockups(this.i18n);
     this.canonicalUrl = options.canonicalUrl ?? canonicalPageUrl();
@@ -2089,11 +2089,6 @@ export class CampaignShell {
   };
 
   private readonly handleKeydown = (event: KeyboardEvent): void => {
-    if (this.keyboardProfile === "idosell" &&
-        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)) {
-      event.preventDefault();
-      return;
-    }
     const activeDialog = this.activeKeyboardDialog();
     if (activeDialog !== null && event.key === "Escape" && this.activeOverlay) {
       event.preventDefault();

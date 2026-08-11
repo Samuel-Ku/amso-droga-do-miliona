@@ -52,7 +52,7 @@ Po publikacji sprawdzić:
 
 ## Rollback
 
-Frontend można wycofać niezależnie od Workera do poprzedniego Autonomicznego
-HTML. Wycofanie UI nie wymaga migracji R2. Jeśli Worker moderation pozostaje
+Frontend Vercel można wycofać niezależnie od Workera do poprzedniego sprawdzonego
+deploymentu Vercel. Wycofanie UI nie wymaga migracji R2. Jeśli Worker moderation pozostaje
 wdrożony, starszy frontend nadal otrzyma bezpieczne publiczne nazwy i może
 otrzymać `400 invalid_name` dla nazwy odrzucanej przez aktualny policy.

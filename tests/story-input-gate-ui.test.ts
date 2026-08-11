@@ -184,7 +184,7 @@ describe("story input safety gate", () => {
     shell.destroy();
   });
 
-  it("keeps W as the jump key and blocks arrow keys without triggering gameplay", () => {
+  it("supports W and ArrowUp as jump keys while leaving horizontal arrows alone", () => {
     const { shell, onJump } = createShell();
     shell.showGame("story");
     const w = new KeyboardEvent("keydown", { code: "KeyW", key: "w", bubbles: true, cancelable: true });
@@ -199,9 +199,9 @@ describe("story input safety gate", () => {
     document.dispatchEvent(up);
     document.dispatchEvent(left);
 
-    expect(onJump.mock.calls).toEqual([["keyboard"]]);
+    expect(onJump.mock.calls).toEqual([["keyboard"], ["keyboard"]]);
     expect(up.defaultPrevented).toBe(true);
-    expect(left.defaultPrevented).toBe(true);
+    expect(left.defaultPrevented).toBe(false);
     shell.destroy();
   });
 
@@ -231,7 +231,7 @@ describe("story input safety gate", () => {
     shell.destroy();
   });
 
-  it("documents Space, W, S and touch without advertising arrow controls", () => {
+  it("documents Space, W, S, arrows and touch", () => {
     const { shell } = createShell();
     const canvas = document.querySelector<HTMLCanvasElement>("[data-campaign-canvas]");
 
@@ -239,7 +239,7 @@ describe("story input safety gate", () => {
     expect(canvas?.getAttribute("aria-label")).toContain("dotknij ekranu");
     expect(canvas?.getAttribute("aria-label")).toContain("Ślizg: S");
     expect(canvas?.getAttribute("aria-label")).toContain("przesuń palcem w dół");
-    expect(canvas?.getAttribute("aria-label")).not.toMatch(/[↑↓]/u);
+    expect(canvas?.getAttribute("aria-label")).toMatch(/[↑↓]/u);
     shell.destroy();
   });
 
@@ -264,7 +264,7 @@ describe("story input safety gate", () => {
     shell.destroy();
   });
 
-  it("keeps S as the held slide key and blocks ArrowDown without sliding", () => {
+  it("supports both S and ArrowDown as held slide keys", () => {
     const { shell, onSlide } = createShell();
     shell.showGame("story");
 
@@ -279,12 +279,14 @@ describe("story input safety gate", () => {
     expect(onSlide.mock.calls).toEqual([
       [true, "keyboard"],
       [false, "keyboard"],
+      [true, "keyboard"],
+      [false, "keyboard"],
     ]);
     expect(down.defaultPrevented).toBe(true);
     shell.destroy();
   });
 
-  it("blocks page-scrolling arrow defaults before gameplay starts", () => {
+  it("does not capture arrows before gameplay starts", () => {
     const { shell, onJump, onSlide } = createShell();
     const arrows = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].map((code) =>
       new KeyboardEvent("keydown", { code, key: code, bubbles: true, cancelable: true })
@@ -292,13 +294,13 @@ describe("story input safety gate", () => {
 
     arrows.forEach((event) => document.dispatchEvent(event));
 
-    expect(arrows.every((event) => event.defaultPrevented)).toBe(true);
+    expect(arrows.every((event) => !event.defaultPrevented)).toBe(true);
     expect(onJump).not.toHaveBeenCalled();
     expect(onSlide).not.toHaveBeenCalled();
     shell.destroy();
   });
 
-  it("blocks IdoSell arrow defaults even when a form field owns focus", () => {
+  it("does not capture arrows when a form field owns focus", () => {
     const { shell } = createShell();
     const input = document.createElement("input");
     document.body.append(input);
@@ -308,7 +310,7 @@ describe("story input safety gate", () => {
 
     input.dispatchEvent(down);
 
-    expect(down.defaultPrevented).toBe(true);
+    expect(down.defaultPrevented).toBe(false);
     shell.destroy();
   });
 

@@ -1,5 +1,7 @@
 # Raport odbioru release candidate v8
 
+> Dokument historyczny. Aktualną procedurę wdrożenia Vercel określa ADR 0009.
+
 ## Stan automatyczny
 
 - `npm run build:all` buduje wersję produkcyjną, autonomiczny HTML, CSV dla

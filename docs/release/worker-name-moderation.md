@@ -22,7 +22,7 @@ kopii odpowiedzi. Wdrożenie nie migruje, nie usuwa i nie nadpisuje rekordów R2
 ## Kolejność wdrożenia
 
 1. Zanotować wdrażaną wersję policy.
-2. Wdrożyć Worker niezależnie od frontendowego Autonomicznego HTML.
+2. Wdrożyć Worker niezależnie od frontendu Vercel.
 3. Wykonać kontrolny GET i poprawny POST.
 4. Wykonać odrzucony POST bez UI i potwierdzić brak zmiany obiektu R2.
 5. Dopiero po tej bramie uznać server-side enforcement za aktywny.

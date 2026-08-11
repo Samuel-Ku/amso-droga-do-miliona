@@ -2,7 +2,7 @@
 
 ## Status
 
-Przyjęte 2026-08-10; zastępuje ADR 0003 w granicy produkcyjnego wdrożenia IdoSell
+Zastąpione przez ADR 0009; wcześniej przyjęte 2026-08-10 i zastępowało ADR 0003 w granicy produkcyjnego wdrożenia IdoSell
 i aktualizuje frontendową część ADR 0006.
 
 ## Kontekst

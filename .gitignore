@@ -41,9 +41,6 @@ droga-do-miliona-*.zip
 dist/
 dist-vercel/
 droga-do-miliona-qa.html
-million-idosell.html
-dist-idosell-external/
-amso-million-idosell-external.zip
 
 # Old / superseded standalone builds
 droga-do-miliona-16.07.html

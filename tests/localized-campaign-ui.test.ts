@@ -97,24 +97,6 @@ describe("localized campaign public UI", () => {
     shell.destroy();
   });
 
-  it("does not render the Vercel language selector in the IdoSell shell", () => {
-    const callbacks: CampaignShellCallbacks = {
-      onStart: vi.fn(), onPause: vi.fn(), onResume: vi.fn(), onRestart: vi.fn(),
-      onReturnToMenu: vi.fn(), onRetryLoad: vi.fn(), onJump: vi.fn(), onSlide: vi.fn(),
-      onMuteChange: vi.fn(), onFullscreenPreferenceChange: vi.fn(), onStoryContinue: vi.fn()
-    };
-    const host = document.createElement("div");
-    document.body.append(host);
-    const shell = new CampaignShell(host, callbacks, {
-      i18n: createCampaignI18n("pl"),
-      keyboardProfile: "idosell"
-    });
-
-    expect(host.querySelector("[data-campaign-language]")).toBeNull();
-
-    shell.destroy();
-  });
-
   it.each([
     ["de", "/assets/milion-runner/brand/mz-main-lockup-de-v1.webp", "/assets/milion-runner/brand/mz-compact-lockup-de-v1.webp"],
     ["es", "/assets/milion-runner/brand/mz-main-lockup-es-v1.webp", "/assets/milion-runner/brand/mz-compact-lockup-es-v1.webp"],

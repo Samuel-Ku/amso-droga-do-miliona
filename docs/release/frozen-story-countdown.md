@@ -1,5 +1,7 @@
 # Zamrożony story countdown — raport odbioru
 
+> Historyczny raport wydania. Frontendowe dowody loadera i autonomicznego HTML zostały zastąpione przez ADR 0009 oraz bieżące bramki Vercel.
+
 ## Zakres
 
 Zmiana zastępuje wcześniejszy kontrakt, w którym Panel świata rozpoczynał ruch

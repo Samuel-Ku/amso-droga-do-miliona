@@ -1,6 +1,6 @@
 /**
  * Cloudflare Worker for the optional public leaderboard.
- * D1 is the source of truth; the autonomous game remains usable without it.
+ * D1 is the source of truth; the Vercel game remains usable without it.
  */
 
 import {
@@ -25,7 +25,7 @@ function allowedOrigins(env) {
   const configured = typeof env.CORS_ALLOWED_ORIGINS === "string"
     ? env.CORS_ALLOWED_ORIGINS.split(",").map((value) => value.trim()).filter(Boolean)
     : [];
-  return new Set(["https://amso.pl", "https://amso.eu", ...configured]);
+  return new Set(["https://game.amso.pl", ...configured]);
 }
 
 function originAllowed(request, env) {

@@ -2,14 +2,12 @@
 
 ## Status
 
-Przyjęte — zaktualizowane 2026-08-10 przez ADR 0007 dla granicy frontendu;
-kontrakt Workera i D1 pozostaje bez zmian.
+Granica frontendu została zastąpiona przez ADR 0009; kontrakt Workera i D1 pozostaje bez zmian.
 
 ## Decyzja
 
-Produkcyjny frontend IdoSell korzysta z Pakietu zewnętrznego IdoSell opisanego w
-ADR 0007. Autonomiczny HTML pozostaje artefaktem offline QA, więc podstawowa
-rozgrywka i ekran wyniku nadal mogą być odebrane bez Workera.
+Produkcyjny frontend Vercel opisuje ADR 0009. Podstawowa rozgrywka i ekran wyniku
+muszą nadal działać bez Workera.
 
 Worker rekordów jest opcjonalną usługą sieciową, a nie drugim wariantem frontendu ani częścią wieloplikowego artefaktu kampanii. Gdy sieć lub Worker są niedostępne, leaderboard może być niedostępny, ale nie blokuje to uruchomienia gry, zakończenia próby ani lokalnego wyniku.
 
@@ -23,7 +21,7 @@ Jeżeli frontend korzysta z leaderboardu, Worker pozostaje źródłem prawdy dla
 
 ## Konsekwencje
 
-- ADR 0007 określa produkcyjną granicę artefaktu frontendowego IdoSell.
+- ADR 0009 określa produkcyjną granicę artefaktu frontendowego Vercel.
 - Wdrożenie Workera ma osobne release notes, testy kontraktu i rollback.
 - Migracje D1 i import legacy są jawne, idempotentne i wdrażane przed frontendem korzystającym z nowego kontraktu.
 - Publiczne odpowiedzi nie ujawniają anonimowego identyfikatora właściciela nazwy.

@@ -217,7 +217,7 @@ describe("performance contracts", () => {
       minimumProfileDeviceAvailable: true,
       configurationPassed: true,
       consoleErrorCount: 0,
-      autonomicHtmlSizeMb: 13.5,
+      vercelDeploymentPassed: true,
       visualRegressionPassed: true,
       coldStartPassed: true,
       worldTransitionsPassed: true,

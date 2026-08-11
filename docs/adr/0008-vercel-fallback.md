@@ -2,6 +2,8 @@
 
 ## Status
 
+Zastąpione przez ADR 0009.
+
 Przyjęte 2026-08-10.
 
 ## Kontekst

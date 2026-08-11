@@ -10,7 +10,11 @@ function evidence(audioMode: "enabled" | "disabled", variant: "before" | "after"
   return {
     schema: "amso-performance-run-v1",
     variant,
-    artifact: { bytes: variant === "before" ? 13_800_000 : 13_700_000 },
+    target: { kind: "vercel-build", value: "dist-vercel" },
+    artifact: {
+      bytes: variant === "before" ? 13_800_000 : 13_700_000,
+      sha256: "a".repeat(64)
+    },
     configuration: {
       scenarioId: "performance-reference-v1",
       scenarioConfigVersion: "runner-config-v4",
@@ -66,8 +70,7 @@ function evidence(audioMode: "enabled" | "disabled", variant: "before" | "after"
     diagnostics: { consoleErrors: [], externalRequests: [], failedResponses: [] },
     readiness: { coldStartMs: 900, criticalReadyMs: 700 },
     memory: { available: false },
-    visualFixturesPassed: true,
-    offlineProductionParityPassed: true
+    visualFixturesPassed: true
   };
 }
 
@@ -123,7 +126,7 @@ describe("performance comparison CLI", () => {
     ], { cwd: process.cwd(), encoding: "utf8" });
 
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain("--artifact");
+    expect(result.stdout).toContain("default: local dist-vercel");
     expect(result.stdout).toContain("--url");
     expect(result.stdout).toContain("--audio enabled|disabled");
     expect(result.stdout).toContain("--process cold|warm");
@@ -351,9 +354,7 @@ describe("performance comparison CLI", () => {
         gameplayContractPassed: true,
         visualContractPassed: true,
         diagnosticsPassed: true,
-        offlineParityPassed: true,
-        artifactBudgetPassed: true,
-        artifactRegressionPassed: true
+        vercelArtifactPassed: true
       },
       releaseGate: { status: "incomplete" }
     });
@@ -426,70 +427,6 @@ describe("performance comparison CLI", () => {
 
     expect(result.status).toBe(1);
     expect(JSON.parse(readFileSync(paths.report, "utf8")).comparable).toBe(false);
-  });
-
-  it("does not infer offline-production parity from clean diagnostics", () => {
-    const directory = mkdtempSync(path.join(tmpdir(), "amso-performance-comparison-"));
-    temporaryDirectories.push(directory);
-    const paths = {
-      before: path.join(directory, "before.json"),
-      after: path.join(directory, "after.json"),
-      audioDisabled: path.join(directory, "after-audio-disabled.json"),
-      report: path.join(directory, "comparison.json"),
-      markdown: path.join(directory, "comparison.md")
-    };
-    const runs = [evidence("enabled", "before"), evidence("enabled", "after"),
-      evidence("disabled", "after")];
-    for (const run of runs) run.offlineProductionParityPassed = null as unknown as boolean;
-    writeFileSync(paths.before, JSON.stringify(runs[0]));
-    writeFileSync(paths.after, JSON.stringify(runs[1]));
-    writeFileSync(paths.audioDisabled, JSON.stringify(runs[2]));
-
-    const result = spawnSync(process.execPath, [
-      "scripts/compare-performance-evidence.mjs",
-      "--before", paths.before,
-      "--after", paths.after,
-      "--audio-disabled", paths.audioDisabled,
-      "--json-out", paths.report,
-      "--markdown-out", paths.markdown
-    ], { cwd: process.cwd() });
-
-    expect(result.status).toBe(0);
-    const report = JSON.parse(readFileSync(paths.report, "utf8"));
-    expect(report.automatedChecks).toMatchObject({ diagnosticsPassed: true, offlineParityPassed: null });
-    expect(report.releaseGate.reasons).toContain("offline-production-parity-evidence-unavailable");
-  });
-
-  it("fails a deterministic artifact size regression", () => {
-    const directory = mkdtempSync(path.join(tmpdir(), "amso-performance-comparison-"));
-    temporaryDirectories.push(directory);
-    const paths = {
-      before: path.join(directory, "before.json"),
-      after: path.join(directory, "after.json"),
-      audioDisabled: path.join(directory, "after-audio-disabled.json"),
-      report: path.join(directory, "comparison.json"),
-      markdown: path.join(directory, "comparison.md")
-    };
-    const after = evidence("enabled", "after");
-    const audioDisabled = evidence("disabled", "after");
-    after.artifact.bytes = 18_000_001;
-    audioDisabled.artifact.bytes = 18_000_001;
-    writeFileSync(paths.before, JSON.stringify(evidence("enabled", "before")));
-    writeFileSync(paths.after, JSON.stringify(after));
-    writeFileSync(paths.audioDisabled, JSON.stringify(audioDisabled));
-
-    const result = spawnSync(process.execPath, [
-      "scripts/compare-performance-evidence.mjs",
-      "--before", paths.before,
-      "--after", paths.after,
-      "--audio-disabled", paths.audioDisabled,
-      "--json-out", paths.report,
-      "--markdown-out", paths.markdown
-    ], { cwd: process.cwd() });
-
-    expect(result.status).toBe(1);
-    expect(JSON.parse(readFileSync(paths.report, "utf8"))
-      .automatedChecks.artifactRegressionPassed).toBe(false);
   });
 
   it("keeps missing approved visual fixtures incomplete instead of treating them as a pass", () => {

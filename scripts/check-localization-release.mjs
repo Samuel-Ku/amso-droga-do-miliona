@@ -27,13 +27,13 @@ for (const asset of ["million-neutral-main.svg", "million-neutral-compact.svg"])
   }
 }
 
-const deployment = fs.readFileSync(
-  path.join(root, "src/localization/idosell-deployment.ts"),
+const vercelLocale = fs.readFileSync(
+  path.join(root, "src/localization/vercel-locale.ts"),
   "utf8"
 );
 for (const locale of locales) {
-  if (!deployment.includes(`locale: "${locale}"`)) throw new Error(`idosell_row_missing:${locale}`);
+  if (!vercelLocale.includes(`locale: "${locale}"`)) throw new Error(`vercel_locale_missing:${locale}`);
 }
-if (!deployment.includes('"x-default"')) throw new Error("idosell_x_default_missing");
+if (!vercelLocale.includes("https://game.amso.pl/")) throw new Error("vercel_campaign_url_missing");
 
 console.log(`localization release gate: ${locales.length} locales, ${sourceKeys.length} messages`);

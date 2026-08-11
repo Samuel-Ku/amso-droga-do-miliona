@@ -2,8 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import os from "node:os";
+import http from "node:http";
 import { createHash } from "node:crypto";
-import { pathToFileURL } from "node:url";
 import { chromium } from "playwright";
 import {
   headersForPerformanceRequest,
@@ -16,8 +16,7 @@ const root = path.resolve(import.meta.dirname, "..");
 const usage = `Usage: node scripts/run-performance-reference.mjs [options]
 
 Options:
-  --artifact PATH                  Autonomous HTML to profile
-  --url URL                        Deployed autonomous HTML to profile
+  --url URL                        Deployed Vercel page to profile (default: local dist-vercel)
   --audio enabled|disabled         Audio mode for this run
   --process cold|warm              Browser-process state for the measured run
   --profile cold-audio-enabled|cold-audio-disabled|warm-audio-enabled|full-session
@@ -37,9 +36,6 @@ if (process.argv.includes("--help")) {
 }
 
 const deploymentUrl = option("url");
-const artifactPath = deploymentUrl === undefined
-  ? path.resolve(root, option("artifact", "million-idosell.html"))
-  : null;
 const audioMode = option("audio", "enabled");
 const processState = option("process", "cold");
 const profile = option("profile", "full-session");
@@ -50,7 +46,7 @@ if (!(["enabled", "disabled"].includes(audioMode)) ||
     !(["cold", "warm"].includes(processState)) ||
     !(["cold-audio-enabled", "cold-audio-disabled", "warm-audio-enabled",
       "full-session"].includes(profile)) ||
-    (deploymentUrl !== undefined && option("artifact") !== undefined)) {
+    option("artifact") !== undefined) {
   console.error(usage);
   process.exit(1);
 }
@@ -69,12 +65,38 @@ function rounded(value) {
   return value === null ? null : Math.round(value * 1_000) / 1_000;
 }
 
-if (artifactPath !== null && !fs.existsSync(artifactPath)) {
-  console.error("performance scenario failed: autonomous HTML artifact is missing");
+const vercelDirectory = path.join(root, "dist-vercel");
+if (deploymentUrl === undefined && !fs.existsSync(path.join(vercelDirectory, "index.html"))) {
+  console.error("performance scenario failed: dist-vercel/index.html is missing");
   process.exit(1);
 }
+
+const contentTypes = new Map([
+  [".html", "text/html; charset=utf-8"], [".js", "text/javascript; charset=utf-8"],
+  [".css", "text/css; charset=utf-8"], [".json", "application/json; charset=utf-8"],
+  [".webp", "image/webp"], [".avif", "image/avif"], [".svg", "image/svg+xml"]
+]);
+const localServer = deploymentUrl === undefined ? http.createServer((request, response) => {
+  const pathname = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
+  const relativePath = pathname === "/" || pathname === "/million"
+    ? "index.html"
+    : decodeURIComponent(pathname).replace(/^\/+/, "");
+  const filePath = path.resolve(vercelDirectory, relativePath);
+  if (!filePath.startsWith(`${vercelDirectory}${path.sep}`) || !fs.existsSync(filePath) ||
+      !fs.statSync(filePath).isFile()) {
+    response.writeHead(404).end("Not found");
+    return;
+  }
+  response.setHeader("content-type", contentTypes.get(path.extname(filePath)) ?? "application/octet-stream");
+  response.setHeader("cache-control", "no-store");
+  response.end(fs.readFileSync(filePath));
+}) : null;
+if (localServer !== null) {
+  await new Promise((resolve) => localServer.listen(0, "127.0.0.1", resolve));
+}
+const localAddress = localServer?.address();
 const targetUrl = deploymentUrl === undefined
-  ? new URL(pathToFileURL(artifactPath))
+  ? new URL(`http://127.0.0.1:${localAddress.port}/million`)
   : new URL(deploymentUrl);
 
 const systemChromeCandidates = process.platform === "darwin"
@@ -356,9 +378,7 @@ try {
   }
   const navigationStartedAt = Date.now();
   const navigationResponse = await page.goto(url.href, { waitUntil: "load", timeout: 30_000 });
-  const deployedArtifactBody = artifactPath === null && navigationResponse !== null
-    ? await navigationResponse.body()
-    : null;
+  const deployedArtifactBody = navigationResponse === null ? null : await navigationResponse.body();
   await page.waitForSelector("[data-campaign-landing-actions] button", {
     timeout: 30_000
   });
@@ -464,16 +484,13 @@ try {
     profile,
     processState,
     target: deploymentUrl === undefined
-      ? { kind: "artifact", value: path.basename(artifactPath) }
+      ? { kind: "vercel-build", value: "dist-vercel" }
       : { kind: "url", value: targetUrl.href },
     artifact: {
-      name: artifactPath === null ? targetUrl.href : path.basename(artifactPath),
-      bytes: artifactPath === null ? deployedArtifactBody?.byteLength ?? null
-        : fs.statSync(artifactPath).size,
-      sha256: artifactPath === null
-        ? deployedArtifactBody === null ? null
-          : createHash("sha256").update(deployedArtifactBody).digest("hex")
-        : createHash("sha256").update(fs.readFileSync(artifactPath)).digest("hex")
+      name: deploymentUrl === undefined ? "dist-vercel/index.html" : targetUrl.href,
+      bytes: deployedArtifactBody?.byteLength ?? null,
+      sha256: deployedArtifactBody === null ? null
+        : createHash("sha256").update(deployedArtifactBody).digest("hex")
     },
     configuration: {
       scenarioId: report?.qaRunConfiguration?.scenarioId ?? "performance-reference-v1",
@@ -560,7 +577,6 @@ try {
       auxiliaryJsHeapEndBytes: finalJsHeapBytes,
       samples: runtime.memorySamples
     },
-    offlineProductionParityPassed: null,
     visualFixturesPassed: null,
     view: await page.locator(".amso-million-runner-2026").getAttribute("data-view")
   };
@@ -589,6 +605,7 @@ try {
   }
 } finally {
   await browser.close();
+  if (localServer !== null) await new Promise((resolve) => localServer.close(resolve));
 }
 
 process.exitCode = exitCode;

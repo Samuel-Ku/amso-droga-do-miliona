@@ -2,7 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
-const AUTONOMIC_HTML_BUDGET_BYTES = 14 * 1024 * 1024;
 const defaultPaths = {
   before: ".scratch/performance-comparison/before-audio-enabled.json",
   after: ".scratch/performance-comparison/after-audio-enabled.json",
@@ -235,11 +234,6 @@ const visualFixtureValues = [before, after, audioDisabled]
 const visualContractPassed = visualFixtureValues.every((value) => value === true)
   ? true
   : visualFixtureValues.some((value) => value === false) ? false : null;
-const parityValues = [before, after, audioDisabled]
-  .map(({ offlineProductionParityPassed }) => offlineProductionParityPassed);
-const offlineParityPassed = parityValues.every((value) => value === true)
-  ? true
-  : parityValues.some((value) => value === false) ? false : null;
 const finalDigests = [before, after, audioDisabled]
   .map(({ scenario }) => scenario.finalDigest);
 const gameplayContractPassed = [before, after, audioDisabled].every(scenarioPassed) &&
@@ -252,9 +246,9 @@ const automatedChecks = {
   gameplayContractPassed,
   visualContractPassed,
   diagnosticsPassed: [before, after, audioDisabled].every(diagnosticsPassed),
-  offlineParityPassed,
-  artifactBudgetPassed: after.artifact.bytes <= AUTONOMIC_HTML_BUDGET_BYTES,
-  artifactRegressionPassed: after.artifact.bytes <= before.artifact.bytes,
+  vercelArtifactPassed: [before, after, audioDisabled].every(({ target, artifact }) =>
+    ["vercel-build", "url"].includes(target.kind) &&
+    Number.isFinite(artifact.bytes) && typeof artifact.sha256 === "string"),
   startBudgetPassed: after.readiness.coldStartMs <= 3_000 &&
     after.readiness.criticalReadyMs <= 2_000,
   startRegressionPassed: after.readiness.coldStartMs <= before.readiness.coldStartMs * 1.15 &&
@@ -263,7 +257,6 @@ const automatedChecks = {
 const automatedFailed = !comparable || Object.values(automatedChecks).some((value) => value === false);
 const missingEvidence = [];
 if (visualContractPassed === null) missingEvidence.push("visual-fixture-evidence-unavailable");
-if (offlineParityPassed === null) missingEvidence.push("offline-production-parity-evidence-unavailable");
 if ([before, after, audioDisabled].some(({ memory }) => memory.available !== true)) {
   missingEvidence.push("android-memory-evidence-unavailable");
 }

@@ -1,5 +1,7 @@
 # Release — hero, ranking D1 i mobile bez scrolla
 
+> Historyczny raport wydania. Frontendowe instrukcje zostały zastąpione przez ADR 0009; aktualny frontend publikuje wyłącznie Vercel.
+
 ## Zakres
 
 Wydanie składa się z dwóch niezależnych artefaktów:

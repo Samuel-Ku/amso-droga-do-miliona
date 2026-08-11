@@ -120,3 +120,9 @@ export function vercelLocaleSelectionUrl(
   url.searchParams.set("lang", locale);
   return url.href;
 }
+
+export function vercelCampaignUrl(locale: CampaignLocale): string {
+  const url = new URL("https://game.amso.pl/");
+  url.searchParams.set("lang", locale);
+  return url.href;
+}

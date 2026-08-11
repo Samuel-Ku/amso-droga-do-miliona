@@ -7,6 +7,7 @@ import {
   detectVercelCampaignLocale,
   persistVercelCampaignLocale,
   safeVercelLocaleStorage,
+  vercelCampaignUrl,
   vercelCampaignLocaleFromUrl,
   vercelLocaleSelectionUrl
 } from "../src/localization/vercel-locale";
@@ -15,6 +16,10 @@ describe("Vercel campaign locale", () => {
   beforeEach(() => {
     window.localStorage.clear();
     document.documentElement.lang = "pl";
+  });
+
+  it("builds localized campaign links on the sole production domain", () => {
+    expect(vercelCampaignUrl("de")).toBe("https://game.amso.pl/?lang=de");
   });
 
   it("uses the first supported browser language and falls back to English", () => {

@@ -59,13 +59,13 @@ describe("canonical game instructions", () => {
     expect(howToParagraphs).toEqual([
       GAME_INSTRUCTION_COPY.modeDifference,
       GAME_INSTRUCTION_COPY.storySafety,
-      GAME_INSTRUCTION_COPY.controls,
+      GAME_INSTRUCTION_COPY.controls.replace(/\bW\b/u, "W/↑").replace(/\bS\b/u, "S/↓"),
       GAME_INSTRUCTION_COPY.ordersAndCombo
     ]);
     expect(document.querySelector("[data-campaign-hud-orders-label]")?.textContent)
       .toBe("Zamówienia");
     expect(document.querySelector("[data-campaign-canvas]")?.getAttribute("aria-label"))
-      .toBe(`Pole gry. ${GAME_INSTRUCTION_COPY.jump} ${GAME_INSTRUCTION_COPY.slide}`);
+      .toBe(`Pole gry. ${GAME_INSTRUCTION_COPY.jump.replace(/\bW\b/u, "W/↑")} ${GAME_INSTRUCTION_COPY.slide.replace(/\bS\b/u, "S/↓")}`);
     expect(GAME_INSTRUCTION_COPY.compactControls)
       .toBe("Skok: Spacja/W/tap · Ślizg: S/swipe w dół");
 

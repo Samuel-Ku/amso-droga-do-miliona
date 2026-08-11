@@ -9,7 +9,7 @@ export interface ReleaseEvidence {
   minimumProfileDeviceAvailable: boolean;
   configurationPassed?: boolean;
   consoleErrorCount?: number;
-  autonomicHtmlSizeMb?: number;
+  vercelDeploymentPassed?: boolean;
   visualRegressionPassed?: boolean;
   coldStartPassed?: boolean;
   worldTransitionsPassed?: boolean;
@@ -21,8 +21,6 @@ export interface ReleaseEvidence {
   androidCycleGrowthMb?: number;
 }
 
-const AUTONOMIC_HTML_BUDGET_MB = 14;
-
 export function evaluatePerformanceReleaseGate(evidence: ReleaseEvidence): { status: ReleaseGateStatus; reasons: string[] } {
   const failures: string[] = [];
   const missing: string[] = [];
@@ -32,8 +30,8 @@ export function evaluatePerformanceReleaseGate(evidence: ReleaseEvidence): { sta
   else if (!evidence.configurationPassed) failures.push("configuration-failed");
   if (evidence.consoleErrorCount === undefined) missing.push("console-error-evidence-unavailable");
   else if (evidence.consoleErrorCount > 0) failures.push("console-errors-present");
-  if (evidence.autonomicHtmlSizeMb === undefined) missing.push("autonomic-html-size-unavailable");
-  else if (evidence.autonomicHtmlSizeMb > AUTONOMIC_HTML_BUDGET_MB) failures.push("autonomic-html-over-14mb");
+  if (evidence.vercelDeploymentPassed === undefined) missing.push("vercel-deployment-evidence-unavailable");
+  else if (!evidence.vercelDeploymentPassed) failures.push("vercel-deployment-failed");
   if (evidence.visualRegressionPassed === undefined) missing.push("visual-regression-evidence-unavailable");
   else if (!evidence.visualRegressionPassed) failures.push("visual-regression-failed");
   const requirePassed = (value: boolean | undefined, unavailable: string, failed: string): void => {

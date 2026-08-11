@@ -19,22 +19,22 @@ function option(name, fallback = undefined) {
 if (process.argv.includes("--help")) {
   process.stdout.write(
     "Usage: node scripts/qualify-cold-start.mjs " +
-    "[--target URL_OR_PATH --output-dir PATH | --runs-dir PATH] " +
+    "[--target VERCEL_URL --output-dir PATH | --runs-dir PATH] " +
     "[--json-out PATH --markdown-out PATH] [--dry-run]\n"
   );
   process.exit(0);
 }
 
-const target = option("target");
 const suppliedRunsDirectory = option("runs-dir");
+const target = option("target", suppliedRunsDirectory === undefined
+  ? "https://game.amso.pl/"
+  : undefined);
 const outputDirectory = path.resolve(root, suppliedRunsDirectory ?? option(
   "output-dir", ".scratch/cold-start-qualification"));
-if (target === undefined && suppliedRunsDirectory === undefined) {
-  throw new Error("--target or --runs-dir is required");
-}
 const isUrl = target !== undefined && /^https?:\/\//u.test(target);
+if (target !== undefined && !isUrl) throw new Error("--target must be a Vercel HTTP(S) URL");
 const normalizedTarget = target === undefined ? null
-  : isUrl ? new URL(target).href.replace(/\/$/u, "") : path.resolve(target);
+  : new URL(target).href.replace(/\/$/u, "");
 const plan = {
   schema: "amso-cold-start-plan-v1",
   target: normalizedTarget,
@@ -58,10 +58,9 @@ if (target !== undefined) {
   fs.mkdirSync(outputDirectory, { recursive: true });
   for (const run of plan.runs) {
     fs.rmSync(run.output, { force: true });
-    const targetArgs = isUrl ? ["--url", normalizedTarget] : ["--artifact", normalizedTarget];
     const result = spawnSync(process.execPath, [
       "scripts/run-performance-reference.mjs",
-      ...targetArgs,
+      "--url", normalizedTarget,
       "--audio", run.audioMode,
       "--process", run.processState,
       "--profile", run.profile,
@@ -305,10 +304,6 @@ if (runValues.some(({ memory }) => memory.available !== true)) {
 }
 if (runValues.some(({ visualFixturesPassed }) => visualFixturesPassed !== true)) {
   missingEvidence.push("approved-visual-fixtures-unavailable");
-}
-if (runValues.some(({ offlineProductionParityPassed }) =>
-  offlineProductionParityPassed !== true)) {
-  missingEvidence.push("offline-production-parity-evidence-unavailable");
 }
 missingEvidence.push("minimum-profile-device-unavailable", "iphone-safari-report-unavailable");
 const automatedFailed = !comparable || failedChecks.length > 0;

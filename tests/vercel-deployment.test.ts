@@ -6,6 +6,18 @@ import { PARCEL_CELEBRATION_FRAME_PATHS } from "../src/game/runner-artwork";
 const outputDirectory = path.resolve("dist-vercel");
 
 describe("optimized Vercel deployment", () => {
+  it("is the sole production build and owns the canonical game domain", () => {
+    const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
+      scripts: Record<string, string>;
+    };
+    const sourceHtml = readFileSync("index.html", "utf8");
+
+    expect(packageJson.scripts.build).toBe("npm run build:vercel");
+    expect(packageJson.scripts["check:performance-scenario"]).toContain("build:vercel");
+    expect(Object.keys(packageJson.scripts).some((name) => name.includes("idosell"))).toBe(false);
+    expect(sourceHtml).toContain('rel="canonical" href="https://game.amso.pl/"');
+  });
+
   it("ships a production page with the Vercel keyboard profile and no source maps", () => {
     const htmlPath = path.join(outputDirectory, "index.html");
     expect(existsSync(htmlPath)).toBe(true);

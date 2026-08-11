@@ -1,5 +1,7 @@
 # QA release candidate — Droga do Miliona v5
 
+> Dokument historyczny, zastąpiony przez ADR 0009 i bieżące bramki Vercel z `package.json`. Nie używać poniższych poleceń do aktualnego wydania.
+
 ## Automatyczne bramki
 
 Uruchomić przed każdym kandydatem:

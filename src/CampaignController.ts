@@ -55,7 +55,7 @@ import {
 import { exactDeterminismArtifact, type ExactDeterminismArtifact } from "./qa/determinism";
 import { evaluatePerformanceReleaseGate } from "./qa/release-gate";
 import { createCampaignI18n, type CampaignI18n } from "./localization";
-import { campaignUrl } from "./localization/idosell-deployment";
+import { vercelCampaignUrl } from "./localization/vercel-locale";
 
 export interface CampaignRuntimeOptions {
   readonly qa?: QaBootConfig;
@@ -216,12 +216,10 @@ export class CampaignController {
       },
       onLanguageChange: runtime.onLanguageChange
     }, {
-      keyboardProfile: host.dataset.campaignKeyboardProfile === "vercel"
-        ? "vercel"
-        : "idosell",
+      keyboardProfile: "vercel",
       languageSelector: runtime.onLanguageChange !== undefined,
-      campaignUrl: campaignUrl(this.i18n.locale),
-      fullStoryUrl: campaignUrl(this.i18n.locale),
+      campaignUrl: vercelCampaignUrl(this.i18n.locale),
+      fullStoryUrl: vercelCampaignUrl(this.i18n.locale),
       recordsClient: this.recordsClient,
       profile: this.profile,
       copy: {

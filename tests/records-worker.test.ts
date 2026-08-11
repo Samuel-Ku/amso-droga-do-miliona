@@ -9,10 +9,13 @@ const worker = await import("../worker/src/index.js").then((module) => module.de
 const schema = readFileSync(new URL("../worker/migrations/0001_records.sql", import.meta.url), "utf8");
 const databases: Array<ReturnType<typeof memoryD1>> = [];
 
-function env() {
+function env(corsAllowedOrigins?: string) {
   const database = memoryD1(schema);
   databases.push(database);
-  return { DB: database.binding };
+  return {
+    DB: database.binding,
+    ...(corsAllowedOrigins === undefined ? {} : { CORS_ALLOWED_ORIGINS: corsAllowedOrigins })
+  };
 }
 
 function jsonRequest(body: unknown, method = "POST") {
@@ -58,8 +61,8 @@ describe("records worker", () => {
     expect(await tooLong.json()).toEqual({ error: "name_too_long" });
   });
 
-  it("allows only configured AMSO browser origins", async () => {
-    const bindings = env();
+  it("allows only explicitly configured additional browser origins", async () => {
+    const bindings = env("https://amso.eu");
     const allowed = await worker.fetch(new Request("https://x.test/api/records", {
       headers: { origin: "https://amso.eu" }
     }), bindings, {});
@@ -73,11 +76,20 @@ describe("records worker", () => {
     expect(denied.headers.get("access-control-allow-origin")).toBeNull();
   });
 
+  it("allows the production Vercel origin by default", async () => {
+    const response = await worker.fetch(new Request("https://x.test/api/records", {
+      headers: { origin: "https://game.amso.pl" }
+    }), env(), {});
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("access-control-allow-origin")).toBe("https://game.amso.pl");
+  });
+
   it("rejects a preflight for an unsupported method", async () => {
     const response = await worker.fetch(new Request("https://x.test/api/records", {
       method: "OPTIONS",
       headers: {
-        origin: "https://amso.pl",
+        origin: "https://game.amso.pl",
         "access-control-request-method": "DELETE"
       }
     }), env(), {});
