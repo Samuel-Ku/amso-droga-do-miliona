@@ -205,6 +205,9 @@ export interface CampaignShellCallbacks {
   onShare?(platform: CampaignSharePlatform, method: CampaignShareMethod): void;
 }
 
+const STORY_FULLSCREEN_DEADLINE_MS = 400;
+const STORY_VIEWPORT_PAINT_DEADLINE_MS = 100;
+
 export interface CampaignShellOptions {
   canonicalUrl?: string;
   campaignUrl?: string;
@@ -607,6 +610,9 @@ export class CampaignShell {
   private storyVisualOriginDistance: number | null = null;
   private latestVisualDistance = 0;
   private storyPresentationRevision = 0;
+  private landingStartRevision = 0;
+  private abandonPendingFullscreen = false;
+  private exitingAbandonedFullscreen = false;
   private readonly storyContinuationGate = new StoryContinuationGate();
   private readonly orientationQuery: MediaQueryList | null;
   private readonly layoutObserver: ResizeObserver | null;
@@ -1578,6 +1584,7 @@ export class CampaignShell {
   public destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.landingStartRevision += 1;
     this.layoutObserver?.disconnect();
     this.worldGeometryCoordinator.destroy();
     this.worldVisualLayer.destroy();
@@ -1636,22 +1643,95 @@ export class CampaignShell {
   }
 
   private renderLandingActions(options: CampaignLandingOptions): void {
+    this.landingStartRevision += 1;
     this.landingActions.replaceChildren();
     if (options.challengeUnlocked) {
       const heading = document.createElement("h2");
       heading.textContent = this.copy.choosePath;
       const storyButton = this.createActionButton(this.copy.replayStory, true);
-      storyButton.addEventListener("click", () => this.queueStart({ mode: "story", restartStory: true }), { once: true });
+      storyButton.addEventListener("click", () => {
+        this.startStoryFromGesture({ mode: "story", restartStory: true });
+      }, { once: true });
       const challengeButton = this.createActionButton(this.copy.challengeCta, true);
-      challengeButton.addEventListener("click", () => this.queueStart({ mode: "challenge", restartStory: false }), { once: true });
+      challengeButton.addEventListener("click", () => {
+        this.landingStartRevision += 1;
+        this.queueStart({ mode: "challenge", restartStory: false });
+      }, { once: true });
       storyButton.className = "amso-million-runner-2026__button amso-million-runner-2026__button--secondary";
       this.landingActions.append(heading, challengeButton, storyButton);
       return;
     }
 
     const startButton = this.createActionButton(this.copy.startStory, true);
-    startButton.addEventListener("click", () => this.queueStart({ mode: "story", restartStory: false }), { once: true });
+    startButton.addEventListener("click", () => {
+      this.startStoryFromGesture({ mode: "story", restartStory: false });
+    }, { once: true });
     this.landingActions.append(startButton);
+  }
+
+  private startStoryFromGesture(request: CampaignStartRequest): void {
+    const revision = ++this.landingStartRevision;
+    this.landingActions.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
+      button.disabled = true;
+    });
+    void this.settleFullscreenViewport().then(() => {
+      if (this.destroyed || revision !== this.landingStartRevision) return;
+      this.queueStart(request);
+    });
+  }
+
+  private async settleFullscreenViewport(): Promise<void> {
+    const fullscreenAttempt = this.enterFullscreen();
+    let deadlineTimer: number | undefined;
+    const outcome = await Promise.race([
+      fullscreenAttempt.then(() => "settled" as const),
+      new Promise<"timeout">((resolve) => {
+        deadlineTimer = window.setTimeout(() => resolve("timeout"), STORY_FULLSCREEN_DEADLINE_MS);
+      })
+    ]);
+    if (deadlineTimer !== undefined) window.clearTimeout(deadlineTimer);
+    if (this.destroyed) return;
+    if (outcome === "timeout" && document.fullscreenElement !== this.root) {
+      this.abandonPendingFullscreen = true;
+      this.setCssGameMode(true);
+      void fullscreenAttempt.then(() => {
+        if (this.destroyed || !this.abandonPendingFullscreen) return;
+        if (document.fullscreenElement === this.root) {
+          this.exitAbandonedFullscreen();
+        } else {
+          this.abandonPendingFullscreen = false;
+        }
+      });
+    }
+    await this.waitForViewportPaint();
+  }
+
+  private async waitForViewportPaint(): Promise<void> {
+    if (typeof window.requestAnimationFrame !== "function") return;
+    let paintTimer: number | undefined;
+    await Promise.race([
+      new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => resolve());
+        });
+      }),
+      new Promise<void>((resolve) => {
+        paintTimer = window.setTimeout(resolve, STORY_VIEWPORT_PAINT_DEADLINE_MS);
+      })
+    ]);
+    if (paintTimer !== undefined) window.clearTimeout(paintTimer);
+  }
+
+  private exitAbandonedFullscreen(): void {
+    if (this.exitingAbandonedFullscreen || document.fullscreenElement !== this.root) return;
+    this.exitingAbandonedFullscreen = true;
+    void document.exitFullscreen?.().catch(() => undefined).finally(() => {
+      if (document.fullscreenElement !== this.root) {
+        this.exitingAbandonedFullscreen = false;
+        this.abandonPendingFullscreen = false;
+        this.updateFullscreenControl();
+      }
+    });
   }
 
   private createActionButton(label: string, primary: boolean): HTMLButtonElement {
@@ -1715,6 +1795,9 @@ export class CampaignShell {
     try {
       if (document.fullscreenElement == null) {
         await this.root.requestFullscreen({ navigationUI: "hide" });
+      }
+      if (document.fullscreenElement !== this.root) {
+        this.setCssGameMode(true);
       }
     } catch {
       this.setCssGameMode(true);
@@ -2096,6 +2179,16 @@ export class CampaignShell {
 
   private readonly handleFullscreenChange = (): void => {
     const fullscreen = document.fullscreenElement === this.root;
+    if (this.abandonPendingFullscreen) {
+      if (fullscreen) {
+        this.exitAbandonedFullscreen();
+      } else if (this.exitingAbandonedFullscreen) {
+        this.exitingAbandonedFullscreen = false;
+        this.abandonPendingFullscreen = false;
+      }
+      this.updateFullscreenControl();
+      return;
+    }
     if (fullscreen) this.setCssGameMode(false);
     this.updateFullscreenControl();
     if (this.canControl()) {

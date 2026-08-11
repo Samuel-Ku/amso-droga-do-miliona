@@ -189,6 +189,127 @@ describe("mobile campaign shell", () => {
     delete (HTMLElement.prototype as Partial<HTMLElement>).requestFullscreen;
   });
 
+  it("requests fullscreen from the Play with AMSO history gesture", async () => {
+    Object.defineProperty(document, "fullscreenEnabled", {
+      configurable: true,
+      value: true
+    });
+    const onStart = vi.fn();
+    const shell = createShell({ onStart });
+    shell.showLanding({ challengeUnlocked: false, fullscreenPreference: null, muted: false });
+    const root = document.querySelector<HTMLElement>(".amso-million-runner-2026")!;
+    let resolveFullscreen!: () => void;
+    const fullscreenSettled = new Promise<void>((resolve) => {
+      resolveFullscreen = resolve;
+    });
+    const requestFullscreen = vi.fn().mockReturnValue(fullscreenSettled);
+    Object.defineProperty(root, "requestFullscreen", {
+      configurable: true,
+      value: requestFullscreen
+    });
+
+    document.querySelector<HTMLButtonElement>(
+      ".amso-million-runner-2026__landing-actions button"
+    )!.click();
+
+    expect(requestFullscreen).toHaveBeenCalledWith({ navigationUI: "hide" });
+    expect(document.querySelector<HTMLButtonElement>(
+      ".amso-million-runner-2026__landing-actions button"
+    )!.disabled).toBe(true);
+    expect(onStart).not.toHaveBeenCalled();
+    resolveFullscreen();
+    await vi.waitFor(() => {
+      expect(onStart).toHaveBeenCalledWith({ mode: "story", restartStory: false });
+    });
+    expect(root.dataset.cssGameMode).toBe("true");
+    shell.destroy();
+  });
+
+  it("uses a bounded CSS fallback when fullscreen does not settle", async () => {
+    vi.useFakeTimers();
+    let fullscreenElement: Element | null = null;
+    const exitFullscreen = vi.fn(async () => {
+      fullscreenElement = null;
+      document.dispatchEvent(new Event("fullscreenchange"));
+    });
+    Object.defineProperties(document, {
+      fullscreenEnabled: { configurable: true, value: true },
+      fullscreenElement: { configurable: true, get: () => fullscreenElement },
+      exitFullscreen: { configurable: true, value: exitFullscreen }
+    });
+    const onStart = vi.fn();
+    const onPause = vi.fn();
+    const shell = createShell({ onStart, onPause });
+    shell.showLanding({ challengeUnlocked: false, fullscreenPreference: null, muted: false });
+    const root = document.querySelector<HTMLElement>(".amso-million-runner-2026")!;
+    let resolveFullscreen!: () => void;
+    Object.defineProperty(root, "requestFullscreen", {
+      configurable: true,
+      value: vi.fn(() => new Promise<void>((resolve) => {
+        resolveFullscreen = resolve;
+      }))
+    });
+    const animationFrame = vi.spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback) => {
+        window.setTimeout(() => callback(0), 16);
+        return 1;
+      });
+
+    document.querySelector<HTMLButtonElement>(
+      ".amso-million-runner-2026__landing-actions button"
+    )!.click();
+    await vi.advanceTimersByTimeAsync(500);
+
+    expect(root.dataset.cssGameMode).toBe("true");
+    expect(onStart).toHaveBeenCalledWith({ mode: "story", restartStory: false });
+    fullscreenElement = root;
+    document.dispatchEvent(new Event("fullscreenchange"));
+    resolveFullscreen();
+    await vi.runAllTimersAsync();
+    expect(exitFullscreen).toHaveBeenCalledTimes(1);
+    expect(fullscreenElement).toBeNull();
+    expect(root.dataset.cssGameMode).toBe("true");
+    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(onPause).not.toHaveBeenCalled();
+    animationFrame.mockRestore();
+    shell.destroy();
+    vi.useRealTimers();
+  });
+
+  it("locks the landing path while the story fullscreen request is pending", async () => {
+    Object.defineProperty(document, "fullscreenEnabled", {
+      configurable: true,
+      value: true
+    });
+    const onStart = vi.fn();
+    const shell = createShell({ onStart });
+    shell.showLanding({ challengeUnlocked: true, fullscreenPreference: null, muted: false });
+    const root = document.querySelector<HTMLElement>(".amso-million-runner-2026")!;
+    let resolveFullscreen!: () => void;
+    Object.defineProperty(root, "requestFullscreen", {
+      configurable: true,
+      value: vi.fn(() => new Promise<void>((resolve) => {
+        resolveFullscreen = resolve;
+      }))
+    });
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>(
+      ".amso-million-runner-2026__landing-actions button"
+    )];
+    const storyButton = buttons.find((button) => button.classList.contains(
+      "amso-million-runner-2026__button--secondary"
+    ))!;
+    const challengeButton = buttons.find((button) => button !== storyButton)!;
+
+    storyButton.click();
+    expect(buttons.every((button) => button.disabled)).toBe(true);
+    challengeButton.click();
+    expect(onStart).not.toHaveBeenCalled();
+    resolveFullscreen();
+    await vi.waitFor(() => expect(onStart).toHaveBeenCalledTimes(1));
+    expect(onStart).toHaveBeenCalledWith({ mode: "story", restartStory: true });
+    shell.destroy();
+  });
+
   it("accepts gameplay input from the full canvas but blocks it under system UI", () => {
     const onJump = vi.fn();
     const shell = createShell({ onJump });
