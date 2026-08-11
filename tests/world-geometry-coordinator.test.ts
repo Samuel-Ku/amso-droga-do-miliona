@@ -292,17 +292,36 @@ describe("world geometry coordinator", () => {
     });
     harness.notify(844, 390);
     harness.flushFrame();
+    layer.show({
+      worldId: "first-mile",
+      stateId: "story.first_package",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    const panels = [...host.querySelectorAll<HTMLElement>("[data-world-panel]")];
+    panels[0]!.dataset.worldId = "order-process";
+    panels[1]!.dataset.worldId = "quality-service";
     layer.setParallaxDistance(360, true);
-    const panelTransforms = [...host.querySelectorAll<HTMLElement>("[data-world-panel]")]
-      .map(({ style }) => style.transform);
+    const panelTransforms = panels.map(({ style }) => style.transform);
+    const plateWidths = [host.style.getPropertyValue("--plate-width")];
+    expect(host.style.getPropertyValue("--world-overlap")).toBe("9%");
 
+    window.dispatchEvent(new Event("orientationchange"));
     harness.notify(390, 844);
     harness.flushFrame();
+    plateWidths.push(host.style.getPropertyValue("--plate-width"));
+    document.dispatchEvent(new Event("fullscreenchange"));
     harness.notify(1440, 900);
     harness.flushFrame();
+    plateWidths.push(host.style.getPropertyValue("--plate-width"));
 
     expect([...host.querySelectorAll<HTMLElement>("[data-world-panel]")]
       .map(({ style }) => style.transform)).toEqual(panelTransforms);
+    expect(host.style.getPropertyValue("--world-overlap")).toBe("9%");
+    expect(new Set(plateWidths).size).toBeGreaterThan(1);
+    const positions = panels.map(({ style }) =>
+      Number(/translate3d\((-?[\d.]+)%/u.exec(style.transform)?.[1]));
+    expect(positions[0]! + 100).toBeGreaterThanOrEqual(positions[1]!);
     expect(snapshots).toHaveLength(3);
   });
 });

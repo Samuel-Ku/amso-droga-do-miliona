@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BACKGROUND_PARALLAX_SPEED_RATIO,
+  REDUCED_MOTION_PARALLAX_RATIO,
   backgroundTravelPixels
 } from "../src/visuals/background-parallax";
 import {
@@ -11,6 +12,106 @@ import {
   type WorldVisualSelection
 } from "../src/visuals/WorldVisualLayer";
 import { DecodedImageStore } from "../src/assets/DecodedImageStore";
+import {
+  CHALLENGE_WORLD_STATES,
+  campaignWorld,
+  sceneVisualState
+} from "../src/visuals/scene-manifest";
+import { WORLD_WIDTH } from "../src/game/constants";
+import productionConfig from "../public/assets/milion-runner/runner-config.json";
+import { parseRunnerConfig } from "../src/config/schema";
+import { RunnerGame } from "../src/game/RunnerGame";
+import { WORLD_ARTWORK_CONTRACT, calculateWorldPlateTransform } from "../src/visuals/world-plate-transform";
+
+const CHALLENGE_WORLD_PAIRS = CHALLENGE_WORLD_STATES.map((stateId, index) => [
+  stateId,
+  CHALLENGE_WORLD_STATES[(index + 1) % CHALLENGE_WORLD_STATES.length]!
+] as const);
+
+function panelXPercent(panel: HTMLElement): number {
+  return Number(/translate3d\((-?[\d.]+)%/u.exec(panel.style.transform)?.[1]);
+}
+
+function expectPanelsCoverStage(panels: readonly HTMLImageElement[]): void {
+  const positions = panels.map(panelXPercent);
+  expect(panels.every(({ hidden }) => !hidden)).toBe(true);
+  expect(positions.every(Number.isFinite)).toBe(true);
+  expect(positions[0]!).toBeLessThanOrEqual(0);
+  expect(positions[0]! + 100).toBeGreaterThanOrEqual(positions[1]!);
+  expect(positions[1]! + 100).toBeGreaterThanOrEqual(100);
+}
+
+function deterministicGameHarness(): {
+  readonly game: RunnerGame;
+  advanceFrames(count: number, beforeFrame?: (frame: number) => void): void;
+} {
+  const frames = new Map<number, FrameRequestCallback>();
+  let nextFrameId = 0;
+  let timestamp = 0;
+  const view = {
+    devicePixelRatio: 1,
+    requestAnimationFrame(callback: FrameRequestCallback): number {
+      const id = ++nextFrameId;
+      frames.set(id, callback);
+      return id;
+    },
+    cancelAnimationFrame(id: number): void { frames.delete(id); },
+    addEventListener(): void {},
+    removeEventListener(): void {},
+    matchMedia: () => ({ matches: false, addEventListener(): void {}, removeEventListener(): void {} })
+  };
+  const documentMock = {
+    defaultView: view,
+    visibilityState: "visible" as DocumentVisibilityState,
+    addEventListener(): void {},
+    removeEventListener(): void {}
+  };
+  const context = new Proxy({
+    createLinearGradient: () => ({ addColorStop(): void {} })
+  } as Record<PropertyKey, unknown>, {
+    get(target, key) { return key in target ? target[key] : (): void => {}; },
+    set(target, key, value) { target[key] = value; return true; }
+  }) as unknown as CanvasRenderingContext2D;
+  const canvas = {
+    width: 960,
+    height: 540,
+    style: { width: "", height: "" },
+    ownerDocument: documentMock,
+    getContext: () => context,
+    getBoundingClientRect: () => { throw new Error("gameplay_dom_read"); }
+  } as unknown as HTMLCanvasElement;
+  const config = parseRunnerConfig(productionConfig);
+  if (!config) throw new Error("production config should parse");
+  const game = new RunnerGame(canvas, {
+    onSnapshot(): void {},
+    onGameOver(): void {},
+    onStoryUpdate(): void {},
+    onModeChange(): void {}
+  }, {
+    seed: 7,
+    reducedMotion: true,
+    mode: "challenge",
+    story: config.story,
+    challenge: config.challenge
+  });
+  game.applyGeometry(
+    calculateWorldPlateTransform(960, 540, WORLD_ARTWORK_CONTRACT)!,
+    { width: 960, height: 540, dpr: 1 }
+  );
+  return {
+    game,
+    advanceFrames(count, beforeFrame) {
+      for (let frame = 0; frame < count && game.state === "running"; frame += 1) {
+        const entry = frames.entries().next().value as [number, FrameRequestCallback] | undefined;
+        if (!entry) break;
+        frames.delete(entry[0]);
+        beforeFrame?.(frame);
+        timestamp += 1000 / 60;
+        entry[1](timestamp);
+      }
+    }
+  };
+}
 
 function imageHarness(): {
   store: WorldAssetStore;
@@ -616,6 +717,172 @@ describe("edge-to-edge gameplay background", () => {
     expect(host.dataset.worldSeamBetween).toBeUndefined();
   });
 
+  it.each(CHALLENGE_WORLD_PAIRS)(
+    "keeps the %s → %s challenge seam covered at its start, midpoint and end",
+    async (currentStateId, nextStateId) => {
+      const currentWorldId = sceneVisualState(currentStateId).worldId;
+      const nextWorldId = sceneVisualState(nextStateId).worldId;
+      const { store, images } = imageHarness();
+      const host = document.createElement("div");
+      const layer = new WorldVisualLayer(host, store);
+      layer.show({
+        worldId: currentWorldId,
+        stateId: currentStateId,
+        phase: "game",
+        transitionMode: "offscreen"
+      });
+      const currentImage = images.find(({ src }) =>
+        src.includes(campaignWorld(currentWorldId).assetPath));
+      expect(currentImage).toBeDefined();
+      currentImage!.dispatchEvent(new Event("load"));
+      await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+      layer.setParallaxDistance(240, true);
+
+      layer.show({
+        worldId: nextWorldId,
+        stateId: nextStateId,
+        phase: "game",
+        transitionMode: "offscreen"
+      });
+      const nextImage = images.find(({ src }) =>
+        src.includes(campaignWorld(nextWorldId).assetPath));
+      expect(nextImage).toBeDefined();
+      nextImage!.dispatchEvent(new Event("load"));
+      await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+      layer.setPaused(true);
+      await vi.waitFor(() => {
+        expect(host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
+          ?.dataset.presentationReady).toBe("true");
+      });
+      layer.setPaused(false);
+
+      for (const distance of [96, 480, 864]) {
+        layer.setParallaxDistance(distance, true);
+        const panels = [...host.querySelectorAll<HTMLImageElement>("[data-world-panel]")];
+        expect(panels.map(({ dataset }) => dataset.worldId))
+          .toEqual([currentWorldId, nextWorldId]);
+        expect(host.dataset.worldSeamBetween).toBe(`${currentWorldId}:${nextWorldId}`);
+        expect(host.dataset.worldSeamDirection).toBe("right-to-left");
+        expect(host.style.getPropertyValue("--world-overlap")).toBe("9%");
+        expect(panels.map(({ dataset }) => dataset.worldSeamSide))
+          .toEqual(["outgoing", "incoming"]);
+        expect(panels.map(({ style }) => style.getPropertyValue("--world-seam-overlap")))
+          .toEqual(["9%", "9%"]);
+        expectPanelsCoverStage(panels);
+      }
+    }
+  );
+
+  it("keeps the active seam fixed through pause, resume and visibility changes", () => {
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host);
+    const panels = [...host.querySelectorAll<HTMLImageElement>("[data-world-panel]")];
+    layer.show({
+      worldId: "first-mile",
+      stateId: "story.first_package",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    panels[0]!.dataset.worldId = "client-paths";
+    panels[1]!.dataset.worldId = "scale-logistics";
+    layer.setParallaxDistance(480, true);
+    const before = {
+      transforms: panels.map(({ style }) => style.transform),
+      phase: host.style.getPropertyValue("--world-phase-px"),
+      overlap: host.style.getPropertyValue("--world-overlap")
+    };
+
+    layer.setPaused(true);
+    document.dispatchEvent(new Event("visibilitychange"));
+    layer.setPaused(false);
+
+    expect(panels.map(({ style }) => style.transform)).toEqual(before.transforms);
+    expect(host.style.getPropertyValue("--world-phase-px")).toBe(before.phase);
+    expect(host.style.getPropertyValue("--world-overlap")).toBe(before.overlap);
+    expect(host.dataset.worldSeamBetween).toBe("client-paths:scale-logistics");
+  });
+
+  it("uses the reduced-motion distance function with the same spatial seam contract", () => {
+    const standardHost = document.createElement("div");
+    const reducedHost = document.createElement("div");
+    const standard = new WorldVisualLayer(standardHost);
+    const reduced = new WorldVisualLayer(reducedHost);
+    const setup = (host: HTMLElement, layer: WorldVisualLayer): HTMLImageElement[] => {
+      layer.show({
+        worldId: "first-mile",
+        stateId: "story.first_package",
+        phase: "game",
+        transitionMode: "offscreen"
+      });
+      const panels = [...host.querySelectorAll<HTMLImageElement>("[data-world-panel]")];
+      panels[0]!.dataset.worldId = "million-approach";
+      panels[1]!.dataset.worldId = "million-finale";
+      return panels;
+    };
+    const standardPanels = setup(standardHost, standard);
+    const reducedPanels = setup(reducedHost, reduced);
+
+    standard.setParallaxDistance(480, true);
+    reduced.setParallaxDistance(480 / REDUCED_MOTION_PARALLAX_RATIO, true, true);
+
+    expect(reducedPanels.map(({ style }) => style.transform))
+      .toEqual(standardPanels.map(({ style }) => style.transform));
+    expect(reducedHost.style.getPropertyValue("--world-overlap")).toBe("9%");
+    expect(reducedHost.dataset.worldSeamBetween).toBe("million-approach:million-finale");
+  });
+
+  it("leaves deterministic simulation, input, spawn, score and route state unchanged", () => {
+    const baseline = deterministicGameHarness();
+    const withSeam = deterministicGameHarness();
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host);
+    layer.show({
+      worldId: "first-mile",
+      stateId: "story.first_package",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    const panels = [...host.querySelectorAll<HTMLImageElement>("[data-world-panel]")];
+    panels[0]!.dataset.worldId = "first-mile";
+    panels[1]!.dataset.worldId = "order-process";
+
+    baseline.game.start("keyboard");
+    withSeam.game.start("keyboard");
+    baseline.advanceFrames(90, (frame) => {
+      if (frame === 30) baseline.game.jump("keyboard");
+    });
+    withSeam.advanceFrames(90, (frame) => {
+      if (frame === 30) withSeam.game.jump("keyboard");
+      layer.setParallaxDistance(frame * 8, true);
+    });
+
+    expect(withSeam.game.canonicalDeterministicState())
+      .toEqual(baseline.game.canonicalDeterministicState());
+    expect(withSeam.game.isReplayValid).toBe(true);
+    expect(baseline.game.isReplayValid).toBe(true);
+    baseline.game.destroy();
+    withSeam.game.destroy();
+  });
+
+  it("keeps the stage geometrically covered when mask declarations are unavailable", () => {
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, undefined, undefined, false);
+    const panels = [...host.querySelectorAll<HTMLImageElement>("[data-world-panel]")];
+    layer.show({
+      worldId: "first-mile",
+      stateId: "story.first_package",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    panels[0]!.dataset.worldId = "million-finale";
+    panels[1]!.dataset.worldId = "first-mile";
+    layer.setParallaxDistance(480, true);
+
+    expect(host.dataset.worldSeamMask).toBe("fallback-covered");
+    expect(panels.every(({ dataset }) => dataset.worldSeamSide === undefined)).toBe(true);
+    expectPanelsCoverStage(panels);
+  });
+
   it("keeps the visible panel interpolated while recycling only the offscreen panel", () => {
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host);
@@ -724,6 +991,58 @@ describe("edge-to-edge gameplay background", () => {
     layer.setParallaxDistance(1_921, true);
     expect(host.querySelector<HTMLImageElement>('[data-world-panel="current"]')
       ?.dataset.worldId).toBe("quality-service");
+  });
+
+  it("promotes a prepared challenge panel within one rendered pixel and clears pooled mask state", async () => {
+    const { store, images } = imageHarness();
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+
+    layer.show({
+      worldId: "first-mile",
+      stateId: "story.first_package",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    images[0]!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    layer.setParallaxDistance(240, true);
+
+    layer.show({
+      worldId: "order-process",
+      stateId: "epoch_1.challenge",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    const orderImage = images.find(({ src }) => src.includes("world-02-order-process"));
+    expect(orderImage).toBeDefined();
+    orderImage!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    layer.setPaused(true);
+    await vi.waitFor(() => {
+      expect(host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
+        ?.dataset.presentationReady).toBe("true");
+    });
+    layer.setPaused(false);
+
+    layer.setParallaxDistance(959, true);
+    const incoming = host.querySelector<HTMLImageElement>('[data-world-panel="next"]')!;
+    const outgoing = host.querySelector<HTMLImageElement>('[data-world-panel="current"]')!;
+    const before = panelXPercent(incoming);
+    expect(incoming.dataset.worldSeamSide).toBe("incoming");
+    expect(outgoing.dataset.worldSeamSide).toBe("outgoing");
+
+    layer.setParallaxDistance(960, true);
+
+    const promoted = host.querySelector<HTMLImageElement>('[data-world-panel="current"]')!;
+    const pooled = host.querySelector<HTMLImageElement>("[data-world-staged-panel]")!;
+    const after = panelXPercent(promoted);
+    expect(promoted).toBe(incoming);
+    expect(Math.abs(after - before) * (WORLD_WIDTH / 100)).toBeLessThanOrEqual(1);
+    expect(host.dataset.worldSeamBetween).toBeUndefined();
+    expect(promoted.dataset.worldSeamSide).toBeUndefined();
+    expect(pooled.dataset.worldSeamSide).toBeUndefined();
+    expect(pooled.style.getPropertyValue("--world-seam-overlap")).toBe("");
   });
 
   it("keeps the seam hidden for an atomically prepared world swap", async () => {

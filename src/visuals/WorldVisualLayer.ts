@@ -92,6 +92,16 @@ function requiredElement<T extends Element>(root: ParentNode, selector: string):
   return element;
 }
 
+function supportsWorldSeamMask(view: Window | null): boolean {
+  const css = (view as (Window & {
+    CSS?: { supports(property: string, value: string): boolean };
+  }) | null)?.CSS;
+  const supports = css?.supports;
+  if (supports === undefined) return true;
+  return supports.call(css, "mask-image", "linear-gradient(90deg, #000, transparent)") ||
+    supports.call(css, "-webkit-mask-image", "linear-gradient(90deg, #000, transparent)");
+}
+
 /** Two adjacent world panels share one absolute parallax phase. */
 export class WorldVisualLayer {
   private panels: [HTMLImageElement, HTMLImageElement];
@@ -99,6 +109,7 @@ export class WorldVisualLayer {
   private readonly plate: HTMLElement;
   private readonly route: SVGElement;
   private readonly counter: HTMLElement;
+  private readonly seamMaskSupported: boolean;
   private lastCounterValue: number | null = null;
   private lastPhaseValue = "";
   private lastMotionState = "";
@@ -140,8 +151,11 @@ export class WorldVisualLayer {
   public constructor(
     private readonly host: HTMLElement,
     private readonly assets = new WorldAssetStore(),
-    private readonly i18n?: CampaignI18n
+    private readonly i18n?: CampaignI18n,
+    seamMaskSupportOverride?: boolean
   ) {
+    this.seamMaskSupported = seamMaskSupportOverride ??
+      supportsWorldSeamMask(host.ownerDocument.defaultView);
     host.innerHTML = `
       <div class="amso-million-runner-2026-world-visual__image-stack" data-world-plate aria-hidden="true">
         <img class="amso-million-runner-2026-world-visual__panel" data-world-panel="current" alt="" width="1780" height="941" draggable="false" />
@@ -162,6 +176,7 @@ export class WorldVisualLayer {
     this.route = requiredElement<SVGElement>(this.plate, ".amso-million-runner-2026-world-visual__route");
     this.counter = requiredElement<HTMLElement>(host, "[data-world-counter]");
     this.host.style.setProperty("--world-overlap", "0px");
+    this.host.dataset.worldSeamMask = this.seamMaskSupported ? "supported" : "fallback-covered";
     this.panels[0].style.transition = "none";
     this.panels[1].style.transition = "none";
     this.stagedPanel.style.transition = "none";
@@ -468,7 +483,7 @@ export class WorldVisualLayer {
         delete this.host.dataset.worldSeamDirection;
         this.host.style.setProperty("--world-overlap", "0px");
         this.seamOverlap = "";
-        for (const panel of this.panels) {
+        for (const panel of [...this.panels, this.stagedPanel]) {
           delete panel.dataset.worldSeamSide;
           panel.style.removeProperty("--world-seam-overlap");
         }
@@ -489,8 +504,13 @@ export class WorldVisualLayer {
       this.seamWorlds = worlds;
       this.host.dataset.worldSeamBetween = worlds;
       this.host.dataset.worldSeamDirection = "right-to-left";
-      this.panels[0].dataset.worldSeamSide = "outgoing";
-      this.panels[1].dataset.worldSeamSide = "incoming";
+      if (this.seamMaskSupported) {
+        this.panels[0].dataset.worldSeamSide = "outgoing";
+        this.panels[1].dataset.worldSeamSide = "incoming";
+      } else {
+        delete this.panels[0].dataset.worldSeamSide;
+        delete this.panels[1].dataset.worldSeamSide;
+      }
     }
   }
 

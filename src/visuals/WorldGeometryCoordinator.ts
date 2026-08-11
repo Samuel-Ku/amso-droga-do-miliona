@@ -48,6 +48,7 @@ function measurementsEqual(
 export class WorldGeometryCoordinator {
   private readonly observer: ResizeObserver;
   private readonly view: Window | null;
+  private readonly document: Document;
   private currentSnapshot: Readonly<WorldPlateTransform> | null = null;
   private currentMeasurement: Readonly<StageMeasurement> | null = null;
   private pendingMeasurement: Readonly<StageMeasurement> | null = null;
@@ -70,10 +71,13 @@ export class WorldGeometryCoordinator {
     private readonly metadata: Readonly<WorldArtworkMeta> = WORLD_ARTWORK_CONTRACT,
     private readonly dprOverride: 1 | 2 | null = null
   ) {
+    this.document = stage.ownerDocument;
     this.view = stage.ownerDocument.defaultView;
     this.observer = new ResizeObserver(this.handleMeasurements);
     this.observer.observe(stage);
     this.view?.addEventListener("resize", this.handleViewportChange);
+    this.view?.addEventListener("orientationchange", this.handleViewportChange);
+    this.document.addEventListener("fullscreenchange", this.handleViewportChange);
   }
 
   public get snapshot(): Readonly<WorldPlateTransform> | null {
@@ -118,6 +122,8 @@ export class WorldGeometryCoordinator {
     this.destroyed = true;
     this.observer.disconnect();
     this.view?.removeEventListener("resize", this.handleViewportChange);
+    this.view?.removeEventListener("orientationchange", this.handleViewportChange);
+    this.document.removeEventListener("fullscreenchange", this.handleViewportChange);
     if (this.resizeFrame !== 0) cancelAnimationFrame(this.resizeFrame);
     this.resizeFrame = 0;
     this.pendingMeasurement = null;
