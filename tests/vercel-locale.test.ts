@@ -65,7 +65,24 @@ describe("Vercel campaign locale", () => {
 
     expect(safeVercelLocaleStorage(blockedWindow)).toBeNull();
     expect(persistVercelCampaignLocale("fr", null)).toBe(false);
-    expect(vercelLocaleSelectionUrl("https://game.example/million?qa=1#run", "fr", false))
+    expect(vercelLocaleSelectionUrl("https://game.example/million?qa=1#run", "fr"))
       .toBe("https://game.example/million?qa=1&lang=fr#run");
+  });
+
+  it("keeps the selected language in the URL even when storage reports success", () => {
+    const selectedUrl = vercelLocaleSelectionUrl(
+      "https://game.example/million?utm_source=banner&lang=es",
+      "de"
+    );
+
+    expect(selectedUrl).toBe(
+      "https://game.example/million?utm_source=banner&lang=de"
+    );
+    expect(applyVercelCampaignLocale(
+      document,
+      { languages: ["uk-UA"] },
+      null,
+      vercelCampaignLocaleFromUrl(selectedUrl)
+    )).toBe("de");
   });
 });

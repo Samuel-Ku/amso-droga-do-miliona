@@ -31,8 +31,8 @@ declare global {
 try {
   const boot = parseQaBootConfig(new URL(window.location.href));
   const onLanguageChange = (locale: Parameters<typeof persistVercelCampaignLocale>[0]): void => {
-    const persisted = persistVercelCampaignLocale(locale, localeStorage);
-    window.location.assign(vercelLocaleSelectionUrl(window.location.href, locale, persisted));
+    persistVercelCampaignLocale(locale, localeStorage);
+    window.location.assign(vercelLocaleSelectionUrl(window.location.href, locale));
   };
   campaign = mountCampaign(demoConfig, host, {
     ...(boot.kind === "performance" ? { qa: boot.config } : {}),

@@ -81,15 +81,17 @@ try {
   if (state.qaGlobal) failures.push("production Vercel page exposed QA global");
   await Promise.all([
     page.waitForNavigation({ waitUntil: "networkidle" }),
-    page.selectOption("[data-campaign-language]", "fr")
+    page.selectOption("[data-campaign-language]", "de")
   ]);
   const manualLocale = await page.evaluate(() => ({
     documentLanguage: document.documentElement.lang,
     selectedLanguage: document.querySelector("[data-campaign-language]")?.value,
-    landingTitle: document.querySelector("[data-campaign-copy='landingTitleAccent']")?.textContent
+    landingTitle: document.querySelector("[data-campaign-copy='landingTitleAccent']")?.textContent,
+    requestedLanguage: new URL(window.location.href).searchParams.get("lang")
   }));
-  if (manualLocale.documentLanguage !== "fr" || manualLocale.selectedLanguage !== "fr" ||
-      manualLocale.landingTitle !== "En route vers le million") {
+  if (manualLocale.documentLanguage !== "de" || manualLocale.selectedLanguage !== "de" ||
+      manualLocale.landingTitle !== "Der Weg zur Million" ||
+      manualLocale.requestedLanguage !== "de") {
     failures.push(`manual locale was not persisted: ${JSON.stringify(manualLocale)}`);
   }
   if (failures.length > 0) throw new Error(failures.join("\n"));

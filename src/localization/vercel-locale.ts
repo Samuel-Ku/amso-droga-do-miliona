@@ -114,11 +114,9 @@ export function safeVercelLocaleStorage(
 
 export function vercelLocaleSelectionUrl(
   currentUrl: string,
-  locale: CampaignLocale,
-  persisted: boolean
+  locale: CampaignLocale
 ): string {
   const url = new URL(currentUrl);
-  if (persisted) url.searchParams.delete("lang");
-  else url.searchParams.set("lang", locale);
+  url.searchParams.set("lang", locale);
   return url.href;
 }
