@@ -2,7 +2,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "dist-vercel");
 const recordsWorkerOrigin = "https://droga-do-miliona-records.s-kutsenko.workers.dev";
@@ -99,6 +99,112 @@ async function checkMobileOverlayContainment(browser, baseUrl, failures) {
   }
 }
 
+async function checkWebKitGameplayAndResults(baseUrl, failures) {
+  const browser = await webkit.launch({ headless: true });
+  try {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "pl-PL" });
+    const page = await context.newPage();
+    await page.addInitScript(() => {
+      const original = CanvasRenderingContext2D.prototype.drawImage;
+      window.__amsoDrawnImageSources = [];
+      CanvasRenderingContext2D.prototype.drawImage = function (image, ...args) {
+        const source = image instanceof HTMLImageElement ? image.currentSrc || image.src : "";
+        if (source) window.__amsoDrawnImageSources.push(source);
+        return original.call(this, image, ...args);
+      };
+    });
+    await page.route(`${recordsWorkerOrigin}/**`, (route) => route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        entries: Array.from({ length: 5 }, (_, index) => ({
+          id: `webkit-${index + 1}`,
+          name: `Player ${index + 1}`,
+          challengeScore: 5000 - index * 500,
+          orders: 50 - index * 5,
+          updatedAt: 1,
+          rank: index + 1
+        }))
+      })
+    }));
+    await page.goto(`${baseUrl}/million?lang=pl`, { waitUntil: "networkidle" });
+    const geometry = await page.evaluate(() => {
+      const screen = document.querySelector("[data-campaign-challenge-result]");
+      if (!(screen instanceof HTMLElement)) throw new Error("challenge_result_fixture_missing");
+      screen.hidden = false;
+      screen.style.display = "block";
+      const valueTops = [...document.querySelectorAll("[data-campaign-result-metric] strong")]
+        .map((element) => element.getBoundingClientRect().top);
+      const rankCenters = [...document.querySelectorAll(".amso-million-runner-2026-records__rank-value")]
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          return rect.left + rect.width / 2;
+        });
+      screen.hidden = true;
+      screen.style.removeProperty("display");
+      return {
+        valueSpread: Math.max(...valueTops) - Math.min(...valueTops),
+        rankSpread: Math.max(...rankCenters) - Math.min(...rankCenters),
+        rankCount: rankCenters.length
+      };
+    });
+    if (geometry.valueSpread > 1) failures.push(`WebKit result values are misaligned: ${geometry.valueSpread}px`);
+    if (geometry.rankCount < 5) failures.push(`WebKit record fixture is incomplete: ${geometry.rankCount} ranks`);
+    if (geometry.rankSpread > 1) failures.push(`WebKit record ranks are misaligned: ${geometry.rankSpread}px`);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const mobileRankGeometry = await page.evaluate(() => {
+      const root = document.querySelector(".amso-million-runner-2026");
+      const screen = document.querySelector("[data-campaign-challenge-result]");
+      if (!(root instanceof HTMLElement) || !(screen instanceof HTMLElement)) {
+        throw new Error("mobile_challenge_result_fixture_missing");
+      }
+      root.dataset.view = "challenge_result";
+      root.dataset.mobileLayout = "true";
+      screen.hidden = false;
+      const centers = [...document.querySelectorAll(".amso-million-runner-2026-records__rank-value")]
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          return rect.left + rect.width / 2;
+        });
+      return {
+        count: centers.length,
+        spread: Math.max(...centers) - Math.min(...centers)
+      };
+    });
+    if (mobileRankGeometry.count < 5) {
+      failures.push(`WebKit mobile record fixture is incomplete: ${mobileRankGeometry.count} ranks`);
+    }
+    if (mobileRankGeometry.spread > 1) {
+      failures.push(`WebKit mobile record ranks are misaligned: ${mobileRankGeometry.spread}px`);
+    }
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.evaluate(() => {
+      const root = document.querySelector(".amso-million-runner-2026");
+      const screen = document.querySelector("[data-campaign-challenge-result]");
+      if (root instanceof HTMLElement) {
+        root.dataset.view = "landing";
+        delete root.dataset.mobileLayout;
+      }
+      if (screen instanceof HTMLElement) screen.hidden = true;
+    });
+
+    await page.getByRole("button", { name: /Zagraj z historią AMSO/ }).click();
+    await page.getByRole("button", { name: "Rozpocznij historię" }).click({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Rozpocznij drogę" }).click({ timeout: 15_000 });
+    await page.waitForFunction(() => Number(document.querySelector("[data-campaign-hud-packages]")?.textContent) > 0,
+      undefined, { timeout: 15_000 });
+    const pickupArtworkDrawn = await page.evaluate(() =>
+      window.__amsoDrawnImageSources.some((source) =>
+        source.includes("order-atlas") || source.includes("parcel-"))
+    );
+    if (!pickupArtworkDrawn) failures.push("WebKit gameplay did not draw pickup artwork");
+    await context.close();
+  } finally {
+    await browser.close();
+  }
+}
+
 const server = http.createServer((request, response) => {
   const pathname = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
   const relative = pathname === "/" || pathname === "/million"
@@ -186,6 +292,7 @@ try {
     `http://127.0.0.1:${address.port}`,
     failures
   );
+  await checkWebKitGameplayAndResults(`http://127.0.0.1:${address.port}`, failures);
   if (failures.length > 0) throw new Error(failures.join("\n"));
   console.log("Vercel browser smoke: /million mounted with arrows and URL/manual locale selection");
 } finally {

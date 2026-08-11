@@ -1061,7 +1061,7 @@ describe("edge-to-edge gameplay background", () => {
     expect(images[1]!.src).toContain("world-02-order-process");
   });
 
-  it("continues sequential panel warmup from the seventh world to first-mile", async () => {
+  it("keeps the seventh world on both panels for a seamless finale loop", async () => {
     vi.useFakeTimers();
     const { store, images } = imageHarness();
     const host = document.createElement("div");
@@ -1074,6 +1074,28 @@ describe("edge-to-edge gameplay background", () => {
     });
     images[0]!.dispatchEvent(new Event("load"));
     await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(images.some(({ src }) => src.includes("world-01-first-mile"))).toBe(false);
+    expect(host.querySelector<HTMLImageElement>('[data-world-panel="next"]')
+      ?.dataset.worldId).toBe("million-finale");
+  });
+
+  it("keeps the seventh-to-first cycle for endless challenge gameplay", async () => {
+    vi.useFakeTimers();
+    const { store, images } = imageHarness();
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+
+    layer.show({
+      worldId: "million-finale",
+      stateId: "story.million_finale",
+      phase: "game",
+      transitionMode: "offscreen"
+    });
+    images[0]!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+    layer.setPaused(true);
     await vi.advanceTimersByTimeAsync(50);
 
     expect(images.some(({ src }) => src.includes("world-01-first-mile"))).toBe(true);

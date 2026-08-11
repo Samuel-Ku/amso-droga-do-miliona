@@ -12,6 +12,30 @@ export interface DecodedImageStoreOptions {
 
 function defaultImageFactory(): HTMLImageElement { return new Image(); }
 
+async function waitForRenderableImage(image: HTMLImageElement): Promise<void> {
+  if (image.naturalWidth > 0) return;
+  if (image.complete) {
+    throw new Error("image_has_no_pixels");
+  }
+  await new Promise<void>((resolve, reject) => {
+    const cleanup = (): void => {
+      image.removeEventListener("load", onLoad);
+      image.removeEventListener("error", onError);
+    };
+    const onLoad = (): void => {
+      cleanup();
+      image.naturalWidth > 0 ? resolve() : reject(new Error("image_has_no_pixels"));
+    };
+    const onError = (): void => {
+      cleanup();
+      reject(new Error("image_load_failed"));
+    };
+    image.addEventListener("load", onLoad, { once: true });
+    image.addEventListener("error", onError, { once: true });
+    if (image.complete) onLoad();
+  });
+}
+
 /** Session-level owner of the canonical image load/decode lifecycle. */
 export class DecodedImageStore {
   private readonly pending = new Map<string, Promise<DecodedImageAsset>>();
@@ -67,7 +91,9 @@ export class DecodedImageStore {
       image.src = source;
       try {
         await image.decode();
-        if (image.naturalWidth <= 0 && image.complete) throw new Error("image_has_no_pixels");
+        // Older Safari builds can resolve decode() before complete/naturalWidth
+        // reflects a canvas-drawable image. Do not publish that transient state.
+        await waitForRenderableImage(image);
         return { assetId, source, version, image };
       } catch (error: unknown) {
         lastError = error;

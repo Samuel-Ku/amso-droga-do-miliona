@@ -659,7 +659,12 @@ export class WorldVisualLayer {
   private prepareNextWorld(assetPath: string): void {
     const index = CAMPAIGN_WORLDS.findIndex(({ assetPath: candidate }) => candidate === assetPath);
     if (index < 0) return;
-    const next = CAMPAIGN_WORLDS[(index + 1) % CAMPAIGN_WORLDS.length];
+    // The story finale is a visual destination, not a route back to the first
+    // chapter. Challenge mode remains a cyclic seven-world route.
+    const nextIndex = this.transitionMode === "story-linked"
+      ? Math.min(index + 1, CAMPAIGN_WORLDS.length - 1)
+      : (index + 1) % CAMPAIGN_WORLDS.length;
+    const next = CAMPAIGN_WORLDS[nextIndex];
     if (next !== undefined && this.scheduledFallbackWorldId === next.worldId) {
       this.prepareScheduledFallback();
       return;

@@ -164,6 +164,30 @@ describe("performance contracts", () => {
     expect(decode).toHaveBeenCalledOnce();
   });
 
+  it("waits for Safari-style late image readiness after decode resolves", async () => {
+    let complete = false;
+    let naturalWidth = 0;
+    const image = Object.assign(new EventTarget(), {
+      decoding: "auto",
+      src: "",
+      decode: vi.fn(async () => undefined),
+      onload: null,
+      onerror: null
+    }) as unknown as HTMLImageElement;
+    Object.defineProperty(image, "complete", { configurable: true, get: () => complete });
+    Object.defineProperty(image, "naturalWidth", { configurable: true, get: () => naturalWidth });
+    const store = new DecodedImageStore({ imageFactory: () => image, maxAttempts: 1 });
+    const pending = store.load("parcel", "/parcel.webp");
+    let settled = false;
+    void pending.finally(() => { settled = true; });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    complete = true;
+    naturalWidth = 256;
+    image.dispatchEvent(new Event("load"));
+    await expect(pending).resolves.toMatchObject({ assetId: "parcel", image });
+  });
+
   it("keeps final sign-off incomplete without the physical minimum profile", () => {
     expect(evaluatePerformanceReleaseGate({
       checkpointsPassed: true,

@@ -1169,6 +1169,10 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.amso-million-runner-2026__result-grid.amso-million-runner-2026__result-grid--challenge > span {
+  grid-template-rows: 4.5em auto;
+}
+
 .amso-million-runner-2026__result-grid > span {
   display: grid;
   min-width: 0;
@@ -1190,6 +1194,10 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   display: block;
   min-height: 2.5em;
   font: inherit;
+}
+
+.amso-million-runner-2026__result-grid--challenge .amso-million-runner-2026__result-label--mobile {
+  display: none;
 }
 
 .amso-million-runner-2026__result-grid strong,
@@ -1475,17 +1483,20 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   font-weight: 850;
 }
 
+.amso-million-runner-2026-records__rank-value {
+  display: inline-grid;
+  width: 30px;
+  place-items: center;
+}
+
 .amso-million-runner-2026-records__row--podium .amso-million-runner-2026-records__rank {
   width: 42px;
   color: #2d2925;
 }
 
 .amso-million-runner-2026-records__row--podium .amso-million-runner-2026-records__rank-value {
-  display: inline-grid;
-  width: 30px;
   height: 30px;
   border-radius: 50%;
-  place-items: center;
 }
 
 .amso-million-runner-2026-records__row--rank-1 .amso-million-runner-2026-records__rank-value { background: #f2c94c; }
@@ -4054,7 +4065,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     display: none;
   }
 
-  .amso-million-runner-2026__result-label--mobile {
+  .amso-million-runner-2026__result-grid--challenge .amso-million-runner-2026__result-label--mobile {
     display: block;
   }
 
@@ -4339,8 +4350,11 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     display: block;
   }
 
-  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026-records__row--podium .amso-million-runner-2026-records__rank-value {
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026-records__rank-value {
     width: 22px;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026-records__row--podium .amso-million-runner-2026-records__rank-value {
     height: 22px;
   }
 
