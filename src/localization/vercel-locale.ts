@@ -49,6 +49,10 @@ function supportedLocale(value: string | null | undefined): CampaignLocale | nul
   return SUPPORTED_LOCALES.has(base) ? base as CampaignLocale : null;
 }
 
+export function vercelCampaignLocaleFromUrl(currentUrl: string): CampaignLocale | null {
+  return supportedLocale(new URL(currentUrl).searchParams.get("lang"));
+}
+
 export function detectVercelCampaignLocale(
   userLanguages: readonly string[],
   persistedLocale: string | null,

@@ -7,6 +7,7 @@ import {
   detectVercelCampaignLocale,
   persistVercelCampaignLocale,
   safeVercelLocaleStorage,
+  vercelCampaignLocaleFromUrl,
   vercelLocaleSelectionUrl
 } from "../src/localization/vercel-locale";
 
@@ -31,6 +32,14 @@ describe("Vercel campaign locale", () => {
     expect(applyVercelCampaignLocale(document, { languages: ["de-DE"] }, null, "uk"))
       .toBe("uk");
     expect(document.documentElement.lang).toBe("uk");
+  });
+
+  it("uses a supported banner lang parameter ahead of a persisted choice", () => {
+    expect(vercelCampaignLocaleFromUrl("https://game.example/million?utm_source=hero&lang=es"))
+      .toBe("es");
+    expect(detectVercelCampaignLocale(["de-DE"], "fr", "es")).toBe("es");
+    expect(vercelCampaignLocaleFromUrl("https://game.example/million?lang=nl"))
+      .toBeNull();
   });
 
   it("applies and persists the selected language through the Vercel bootstrap boundary", () => {

@@ -38,6 +38,9 @@ try {
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ locale: "de-DE" });
   const page = await context.newPage();
+  await page.addInitScript((storageKey) => {
+    window.localStorage.setItem(storageKey, "fr");
+  }, "amso-million-runner-locale");
   const failures = [];
   await page.route(`${recordsWorkerOrigin}/**`, (route) => route.abort("failed"));
   page.on("console", (message) => {
@@ -52,7 +55,10 @@ try {
     }
   });
 
-  await page.goto(`http://127.0.0.1:${address.port}/million`, { waitUntil: "networkidle" });
+  await page.goto(
+    `http://127.0.0.1:${address.port}/million?utm_source=banner&lang=es`,
+    { waitUntil: "networkidle" }
+  );
   await page.locator("#amso-million-runner-2026-root .amso-million-runner-2026[data-view=landing]")
     .waitFor({ state: "visible" });
   const state = await page.evaluate(() => ({
@@ -68,9 +74,9 @@ try {
   if (!state.canvasLabel?.includes("↑") || !state.canvasLabel.includes("↓")) {
     failures.push("Vercel arrow controls are not advertised");
   }
-  if (state.documentLanguage !== "de" || state.selectedLanguage !== "de" ||
-      state.landingTitle !== "Der Weg zur Million") {
-    failures.push(`browser locale was not applied: ${JSON.stringify(state)}`);
+  if (state.documentLanguage !== "es" || state.selectedLanguage !== "es" ||
+      state.landingTitle !== "Camino al millón") {
+    failures.push(`banner URL locale did not override stored/browser locale: ${JSON.stringify(state)}`);
   }
   if (state.qaGlobal) failures.push("production Vercel page exposed QA global");
   await Promise.all([
@@ -87,7 +93,7 @@ try {
     failures.push(`manual locale was not persisted: ${JSON.stringify(manualLocale)}`);
   }
   if (failures.length > 0) throw new Error(failures.join("\n"));
-  console.log("Vercel browser smoke: /million mounted with arrows and browser/manual locale selection");
+  console.log("Vercel browser smoke: /million mounted with arrows and URL/manual locale selection");
 } finally {
   await browser?.close();
   await new Promise((resolve) => server.close(resolve));

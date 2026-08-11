@@ -6,6 +6,7 @@ import {
   applyVercelCampaignLocale,
   persistVercelCampaignLocale,
   safeVercelLocaleStorage,
+  vercelCampaignLocaleFromUrl,
   vercelLocaleSelectionUrl
 } from "./localization/vercel-locale";
 
@@ -17,7 +18,7 @@ let campaign: ReturnType<typeof mountCampaign> | null = null;
 const isVercelProfile = host.dataset.campaignKeyboardProfile === "vercel";
 const localeStorage = safeVercelLocaleStorage(window);
 if (isVercelProfile) {
-  const requestedLocale = new URL(window.location.href).searchParams.get("lang");
+  const requestedLocale = vercelCampaignLocaleFromUrl(window.location.href);
   applyVercelCampaignLocale(document, navigator, localeStorage, requestedLocale);
 }
 
