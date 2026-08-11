@@ -2,11 +2,24 @@ import { demoConfig } from "./demo-config";
 import { mountCampaign } from "./index";
 import { parseQaBootConfig, QaBootConfigError } from "./qa/boot-config";
 import { campaignI18nFromDocument, localizeElementTree } from "./localization";
+import {
+  applyVercelCampaignLocale,
+  persistVercelCampaignLocale,
+  safeVercelLocaleStorage,
+  vercelLocaleSelectionUrl
+} from "./localization/vercel-locale";
 
 const host = document.querySelector<HTMLElement>("#amso-million-runner-2026-root");
 if (host === null) throw new Error("campaign_root_missing");
 
 let campaign: ReturnType<typeof mountCampaign> | null = null;
+
+const isVercelProfile = host.dataset.campaignKeyboardProfile === "vercel";
+const localeStorage = safeVercelLocaleStorage(window);
+if (isVercelProfile) {
+  const requestedLocale = new URL(window.location.href).searchParams.get("lang");
+  applyVercelCampaignLocale(document, navigator, localeStorage, requestedLocale);
+}
 
 declare global {
   interface Window {
@@ -16,7 +29,14 @@ declare global {
 
 try {
   const boot = parseQaBootConfig(new URL(window.location.href));
-  campaign = mountCampaign(demoConfig, host, boot.kind === "performance" ? { qa: boot.config } : {});
+  const onLanguageChange = (locale: Parameters<typeof persistVercelCampaignLocale>[0]): void => {
+    const persisted = persistVercelCampaignLocale(locale, localeStorage);
+    window.location.assign(vercelLocaleSelectionUrl(window.location.href, locale, persisted));
+  };
+  campaign = mountCampaign(demoConfig, host, {
+    ...(boot.kind === "performance" ? { qa: boot.config } : {}),
+    ...(isVercelProfile ? { onLanguageChange } : {})
+  });
   if (boot.kind === "performance") {
     window.AMSOMillionRunnerQA = campaign;
   } else {

@@ -59,6 +59,7 @@ import { campaignUrl } from "./localization/idosell-deployment";
 
 export interface CampaignRuntimeOptions {
   readonly qa?: QaBootConfig;
+  readonly onLanguageChange?: (locale: CampaignI18n["locale"]) => void;
 }
 
 type AnalyticsConsentWindow = Window & { AMSOAnalyticsConsent?: boolean };
@@ -212,11 +213,13 @@ export class CampaignController {
       onFullscreenPreferenceChange: (choice) => this.profile.setFullscreenPreference(choice),
       onStoryContinue: (sceneId) => {
         this.game?.continueStoryScene(sceneId);
-      }
+      },
+      onLanguageChange: runtime.onLanguageChange
     }, {
       keyboardProfile: host.dataset.campaignKeyboardProfile === "vercel"
         ? "vercel"
         : "idosell",
+      languageSelector: runtime.onLanguageChange !== undefined,
       campaignUrl: campaignUrl(this.i18n.locale),
       fullStoryUrl: campaignUrl(this.i18n.locale),
       recordsClient: this.recordsClient,

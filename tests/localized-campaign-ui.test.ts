@@ -64,6 +64,55 @@ describe("localized campaign public UI", () => {
     shell.destroy();
   });
 
+  it("offers all eight languages in the Vercel header and reports a manual selection", () => {
+    const onLanguageChange = vi.fn();
+    const callbacks: CampaignShellCallbacks = {
+      onStart: vi.fn(), onPause: vi.fn(), onResume: vi.fn(), onRestart: vi.fn(),
+      onReturnToMenu: vi.fn(), onRetryLoad: vi.fn(), onJump: vi.fn(), onSlide: vi.fn(),
+      onMuteChange: vi.fn(), onFullscreenPreferenceChange: vi.fn(), onStoryContinue: vi.fn(),
+      onLanguageChange
+    };
+    const host = document.createElement("div");
+    document.body.append(host);
+    const shell = new CampaignShell(host, callbacks, {
+      i18n: createCampaignI18n("uk"),
+      keyboardProfile: "vercel",
+      languageSelector: true
+    });
+    const select = host.querySelector<HTMLSelectElement>("[data-campaign-language]");
+
+    expect(select?.value).toBe("uk");
+    expect(select?.getAttribute("aria-label")).toBe("Змінити мову");
+    expect(Array.from(select?.options ?? [], (option) => option.value))
+      .toEqual(["pl", "de", "en", "es", "cs", "it", "fr", "uk"]);
+    expect(select?.selectedOptions[0]?.textContent).toContain("🇺🇦");
+
+    if (!select) throw new Error("language_selector_missing");
+    select.value = "fr";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(onLanguageChange).toHaveBeenCalledWith("fr");
+
+    shell.destroy();
+  });
+
+  it("does not render the Vercel language selector in the IdoSell shell", () => {
+    const callbacks: CampaignShellCallbacks = {
+      onStart: vi.fn(), onPause: vi.fn(), onResume: vi.fn(), onRestart: vi.fn(),
+      onReturnToMenu: vi.fn(), onRetryLoad: vi.fn(), onJump: vi.fn(), onSlide: vi.fn(),
+      onMuteChange: vi.fn(), onFullscreenPreferenceChange: vi.fn(), onStoryContinue: vi.fn()
+    };
+    const host = document.createElement("div");
+    document.body.append(host);
+    const shell = new CampaignShell(host, callbacks, {
+      i18n: createCampaignI18n("pl"),
+      keyboardProfile: "idosell"
+    });
+
+    expect(host.querySelector("[data-campaign-language]")).toBeNull();
+
+    shell.destroy();
+  });
+
   it.each([
     ["de", "/assets/milion-runner/brand/mz-main-lockup-de-v1.webp", "/assets/milion-runner/brand/mz-compact-lockup-de-v1.webp"],
     ["es", "/assets/milion-runner/brand/mz-main-lockup-es-v1.webp", "/assets/milion-runner/brand/mz-compact-lockup-es-v1.webp"],

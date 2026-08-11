@@ -39,6 +39,10 @@ import {
   type CampaignI18n,
   type CampaignLocale
 } from "../localization";
+import {
+  VERCEL_LANGUAGE_OPTIONS,
+  VERCEL_LANGUAGE_SELECTOR_LABELS
+} from "../localization/vercel-locale";
 
 export type { CampaignStoryScene, CampaignStorySceneInput } from "./story-presentation";
 
@@ -197,6 +201,7 @@ export interface CampaignShellCallbacks {
   onMuteChange(muted: boolean): void;
   onFullscreenPreferenceChange(choice: "fullscreen" | "portrait"): void;
   onStoryContinue(sceneId: string): void;
+  onLanguageChange?(locale: CampaignLocale): void;
   onShare?(platform: CampaignSharePlatform, method: CampaignShareMethod): void;
 }
 
@@ -212,6 +217,7 @@ export interface CampaignShellOptions {
   decodedImageStore?: DecodedImageStore;
   i18n?: CampaignI18n;
   keyboardProfile?: "idosell" | "vercel";
+  languageSelector?: boolean;
 }
 
 export interface CampaignShareCardOptions {
@@ -621,6 +627,21 @@ export class CampaignShell {
       Object.entries({ ...DEFAULT_CAMPAIGN_SHELL_COPY, ...options.copy })
         .map(([key, value]) => [key, this.i18n.translate(value)])
     ) as CampaignShellCopy;
+    const languageSelector = options.languageSelector === true
+      ? `
+          <label class="amso-million-runner-2026__language-control">
+            <span class="amso-million-runner-2026__sr-only">${VERCEL_LANGUAGE_SELECTOR_LABELS[this.i18n.locale]}</span>
+            <select
+              class="amso-million-runner-2026__language-select"
+              data-campaign-language
+              aria-label="${VERCEL_LANGUAGE_SELECTOR_LABELS[this.i18n.locale]}"
+            >
+              ${VERCEL_LANGUAGE_OPTIONS.map(({ locale, flag, label }) =>
+                `<option value="${locale}"${locale === this.i18n.locale ? " selected" : ""}>${flag} ${label}</option>`
+              ).join("")}
+            </select>
+          </label>`
+      : "";
     this.root = document.createElement("div");
     this.root.className = "amso-million-runner-2026";
     this.root.dataset.view = "landing";
@@ -631,6 +652,7 @@ export class CampaignShell {
           <img class="amso-million-runner-2026__brand-logo" src="${lockups.compact}" alt="AMSO — ${this.copy.brandEdition}" width="1973" height="1138" />
         </a>
         <div class="amso-million-runner-2026__tools">
+          ${languageSelector}
           <button class="amso-million-runner-2026__icon-button" type="button" data-campaign-mute aria-pressed="false">
             <span aria-hidden="true" data-campaign-mute-icon>♪</span>
             <span class="amso-million-runner-2026__tool-label" data-campaign-mute-label data-campaign-copy="soundOn">Wycisz</span>
@@ -893,6 +915,10 @@ export class CampaignShell {
 
       <div class="amso-million-runner-2026__sr-only" data-campaign-live aria-live="polite" aria-atomic="true"></div>
     `;
+    const mountedLanguageSelector = this.root.querySelector<HTMLSelectElement>(
+      "[data-campaign-language]"
+    );
+    if (mountedLanguageSelector !== null) mountedLanguageSelector.value = this.i18n.locale;
     localizeElementTree(this.root, this.i18n);
     host.replaceChildren(this.root);
 
@@ -1562,6 +1588,7 @@ export class CampaignShell {
     window.removeEventListener("resize", this.handleResize);
     this.orientationQuery?.removeEventListener?.("change", this.handleOrientationChange);
     this.root.removeEventListener("click", this.handleClick);
+    this.root.removeEventListener("change", this.handleChange);
     this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
     this.canvas.removeEventListener("pointermove", this.handlePointerMove);
     this.canvas.removeEventListener("pointerup", this.handlePointerUp);
@@ -1571,6 +1598,7 @@ export class CampaignShell {
 
   private installListeners(): void {
     this.root.addEventListener("click", this.handleClick);
+    this.root.addEventListener("change", this.handleChange);
     this.canvas.addEventListener("pointerdown", this.handlePointerDown);
     this.canvas.addEventListener("pointermove", this.handlePointerMove);
     this.canvas.addEventListener("pointerup", this.handlePointerUp);
@@ -1582,6 +1610,18 @@ export class CampaignShell {
     window.addEventListener("resize", this.handleResize);
     this.orientationQuery?.addEventListener?.("change", this.handleOrientationChange);
   }
+
+  private readonly handleChange = (event: Event): void => {
+    const select = event.target instanceof HTMLSelectElement &&
+      event.target.matches("[data-campaign-language]")
+      ? event.target
+      : null;
+    if (select === null) return;
+    const locale = VERCEL_LANGUAGE_OPTIONS.find(({ locale }) => locale === select.value)?.locale;
+    if (locale !== undefined && locale !== this.i18n.locale) {
+      this.callbacks.onLanguageChange?.(locale);
+    }
+  };
 
   private applyCopy(): void {
     this.root.querySelectorAll<HTMLElement>("[data-campaign-copy]").forEach((element) => {

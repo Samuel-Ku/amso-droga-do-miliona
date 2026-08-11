@@ -36,7 +36,8 @@ try {
   const address = server.address();
   if (address === null || typeof address === "string") throw new Error("Vercel preview port unavailable");
   browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
+  const context = await browser.newContext({ locale: "de-DE" });
+  const page = await context.newPage();
   const failures = [];
   await page.route(`${recordsWorkerOrigin}/**`, (route) => route.abort("failed"));
   page.on("console", (message) => {
@@ -58,15 +59,35 @@ try {
     profile: document.querySelector("#amso-million-runner-2026-root")
       ?.getAttribute("data-campaign-keyboard-profile"),
     canvasLabel: document.querySelector("[data-campaign-canvas]")?.getAttribute("aria-label"),
-    qaGlobal: "AMSOMillionRunnerQA" in window
+    qaGlobal: "AMSOMillionRunnerQA" in window,
+    documentLanguage: document.documentElement.lang,
+    selectedLanguage: document.querySelector("[data-campaign-language]")?.value,
+    landingTitle: document.querySelector("[data-campaign-copy='landingTitleAccent']")?.textContent
   }));
   if (state.profile !== "vercel") failures.push(`unexpected keyboard profile: ${state.profile}`);
   if (!state.canvasLabel?.includes("↑") || !state.canvasLabel.includes("↓")) {
     failures.push("Vercel arrow controls are not advertised");
   }
+  if (state.documentLanguage !== "de" || state.selectedLanguage !== "de" ||
+      state.landingTitle !== "Der Weg zur Million") {
+    failures.push(`browser locale was not applied: ${JSON.stringify(state)}`);
+  }
   if (state.qaGlobal) failures.push("production Vercel page exposed QA global");
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "networkidle" }),
+    page.selectOption("[data-campaign-language]", "fr")
+  ]);
+  const manualLocale = await page.evaluate(() => ({
+    documentLanguage: document.documentElement.lang,
+    selectedLanguage: document.querySelector("[data-campaign-language]")?.value,
+    landingTitle: document.querySelector("[data-campaign-copy='landingTitleAccent']")?.textContent
+  }));
+  if (manualLocale.documentLanguage !== "fr" || manualLocale.selectedLanguage !== "fr" ||
+      manualLocale.landingTitle !== "En route vers le million") {
+    failures.push(`manual locale was not persisted: ${JSON.stringify(manualLocale)}`);
+  }
   if (failures.length > 0) throw new Error(failures.join("\n"));
-  console.log("Vercel browser smoke: /million mounted with restored arrow controls");
+  console.log("Vercel browser smoke: /million mounted with arrows and browser/manual locale selection");
 } finally {
   await browser?.close();
   await new Promise((resolve) => server.close(resolve));
