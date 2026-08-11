@@ -42,6 +42,13 @@ export function assessWorldSeamPerformanceEvidence(evidence, expected) {
     reasons.push("scenario-mismatch");
   }
   if (evidence?.frames?.sampleCount <= 0) reasons.push("active-frame-samples-missing");
+  if (!(evidence?.visualMotion?.sampleCount > 0) ||
+      !Number.isFinite(evidence?.visualMotion?.minVelocityRatio) ||
+      !Number.isFinite(evidence?.visualMotion?.maxVelocityRatio) ||
+      evidence.visualMotion.minVelocityRatio < 0.95 ||
+      evidence.visualMotion.maxVelocityRatio > 1.05) {
+    reasons.push("visual-motion-outside-0.95-1.05");
+  }
   const windows = Array.isArray(evidence?.transitionWindows) ? evidence.transitionWindows : [];
   for (const [index, worldId] of WORLD_SEAM_DESTINATIONS.entries()) {
     const window = windows[index];

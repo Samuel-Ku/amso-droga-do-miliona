@@ -2,6 +2,11 @@ function normalizeMask(value) {
   return String(value ?? "").replace(/\s+/gu, " ").trim();
 }
 
+function isNoMask(value) {
+  const normalized = normalizeMask(value);
+  return normalized === "" || normalized === "none";
+}
+
 function stageCovered(panelRects, stageRect) {
   const ordered = [...panelRects].sort((left, right) => left.left - right.left);
   if (ordered.length !== 2) return false;
@@ -20,21 +25,38 @@ function visibleStageExposureWithinCanonicalInsets(panelRects, paintedStageRect,
   return exposedLeft <= canonicalLeftInset + 1 && exposedRight <= canonicalRightInset + 1;
 }
 
-export function assessChallengeSeamSample(sample) {
+export function assessChallengeSeamSample(sample, { requireVelocity = true } = {}) {
   const reasons = [];
-  if (!sample.between || sample.direction !== "right-to-left") {
-    reasons.push("challenge-seam-state-missing");
-  }
-  if (sample.overlapPercent < 8 || sample.overlapPercent > 10) {
-    reasons.push("seam-overlap-outside-8-10-percent");
-  }
-  const standard = sample.standardMasks.map(normalizeMask);
-  const prefixed = sample.prefixedMasks.map(normalizeMask);
+  if (String(sample.overlap ?? "").trim() !== "") reasons.push("world-overlap-present");
+  const standard = Array.isArray(sample.standardMasks) ? sample.standardMasks : [];
+  const prefixed = Array.isArray(sample.prefixedMasks) ? sample.prefixedMasks : [];
   if (standard.length !== 2 || prefixed.length !== 2 ||
-      standard.some((mask) => mask === "" || mask === "none") ||
-      prefixed.some((mask) => mask === "" || mask === "none") ||
-      standard.some((mask, index) => mask !== prefixed[index])) {
-    reasons.push("standard-prefixed-mask-geometry-mismatch");
+      standard.some((mask) => !isNoMask(mask)) ||
+      prefixed.some((mask) => !isNoMask(mask)) ||
+      sample.panelSides.some((side) => side !== null)) {
+    reasons.push("world-mask-state-present");
+  }
+  if (sample.panelWorlds.length !== 2 || sample.panelWorlds.some((world) => world === null) ||
+      sample.panelWorlds[0] === sample.panelWorlds[1]) {
+    reasons.push("world-pair-missing");
+  }
+  const narrowestPanelWidth = Math.min(...sample.panelRects.map(({ width }) => width));
+  const oneRenderedPixelPercent = Number.isFinite(narrowestPanelWidth) && narrowestPanelWidth > 0
+    ? 100 / narrowestPanelWidth
+    : 0;
+  if (sample.panelXPercent.length !== 2 ||
+      Math.abs(sample.panelXPercent[1] - sample.panelXPercent[0] - 100) >
+        oneRenderedPixelPercent) {
+    reasons.push("panel-spacing-not-adjacent");
+  }
+  if (requireVelocity && (!Number.isFinite(sample.velocityRatio) ||
+      sample.velocityRatio < 0.95 || sample.velocityRatio > 1.05)) {
+    reasons.push("visual-velocity-outside-0.95-1.05");
+  }
+  if (!Number.isFinite(sample.phaseResidualPx) ||
+      !Number.isFinite(sample.renderedPixelTolerancePx) ||
+      sample.phaseResidualPx > sample.renderedPixelTolerancePx) {
+    reasons.push("visual-phase-over-one-rendered-pixel");
   }
   if (sample.panelOpacity.length !== 2 ||
       Math.abs(sample.panelOpacity[0] - sample.panelOpacity[1]) > 0.001) {
@@ -54,9 +76,10 @@ export function assessChallengeSeamSample(sample) {
 export function assessStorySeamSample(sample) {
   const reasons = [];
   if (sample.phase !== "story") reasons.push("story-phase-missing");
-  if (sample.between !== null) reasons.push("story-has-challenge-seam");
-  if (sample.overlap !== "0px") reasons.push("story-has-world-overlap");
-  if (sample.panelSides.some((side) => side !== null)) {
+  if (String(sample.overlap ?? "").trim() !== "") reasons.push("story-has-world-overlap");
+  if (sample.panelSides.some((side) => side !== null) ||
+      sample.standardMasks.some((mask) => !isNoMask(mask)) ||
+      sample.prefixedMasks.some((mask) => !isNoMask(mask))) {
     reasons.push("story-panels-have-mask-state");
   }
   return reasons;

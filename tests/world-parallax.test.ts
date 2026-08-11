@@ -689,14 +689,13 @@ describe("edge-to-edge gameplay background", () => {
     expect(panels.every((panel) => panel.style.opacity === "")).toBe(true);
     expect(panels.every((panel) => !panel.style.transform.includes("scaleX"))).toBe(true);
     expect(host.querySelector("[data-world-connector]")).toBeNull();
-    expect(host.style.getPropertyValue("--world-overlap")).toBe("0px");
+    expect(host.style.getPropertyValue("--world-overlap")).toBe("");
   });
 
-  it("softens the first challenge world boundary with a distance-driven directional mask", () => {
+  it("keeps challenge world motion linear without overlap or mask state", () => {
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host);
     const panels = [...host.querySelectorAll<HTMLImageElement>("[data-world-panel]")];
-
     layer.show({
       worldId: "first-mile",
       stateId: "story.first_package",
@@ -704,74 +703,30 @@ describe("edge-to-edge gameplay background", () => {
       transitionMode: "offscreen"
     });
     panels[0]!.dataset.worldId = "first-mile";
-    panels[0]!.src = "/assets/milion-runner/worlds/world-01-first-mile-v2.webp";
     panels[1]!.dataset.worldId = "order-process";
-    panels[1]!.src = "/assets/milion-runner/worlds/world-02-order-process-v2.webp";
-    const panelPositions = (): number[] =>
-      panels.map(({ style }) => {
-        const match = /translate3d\((-?[\d.]+)%/u.exec(style.transform);
-        return Number(match?.[1]);
-      });
-    const expectCoveredStage = (): void => {
-      const positions = panelPositions();
-      expect(panels.every(({ hidden }) => !hidden)).toBe(true);
-      expect(positions.every(Number.isFinite)).toBe(true);
-      expect(positions[0]!).toBeLessThanOrEqual(0);
-      expect(positions[0]! + 100).toBeGreaterThanOrEqual(positions[1]!);
-      expect(positions[1]! + 100).toBeGreaterThanOrEqual(100);
-    };
 
-    layer.setParallaxDistance(96, true);
-    expect(host.dataset.worldSeamBetween).toBe("first-mile:order-process");
-    expect(host.style.getPropertyValue("--world-overlap")).toBe("9%");
-    expect(panels.map(({ style }) => style.transform)).toEqual([
-      "translate3d(-5.5%, 0, 0)",
-      "translate3d(85.5%, 0, 0)"
-    ]);
-    expectCoveredStage();
-
-    layer.setParallaxDistance(480, true);
-
-    expect(host.dataset.worldSeamBetween).toBe("first-mile:order-process");
-    expect(host.dataset.worldSeamDirection).toBe("right-to-left");
-    expect(host.style.getPropertyValue("--world-overlap")).toBe("9%");
-    expect(panels.map(({ dataset }) => dataset.worldSeamSide))
-      .toEqual(["outgoing", "incoming"]);
-    expect(panels.map(({ style }) => style.getPropertyValue("--world-seam-overlap")))
-      .toEqual(["9%", "9%"]);
-    expect(panels.map(({ style }) => style.transform)).toEqual([
-      "translate3d(-45.5%, 0, 0)",
-      "translate3d(45.5%, 0, 0)"
-    ]);
-    expect(host.querySelectorAll("img")).toHaveLength(3);
-    expectCoveredStage();
-
-    layer.setParallaxDistance(864, true);
-    expect(host.dataset.worldSeamBetween).toBe("first-mile:order-process");
-    const endPositions = panelPositions();
-    expect(endPositions[0]).toBeCloseTo(-85.5, 6);
-    expect(endPositions[1]).toBeCloseTo(5.5, 6);
-    expectCoveredStage();
-
-    panels[1]!.dataset.worldId = "first-mile";
-    layer.setParallaxDistance(865, true);
-    expect(host.dataset.worldSeamBetween).toBeUndefined();
-    expect(host.style.getPropertyValue("--world-overlap")).toBe("0px");
-    expect(panels.every(({ dataset }) => dataset.worldSeamSide === undefined)).toBe(true);
-
-    layer.show({
-      worldId: "first-mile",
-      stateId: "story.first_package",
-      phase: "story",
-      transitionMode: "story-linked"
+    const samples = [48, 96, 144].map((distance) => {
+      layer.setParallaxDistance(distance, true);
+      return panels.map(panelXPercent);
     });
-    panels[1]!.dataset.worldId = "order-process";
-    layer.setParallaxDistance(480, false);
+
+    expect(samples).toEqual([
+      [-5, 95],
+      [-10, 90],
+      [-15, 85]
+    ]);
+    expect(samples[1]![0]! - samples[0]![0]!).toBe(-5);
+    expect(samples[2]![0]! - samples[1]![0]!).toBe(-5);
+    expect(host.style.getPropertyValue("--world-overlap")).toBe("");
     expect(host.dataset.worldSeamBetween).toBeUndefined();
+    expect(host.dataset.worldSeamMask).toBeUndefined();
+    expect(panels.every(({ dataset }) => dataset.worldSeamSide === undefined)).toBe(true);
+    expect(panels.every(({ style }) =>
+      style.getPropertyValue("--world-seam-overlap") === "")).toBe(true);
   });
 
   it.each(CHALLENGE_WORLD_PAIRS)(
-    "keeps the %s → %s challenge seam covered at its start, midpoint and end",
+    "keeps the %s → %s challenge boundary linear and covered",
     async (currentStateId, nextStateId) => {
       const currentWorldId = sceneVisualState(currentStateId).worldId;
       const nextWorldId = sceneVisualState(nextStateId).worldId;
@@ -812,21 +767,26 @@ describe("edge-to-edge gameplay background", () => {
       for (const distance of [96, 480, 864]) {
         layer.setParallaxDistance(distance, true);
         const panels = [...host.querySelectorAll<HTMLImageElement>("[data-world-panel]")];
+        const travel = distance / WORLD_WIDTH * 100;
         expect(panels.map(({ dataset }) => dataset.worldId))
           .toEqual([currentWorldId, nextWorldId]);
-        expect(host.dataset.worldSeamBetween).toBe(`${currentWorldId}:${nextWorldId}`);
-        expect(host.dataset.worldSeamDirection).toBe("right-to-left");
-        expect(host.style.getPropertyValue("--world-overlap")).toBe("9%");
-        expect(panels.map(({ dataset }) => dataset.worldSeamSide))
-          .toEqual(["outgoing", "incoming"]);
-        expect(panels.map(({ style }) => style.getPropertyValue("--world-seam-overlap")))
-          .toEqual(["9%", "9%"]);
+        expect(panels.map(panelXPercent)).toEqual([-travel, 100 - travel]);
+        expect(host.dataset.worldSeamBetween).toBeUndefined();
+        expect(host.dataset.worldSeamDirection).toBeUndefined();
+        expect(host.style.getPropertyValue("--world-overlap")).toBe("");
+        expect(panels.every(({ dataset }) => dataset.worldSeamSide === undefined)).toBe(true);
         expectPanelsCoverStage(panels);
       }
+      const incoming = host.querySelector<HTMLImageElement>('[data-world-panel="next"]')!;
+      layer.setParallaxDistance(WORLD_WIDTH, true);
+      const promoted = host.querySelector<HTMLImageElement>('[data-world-panel="current"]')!;
+      expect(promoted).toBe(incoming);
+      expect(promoted.dataset.worldId).toBe(nextWorldId);
+      expect(panelXPercent(promoted)).toBe(0);
     }
   );
 
-  it("keeps the active seam fixed through pause, resume and visibility changes", () => {
+  it("keeps the active linear phase fixed through pause, resume and visibility changes", () => {
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host);
     const panels = [...host.querySelectorAll<HTMLImageElement>("[data-world-panel]")];
@@ -841,8 +801,7 @@ describe("edge-to-edge gameplay background", () => {
     layer.setParallaxDistance(480, true);
     const before = {
       transforms: panels.map(({ style }) => style.transform),
-      phase: host.style.getPropertyValue("--world-phase-px"),
-      overlap: host.style.getPropertyValue("--world-overlap")
+      phase: host.style.getPropertyValue("--world-phase-px")
     };
 
     layer.setPaused(true);
@@ -851,8 +810,8 @@ describe("edge-to-edge gameplay background", () => {
 
     expect(panels.map(({ style }) => style.transform)).toEqual(before.transforms);
     expect(host.style.getPropertyValue("--world-phase-px")).toBe(before.phase);
-    expect(host.style.getPropertyValue("--world-overlap")).toBe(before.overlap);
-    expect(host.dataset.worldSeamBetween).toBe("client-paths:scale-logistics");
+    expect(host.style.getPropertyValue("--world-overlap")).toBe("");
+    expect(host.dataset.worldSeamBetween).toBeUndefined();
   });
 
   it("uses the reduced-motion distance function with the same spatial seam contract", () => {
@@ -880,8 +839,8 @@ describe("edge-to-edge gameplay background", () => {
 
     expect(reducedPanels.map(({ style }) => style.transform))
       .toEqual(standardPanels.map(({ style }) => style.transform));
-    expect(reducedHost.style.getPropertyValue("--world-overlap")).toBe("9%");
-    expect(reducedHost.dataset.worldSeamBetween).toBe("million-approach:million-finale");
+    expect(reducedHost.style.getPropertyValue("--world-overlap")).toBe("");
+    expect(reducedHost.dataset.worldSeamBetween).toBeUndefined();
   });
 
   it("leaves deterministic simulation, input, spawn, score and route state unchanged", () => {
@@ -917,9 +876,9 @@ describe("edge-to-edge gameplay background", () => {
     withSeam.game.destroy();
   });
 
-  it("keeps the stage geometrically covered when mask declarations are unavailable", () => {
+  it("keeps the stage covered without requiring mask capability", () => {
     const host = document.createElement("div");
-    const layer = new WorldVisualLayer(host, undefined, undefined, false);
+    const layer = new WorldVisualLayer(host);
     const panels = [...host.querySelectorAll<HTMLImageElement>("[data-world-panel]")];
     layer.show({
       worldId: "first-mile",
@@ -931,7 +890,7 @@ describe("edge-to-edge gameplay background", () => {
     panels[1]!.dataset.worldId = "first-mile";
     layer.setParallaxDistance(480, true);
 
-    expect(host.dataset.worldSeamMask).toBe("fallback-covered");
+    expect(host.dataset.worldSeamMask).toBeUndefined();
     expect(panels.every(({ dataset }) => dataset.worldSeamSide === undefined)).toBe(true);
     expectPanelsCoverStage(panels);
   });
@@ -1046,7 +1005,7 @@ describe("edge-to-edge gameplay background", () => {
       ?.dataset.worldId).toBe("quality-service");
   });
 
-  it("promotes a prepared challenge panel within one rendered pixel and clears pooled mask state", async () => {
+  it("promotes a prepared challenge panel within one rendered pixel without transition effects", async () => {
     const { store, images } = imageHarness();
     const host = document.createElement("div");
     const layer = new WorldVisualLayer(host, store);
@@ -1080,10 +1039,8 @@ describe("edge-to-edge gameplay background", () => {
 
     layer.setParallaxDistance(959, true);
     const incoming = host.querySelector<HTMLImageElement>('[data-world-panel="next"]')!;
-    const outgoing = host.querySelector<HTMLImageElement>('[data-world-panel="current"]')!;
     const before = panelXPercent(incoming);
-    expect(incoming.dataset.worldSeamSide).toBe("incoming");
-    expect(outgoing.dataset.worldSeamSide).toBe("outgoing");
+    expect(incoming.dataset.worldSeamSide).toBeUndefined();
 
     layer.setParallaxDistance(960, true);
 
@@ -1091,7 +1048,7 @@ describe("edge-to-edge gameplay background", () => {
     const pooled = host.querySelector<HTMLImageElement>("[data-world-staged-panel]")!;
     const after = panelXPercent(promoted);
     expect(promoted).toBe(incoming);
-    expect(Math.abs(after - before) * (WORLD_WIDTH / 100)).toBeLessThanOrEqual(1);
+    expect(Math.abs(after - before) * (WORLD_WIDTH / 100)).toBeLessThanOrEqual(1 + 1e-6);
     expect(host.dataset.worldSeamBetween).toBeUndefined();
     expect(promoted.dataset.worldSeamSide).toBeUndefined();
     expect(pooled.dataset.worldSeamSide).toBeUndefined();

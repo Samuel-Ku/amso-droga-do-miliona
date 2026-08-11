@@ -5,46 +5,50 @@ import {
 } from "../scripts/world-seam-browser-policy.mjs";
 
 const validSample = {
-  between: "first-mile:order-process",
-  direction: "right-to-left",
-  overlapPercent: 9,
-  standardMasks: [
-    "linear-gradient(90deg, rgb(0, 0, 0) 0%, rgb(0, 0, 0) 91%, transparent 100%)",
-    "linear-gradient(90deg, transparent 0%, rgb(0, 0, 0) 9%, rgb(0, 0, 0) 100%)"
-  ],
-  prefixedMasks: [
-    "linear-gradient(90deg, rgb(0, 0, 0) 0%, rgb(0, 0, 0) 91%, transparent 100%)",
-    "linear-gradient(90deg, transparent 0%, rgb(0, 0, 0) 9%, rgb(0, 0, 0) 100%)"
-  ],
+  overlap: "",
+  standardMasks: ["none", "none"],
+  prefixedMasks: ["none", "none"],
   panelOpacity: [0.6, 0.6],
+  panelXPercent: [-50, 50],
+  panelWorlds: ["first-mile", "order-process"],
+  panelSides: [null, null],
+  velocityRatio: 1,
+  phaseResidualPx: 0.01,
+  renderedPixelTolerancePx: 0.9,
   panelRects: [
-    { left: -400, right: 560, width: 960 },
-    { left: 474, right: 1434, width: 960 }
+    { left: -480, right: 480, width: 960 },
+    { left: 480, right: 1440, width: 960 }
   ],
   paintedStageRect: { left: 0, right: 960, width: 960 },
   visibleStageRect: { left: 0, right: 960, width: 960 }
 };
 
-describe("world seam browser qualification policy", () => {
-  it("accepts a narrow complementary covered seam with equivalent mask geometry", () => {
+describe("world boundary browser qualification policy", () => {
+  it("accepts adjacent panels with linear velocity and no transition effects", () => {
     expect(assessChallengeSeamSample(validSample)).toEqual([]);
   });
 
-  it("rejects gaps, broad ghosting, darkening and divergent prefixed geometry", () => {
+  it("rejects overlap, mask state, velocity distortion and exposed stage", () => {
     expect(assessChallengeSeamSample({
       ...validSample,
-      overlapPercent: 24,
-      prefixedMasks: ["none", "none"],
-      panelOpacity: [0.6, 0.3],
+      overlap: "9%",
+      standardMasks: ["linear-gradient(#000, transparent)", "none"],
+      prefixedMasks: ["linear-gradient(#000, transparent)", "none"],
+      panelXPercent: [-45.5, 45.5],
+      panelSides: ["outgoing", "incoming"],
+      velocityRatio: 0.1,
+      phaseResidualPx: 12,
       panelRects: [
         { left: 200, right: 420, width: 220 },
         { left: 430, right: 1250, width: 820 }
       ],
       visibleStageRect: { left: -100, right: 1300, width: 1400 }
     })).toEqual(expect.arrayContaining([
-      "seam-overlap-outside-8-10-percent",
-      "standard-prefixed-mask-geometry-mismatch",
-      "panel-opacity-diverged",
+      "world-overlap-present",
+      "world-mask-state-present",
+      "panel-spacing-not-adjacent",
+      "visual-velocity-outside-0.95-1.05",
+      "visual-phase-over-one-rendered-pixel",
       "stage-not-fully-covered",
       "visible-stage-exposure-exceeds-canonical-insets"
     ]));
@@ -56,26 +60,27 @@ describe("world seam browser qualification policy", () => {
       paintedStageRect: { left: 80, right: 880, width: 800 },
       visibleStageRect: { left: 0, right: 960, width: 960 },
       panelRects: [
-        { left: 20, right: 820, width: 800 },
-        { left: 748, right: 1548, width: 800 }
+        { left: -320, right: 480, width: 800 },
+        { left: 480, right: 1280, width: 800 }
       ]
     })).toEqual([]);
   });
 
-  it("requires story presentation to remain free of challenge mask state", () => {
+  it("requires story presentation to remain free of transition effects", () => {
     expect(assessStorySeamSample({
       phase: "story",
-      between: null,
-      overlap: "0px",
-      panelSides: [null, null]
+      overlap: "",
+      panelSides: [null, null],
+      standardMasks: ["none", "none"],
+      prefixedMasks: ["none", "none"]
     })).toEqual([]);
     expect(assessStorySeamSample({
       phase: "story",
-      between: "first-mile:order-process",
       overlap: "9%",
-      panelSides: ["outgoing", "incoming"]
+      panelSides: ["outgoing", "incoming"],
+      standardMasks: ["linear-gradient(#000, transparent)", "none"],
+      prefixedMasks: ["linear-gradient(#000, transparent)", "none"]
     })).toEqual([
-      "story-has-challenge-seam",
       "story-has-world-overlap",
       "story-panels-have-mask-state"
     ]);

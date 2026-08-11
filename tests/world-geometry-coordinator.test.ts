@@ -304,7 +304,11 @@ describe("world geometry coordinator", () => {
     layer.setParallaxDistance(360, true);
     const panelTransforms = panels.map(({ style }) => style.transform);
     const plateWidths = [host.style.getPropertyValue("--plate-width")];
-    expect(host.style.getPropertyValue("--world-overlap")).toBe("9%");
+    expect(panelTransforms).toEqual([
+      "translate3d(-37.5%, 0, 0)",
+      "translate3d(62.5%, 0, 0)"
+    ]);
+    expect(host.style.getPropertyValue("--world-overlap")).toBe("");
 
     window.dispatchEvent(new Event("orientationchange"));
     harness.notify(390, 844);
@@ -317,7 +321,7 @@ describe("world geometry coordinator", () => {
 
     expect([...host.querySelectorAll<HTMLElement>("[data-world-panel]")]
       .map(({ style }) => style.transform)).toEqual(panelTransforms);
-    expect(host.style.getPropertyValue("--world-overlap")).toBe("9%");
+    expect(host.style.getPropertyValue("--world-overlap")).toBe("");
     expect(new Set(plateWidths).size).toBeGreaterThan(1);
     const positions = panels.map(({ style }) =>
       Number(/translate3d\((-?[\d.]+)%/u.exec(style.transform)?.[1]));

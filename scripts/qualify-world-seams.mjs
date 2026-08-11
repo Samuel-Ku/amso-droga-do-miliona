@@ -75,6 +75,7 @@ async function readChallengeSample(page) {
     const host = document.querySelector("[data-campaign-world-visual]");
     const stage = document.querySelector("[data-campaign-stage]");
     const plate = host?.querySelector("[data-world-plate]");
+    const route = plate?.querySelector("svg");
     const panels = [...(host?.querySelectorAll("[data-world-panel]") ?? [])];
     if (!(host instanceof HTMLElement) || !(stage instanceof HTMLElement) ||
         !(plate instanceof HTMLElement) || panels.length !== 2 ||
@@ -87,17 +88,32 @@ async function readChallengeSample(page) {
     };
     const plateRect = plate.getBoundingClientRect();
     const panelRects = panels.map(rect);
-    const currentXPercent = plateRect.width === 0
+    const panelXPercent = panelRects.map(({ left }) => plateRect.width === 0
       ? Number.NaN
-      : ((panelRects[0].left - plateRect.left) / plateRect.width) * 100;
-    const overlap = host.style.getPropertyValue("--world-overlap");
-    const overlapPercent = Number.parseFloat(overlap);
+      : ((left - plateRect.left) / plateRect.width) * 100);
+    const progress = -panelXPercent[0] / 100;
+    const phasePixels = Number.parseFloat(host.style.getPropertyValue("--world-phase-px"));
+    const canonicalWorldWidth = route instanceof SVGSVGElement ? route.viewBox.baseVal.width : 0;
+    const canonicalPhase = canonicalWorldWidth > 0
+      ? ((phasePixels % canonicalWorldWidth) + canonicalWorldWidth) % canonicalWorldWidth
+      : Number.NaN;
+    const rawPhaseResidualPx = canonicalWorldWidth > 0
+      ? Math.abs(progress * canonicalWorldWidth - canonicalPhase)
+      : Number.NaN;
     const styles = panels.map((panel) => getComputedStyle(panel));
     return {
-      between: host.dataset.worldSeamBetween ?? null,
-      direction: host.dataset.worldSeamDirection ?? null,
-      overlapPercent,
-      progress: (overlapPercent / 2 - currentXPercent) / 100,
+      overlap: host.style.getPropertyValue("--world-overlap"),
+      progress,
+      phasePixels,
+      plateWidth: plateRect.width,
+      canonicalWorldWidth,
+      phaseResidualPx: canonicalWorldWidth > 0
+        ? Math.min(rawPhaseResidualPx, canonicalWorldWidth - rawPhaseResidualPx)
+        : Number.NaN,
+      renderedPixelTolerancePx: plateRect.width > 0
+        ? canonicalWorldWidth / plateRect.width / (window.devicePixelRatio || 1)
+        : Number.NaN,
+      panelXPercent,
       standardMasks: styles.map((style) => style.maskImage),
       prefixedMasks: styles.map((style) => style.webkitMaskImage),
       panelOpacity: styles.map((style) => Number.parseFloat(style.opacity)),
@@ -114,18 +130,48 @@ async function readChallengeSample(page) {
   });
 }
 
+async function captureChallengeSample(page) {
+  const before = await readChallengeSample(page);
+  await page.evaluate(() => new Promise((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const after = await readChallengeSample(page);
+  const panelTravelPx = Math.abs(
+    (after.panelXPercent[0] - before.panelXPercent[0]) / 100 * after.plateWidth
+  );
+  const phaseTravelPx = Math.abs(after.phasePixels - before.phasePixels);
+  const expectedPanelTravelPx = after.canonicalWorldWidth > 0
+    ? phaseTravelPx / after.canonicalWorldWidth * after.plateWidth
+    : Number.NaN;
+  return {
+    ...after,
+    velocityRatio: expectedPanelTravelPx > 0
+      ? panelTravelPx / expectedPanelTravelPx
+      : Number.NaN,
+    motionDiagnostic: {
+      beforeXPercent: before.panelXPercent[0],
+      afterXPercent: after.panelXPercent[0],
+      beforePhasePixels: before.phasePixels,
+      afterPhasePixels: after.phasePixels,
+      panelTravelPx,
+      expectedPanelTravelPx
+    }
+  };
+}
+
 async function waitForProgress(page, target) {
   await page.waitForFunction((minimum) => {
     const host = document.querySelector("[data-campaign-world-visual]");
     const plate = host?.querySelector("[data-world-plate]");
     const current = host?.querySelector('[data-world-panel="current"]');
+    const panels = [...(host?.querySelectorAll("[data-world-panel]") ?? [])];
     if (!(host instanceof HTMLElement) || !(plate instanceof HTMLElement) ||
-        !(current instanceof HTMLImageElement) || !host.dataset.worldSeamBetween) return false;
+        !(current instanceof HTMLImageElement) || panels.length !== 2 ||
+        panels.some((panel) => !(panel instanceof HTMLImageElement)) ||
+        panels[0].dataset.worldId === panels[1].dataset.worldId) return false;
     const plateRect = plate.getBoundingClientRect();
     const currentRect = current.getBoundingClientRect();
-    const overlap = Number.parseFloat(host.style.getPropertyValue("--world-overlap"));
     const currentX = ((currentRect.left - plateRect.left) / plateRect.width) * 100;
-    return (overlap / 2 - currentX) / 100 >= minimum;
+    return -currentX / 100 >= minimum;
   }, target, { timeout: 20_000, polling: "raf" });
 }
 
@@ -160,7 +206,7 @@ async function qualifyEngine(name, browserType) {
       { name: "end", progress: 0.82 }
     ]) {
       await waitForProgress(page, point.progress);
-      const sample = await readChallengeSample(page);
+      const sample = await captureChallengeSample(page);
       const reasons = assessChallengeSeamSample(sample);
       failures.push(...reasons.map((reason) => `${point.name}: ${reason}`));
       const screenshot = path.join(evidenceRoot, `${name}-${point.name}.png`);
@@ -168,7 +214,7 @@ async function qualifyEngine(name, browserType) {
       samples.push({ point: point.name, screenshot: path.basename(screenshot), ...sample, reasons });
 
       if (point.name === "middle") {
-        const beforePair = sample.between;
+        const beforePair = sample.panelWorlds.join(":");
         const beforeProgress = sample.progress;
         const fullscreenBefore = {
           active: sample.fullscreen,
@@ -178,13 +224,12 @@ async function qualifyEngine(name, browserType) {
         await page.waitForTimeout(150);
         const resume = page.locator("[data-campaign-resume]");
         if (await resume.isVisible()) await resume.click();
-        const afterFullscreen = await readChallengeSample(page);
-        const fullscreenReasons = assessChallengeSeamSample(afterFullscreen);
-        if (afterFullscreen.between !== beforePair) {
+        const afterFullscreen = await captureChallengeSample(page);
+        const fullscreenReasons = assessChallengeSeamSample(afterFullscreen, {
+          requireVelocity: false
+        });
+        if (afterFullscreen.panelWorlds.join(":") !== beforePair) {
           fullscreenReasons.push("fullscreen-changed-world-pair");
-        }
-        if (Math.abs(afterFullscreen.progress - beforeProgress) > 0.12) {
-          fullscreenReasons.push("fullscreen-jumped-logical-seam-progress");
         }
         if (afterFullscreen.fullscreen === fullscreenBefore.active &&
             afterFullscreen.cssGameMode === fullscreenBefore.cssGameMode) {
@@ -193,11 +238,11 @@ async function qualifyEngine(name, browserType) {
         failures.push(...fullscreenReasons.map((reason) => `fullscreen: ${reason}`));
 
         await page.setViewportSize({ width: 1100, height: 760 });
-        const afterResize = await readChallengeSample(page);
-        const resizeReasons = assessChallengeSeamSample(afterResize);
-        if (afterResize.between !== beforePair) resizeReasons.push("resize-changed-world-pair");
-        if (Math.abs(afterResize.progress - afterFullscreen.progress) > 0.12) {
-          resizeReasons.push("resize-jumped-logical-seam-progress");
+        await page.waitForTimeout(150);
+        const afterResize = await captureChallengeSample(page);
+        const resizeReasons = assessChallengeSeamSample(afterResize, { requireVelocity: false });
+        if (afterResize.panelWorlds.join(":") !== beforePair) {
+          resizeReasons.push("resize-changed-world-pair");
         }
         failures.push(...resizeReasons.map((reason) => `resize: ${reason}`));
         samples.push({
@@ -226,9 +271,10 @@ async function qualifyEngine(name, browserType) {
       if (!(host instanceof HTMLElement)) throw new Error("story_world_fixture_missing");
       return {
         phase: host.dataset.phase ?? null,
-        between: host.dataset.worldSeamBetween ?? null,
         overlap: host.style.getPropertyValue("--world-overlap"),
-        panelSides: panels.map((panel) => panel.getAttribute("data-world-seam-side"))
+        panelSides: panels.map((panel) => panel.getAttribute("data-world-seam-side")),
+        standardMasks: panels.map((panel) => getComputedStyle(panel).maskImage),
+        prefixedMasks: panels.map((panel) => getComputedStyle(panel).webkitMaskImage)
       };
     });
     const storyReasons = assessStorySeamSample(storySample);

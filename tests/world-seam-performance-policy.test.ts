@@ -23,6 +23,7 @@ function evidence(engine = "chromium", target = { kind: "vercel-build", value: "
     },
     environment: { browser: { engine } },
     frames: { sampleCount: 7_000, over33Ms: 0 },
+    visualMotion: { sampleCount: 6_000, minVelocityRatio: 0.999, maxVelocityRatio: 1.001 },
     deployment: target.kind === "url" ? {
       finalUrl: target.value, server: "Vercel", vercelId: "arn1::qualification",
       provenancePassed: true
@@ -63,17 +64,19 @@ describe("world seam performance release policy", () => {
     ]));
   });
 
-  it("rejects blank coverage, phase jumps, and detached image allocation", () => {
+  it("rejects blank coverage, phase jumps, visual slowdown, and detached image allocation", () => {
     const failed = evidence();
     failed.panelTransitions[0]!.visual.covered = false;
     failed.panelTransitions[1]!.visual.phaseJumpPx = 2;
     failed.panelTransitions[2]!.visual.panelContinuityResidualPx = 1.1;
+    failed.visualMotion.minVelocityRatio = 0.1;
     failed.dom.activeImageNodesCreated = 1;
     expect(assessWorldSeamPerformanceEvidence(failed, {
       engine: "chromium", targetKind: "vercel-build", targetValue: "dist-vercel"
     })).toEqual(expect.arrayContaining([
       "order-process:blank-frame-risk", "quality-service:phase-jump",
       "client-paths:panel-continuity-over-one-rendered-pixel",
+      "visual-motion-outside-0.95-1.05",
       "active-image-node-created"
     ]));
   });

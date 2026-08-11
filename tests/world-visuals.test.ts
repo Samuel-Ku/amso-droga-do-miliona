@@ -32,13 +32,12 @@ describe("world visual continuity", () => {
     expect(css).toContain("--world-position-landscape");
     expect(css).not.toContain("--world-tile-blend-width");
     expect(css).not.toMatch(/\.amso-million-runner-2026-world-visual__panel\.is-leaving\s*\{/u);
-    expect(css).toContain('[data-world-seam-side="outgoing"]');
-    expect(css).toContain('[data-world-seam-side="incoming"]');
-    expect(css).toContain("-webkit-mask-image: linear-gradient");
-    expect(css).toContain("mask-image: linear-gradient");
+    expect(css).not.toContain("data-world-seam-side");
+    expect(css).not.toContain("--world-seam-overlap");
     expect(css).not.toContain("mix-blend-mode: plus-lighter");
     expect(css).not.toContain("backdrop-filter: blur(var(--world-seam-blur-radius");
-    expect(worldLayer).toContain('this.host.style.setProperty("--world-overlap", "0px")');
+    expect(worldLayer).not.toContain("--world-overlap");
+    expect(worldLayer).not.toContain("worldSeamSide");
     expect(worldLayer).toContain("data-world-plate");
     expect(worldLayer).toContain("public applyGeometry(");
     expect(worldLayer).toContain('<img class="amso-million-runner-2026-world-visual__panel"');

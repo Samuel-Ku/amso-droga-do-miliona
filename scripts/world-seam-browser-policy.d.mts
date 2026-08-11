@@ -5,12 +5,16 @@ export interface BrowserRectSample {
 }
 
 export interface ChallengeSeamBrowserSample {
-  readonly between: string | null;
-  readonly direction: string | null;
-  readonly overlapPercent: number;
+  readonly overlap: string;
   readonly standardMasks: readonly string[];
   readonly prefixedMasks: readonly string[];
   readonly panelOpacity: readonly number[];
+  readonly panelXPercent: readonly number[];
+  readonly panelWorlds: readonly (string | null)[];
+  readonly panelSides: readonly (string | null)[];
+  readonly velocityRatio: number;
+  readonly phaseResidualPx: number;
+  readonly renderedPixelTolerancePx: number;
   readonly panelRects: readonly BrowserRectSample[];
   readonly paintedStageRect: BrowserRectSample;
   readonly visibleStageRect: BrowserRectSample;
@@ -18,10 +22,14 @@ export interface ChallengeSeamBrowserSample {
 
 export interface StorySeamBrowserSample {
   readonly phase: string | null;
-  readonly between: string | null;
   readonly overlap: string;
   readonly panelSides: readonly (string | null)[];
+  readonly standardMasks: readonly string[];
+  readonly prefixedMasks: readonly string[];
 }
 
-export function assessChallengeSeamSample(sample: ChallengeSeamBrowserSample): string[];
+export function assessChallengeSeamSample(
+  sample: ChallengeSeamBrowserSample,
+  options?: { readonly requireVelocity?: boolean }
+): string[];
 export function assessStorySeamSample(sample: StorySeamBrowserSample): string[];

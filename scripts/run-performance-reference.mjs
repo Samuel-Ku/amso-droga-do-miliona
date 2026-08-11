@@ -196,6 +196,7 @@ try {
       decodeTimings: [],
       worldTransitions: [],
       panelTransitions: [],
+      visualMotionSlopes: [],
       qualityHistory: [{ level: "full", atMs: 0, reason: "force-full" }],
       longTasks: { support: "unsupported", count: 0, totalDurationMs: 0,
         maxDurationMs: 0, entries: [] },
@@ -314,6 +315,8 @@ try {
     let previousActiveFrame = null;
     const lastPanelRects = new WeakMap();
     let lastWorldPhase = null;
+    let lastCurrentPanel = null;
+    let lastCurrentPanelTranslate = null;
     const observeFrame = (timestamp) => {
       const active = document.visibilityState === "visible" && isActiveGameplay();
       if (active && previousActiveFrame !== null) {
@@ -332,6 +335,7 @@ try {
         }
       }
       const worldVisual = document.querySelector("[data-campaign-world-visual]");
+      const previousWorldPhase = lastWorldPhase;
       if (worldVisual instanceof HTMLElement) {
         const phase = Number.parseFloat(worldVisual.style.getPropertyValue("--world-phase-px"));
         if (Number.isFinite(phase)) {
@@ -342,6 +346,27 @@ try {
             previousTimestamp: lastWorldPhase?.timestamp ?? timestamp
           };
         }
+      }
+      const currentPanel = worldVisual?.querySelector('[data-world-panel="current"]');
+      if (currentPanel instanceof HTMLImageElement) {
+        const currentTranslate = panelTranslateXPercent(currentPanel);
+        const phaseDelta = lastWorldPhase === null || previousWorldPhase === null
+          ? Number.NaN
+          : lastWorldPhase.value - previousWorldPhase.value;
+        if (active && currentPanel === lastCurrentPanel &&
+            Number.isFinite(currentTranslate) && Number.isFinite(lastCurrentPanelTranslate) &&
+            Number.isFinite(phaseDelta) && Math.abs(phaseDelta) > 0.001) {
+          const slope = Math.abs((currentTranslate - lastCurrentPanelTranslate) / phaseDelta);
+          if (Number.isFinite(slope) && slope > 0 &&
+              window.__performanceScenarioRuntime.visualMotionSlopes.length < 20_000) {
+            window.__performanceScenarioRuntime.visualMotionSlopes.push({ atMs: timestamp, slope });
+          }
+        }
+        lastCurrentPanel = currentPanel;
+        lastCurrentPanelTranslate = currentTranslate;
+      } else {
+        lastCurrentPanel = null;
+        lastCurrentPanelTranslate = null;
       }
       for (const panel of worldVisual?.querySelectorAll("[data-world-panel]") ?? []) {
         if (panel instanceof HTMLImageElement) {
@@ -566,6 +591,22 @@ try {
       : null
   );
   const intervals = runtime.activeFrameIntervals;
+  const motionSlopes = runtime.visualMotionSlopes.map(({ slope }) => slope)
+    .filter((slope) => Number.isFinite(slope) && slope > 0);
+  const medianMotionSlope = percentile(motionSlopes, 0.5);
+  const motionVelocityRatios = Number.isFinite(medianMotionSlope) && medianMotionSlope > 0
+    ? motionSlopes.map((slope) => slope / medianMotionSlope)
+    : [];
+  const visualMotion = {
+    sampleCount: motionVelocityRatios.length,
+    medianSlope: rounded(medianMotionSlope),
+    minVelocityRatio: rounded(motionVelocityRatios.length === 0 ? null
+      : Math.min(...motionVelocityRatios)),
+    maxVelocityRatio: rounded(motionVelocityRatios.length === 0 ? null
+      : Math.max(...motionVelocityRatios))
+  };
+  const visualMotionPassed = visualMotion.sampleCount > 0 &&
+    visualMotion.minVelocityRatio >= 0.95 && visualMotion.maxVelocityRatio <= 1.05;
   const scriptDurationMs = runtime.longAnimationFrames.entries.reduce((total, entry) =>
     total + entry.scripts.reduce((nested, script) => nested + script.durationMs, 0), 0);
   const renderingProxyDurationMs = runtime.longAnimationFrames.entries.reduce((total, entry) => {
@@ -632,6 +673,7 @@ try {
     transitionActiveDecodeStarts === 0 &&
     transitionWindows.every(({ framesOver33Ms }) => framesOver33Ms === 0) &&
     requiredPanelTransitionsPassed &&
+    (scenarioId !== "world-seam-performance-v1" || visualMotionPassed) &&
     runtime.dom.activeImageNodesAdded === 0 &&
     runtime.dom.activeImageNodesCreated === 0 &&
     deploymentProvenancePassed &&
@@ -711,6 +753,7 @@ try {
       over50Ms: intervals.filter((interval) => interval > 50).length,
       over100Ms: intervals.filter((interval) => interval > 100).length
     },
+    visualMotion,
     frameTimeline: runtime.activeFrameTimeline,
     qualityHistory: runtime.qualityHistory,
     decodeTimings: runtime.decodeTimings,
