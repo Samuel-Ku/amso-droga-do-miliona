@@ -86,6 +86,8 @@ describe("localized campaign public UI", () => {
     expect(Array.from(select?.options ?? [], (option) => option.value))
       .toEqual(["pl", "de", "en", "es", "cs", "it", "fr", "uk"]);
     expect(select?.selectedOptions[0]?.textContent).toContain("🇺🇦");
+    expect(host.querySelector(".amso-million-runner-2026__language-flag")?.textContent?.trim())
+      .toBe("🇺🇦");
 
     if (!select) throw new Error("language_selector_missing");
     select.value = "fr";

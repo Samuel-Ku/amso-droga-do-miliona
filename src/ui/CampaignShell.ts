@@ -631,6 +631,9 @@ export class CampaignShell {
       ? `
           <label class="amso-million-runner-2026__language-control">
             <span class="amso-million-runner-2026__sr-only">${VERCEL_LANGUAGE_SELECTOR_LABELS[this.i18n.locale]}</span>
+            <span class="amso-million-runner-2026__language-flag" aria-hidden="true">
+              ${VERCEL_LANGUAGE_OPTIONS.find(({ locale }) => locale === this.i18n.locale)?.flag ?? "🌐"}
+            </span>
             <select
               class="amso-million-runner-2026__language-select"
               data-campaign-language
