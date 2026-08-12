@@ -2,7 +2,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { chromium, webkit } from "playwright";
+import { chromium, firefox, webkit } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "dist-vercel");
 const recordsWorkerOrigin = "https://droga-do-miliona-records.s-kutsenko.workers.dev";
@@ -11,6 +11,16 @@ const contentTypes = new Map([
   [".html", "text/html; charset=utf-8"], [".js", "text/javascript; charset=utf-8"],
   [".svg", "image/svg+xml"], [".webp", "image/webp"]
 ]);
+
+function deployedRasterPaths(directory = root) {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const absolutePath = path.join(directory, entry.name);
+    if (entry.isDirectory()) return deployedRasterPaths(absolutePath);
+    return /\.(?:avif|gif|jpe?g|png|webp)$/iu.test(entry.name)
+      ? [`/${path.relative(root, absolutePath).split(path.sep).join("/")}`]
+      : [];
+  });
+}
 
 async function checkMobileOverlayContainment(browser, baseUrl, failures) {
   for (const viewport of [{ width: 390, height: 667 }, { width: 667, height: 390 }]) {
@@ -96,6 +106,56 @@ async function checkMobileOverlayContainment(browser, baseUrl, failures) {
       failures.push(`mobile overlays escaped ${viewport.width}x${viewport.height}: ${JSON.stringify(result)}`);
     }
     await context.close();
+  }
+}
+
+async function checkRasterCompatibility(browserType, engineLabel, baseUrl, failures) {
+  const browser = await browserType.launch({ headless: true });
+  try {
+    const context = await browser.newContext({ locale: "pl-PL" });
+    const page = await context.newPage();
+    await page.route(`${recordsWorkerOrigin}/**`, (route) => route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ entries: [] })
+    }));
+    for (const locale of ["pl", "de", "en", "es", "cs", "it", "fr", "uk"]) {
+      await page.goto(`${baseUrl}/million?lang=${locale}`, { waitUntil: "networkidle" });
+      const lockups = await page.locator([
+        ".amso-million-runner-2026__brand-logo",
+        ".amso-million-runner-2026__main-lockup"
+      ].join(",")).evaluateAll((images) => images.map((image) => ({
+        className: image.className,
+        complete: image.complete,
+        naturalWidth: image.naturalWidth,
+        source: image.currentSrc || image.src
+      })));
+      const broken = lockups.filter((image) => !image.complete || image.naturalWidth === 0);
+      if (lockups.length !== 2 || broken.length > 0) {
+        failures.push(`${engineLabel} ${locale} landing lockups failed to decode: ${JSON.stringify(lockups)}`);
+      }
+    }
+    const brokenAssets = [];
+    for (const assetPath of deployedRasterPaths()) {
+      const result = await page.evaluate(async (source) => {
+        const image = new Image();
+        image.src = source;
+        try {
+          await image.decode();
+        } catch (error) {
+          return { source, error: error instanceof Error ? error.message : String(error) };
+        }
+        return image.naturalWidth > 0 && image.naturalHeight > 0
+          ? null
+          : { source, error: `invalid intrinsic size ${image.naturalWidth}x${image.naturalHeight}` };
+      }, `${baseUrl}${assetPath}`);
+      if (result !== null) brokenAssets.push(result);
+    }
+    if (brokenAssets.length > 0) {
+      failures.push(`${engineLabel} deployed raster assets failed to decode: ${JSON.stringify(brokenAssets)}`);
+    }
+    await context.close();
+  } finally {
+    await browser.close();
   }
 }
 
@@ -289,6 +349,18 @@ try {
   }
   await checkMobileOverlayContainment(
     browser,
+    `http://127.0.0.1:${address.port}`,
+    failures
+  );
+  await checkRasterCompatibility(
+    firefox,
+    "Firefox",
+    `http://127.0.0.1:${address.port}`,
+    failures
+  );
+  await checkRasterCompatibility(
+    webkit,
+    "WebKit",
     `http://127.0.0.1:${address.port}`,
     failures
   );

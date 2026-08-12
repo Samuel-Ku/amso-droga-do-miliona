@@ -492,4 +492,41 @@ describe("story input safety gate", () => {
     expect(world?.dataset.worldSeamBetween).toBeUndefined();
     shell.destroy();
   });
+
+  it("keeps the painted story world until the narrative scene owns the next world", async () => {
+    const { shell } = createShell();
+    const world = document.querySelector<HTMLElement>("[data-campaign-world-visual]");
+    shell.showGame("story");
+    const first = challengeSnapshot("first-mile", "story.first_package");
+    const storyFields = {
+      storyObjectives: { activeSegmentId: "", completedObjectiveIds: [] },
+      storyPhase: null,
+      activeStoryBeatIds: []
+    } as unknown as Pick<GameSnapshot, "storyObjectives" | "storyPhase" | "activeStoryBeatIds">;
+    shell.update({ ...first, ...storyFields, mode: "story" });
+    await shell.waitForWorldPresentation();
+
+    shell.update({
+      ...first,
+      ...storyFields,
+      mode: "story",
+      visualWorldId: "order-process",
+      visualStateId: "epoch_1.resolve",
+      visualNextStateId: "epoch_1.resolve",
+      authoredWave: { completed: true }
+    } as GameSnapshot);
+    expect(world?.dataset.worldId).toBe("first-mile");
+
+    shell.showStoryScene({
+      sceneId: "epoch-1-resolve",
+      visualStateId: "epoch_1.resolve",
+      title: "Rozdział gotowy",
+      body: "Następny świat ładuje się w bezpiecznej scenie.",
+      vignette: "story",
+      continueLabel: "Dalej"
+    });
+    await shell.waitForWorldPresentation();
+    expect(world?.dataset.worldId).toBe("order-process");
+    shell.destroy();
+  });
 });

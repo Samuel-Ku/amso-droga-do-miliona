@@ -2,8 +2,22 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 
 const root = path.resolve(import.meta.dirname, "..");
+function currentArtifactIdentity() {
+  const htmlPath = path.join(root, "dist-vercel/index.html");
+  if (!fs.existsSync(htmlPath)) return null;
+  const html = fs.readFileSync(htmlPath);
+  const sourceIdentity = html.toString("utf8").match(/<meta name="amso-build-source" content="([a-f0-9]{64})">/u)?.[1];
+  const relativeAssets = [...html.toString("utf8").matchAll(/(?:src|href)="\.\/(assets\/[^"?]+)"/gu)]
+    .map((match) => match[1]).concat("assets/milion-runner/boot-watchdog.js");
+  const assetIdentities = [...new Set(relativeAssets)].map((relative) => {
+    const bytes = fs.readFileSync(path.join(root, "dist-vercel", relative));
+    return { bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") };
+  });
+  return sourceIdentity ? { sourceIdentity, htmlSha256: createHash("sha256").update(html).digest("hex"), assetIdentities } : null;
+}
 const profiles = [
   { profile: "cold-audio-enabled", processState: "cold", audioMode: "enabled" },
   { profile: "cold-audio-disabled", processState: "cold", audioMode: "disabled" },
@@ -309,6 +323,7 @@ missingEvidence.push("minimum-profile-device-unavailable", "iphone-safari-report
 const automatedFailed = !comparable || failedChecks.length > 0;
 const report = {
   schema: "amso-cold-start-qualification-v1",
+  provenance: currentArtifactIdentity(),
   comparable,
   target: runs["full-session"].target,
   runs: summaries,

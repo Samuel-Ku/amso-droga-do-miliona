@@ -997,8 +997,8 @@ describe("story lifecycle pauses", () => {
 
     attemptedInput.game.jump("keyboard");
     attemptedInput.game.crouch(true, "keyboard");
-    baseline.advance(2.1);
-    attemptedInput.advance(2.1);
+    baseline.advance(3.1);
+    attemptedInput.advance(3.1);
     const baselinePlayIndex = baseline.storyUpdates.findIndex(({ state }) => state === "play");
     const attemptedPlayIndex = attemptedInput.storyUpdates.findIndex(
       ({ state }) => state === "play"

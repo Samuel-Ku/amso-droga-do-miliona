@@ -52,8 +52,8 @@ interface CampaignLockups {
 }
 
 const POLISH_LOCKUPS: CampaignLockups = Object.freeze({
-  main: "/assets/milion-runner/brand/mz-main-lockup-v1.avif",
-  compact: "/assets/milion-runner/brand/mz-compact-lockup-v1.avif"
+  main: "/assets/milion-runner/brand/mz-main-lockup-v1.webp",
+  compact: "/assets/milion-runner/brand/mz-compact-lockup-v1.webp"
 });
 const LOCALIZED_LOCKUPS: Readonly<Record<Exclude<CampaignLocale, "pl">, CampaignLockups>> = Object.freeze({
   de: { main: "/assets/milion-runner/brand/mz-main-lockup-de-v1.webp", compact: "/assets/milion-runner/brand/mz-compact-lockup-de-v1.webp" },
@@ -1287,12 +1287,18 @@ export class CampaignShell {
       snapshot.visualNextStateId,
       snapshot.visualProgress,
     );
-    this.applyWorldVisual(
-      snapshot.visualWorldId,
-      displayedVisualStateId,
-      this.root.dataset.view === "story_scene" ? "story" : "game",
-      this.activeMode === "challenge" ? "offscreen" : "story-linked"
-    );
+    const view = this.root.dataset.view;
+    // A final simulation snapshot can already point at the next story world
+    // while the current play surface remains visible. Keep the fully painted
+    // panel until handleStoryUpdate installs the narrative scene.
+    if (!(this.activeMode === "story" && view === "game" && snapshot.authoredWave?.completed === true)) {
+      this.applyWorldVisual(
+        snapshot.visualWorldId,
+        displayedVisualStateId,
+        view === "story_scene" ? "story" : "game",
+        this.activeMode === "challenge" ? "offscreen" : "story-linked"
+      );
+    }
     this.worldVisualLayer.setCounterValue(snapshot.millionCounterValue);
     this.showMilestoneCelebration(
       snapshot.milestoneCelebration ?? null,

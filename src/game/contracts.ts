@@ -158,6 +158,10 @@ export interface RunnerGameOptions {
   powerUpCopy?: Partial<Readonly<Record<PowerUpKind, readonly [string, string]>>>;
   /** True only for the deterministic local scenario harness. */
   qaScenarioActive?: boolean;
+  /** QA acceptance boundary: expose the existing story result before Challenge. */
+  stopAfterStory?: boolean;
+  /** QA-only fixed-step driver for the versioned full-story browser replay. */
+  fullStoryQaActive?: boolean;
   onQaAbort?: (reason: "input-queue-overflow") => void;
   /** Internal visual clock sink; called from the sole gameplay rAF owner. */
   visualFrameSink?: (visualDistancePixels: number, interpolationAlpha: number) => void;

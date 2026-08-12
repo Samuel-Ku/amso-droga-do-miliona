@@ -1464,6 +1464,26 @@ describe("edge-to-edge gameplay background", () => {
     expect(images[1]!.src).toContain("world-02-order-process");
   });
 
+  it("defers story-linked successor decode until the narrative-safe phase", async () => {
+    const { store, images } = imageHarness();
+    const host = document.createElement("div");
+    const layer = new WorldVisualLayer(host, store);
+
+    layer.show({
+      worldId: "first-mile",
+      stateId: "story.first_package",
+      phase: "game",
+      transitionMode: "story-linked"
+    });
+    images[0]!.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(host.dataset.assetState).toBe("loaded"));
+
+    expect(images).toHaveLength(1);
+    layer.setPhase("story");
+    await vi.waitFor(() => expect(images).toHaveLength(2));
+    expect(images[1]!.src).toContain("world-02-order-process");
+  });
+
   it("keeps the seventh world on both panels for a seamless finale loop", async () => {
     vi.useFakeTimers();
     const { store, images } = imageHarness();

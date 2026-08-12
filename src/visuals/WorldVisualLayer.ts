@@ -666,6 +666,12 @@ export class WorldVisualLayer {
     const view = this.host.ownerDocument.defaultView;
     const requestIdle = view?.requestIdleCallback;
     const activeGameplay = this.host.dataset.phase === "game" && !this.paused;
+    // Story chapters always provide a narrative pause after the current world
+    // is promoted. Keep successor decode/pre-composite work in that safe phase;
+    // an idle callback during the run is still active gameplay and can produce
+    // a visible hitch on Safari/Chromium. Endless challenge has no such pause
+    // and retains its cooperative active-idle preparation path.
+    if (activeGameplay && this.transitionMode === "story-linked") return;
     if (this.destroyed || this.scheduledPreloadPath === null || this.panelPreparationScheduled ||
         this.panelPreparationPath !== null) return;
     const cooldownRemaining = this.panelPreparationCooldownRemainingMs();
@@ -1174,6 +1180,10 @@ export class WorldVisualLayer {
   }
 
   private async drawPanel(panel: HTMLImageElement, asset: DecodedWorldAsset): Promise<boolean> {
+    if (panel.dataset.assetPath === asset.path && !panel.hidden && panel.naturalWidth > 0) {
+      panel.dataset.presentationReady = "true";
+      return true;
+    }
     const assignment = this.assignDecodedPanel(panel, asset);
     panel.hidden = true;
     // Presentation elements intentionally share the canonical source while keeping

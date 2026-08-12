@@ -181,7 +181,7 @@
     "readingSpeedMultiplier": 0.3,
     "speedStartMultiplier": 0.95,
     "speedMaxMultiplier": 1.85,
-    "resumeCountdownSeconds": 2,
+    "resumeCountdownSeconds": 3,
     "firstCompletionBonusScore": 10000,
     "scenes": [
       {
@@ -299,7 +299,7 @@
       "to": "challenge",
       "safe": true,
       "confirmationRequired": true,
-      "resumeCountdownSeconds": 2
+      "resumeCountdownSeconds": 3
     },
     "millionThreshold": {
       "counterStart": 999950,

@@ -57,6 +57,12 @@ import { exactDeterminismArtifact, type ExactDeterminismArtifact } from "./qa/de
 import { evaluatePerformanceReleaseGate } from "./qa/release-gate";
 import { createCampaignI18n, type CampaignI18n } from "./localization";
 import { vercelCampaignUrl } from "./localization/vercel-locale";
+import {
+  FULL_STORY_REFERENCE_SCENARIO_ID,
+  FULL_STORY_REFERENCE_V1,
+  validateFullStoryReferenceManifest
+} from "./qa/full-story-reference-v1";
+import type { FullStoryQaObservation } from "./qa/full-story-observation";
 
 export interface CampaignRuntimeOptions {
   readonly qa?: QaBootConfig;
@@ -142,6 +148,7 @@ export class CampaignController {
   private lastStorySegmentId = "";
   private lastStorySceneId = "";
   private lastStoryCountdownValue: 3 | 2 | 1 | null = null;
+  private readonly fullStoryCountdownTrace: Array<Readonly<{ sectionId: string; value: 3 | 2 | 1 }>> = [];
   private lastVisualWorldId: CampaignWorldId | null = null;
   private lastLogisticPhase: GameSnapshot["logisticWavePhase"] = "inactive";
   private lastWaveAudioKey = "";
@@ -153,6 +160,7 @@ export class CampaignController {
   private scenarioArtifact: ExactDeterminismArtifact<Readonly<Record<string, unknown>>> | null = null;
   private scenarioValidation: ScenarioValidationResult | null = null;
   private scenarioInitialCheckpointPassed = false;
+  private lastFullStoryQaObservation: Readonly<FullStoryQaObservation> | null = null;
   private scenarioCheckpointResults: Array<{
     completedThroughStep: number;
     passed: boolean;
@@ -260,12 +268,21 @@ export class CampaignController {
 
   private async startRun(request: CampaignStartRequest): Promise<void> {
     if (this.destroyed) return;
-    const qaScenario = this.runtime.qa !== undefined;
-    const scenario = this.runtime.qa === undefined
+    const fullStoryQa = this.runtime.qa?.scenarioId === FULL_STORY_REFERENCE_SCENARIO_ID;
+    const scriptedQaScenario = this.runtime.qa !== undefined && !fullStoryQa;
+    const scenario = this.runtime.qa === undefined || fullStoryQa
       ? PERFORMANCE_REFERENCE_V1
       : performanceScenario(this.runtime.qa.scenarioId);
-    const requested = qaScenario ? { mode: "challenge" as const, restartStory: false } : request;
-    const safeRequest = requested.mode === "challenge" && !this.profile.snapshot.storyCompleted && !qaScenario
+    if (fullStoryQa) {
+      const issues = validateFullStoryReferenceManifest(FULL_STORY_REFERENCE_V1);
+      if (issues.length > 0) throw new Error(`full_story_manifest_invalid:${issues.join("|")}`);
+    }
+    const requested = fullStoryQa
+      ? { mode: "story" as const, restartStory: true }
+      : scriptedQaScenario
+        ? { mode: "challenge" as const, restartStory: false }
+        : request;
+    const safeRequest = requested.mode === "challenge" && !this.profile.snapshot.storyCompleted && !scriptedQaScenario
       ? { mode: "story" as const, restartStory: false }
       : requested;
     this.pendingStart = safeRequest;
@@ -344,7 +361,12 @@ export class CampaignController {
         qualityCommitContext: () => this.shell.qualityCommitContext(),
         qualityMode: this.runtime.qa?.quality ?? "auto",
         runnerArtwork,
-        ...(qaScenario ? {
+        ...(fullStoryQa ? {
+          seed: FULL_STORY_REFERENCE_V1.seed,
+          stopAfterStory: true,
+          fullStoryQaActive: true
+        } : {}),
+        ...(scriptedQaScenario ? {
           seed: scenario.seed,
           qaScenarioActive: true,
           replayInputs: scenario.inputs,
@@ -384,7 +406,7 @@ export class CampaignController {
           }
         } : {})
       });
-      if (qaScenario) {
+      if (scriptedQaScenario) {
         const initial = scenario.expectedCheckpoints[0];
         this.scenarioInitialCheckpointPassed = initial !== undefined &&
           checkpointMatches(initial, this.game.canonicalDeterministicState());
@@ -544,6 +566,9 @@ export class CampaignController {
   }
 
   private handleSnapshot(snapshot: GameSnapshot): void {
+    if (this.runtime.qa?.scenarioId === FULL_STORY_REFERENCE_SCENARIO_ID && this.game !== null) {
+      this.lastFullStoryQaObservation = this.game.fullStoryQaObservation();
+    }
     this.qaReport.record(snapshot);
     const authoredAudio = authoredAudioFeedback(snapshot);
     this.audio.setMusicState(authoredAudio.music);
@@ -587,6 +612,24 @@ export class CampaignController {
 
   public qaReportText(): string {
     if (this.runtime.qa === undefined) return this.qaReport.text(this.shell.geometryDiagnostics);
+    if (this.runtime.qa.scenarioId === FULL_STORY_REFERENCE_SCENARIO_ID) {
+      const session = this.qaReport.snapshot(this.shell.geometryDiagnostics);
+      return JSON.stringify({
+        qaRunConfiguration: {
+          qaMode: "performance",
+          scenarioId: FULL_STORY_REFERENCE_V1.scenarioId,
+          scenarioConfigVersion: FULL_STORY_REFERENCE_V1.configVersion,
+          seed: FULL_STORY_REFERENCE_V1.seed,
+          qualityRequest: this.runtime.qa.quality,
+          motionRequest: this.runtime.qa.motion,
+          audioMode: this.runtime.qa.audio,
+          requestedDpr: this.runtime.qa.dpr,
+          externalWritesDisabled: true
+        },
+        session,
+        manifestValidation: validateFullStoryReferenceManifest(FULL_STORY_REFERENCE_V1)
+      }, null, 2);
+    }
     const scenario = performanceScenario(this.runtime.qa.scenarioId);
     const session = this.qaReport.snapshot(this.shell.geometryDiagnostics);
     return JSON.stringify({
@@ -625,6 +668,21 @@ export class CampaignController {
     }, null, 2);
   }
 
+  public fullStoryQaObservation(): Readonly<FullStoryQaObservation> | null {
+    if (this.runtime.qa?.scenarioId !== FULL_STORY_REFERENCE_SCENARIO_ID) return null;
+    return this.game?.fullStoryQaObservation() ?? this.lastFullStoryQaObservation;
+  }
+
+  public fullStoryQaCanonicalState(): Readonly<Record<string, unknown>> | null {
+    if (this.runtime.qa?.scenarioId !== FULL_STORY_REFERENCE_SCENARIO_ID) return null;
+    return this.game?.canonicalDeterministicState() ?? null;
+  }
+
+  public fullStoryQaCountdownTrace(): readonly Readonly<{ sectionId: string; value: 3 | 2 | 1 }>[] {
+    if (this.runtime.qa?.scenarioId !== FULL_STORY_REFERENCE_SCENARIO_ID) return [];
+    return Object.freeze([...this.fullStoryCountdownTrace]);
+  }
+
   private handleStoryUpdate(update: StoryTimelineSnapshot): void {
     if (update.state !== "countdown") {
       this.lastStoryCountdownValue = null;
@@ -638,7 +696,6 @@ export class CampaignController {
     }
     if (update.state === "scene" && update.scene) {
       const visualState = sceneVisualState(update.scene.id);
-      this.warmWorldAssetWindow(visualState.worldId);
       if (update.scene.id !== this.lastStorySceneId) {
         this.lastStorySceneId = update.scene.id;
         this.audio.playCue(visualState.soundCue);
@@ -662,6 +719,9 @@ export class CampaignController {
           ? {}
           : { finalFrame: update.sceneFinalFrame })
       });
+      // Mark the narrative-safe phase before decode/pre-composite begins so
+      // neither work nor evidence is attributed to active gameplay.
+      this.warmWorldAssetWindow(visualState.worldId);
       return;
     }
     if (update.state === "reframe") {
@@ -672,6 +732,9 @@ export class CampaignController {
       const countdownValue = update.countdownValue as 3 | 2 | 1;
       if (countdownValue !== this.lastStoryCountdownValue) {
         this.lastStoryCountdownValue = countdownValue;
+        if (this.runtime.qa?.scenarioId === FULL_STORY_REFERENCE_SCENARIO_ID) {
+          this.fullStoryCountdownTrace.push(Object.freeze({ sectionId: update.sectionId, value: countdownValue }));
+        }
         this.audio.playCountdownCue(countdownValue);
       }
       this.shell.showStoryCountdown(countdownValue);

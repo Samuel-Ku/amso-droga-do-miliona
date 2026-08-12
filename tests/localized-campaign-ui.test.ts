@@ -30,9 +30,9 @@ describe("localized campaign public UI", () => {
     const shell = new CampaignShell(host, callbacks, { i18n: createCampaignI18n("pl") });
 
     expect(host.querySelector<HTMLImageElement>(".amso-million-runner-2026__main-lockup")?.getAttribute("src"))
-      .toBe("/assets/milion-runner/brand/mz-main-lockup-v1.avif");
+      .toBe("/assets/milion-runner/brand/mz-main-lockup-v1.webp");
     expect(host.querySelector<HTMLImageElement>(".amso-million-runner-2026__compact-lockup")?.getAttribute("src"))
-      .toBe("/assets/milion-runner/brand/mz-compact-lockup-v1.avif");
+      .toBe("/assets/milion-runner/brand/mz-compact-lockup-v1.webp");
 
     shell.destroy();
   });

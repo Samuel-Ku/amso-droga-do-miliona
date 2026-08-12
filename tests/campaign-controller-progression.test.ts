@@ -62,6 +62,7 @@ function controllerHarness(options: {
       announce: vi.fn()
     },
     destroyed: false,
+    runtime: {},
     lastTrustCorridor: true,
     lastStorySceneId: "",
     lastStoryCountdownValue: null,

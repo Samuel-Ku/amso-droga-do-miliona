@@ -100,6 +100,7 @@ import type {
   WorldGeometryViewport
 } from "../visuals/WorldGeometryCoordinator";
 import type { WorldPlateTransform } from "../visuals/world-plate-transform";
+import type { FullStoryQaObservation } from "../qa/full-story-observation";
 
 const CUTSCENE_SECONDS = 2.6;
 export const STORY_FINALE_CELEBRATION_SECONDS = 3.5;
@@ -202,6 +203,12 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
   private readonly challenge: RunnerGameOptions["challenge"];
   private readonly bestChallengeOrdersAtStart: number;
   private readonly awardStoryCompletionBonus: boolean;
+  private readonly stopAfterStory: boolean;
+  private readonly fullStoryQaActive: boolean;
+  private fullStoryWaveSequence = 0;
+  private fullStoryLastCompletedWave: FullStoryQaObservation["lastCompletedWave"] = null;
+  private fullStoryFinalCanonicalCheckpoint: FullStoryQaObservation["canonicalCheckpoint"] | null = null;
+  private fullStoryActiveSimulationStep = 0;
   private readonly powerUpCopy: NonNullable<RunnerGameOptions["powerUpCopy"]>;
   private narrative: NarrativeConfig | null;
   private storyTimeline: StoryTimeline | null = null;
@@ -329,6 +336,8 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       Math.floor(options.bestChallengeOrdersAtStart ?? 0)
     );
     this.awardStoryCompletionBonus = options.awardStoryCompletionBonus ?? true;
+    this.stopAfterStory = options.stopAfterStory === true;
+    this.fullStoryQaActive = options.fullStoryQaActive === true;
     this.powerUpCopy = options.powerUpCopy ?? {};
     this.qaScenarioActive = options.qaScenarioActive === true;
     this.onQaAbort = options.onQaAbort;
@@ -427,6 +436,75 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       pickupCount: this.packagesCollected,
       celebrationCount: this.celebrationCount
     };
+  }
+
+  /** Allocates only when the bounded full-story QA surface explicitly polls it. */
+  public fullStoryQaObservation(): Readonly<FullStoryQaObservation> {
+    const timeline = this.storyTimeline?.snapshot ?? null;
+    const authoredWave = this.authoredWaveDirector?.snapshot ?? null;
+    const wave = this.authoredWaveDirector?.currentWave ?? null;
+    const action = wave?.actions[this.authoredActionIndex] ?? null;
+    const waveId = wave?.id ?? null;
+    let obstacle: ObstacleModel | undefined;
+    let parcel: PackageModel | undefined;
+    if (waveId !== null) {
+      for (const candidate of this.obstacles) {
+        if (candidate.active && candidate.authoredWaveId === waveId &&
+            candidate.authoredActionIndex === this.authoredActionIndex &&
+            (obstacle === undefined || candidate.x < obstacle.x)) obstacle = candidate;
+      }
+      for (const candidate of this.packages) {
+        if (candidate.active && candidate.authoredWaveId === waveId &&
+            (parcel === undefined || candidate.x < parcel.x)) parcel = candidate;
+      }
+    }
+    const target = obstacle
+      ? Object.freeze({ kind: "obstacle" as const, x: obstacle.x, width: obstacle.width })
+      : parcel
+        ? Object.freeze({ kind: "package" as const, x: parcel.x, width: parcel.size })
+        : null;
+    const world = this.currentWorldVisual();
+    return Object.freeze({
+      gameState: this._state,
+      storyState: timeline?.state ?? null,
+      sectionId: timeline?.sectionId ?? "",
+      sceneId: timeline?.scene?.id ?? null,
+      controlsEnabled: timeline?.controlsEnabled ?? false,
+      countdownValue: timeline?.countdownValue ?? null,
+      simulationStep: this.fullStoryActiveSimulationStep,
+      worldId: world.worldId,
+      packagesCollected: this.packagesCollected,
+      millionCounterValue: this.millionCounterValue(),
+      canonicalCheckpoint: this.fullStoryFinalCanonicalCheckpoint ?? this.fullStoryCanonicalCheckpoint(),
+      runner: Object.freeze({
+        x: this.runner.x,
+        y: this.runner.y,
+        velocityY: this.runner.velocityY,
+        grounded: this.runner.grounded,
+        crouching: this.runner.crouching
+      }),
+      authoredWave,
+      lastCompletedWave: this.fullStoryLastCompletedWave,
+      actionIndex: action === null ? null : this.authoredActionIndex,
+      action,
+      actionToken: action === null || authoredWave === null
+        ? null
+        : `${authoredWave.microlevelId}:${authoredWave.currentWaveId}:${authoredWave.attemptsOnCurrentWave}:${this.authoredActionIndex}`,
+      target
+    });
+  }
+
+  private fullStoryCanonicalCheckpoint(): FullStoryQaObservation["canonicalCheckpoint"] {
+    const world = this.currentWorldVisual();
+    return Object.freeze({
+      simulationStep: this.fullStoryActiveSimulationStep,
+      rngState: Object.freeze([this.spawner.rngState, this.challengeRewards.rngState]),
+      score: calculateScore(this.distancePixels, this.ordersCollected, this.bonusScore),
+      distance: this.distancePixels,
+      worldIndex: world.worldIndex,
+      collisionCount: this.collisions,
+      pickupCount: this.packagesCollected
+    });
   }
 
   /** Allocated only when the QA run finishes. */
@@ -825,6 +903,9 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
   }
 
   private fixedUpdate(): void {
+    if (this.fullStoryQaActive && this.storyTimeline?.snapshot.state === "play") {
+      this.fullStoryActiveSimulationStep += 1;
+    }
     while (this.replayInputCursor < this.replayInputs.length) {
       const event = this.replayInputs[this.replayInputCursor];
       if (!event || event.stepIndex > this.nextStepIndex) break;
@@ -951,9 +1032,10 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
           !this.storyObjectiveDirector.snapshot.epoch3.growth.completed) ||
         (matchingSegmentId === "epoch_3.matching_trust" &&
           !this.storyObjectiveDirector.snapshot.epoch3.trust.completed);
-      const waitingForGameplayResolution = presentingPowerUp || (this.authoredWaveDirector !== null
+      const waitingForGameplayResolution = presentingPowerUp || waitingForFinaleGoals ||
+        (this.authoredWaveDirector !== null
         ? !this.authoredWaveDirector.completed || millionTransitionActive
-        : waitingForFinaleGoals || waitingForTutorialActions || waitingForQualitySeries ||
+        : waitingForTutorialActions || waitingForQualitySeries ||
           waitingForBacklog || waitingForMatching);
       const nextStory = this.storyTimeline.advance(deltaSeconds, {
         allowPlayCompletion: !waitingForGameplayResolution
@@ -1344,7 +1426,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       }
     }
 
-    const finaleNeedsPackages = millionThresholdActive && !authoredProgramActive && this.bossesDefeated > 0 &&
+    const finaleNeedsPackages = millionThresholdActive && !authoredProgramActive &&
       this.storyObjectiveDirector.snapshot.epoch5.millionThreshold.ordersCollected <
         this.storyObjectiveDirector.snapshot.epoch5.millionThreshold.orderTarget;
     if (finaleNeedsPackages && routeClear && !this.bossDirector.blocksRegularSpawns) {
@@ -1717,6 +1799,15 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     const wave = director?.currentWave;
     if (!director || !wave) return;
     const result = director.resolve(actionSucceeded);
+    if (this.stopAfterStory) {
+      this.fullStoryWaveSequence += 1;
+      this.fullStoryLastCompletedWave = Object.freeze({
+        sequence: this.fullStoryWaveSequence,
+        microlevelId: director.definition.id,
+        result: Object.freeze({ ...result }),
+        canonicalCheckpoint: this.fullStoryCanonicalCheckpoint()
+      });
+    }
     if (director.definition.id !== "first-package") {
       const combo = resolveWaveCombo(this.combo, result.passed, result.perfect);
       this.combo = combo.nextCombo;
@@ -2076,6 +2167,9 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
   }
 
   private completeStoryAndEnterChallenge(): void {
+    if (this.stopAfterStory && this.fullStoryFinalCanonicalCheckpoint === null) {
+      this.fullStoryFinalCanonicalCheckpoint = this.fullStoryCanonicalCheckpoint();
+    }
     if (!this.storyCompleteEmitted) {
       this.storyCompleteEmitted = true;
       if (this.awardStoryCompletionBonus) {
@@ -2086,6 +2180,10 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       } catch {
         // Host callbacks are isolated from the game loop.
       }
+    }
+    if (this.stopAfterStory) {
+      this.finishRun("story-complete", "victory", this.furthestEpochReached);
+      return;
     }
     const previousMode = this.mode;
     this.challengeStartScore = calculateScore(

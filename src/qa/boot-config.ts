@@ -3,7 +3,8 @@ export type QaMotionRequest = "system" | "full" | "reduced";
 export type AudioRunMode = "enabled" | "muted" | "disabled";
 export type PerformanceScenarioId =
   | "performance-reference-v1"
-  | "world-seam-performance-v1";
+  | "world-seam-performance-v1"
+  | "full-story-reference-v1";
 
 export interface QaBootConfig {
   readonly mode: "performance";
@@ -36,7 +37,8 @@ export function parseQaBootConfig(url: URL): QaBootResult {
   if (qaMode !== "performance") throw new QaBootConfigError("qa");
   const scenarioId = oneOf(url.searchParams.get("scenario"), [
     "performance-reference-v1",
-    "world-seam-performance-v1"
+    "world-seam-performance-v1",
+    "full-story-reference-v1"
   ] as const, "scenario");
   const quality = oneOf(url.searchParams.get("quality"), ["auto", "force-full", "force-reduced"] as const, "quality");
   const motion = oneOf(url.searchParams.get("motion"), ["system", "full", "reduced"] as const, "motion");

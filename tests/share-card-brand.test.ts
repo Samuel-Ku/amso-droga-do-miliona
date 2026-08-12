@@ -103,7 +103,7 @@ describe("campaign result share card brand", () => {
       { canonicalUrl: "https://amso.pl/million", i18n: createCampaignI18n("pl") },
     );
 
-    expect(harness.image.src).toBe("/assets/milion-runner/brand/mz-compact-lockup-v1.avif");
+    expect(harness.image.src).toBe("/assets/milion-runner/brand/mz-compact-lockup-v1.webp");
     expect(harness.drawImage).toHaveBeenCalledTimes(1);
   });
 

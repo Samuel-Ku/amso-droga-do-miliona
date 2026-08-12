@@ -226,7 +226,7 @@ describe("player-paced story timeline", () => {
 
     expect(playSteps).toBe(6);
     expect(powerUpDebuts).toBe(3);
-    expect(conservativeRuntimeSeconds).toBeCloseTo(319.4, 2);
+    expect(conservativeRuntimeSeconds).toBeCloseTo(325.4, 2);
     expect(conservativeRuntimeSeconds).toBeLessThanOrEqual(330);
   });
 });

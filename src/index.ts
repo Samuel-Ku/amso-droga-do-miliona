@@ -8,11 +8,17 @@ import type {
   RunnerPublicApi
 } from "./shared/types";
 import { campaignI18nFromDocument, localizeRunnerConfig } from "./localization";
+import type { FullStoryQaObservation } from "./qa/full-story-observation";
+import { FULL_STORY_REFERENCE_V1 } from "./qa/full-story-reference-v1";
 
 export interface CampaignMountApi {
   destroy(): void;
   qaReport(): string;
   copyQaReport(): Promise<boolean>;
+  qaStoryObservation(): Readonly<FullStoryQaObservation> | null;
+  qaStoryCanonicalState(): Readonly<Record<string, unknown>> | null;
+  qaStoryCountdownTrace(): readonly Readonly<{ sectionId: string; value: 3 | 2 | 1 }>[];
+  qaStoryManifest(): typeof FULL_STORY_REFERENCE_V1;
 }
 
 type CampaignNavigate = (path: string) => void;
@@ -50,6 +56,18 @@ export function mountCampaign(
   mountedCampaign = controller;
 
   return {
+    qaStoryManifest(): typeof FULL_STORY_REFERENCE_V1 {
+      return FULL_STORY_REFERENCE_V1;
+    },
+    qaStoryObservation(): Readonly<FullStoryQaObservation> | null {
+      return controller.fullStoryQaObservation();
+    },
+    qaStoryCanonicalState(): Readonly<Record<string, unknown>> | null {
+      return controller.fullStoryQaCanonicalState();
+    },
+    qaStoryCountdownTrace(): readonly Readonly<{ sectionId: string; value: 3 | 2 | 1 }>[] {
+      return controller.fullStoryQaCountdownTrace();
+    },
     qaReport(): string {
       return controller.qaReportText();
     },

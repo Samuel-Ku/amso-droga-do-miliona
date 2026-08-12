@@ -113,7 +113,7 @@ describe("campaign landing composition", () => {
     const buttons = tools.querySelectorAll("button");
 
     expect(brandLogo.getAttribute("src"))
-      .toBe("/assets/milion-runner/brand/mz-compact-lockup-v1.avif");
+      .toBe("/assets/milion-runner/brand/mz-compact-lockup-v1.webp");
     expect(brandLogo.getAttribute("alt")).toBe("AMSO — Droga do Miliona");
     expect(brand.querySelector(".amso-million-runner-2026__brand-edition")).toBeNull();
     expect(buttons).toHaveLength(2);
