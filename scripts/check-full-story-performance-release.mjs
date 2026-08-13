@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { aggregateFullStoryReleaseGate } from "./full-story-performance-policy.mjs";
+import { aggregateFullStoryReleaseGate, assessFullStoryComparison } from "./full-story-performance-policy.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const evidenceRoot = path.join(root, ".scratch/full-story-performance-reference/evidence");
@@ -32,18 +32,10 @@ const currentSourceIdentity = currentHtml?.toString("utf8")
 const currentHtmlSha256 = currentHtml === null ? null : createHash("sha256").update(currentHtml).digest("hex");
 const localEvidence = [read("ticket-03/local-chromium.json"), read("ticket-03/local-webkit.json")];
 const comparableAfter = beforeEvidence === null ? null : localEvidence.find((evidence) => evidence?.browser === beforeEvidence.browser);
-const beforeAfterComparison = beforeEvidence?.schemaVersion === "full-story-reference-evidence-v1" &&
-  comparableAfter?.configuration?.scenarioId === beforeEvidence.configuration?.scenarioId &&
-  comparableAfter.configuration?.audioMode === beforeEvidence.configuration?.audioMode &&
-  comparableAfter.configuration?.quality === beforeEvidence.configuration?.quality &&
-  comparableAfter.configuration?.motion === beforeEvidence.configuration?.motion &&
-  comparableAfter.configuration?.requestedDpr === beforeEvidence.configuration?.requestedDpr &&
-  JSON.stringify(comparableAfter.provenance?.viewport) === JSON.stringify(beforeEvidence.provenance?.viewport) &&
-  comparableAfter.provenance?.browserVersion === beforeEvidence.provenance?.browserVersion &&
-  comparableAfter.provenance?.deviceScaleFactor === beforeEvidence.provenance?.deviceScaleFactor &&
-  comparableAfter.provenance?.sourceIdentity !== beforeEvidence.provenance?.sourceIdentity &&
-  comparableAfter.correctness?.manifest?.routeWaveIds?.join("|") ===
-    beforeEvidence.correctness?.manifest?.routeWaveIds?.join("|");
+const comparison = beforeEvidence === null || comparableAfter === null || comparableAfter === undefined
+  ? { comparable: false, reasons: ["comparison-evidence-missing"], deltas: null }
+  : assessFullStoryComparison(beforeEvidence, comparableAfter);
+const beforeAfterComparison = comparison.comparable;
 const currentArtifact = currentSourceIdentity !== null && currentHtmlSha256 !== null && localEvidence.every((evidence) =>
   evidence?.provenance?.sourceIdentity === currentSourceIdentity &&
   evidence?.provenance?.htmlSha256 === currentHtmlSha256);
@@ -74,12 +66,8 @@ report.beforeAfter = {
     sourceIdentity: comparableAfter.provenance?.sourceIdentity,
     browser: comparableAfter.browser
   },
-  deltas: beforeAfterComparison ? {
-    p95Ms: comparableAfter.performance.p95Ms - beforeEvidence.performance.p95Ms,
-    p99Ms: comparableAfter.performance.p99Ms - beforeEvidence.performance.p99Ms,
-    maxMs: comparableAfter.performance.maxMs - beforeEvidence.performance.maxMs,
-    over33Ms: comparableAfter.performance.over33Ms - beforeEvidence.performance.over33Ms
-  } : null
+  reasons: comparison.reasons,
+  deltas: beforeAfterComparison ? comparison.deltas : null
 };
 report.manualGates = {
   macBookM1ProChrome: read("ticket-05/physical.json")?.macBookM1ProChrome ?? "incomplete",

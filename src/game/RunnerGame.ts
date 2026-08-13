@@ -205,6 +205,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
   private readonly awardStoryCompletionBonus: boolean;
   private readonly stopAfterStory: boolean;
   private readonly fullStoryQaActive: boolean;
+  private readonly fullStoryQaStepSink: RunnerGameOptions["fullStoryQaStepSink"];
   private fullStoryWaveSequence = 0;
   private fullStoryLastCompletedWave: FullStoryQaObservation["lastCompletedWave"] = null;
   private fullStoryFinalCanonicalCheckpoint: FullStoryQaObservation["canonicalCheckpoint"] | null = null;
@@ -338,6 +339,7 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
     this.awardStoryCompletionBonus = options.awardStoryCompletionBonus ?? true;
     this.stopAfterStory = options.stopAfterStory === true;
     this.fullStoryQaActive = options.fullStoryQaActive === true;
+    this.fullStoryQaStepSink = options.fullStoryQaStepSink;
     this.powerUpCopy = options.powerUpCopy ?? {};
     this.qaScenarioActive = options.qaScenarioActive === true;
     this.onQaAbort = options.onQaAbort;
@@ -948,6 +950,10 @@ export class RunnerGame implements RunnerGameApi, WorldGeometryConsumer {
       this.scenarioMaxDensitySteps += 1;
     }
     this.nextStepIndex += 1;
+    if (this.fullStoryQaActive && this.fullStoryQaStepSink !== undefined &&
+        this.storyTimeline?.snapshot.state === "play") {
+      this.fullStoryQaStepSink(this.fullStoryQaObservation());
+    }
     const completedThroughStep = this.nextStepIndex - 1;
     while (this.scenarioCheckpointCursor < this.scenarioCheckpointSteps.length) {
       const checkpointStep = this.scenarioCheckpointSteps[this.scenarioCheckpointCursor];

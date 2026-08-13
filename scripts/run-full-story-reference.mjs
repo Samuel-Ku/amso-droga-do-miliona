@@ -34,6 +34,22 @@ if (deploymentUrl === undefined && !fs.existsSync(path.join(buildRoot, "index.ht
   throw new Error("dist-vercel/index.html missing; run npm run build:vercel first");
 }
 
+const percentile = (values, p) => {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.max(0, Math.ceil(sorted.length * p) - 1)];
+};
+
+const summarizeIntervals = (values, diagnosticOnly = false) => ({
+  diagnosticOnly,
+  sampleCount: values.length,
+  p50Ms: percentile(values, 0.5),
+  p95Ms: percentile(values, 0.95),
+  p99Ms: percentile(values, 0.99),
+  maxMs: values.length > 0 ? Math.max(...values) : null,
+  over33Ms: values.filter((value) => value > 33).length
+});
+
 const contentTypes = new Map([
   [".html", "text/html; charset=utf-8"], [".js", "text/javascript; charset=utf-8"],
   [".css", "text/css; charset=utf-8"], [".json", "application/json; charset=utf-8"],
@@ -75,6 +91,28 @@ try {
     deviceScaleFactor: 1
   });
   const page = await context.newPage();
+  const emptyRafIntervals = await page.evaluate(async () => new Promise((resolve) => {
+    const intervals = [];
+    let previous = null;
+    let warmupFrames = 8;
+    const sample = (now) => {
+      if (warmupFrames > 0) {
+        warmupFrames -= 1;
+        previous = now;
+        requestAnimationFrame(sample);
+        return;
+      }
+      if (previous !== null) intervals.push(now - previous);
+      previous = now;
+      if (intervals.length >= 120) resolve(intervals);
+      else requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  }));
+  const emptyRafBaseline = {
+    browser: browserName,
+    ...summarizeIntervals(emptyRafIntervals, true)
+  };
   const failures = [];
   const responses = [];
   page.on("console", (message) => {
@@ -95,18 +133,27 @@ try {
     const metrics = window.__amsoFullStoryMetrics = {
       frames: [], decodes: [], longTasks: [], longAnimationFrames: [], imageNodes: [],
       transitions: [], panelPromotions: [], blankFrames: [], countdowns: [], collectorCost: [],
-      collectorEnabledFrames: [], collectorDisabledFrames: []
+      collectorEnabledFrames: [], collectorDisabledFrames: [],
+      collectorEnabledExecution: [], collectorDisabledExecution: [],
+      collectorEnabledLayoutReads: 0, collectorDisabledLayoutReads: 0
     };
     let root = null;
     let worldHost = null;
+    let storyPresentation = null;
+    let storyCountdown = null;
     let worldPanels = null;
     const context = () => {
       root ??= document.querySelector(".amso-million-runner-2026");
       worldHost ??= document.querySelector("[data-campaign-world-visual]");
+      storyPresentation ??= document.querySelector("[data-campaign-story-presentation]");
+      storyCountdown ??= document.querySelector("[data-campaign-story-countdown]");
       const driver = window.__amsoFullStoryDriver;
       const observation = driver?.currentObservation;
       const view = root?.getAttribute("data-view") ?? "loading";
-      const phase = view === "game" ? (observation?.storyState === "countdown" ? "countdown" :
+      const storyVisible = storyPresentation instanceof HTMLElement && !storyPresentation.hidden;
+      const countdownVisible = storyCountdown instanceof HTMLElement && !storyCountdown.hidden;
+      const phase = countdownVisible ? "countdown" : storyVisible ? "story-scene" : view === "game" ?
+        (observation?.storyState === "countdown" ? "countdown" :
         observation?.controlsEnabled === false ? "story-scene" :
         observation?.authoredWave?.completed === true ? "story-scene" :
         observation?.gameState === "paused" ? "pause" : "active-gameplay") :
@@ -116,6 +163,8 @@ try {
         worldId: observation?.worldId ?? worldHost?.getAttribute("data-world-id") ?? null };
     };
     let previous = null;
+    let previousCollectorEnabled = null;
+    let previousContext = null;
     let activeSampleIndex = 0;
     let previousPanelState = null;
     let previousObservedWorldId = null;
@@ -129,6 +178,12 @@ try {
       const current = context();
       const activeCollectorEnabled = current.phase !== "active-gameplay" ||
         Math.floor(activeSampleIndex / 120) % 2 === 0;
+      if (previousObservedWorldId && current.worldId && previousObservedWorldId !== current.worldId) {
+        const priorPercent = previousPanelState?.nextWorldId === current.worldId
+          ? previousPanelState.nextTranslatePercent : null;
+        pendingWorldTransition = { startedAt: now, fromWorldId: previousObservedWorldId,
+          toWorldId: current.worldId, priorPercent };
+      }
       if (activeCollectorEnabled && (worldPanels === null || worldPanels.length < 2)) {
         worldPanels = [...document.querySelectorAll('[data-world-panel="current"], [data-world-panel="next"]')]
           .filter((panel) => panel instanceof HTMLImageElement);
@@ -151,17 +206,13 @@ try {
           nextWorldId: nextPanel?.dataset.worldId ?? null,
           nextTranslatePercent: translatePercent(nextPanel)
         };
-        if (previousObservedWorldId && current.worldId && previousObservedWorldId !== current.worldId) {
-          const priorPercent = previousPanelState?.nextWorldId === current.worldId
-            ? previousPanelState.nextTranslatePercent : null;
-          pendingWorldTransition = { startedAt: now, fromWorldId: previousObservedWorldId,
-            toWorldId: current.worldId, priorPercent };
-        }
         if (pendingWorldTransition) {
           const destinationPanel = worldPanels.find((panel) => panel.dataset.worldId === pendingWorldTransition.toWorldId &&
             !panel.hidden && (panel.dataset.presentationReady === "true" || panel.naturalWidth > 0));
           if (destinationPanel instanceof HTMLImageElement) {
             const destinationPercent = translatePercent(destinationPanel);
+            if (activeCollectorEnabled) metrics.collectorEnabledLayoutReads += 1;
+            else metrics.collectorDisabledLayoutReads += 1;
             const plateWidth = document.querySelector("[data-world-plate]")?.getBoundingClientRect().width ?? 0;
             metrics.panelPromotions.push({ at: now, fromWorldId: pendingWorldTransition.fromWorldId,
               toWorldId: pendingWorldTransition.toWorldId, presentationReady: true, hidden: false,
@@ -174,10 +225,12 @@ try {
         }
         previousPanelState = panelState;
       }
+      if (previous !== null && previousContext?.phase === "active-gameplay" &&
+          previousCollectorEnabled !== null) {
+        (previousCollectorEnabled ? metrics.collectorEnabledFrames : metrics.collectorDisabledFrames)
+          .push(now - previous);
+      }
       if (current.phase === "active-gameplay") {
-        if (previous !== null) {
-          (activeCollectorEnabled ? metrics.collectorEnabledFrames : metrics.collectorDisabledFrames).push(now - previous);
-        }
         activeSampleIndex += 1;
       }
       if (current.worldId) previousObservedWorldId = current.worldId;
@@ -185,6 +238,14 @@ try {
       previous = now;
       const collectorDuration = performance.now() - started;
       metrics.collectorCost.push(collectorDuration);
+      if (current.phase === "active-gameplay") {
+        (activeCollectorEnabled ? metrics.collectorEnabledExecution : metrics.collectorDisabledExecution)
+          .push(collectorDuration);
+        previousCollectorEnabled = activeCollectorEnabled;
+      } else {
+        previousCollectorEnabled = null;
+      }
+      previousContext = current;
       requestAnimationFrame(sample);
     };
     requestAnimationFrame(sample);
@@ -283,16 +344,91 @@ try {
       startedAt: performance.now(), inputTrace: [], waveResults: [], checkpoints: [],
       storyScenes: [], countdownTrace: [],
       countdownProbe: null,
-      driverTickPending: false,
       lastWaveResultSequence: 0, lastMicrolevel: null, seenMicrolevels: [],
       currentObservation: null, previousObservation: null, lastChapterObservation: null
     };
     const dispatch = (type, code, key) => document.dispatchEvent(new KeyboardEvent(type, {
       code, key, bubbles: true, cancelable: true
     }));
-    const interval = setInterval(async () => {
-      if (runtime.driverTickPending || runtime.done || runtime.failure) return;
-      runtime.driverTickPending = true;
+    const qaStepEventName = window.AMSOMillionRunnerQA.qaStoryStepEventName();
+    const processDriverObservation = (observation) => {
+      if (!observation || runtime.done || runtime.failure) return;
+      runtime.previousObservation = runtime.currentObservation;
+      runtime.currentObservation = observation;
+      const wave = observation.authoredWave;
+      if (wave && !runtime.seenMicrolevels.includes(wave.microlevelId)) {
+        runtime.seenMicrolevels.push(wave.microlevelId);
+      }
+      const completed = observation.lastCompletedWave;
+      if (completed && completed.sequence !== runtime.lastWaveResultSequence) {
+        runtime.lastWaveResultSequence = completed.sequence;
+        runtime.waveResults.push({ at: performance.now(), microlevelId: completed.microlevelId,
+          ...completed.result, canonicalState: completed.canonicalCheckpoint });
+        if (completed.result.attempts > 1 || !completed.result.passed) {
+          runtime.failure = `wave-failed:${completed.microlevelId}:${completed.result.waveId}:${completed.sequence}`;
+        }
+      }
+      if (wave && wave.attemptsOnCurrentWave > 1) {
+        runtime.failure = `wave-retry:${wave.microlevelId}:${wave.currentWaveId}`;
+      }
+      const command = nextDriverCommand(observation, {
+        actedToken: runtime.actedToken,
+        slideToken: runtime.slideToken
+      });
+      if (runtime.done || runtime.failure) return;
+      if (command?.type === "fail") {
+        runtime.failure = `${command.reason}:${observation.authoredWave?.currentWaveId ?? "unknown"}`;
+      }
+      if (command?.type === "slide-end") {
+        dispatch("keyup", "ArrowDown", "ArrowDown");
+        runtime.inputTrace.push({ step: observation.simulationStep, action: "slide", active: false,
+          token: runtime.slideToken });
+        runtime.slideToken = null;
+      }
+      if (command?.type === "jump") {
+        runtime.actedToken = command.token;
+        dispatch("keydown", "ArrowUp", "ArrowUp");
+        dispatch("keyup", "ArrowUp", "ArrowUp");
+        runtime.inputTrace.push({ step: observation.simulationStep, action: "jump", active: true,
+          token: command.token });
+      } else if (command?.type === "slide-start") {
+        runtime.slideToken = command.token;
+        dispatch("keydown", "ArrowDown", "ArrowDown");
+        runtime.inputTrace.push({ step: observation.simulationStep, action: "slide", active: true,
+          token: command.token });
+      }
+      if (runtime.lastMicrolevel && wave && wave.microlevelId !== runtime.lastMicrolevel) {
+        const checkpointObservation = runtime.lastChapterObservation ?? runtime.previousObservation ?? observation;
+        const expected = window.AMSOMillionRunnerQA.qaStoryManifest().checkpoints
+          .find((item) => item.microlevelId === runtime.lastMicrolevel);
+        const lastCompletedState = runtime.waveResults
+          .filter((item) => item.microlevelId === runtime.lastMicrolevel)
+          .at(-1)?.canonicalState ?? null;
+        runtime.checkpoints.push({
+          microlevelId: runtime.lastMicrolevel,
+          segmentId: expected?.segmentId ?? null,
+          completedWaves: runtime.waveResults
+            .filter((item) => item.microlevelId === runtime.lastMicrolevel).length,
+          packagesCollected: checkpointObservation.packagesCollected,
+          millionCounterValue: checkpointObservation.millionCounterValue,
+          worldId: checkpointObservation.worldId,
+          canonicalState: lastCompletedState ?? checkpointObservation.canonicalCheckpoint ?? null
+        });
+        if (chapterLimit === runtime.lastMicrolevel) runtime.done = true;
+      }
+      if (wave) runtime.lastChapterObservation = observation;
+      if (wave) runtime.lastMicrolevel = wave.microlevelId;
+    };
+    const handleQaStep = (event) => {
+      if (event instanceof CustomEvent) processDriverObservation(event.detail);
+    };
+    document.addEventListener(qaStepEventName, handleQaStep);
+    const stopDriver = () => {
+      document.removeEventListener(qaStepEventName, handleQaStep);
+      if (runtime.slideToken) dispatch("keyup", "ArrowDown", "ArrowDown");
+    };
+    const interval = setInterval(() => {
+      if (runtime.done || runtime.failure) return;
       try {
         const api = window.AMSOMillionRunnerQA;
         const result = document.querySelector("[data-campaign-story-result]");
@@ -321,6 +457,7 @@ try {
             canonicalState: finalObservation?.canonicalCheckpoint ?? null
           });
           runtime.done = true;
+          stopDriver();
           clearInterval(interval);
           return;
         }
@@ -352,75 +489,15 @@ try {
         if (continueButton instanceof HTMLButtonElement && !continueButton.disabled && successorReady) {
           continueButton.click();
         }
-        if (!observation) return;
-        runtime.previousObservation = runtime.currentObservation;
-        runtime.currentObservation = observation;
-        const wave = observation.authoredWave;
-        if (wave && !runtime.seenMicrolevels.includes(wave.microlevelId)) {
-          runtime.seenMicrolevels.push(wave.microlevelId);
-        }
-        const completed = observation.lastCompletedWave;
-        if (completed && completed.sequence !== runtime.lastWaveResultSequence) {
-          runtime.lastWaveResultSequence = completed.sequence;
-          runtime.waveResults.push({ at: performance.now(), microlevelId: completed.microlevelId,
-            ...completed.result, canonicalState: completed.canonicalCheckpoint });
-          if (completed.result.attempts > 1 || !completed.result.passed) {
-            runtime.failure = `wave-failed:${completed.microlevelId}:${completed.result.waveId}:${completed.sequence}`;
-          }
-        }
-        if (wave && wave.attemptsOnCurrentWave > 1) runtime.failure = `wave-retry:${wave.microlevelId}:${wave.currentWaveId}`;
-        const command = nextDriverCommand(observation, {
-          actedToken: runtime.actedToken,
-          slideToken: runtime.slideToken
-        });
-        if (runtime.done || runtime.failure) return;
-        if (command?.type === "fail") runtime.failure = `${command.reason}:${observation.authoredWave?.currentWaveId ?? "unknown"}`;
-        if (command?.type === "slide-end") {
-          dispatch("keyup", "ArrowDown", "ArrowDown");
-          runtime.inputTrace.push({ step: observation.simulationStep, action: "slide", active: false,
-            token: runtime.slideToken });
-          runtime.slideToken = null;
-        }
-        if (command?.type === "jump") {
-          runtime.actedToken = command.token;
-          dispatch("keydown", "ArrowUp", "ArrowUp");
-          dispatch("keyup", "ArrowUp", "ArrowUp");
-          runtime.inputTrace.push({ step: observation.simulationStep, action: "jump", active: true,
-            token: command.token });
-        } else if (command?.type === "slide-start") {
-          runtime.slideToken = command.token;
-          dispatch("keydown", "ArrowDown", "ArrowDown");
-          runtime.inputTrace.push({ step: observation.simulationStep, action: "slide", active: true,
-            token: command.token });
-        }
-        if (runtime.lastMicrolevel && wave && wave.microlevelId !== runtime.lastMicrolevel) {
-          const checkpointObservation = runtime.lastChapterObservation ?? runtime.previousObservation ?? observation;
-          const expected = api.qaStoryManifest().checkpoints.find((item) => item.microlevelId === runtime.lastMicrolevel);
-          const lastCompletedState = runtime.waveResults.filter((item) => item.microlevelId === runtime.lastMicrolevel)
-            .at(-1)?.canonicalState ?? null;
-          runtime.checkpoints.push({
-            microlevelId: runtime.lastMicrolevel,
-            segmentId: expected?.segmentId ?? null,
-            completedWaves: runtime.waveResults.filter((item) => item.microlevelId === runtime.lastMicrolevel).length,
-            packagesCollected: checkpointObservation.packagesCollected,
-            millionCounterValue: checkpointObservation.millionCounterValue,
-            worldId: checkpointObservation.worldId,
-            canonicalState: lastCompletedState ?? checkpointObservation.canonicalCheckpoint ?? null
-          });
-          if (chapterLimit === runtime.lastMicrolevel) runtime.done = true;
-        }
-        if (wave) runtime.lastChapterObservation = observation;
-        if (wave) runtime.lastMicrolevel = wave.microlevelId;
         if (runtime.failure || runtime.done) {
-          if (runtime.slideToken) dispatch("keyup", "ArrowDown", "ArrowDown");
+          stopDriver();
           clearInterval(interval);
           return;
         }
       } catch (error) {
         runtime.failure = error instanceof Error ? error.message : String(error);
+        stopDriver();
         clearInterval(interval);
-      } finally {
-        runtime.driverTickPending = false;
       }
     }, 4);
   }, { chapterLimit: stopAfterChapter ?? null, driverPolicySource: nextFullStoryDriverCommand.toString() });
@@ -468,11 +545,6 @@ try {
   const activeFrames = captured.metrics.frames
     .filter((frame) => frame.phase === "active-gameplay")
     .map((frame) => frame.duration);
-  const percentile = (values, p) => {
-    if (values.length === 0) return null;
-    const sorted = [...values].sort((a, b) => a - b);
-    return sorted[Math.max(0, Math.ceil(sorted.length * p) - 1)];
-  };
   const activeSegments = Object.fromEntries([...new Set(captured.metrics.frames
     .filter((frame) => frame.phase === "active-gameplay").map((frame) => frame.segmentId).filter(Boolean))]
     .map((segmentId) => {
@@ -520,7 +592,7 @@ try {
     blankFrames: captured.metrics.blankFrames.filter((blank) => Math.abs(blank.at - promotion.at) <= 500).length
   }));
   const evidence = {
-    schemaVersion: "full-story-reference-evidence-v1",
+    schemaVersion: "full-story-reference-evidence-v2",
     capturedAt: new Date().toISOString(),
     browser: browserName,
     target: deploymentUrl === undefined ? "local-dist-vercel" : deploymentUrl,
@@ -539,8 +611,15 @@ try {
       deviceScaleFactor: 1,
       assetIdentities
     },
-    configuration: { scenarioId: "full-story-reference-v1", audioMode, quality: "force-full",
-      motion: "full", requestedDpr: 1, stopAfterChapter: stopAfterChapter ?? null },
+    configuration: {
+      scenarioId: "full-story-reference-v1",
+      scenarioConfigVersion: captured.manifest?.configVersion ?? null,
+      seed: captured.manifest?.seed ?? null,
+      inputTraceDigest: createHash("sha256")
+        .update(JSON.stringify(captured.driver.inputTrace)).digest("hex"),
+      audioMode, quality: "force-full", motion: "full", requestedDpr: 1,
+      stopAfterChapter: stopAfterChapter ?? null
+    },
     correctness: {
       completed: captured.driver.done === true,
       failure: captured.driver.failure,
@@ -571,13 +650,21 @@ try {
       activeSegments,
       blankFrameCount: captured.metrics.blankFrames.length,
       collectorCostP95Ms: metricPercentile(captured.metrics.collectorCost, 0.95),
+      emptyRafBaseline,
       collectorComparison: {
-        mode: "alternating-active-trace-ab",
-        sampledP95Ms: metricPercentile(captured.metrics.collectorEnabledFrames, 0.95),
-        unsampledP95Ms: metricPercentile(captured.metrics.collectorDisabledFrames, 0.95),
-        deltaP95Ms: Math.max(0,
+        mode: "alternating-active-trace-ab-v2",
+        sampledIntervalP95Ms: metricPercentile(captured.metrics.collectorEnabledFrames, 0.95),
+        controlIntervalP95Ms: metricPercentile(captured.metrics.collectorDisabledFrames, 0.95),
+        intervalDeltaP95Ms: Math.max(0,
           (metricPercentile(captured.metrics.collectorEnabledFrames, 0.95) ?? Infinity) -
-          (metricPercentile(captured.metrics.collectorDisabledFrames, 0.95) ?? 0))
+          (metricPercentile(captured.metrics.collectorDisabledFrames, 0.95) ?? 0)),
+        sampledExecutionP95Ms: metricPercentile(captured.metrics.collectorEnabledExecution, 0.95),
+        controlExecutionP95Ms: metricPercentile(captured.metrics.collectorDisabledExecution, 0.95),
+        executionDeltaP95Ms: Math.max(0,
+          (metricPercentile(captured.metrics.collectorEnabledExecution, 0.95) ?? Infinity) -
+          (metricPercentile(captured.metrics.collectorDisabledExecution, 0.95) ?? 0)),
+        sampledLayoutReads: captured.metrics.collectorEnabledLayoutReads,
+        controlLayoutReads: captured.metrics.collectorDisabledLayoutReads
       },
       decodes: captured.metrics.decodes,
       longTasks: captured.metrics.longTasks,

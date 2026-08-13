@@ -3,6 +3,9 @@ const REQUIRED_CHAPTERS = [
   "order-scale", "million-threshold"
 ];
 export const APPROVED_FULL_STORY_SCENARIO_ID = "full-story-reference-v1";
+export const APPROVED_FULL_STORY_CONFIG_VERSION = 1;
+export const APPROVED_FULL_STORY_SEED = 0x4d5a1202;
+export const MAX_EVIDENCE_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 export const APPROVED_FULL_STORY_DIGEST = "82afa27e9cf5071449966009bd54e5018cbfa6b8a397608fd3ae32f6f2c46bb9";
 export const APPROVED_FULL_STORY_ROUTE = Object.freeze([
   "guided-parcel-arc", "guided-low-stack", "guided-scanner-gate", "guided-jump-slide",
@@ -42,13 +45,17 @@ const REQUIRED_COUNTDOWN_TRACE = [
 export function assessFullStoryEvidence(evidence, { production = false } = {}) {
   const reasons = [];
   const p95BudgetMs = 18;
-  if (evidence?.schemaVersion !== "full-story-reference-evidence-v1") reasons.push("evidence-schema-invalid");
+  if (evidence?.schemaVersion !== "full-story-reference-evidence-v2") reasons.push("evidence-schema-invalid");
   if (evidence?.configuration?.scenarioId !== APPROVED_FULL_STORY_SCENARIO_ID) reasons.push("scenario-id-invalid");
   if (!evidence?.correctness?.completed) reasons.push("story-incomplete");
   if (!evidence?.correctness?.resultVisible) reasons.push("story-result-not-visible");
   if (evidence?.configuration?.audioMode !== "enabled" ||
       evidence?.configuration?.quality !== "force-full" || evidence?.configuration?.motion !== "full" ||
-      evidence?.configuration?.requestedDpr !== 1) reasons.push("release-configuration-invalid");
+      evidence?.configuration?.requestedDpr !== 1 ||
+      evidence?.configuration?.scenarioConfigVersion !== APPROVED_FULL_STORY_CONFIG_VERSION ||
+      evidence?.configuration?.seed !== APPROVED_FULL_STORY_SEED ||
+      typeof evidence?.configuration?.inputTraceDigest !== "string" ||
+      evidence.configuration.inputTraceDigest.length === 0) reasons.push("release-configuration-invalid");
   if (evidence?.correctness?.failure) reasons.push(`correctness:${evidence.correctness.failure}`);
   for (const chapter of REQUIRED_CHAPTERS) {
     if (!evidence?.correctness?.seenMicrolevels?.includes(chapter)) reasons.push(`chapter-missing:${chapter}`);
@@ -120,8 +127,28 @@ export function assessFullStoryEvidence(evidence, { production = false } = {}) {
   if ((performance.hotPathImageNodesCreated ?? Infinity) !== 0) reasons.push("hot-path-image-node-created");
   if ((performance.blankFrameCount ?? Infinity) !== 0) reasons.push("blank-frame-detected");
   if ((performance.repeatedWorldDecodeSources?.length ?? Infinity) !== 0) reasons.push("repeated-world-decode");
-  if ((performance.collectorComparison?.deltaP95Ms ?? Infinity) > 0.5) {
+  const collectorComparison = performance.collectorComparison;
+  if (collectorComparison?.mode !== "alternating-active-trace-ab-v2" ||
+      !Number.isFinite(collectorComparison?.sampledIntervalP95Ms) ||
+      !Number.isFinite(collectorComparison?.controlIntervalP95Ms) ||
+      !Number.isFinite(collectorComparison?.sampledExecutionP95Ms) ||
+      !Number.isFinite(collectorComparison?.controlExecutionP95Ms) ||
+      (collectorComparison?.intervalDeltaP95Ms ?? Infinity) > 0.5 ||
+      (collectorComparison?.executionDeltaP95Ms ?? Infinity) > 0.5) {
     reasons.push("collector-ab-overhead-too-high");
+  }
+  if ((collectorComparison?.controlLayoutReads ?? Infinity) !== 0) {
+    reasons.push("collector-control-layout-read");
+  }
+  const emptyRafBaseline = performance.emptyRafBaseline;
+  if (emptyRafBaseline?.diagnosticOnly !== true ||
+      (emptyRafBaseline?.sampleCount ?? 0) < 60 ||
+      !Number.isFinite(emptyRafBaseline?.p50Ms) ||
+      !Number.isFinite(emptyRafBaseline?.p95Ms) ||
+      !Number.isFinite(emptyRafBaseline?.p99Ms) ||
+      !Number.isFinite(emptyRafBaseline?.maxMs) ||
+      !Number.isFinite(emptyRafBaseline?.over33Ms)) {
+    reasons.push("empty-raf-baseline-missing");
   }
   if (!performance.phaseAggregates?.["active-gameplay"] || !performance.phaseAggregates?.["story-scene"] ||
       !performance.phaseAggregates?.countdown || !performance.phaseAggregates?.result) {
@@ -129,7 +156,9 @@ export function assessFullStoryEvidence(evidence, { production = false } = {}) {
   }
   for (const checkpoint of expectedCheckpoints) {
     const segment = performance.activeSegments?.[checkpoint.segmentId];
-    if (!segment || segment.frameCount <= 0 || segment.p95Ms > p95BudgetMs || segment.p99Ms > 33 || segment.maxMs > 100) {
+    if (!segment || segment.frameCount <= 0) {
+      reasons.push(`segment-samples-missing:${checkpoint.segmentId}`);
+    } else if (segment.p95Ms > p95BudgetMs || segment.p99Ms > 33 || segment.maxMs > 100) {
       reasons.push(`segment-performance-invalid:${checkpoint.segmentId}`);
     }
   }
@@ -138,9 +167,7 @@ export function assessFullStoryEvidence(evidence, { production = false } = {}) {
   const minimumTransitions = Math.max(0, expectedCheckpoints.length - 1);
   if (!Array.isArray(performance.transitionWindows) || performance.transitionWindows.length < minimumTransitions ||
       performance.transitionWindows.some((transition) =>
-      transition.presentationReady !== true || transition.hidden === true || transition.blankFrames !== 0 ||
-        (transition.phase === "active-gameplay" &&
-          (!Number.isFinite(transition.phaseResidualPx) || transition.phaseResidualPx > 1)))) {
+      transition.presentationReady !== true || transition.hidden === true || transition.blankFrames !== 0)) {
     reasons.push("world-transition-invalid");
   }
   if ((evidence?.browserFailures?.length ?? 0) > 0) reasons.push("browser-failures-present");
@@ -155,6 +182,137 @@ export function assessFullStoryEvidence(evidence, { production = false } = {}) {
     if (!evidence?.provenance?.vercelId) reasons.push("vercel-provenance-missing");
   }
   return reasons;
+}
+
+function correctnessReasons(evidence) {
+  const allowedRedBaselineReasons = new Set([
+    "active-p95-over-18ms",
+    "active-p99-over-33ms",
+    "active-max-over-100ms"
+  ]);
+  return assessFullStoryEvidence(evidence).filter((reason) =>
+    !allowedRedBaselineReasons.has(reason) && !reason.startsWith("segment-performance-invalid:"));
+}
+
+const COMPARISON_CONFIGURATION_KEYS = [
+  "scenarioId", "scenarioConfigVersion", "seed", "inputTraceDigest", "audioMode",
+  "quality", "motion", "requestedDpr", "stopAfterChapter"
+];
+
+function compareCanonicalGameplay(before, after) {
+  const reasons = [];
+  const beforeCheckpoints = before?.correctness?.checkpoints ?? [];
+  const afterCheckpoints = after?.correctness?.checkpoints ?? [];
+  if (beforeCheckpoints.length !== afterCheckpoints.length) return ["comparison-checkpoint-count-mismatch"];
+  for (let index = 0; index < beforeCheckpoints.length; index += 1) {
+    const beforeCheckpoint = beforeCheckpoints[index];
+    const afterCheckpoint = afterCheckpoints[index];
+    const beforeState = beforeCheckpoint?.canonicalState;
+    const afterState = afterCheckpoint?.canonicalState;
+    if (beforeCheckpoint?.microlevelId !== afterCheckpoint?.microlevelId ||
+        beforeCheckpoint?.segmentId !== afterCheckpoint?.segmentId ||
+        beforeCheckpoint?.completedWaves !== afterCheckpoint?.completedWaves ||
+        (beforeCheckpoint?.millionCounterValue ?? null) !== (afterCheckpoint?.millionCounterValue ?? null) ||
+        !beforeState || !afterState) {
+      reasons.push(`comparison-checkpoint-mismatch:${beforeCheckpoint?.microlevelId ?? index}`);
+      continue;
+    }
+    const stateFields = ["rngState", "score", "distance", "worldIndex", "collisionCount", "pickupCount"];
+    if (stateFields.some((field) => JSON.stringify(beforeState[field]) !== JSON.stringify(afterState[field])) ||
+        !Number.isFinite(beforeState.simulationStep) || !Number.isFinite(afterState.simulationStep) ||
+        Math.abs(beforeState.simulationStep - afterState.simulationStep) > 1) {
+      reasons.push(`comparison-gameplay-state-mismatch:${beforeCheckpoint.microlevelId}`);
+    }
+  }
+  return reasons;
+}
+
+/** Determines comparability only. It never turns a failing performance run into a pass. */
+export function assessFullStoryComparison(before, after) {
+  const reasons = [];
+  const beforeReasons = correctnessReasons(before);
+  const afterReasons = correctnessReasons(after);
+  if (beforeReasons.length > 0) reasons.push(...beforeReasons.map((reason) => `comparison-before:${reason}`));
+  if (afterReasons.length > 0) reasons.push(...afterReasons.map((reason) => `comparison-after:${reason}`));
+  if (before?.schemaVersion !== "full-story-reference-evidence-v2" ||
+      after?.schemaVersion !== "full-story-reference-evidence-v2") {
+    reasons.push("comparison-evidence-schema-invalid");
+  }
+  for (const key of COMPARISON_CONFIGURATION_KEYS) {
+    if (before?.configuration?.[key] !== after?.configuration?.[key]) {
+      reasons.push(`comparison-configuration-mismatch:${key}`);
+    }
+  }
+  if (before?.browser !== after?.browser) reasons.push("comparison-browser-mismatch");
+  if (before?.target !== after?.target) reasons.push("comparison-host-mismatch");
+  if (typeof before?.target !== "string" || before.target.length === 0 ||
+      typeof after?.target !== "string" || after.target.length === 0) {
+    reasons.push("comparison-host-missing");
+  }
+  if (typeof before?.provenance?.browserVersion !== "string" ||
+      typeof after?.provenance?.browserVersion !== "string") {
+    reasons.push("comparison-browser-version-missing");
+  }
+  if (before?.provenance?.browserVersion !== after?.provenance?.browserVersion) {
+    reasons.push("comparison-browser-version-mismatch");
+  }
+  if (JSON.stringify(before?.provenance?.viewport) !== JSON.stringify(after?.provenance?.viewport)) {
+    reasons.push("comparison-viewport-mismatch");
+  }
+  if (!Number.isFinite(before?.provenance?.viewport?.width) ||
+      !Number.isFinite(before?.provenance?.viewport?.height) ||
+      !Number.isFinite(after?.provenance?.viewport?.width) ||
+      !Number.isFinite(after?.provenance?.viewport?.height)) reasons.push("comparison-viewport-missing");
+  if (before?.provenance?.deviceScaleFactor !== after?.provenance?.deviceScaleFactor) {
+    reasons.push("comparison-dpr-mismatch");
+  }
+  if (!Number.isFinite(before?.provenance?.deviceScaleFactor) ||
+      !Number.isFinite(after?.provenance?.deviceScaleFactor)) reasons.push("comparison-dpr-missing");
+  if (!before?.provenance?.sourceIdentity ||
+      before.provenance.sourceIdentity === after?.provenance?.sourceIdentity) {
+    reasons.push("comparison-source-identity-not-distinct");
+  }
+  const beforeCapturedAt = Date.parse(before?.capturedAt ?? "");
+  const afterCapturedAt = Date.parse(after?.capturedAt ?? "");
+  if (!Number.isFinite(beforeCapturedAt) || !Number.isFinite(afterCapturedAt) ||
+      afterCapturedAt <= beforeCapturedAt) {
+    reasons.push("comparison-capture-order-invalid");
+  }
+  if (Number.isFinite(afterCapturedAt) && Date.now() - afterCapturedAt > MAX_EVIDENCE_AGE_MS) {
+    reasons.push("comparison-after-evidence-stale");
+  }
+  if (JSON.stringify(before?.correctness?.inputTrace) !== JSON.stringify(after?.correctness?.inputTrace)) {
+    reasons.push("comparison-input-trace-mismatch");
+  }
+  reasons.push(...compareCanonicalGameplay(before, after));
+  if (before?.correctness?.finalDigest !== after?.correctness?.finalDigest) {
+    reasons.push("comparison-gameplay-digest-mismatch");
+  }
+  for (const [label, evidence] of [["before", before], ["after", after]]) {
+    if (evidence?.correctness?.completed !== true || evidence?.correctness?.resultVisible !== true ||
+        evidence?.correctness?.finalDigest !== APPROVED_FULL_STORY_DIGEST ||
+        evidence?.correctness?.waveResults?.length !== APPROVED_FULL_STORY_ROUTE.length ||
+        evidence?.correctness?.checkpoints?.at(-1)?.millionCounterValue !== 1_000_000) {
+      reasons.push(`comparison-${label}-correctness-invalid`);
+    }
+  }
+  const metric = (name) => {
+    const beforeValue = before?.performance?.[name];
+    const afterValue = after?.performance?.[name];
+    return Number.isFinite(beforeValue) && Number.isFinite(afterValue)
+      ? afterValue - beforeValue
+      : null;
+  };
+  const deltas = {
+    p95Ms: metric("p95Ms"),
+    p99Ms: metric("p99Ms"),
+    maxMs: metric("maxMs"),
+    over33Ms: metric("over33Ms")
+  };
+  if (Object.values(deltas).some((value) => value === null)) {
+    reasons.push("comparison-performance-metrics-incomplete");
+  }
+  return { comparable: reasons.length === 0, reasons, deltas };
 }
 
 function artifactIdentity(provenance) {

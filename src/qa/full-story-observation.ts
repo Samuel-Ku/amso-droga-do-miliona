@@ -8,6 +8,8 @@ import type { GameState } from "../game/contracts";
 import type { StoryState } from "../game/story-timeline";
 import type { CampaignWorldId } from "../visuals/scene-manifest";
 
+export const FULL_STORY_QA_STEP_EVENT = "amso:full-story-qa-step-v1" as const;
+
 export interface FullStoryQaTargetObservation {
   readonly kind: "obstacle" | "package";
   readonly x: number;

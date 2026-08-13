@@ -62,7 +62,10 @@ import {
   FULL_STORY_REFERENCE_V1,
   validateFullStoryReferenceManifest
 } from "./qa/full-story-reference-v1";
-import type { FullStoryQaObservation } from "./qa/full-story-observation";
+import {
+  FULL_STORY_QA_STEP_EVENT,
+  type FullStoryQaObservation
+} from "./qa/full-story-observation";
 
 export interface CampaignRuntimeOptions {
   readonly qa?: QaBootConfig;
@@ -364,7 +367,12 @@ export class CampaignController {
         ...(fullStoryQa ? {
           seed: FULL_STORY_REFERENCE_V1.seed,
           stopAfterStory: true,
-          fullStoryQaActive: true
+          fullStoryQaActive: true,
+          fullStoryQaStepSink: (observation: Readonly<FullStoryQaObservation>) => {
+            this.shell.canvas.ownerDocument.dispatchEvent(new CustomEvent(FULL_STORY_QA_STEP_EVENT, {
+              detail: observation
+            }));
+          }
         } : {}),
         ...(scriptedQaScenario ? {
           seed: scenario.seed,

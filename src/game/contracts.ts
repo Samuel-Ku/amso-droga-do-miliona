@@ -26,6 +26,7 @@ import type { ChallengePressureAxis } from "./challenge-pressure";
 import type { QualityCommitContext, QualityMode } from "../performance/visual-quality-coordinator";
 import type { RunnerArtwork } from "./runner-artwork";
 import type { GameplayInputAction } from "./input-queue";
+import type { FullStoryQaObservation } from "../qa/full-story-observation";
 
 export type GameState = "ready" | "running" | "paused" | "game_over" | "destroyed";
 export type ControlMethod = "keyboard" | "pointer" | "touch";
@@ -162,6 +163,8 @@ export interface RunnerGameOptions {
   stopAfterStory?: boolean;
   /** QA-only fixed-step driver for the versioned full-story browser replay. */
   fullStoryQaActive?: boolean;
+  /** Read-only fixed-step observation sink; commands still enter through public input events. */
+  fullStoryQaStepSink?: (observation: Readonly<FullStoryQaObservation>) => void;
   onQaAbort?: (reason: "input-queue-overflow") => void;
   /** Internal visual clock sink; called from the sole gameplay rAF owner. */
   visualFrameSink?: (visualDistancePixels: number, interpolationAlpha: number) => void;

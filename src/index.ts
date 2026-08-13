@@ -8,7 +8,10 @@ import type {
   RunnerPublicApi
 } from "./shared/types";
 import { campaignI18nFromDocument, localizeRunnerConfig } from "./localization";
-import type { FullStoryQaObservation } from "./qa/full-story-observation";
+import {
+  FULL_STORY_QA_STEP_EVENT,
+  type FullStoryQaObservation
+} from "./qa/full-story-observation";
 import { FULL_STORY_REFERENCE_V1 } from "./qa/full-story-reference-v1";
 
 export interface CampaignMountApi {
@@ -16,6 +19,7 @@ export interface CampaignMountApi {
   qaReport(): string;
   copyQaReport(): Promise<boolean>;
   qaStoryObservation(): Readonly<FullStoryQaObservation> | null;
+  qaStoryStepEventName(): typeof FULL_STORY_QA_STEP_EVENT;
   qaStoryCanonicalState(): Readonly<Record<string, unknown>> | null;
   qaStoryCountdownTrace(): readonly Readonly<{ sectionId: string; value: 3 | 2 | 1 }>[];
   qaStoryManifest(): typeof FULL_STORY_REFERENCE_V1;
@@ -61,6 +65,9 @@ export function mountCampaign(
     },
     qaStoryObservation(): Readonly<FullStoryQaObservation> | null {
       return controller.fullStoryQaObservation();
+    },
+    qaStoryStepEventName(): typeof FULL_STORY_QA_STEP_EVENT {
+      return FULL_STORY_QA_STEP_EVENT;
     },
     qaStoryCanonicalState(): Readonly<Record<string, unknown>> | null {
       return controller.fullStoryQaCanonicalState();
