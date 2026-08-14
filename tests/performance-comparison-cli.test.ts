@@ -81,6 +81,18 @@ function qualificationEvidence(
   const audioMode = profile === "cold-audio-disabled" ? "disabled" : "enabled";
   const run: any = evidence(audioMode, "after");
   run.capturePassed = true;
+  run.provenance = {
+    sourceIdentity: "c".repeat(64),
+    htmlSha256: "d".repeat(64),
+    assetIdentities: [
+      { url: "https://runner.example/assets/app.js", status: 200, bytes: 10, sha256: "1".repeat(64) },
+      { url: "https://runner.example/assets/app.css", status: 200, bytes: 10, sha256: "2".repeat(64) },
+      ...Array.from({ length: 7 }, (_, index) => ({
+        url: `https://runner.example/assets/milion-runner/worlds/world-0${index + 1}.webp`,
+        status: 200, bytes: 10, sha256: String(index + 3).repeat(64)
+      }))
+    ]
+  };
   run.artifact.sha256 = "a".repeat(64);
   run.profile = profile;
   run.processState = profile === "warm-audio-enabled" ? "warm" : "cold";
@@ -108,6 +120,14 @@ function qualificationEvidence(
   run.dom = { initialNodeCount: 120, maxNodeCount: 124, finalNodeCount: 124,
     addedNodeCount: 4, removedNodeCount: 0 };
   run.memory.samples = [100, 102, 101, 103];
+  run.readiness.preGestureWorldDecodes = 0;
+  run.readiness.audioContextsBeforeFirstGesture = 0;
+  run.decodeTimings = [1, 2, 3].map((world, index) => ({
+    source: `/assets/milion-runner/worlds/world-0${world}.webp`,
+    startedAtMs: 1_000 + index * 100,
+    durationMs: 40,
+    status: "fulfilled"
+  }));
   run.scenario.session = { durationSeconds: 60, replayValid: true, inputQueueOverflows: 0 };
   return run;
 }
@@ -183,6 +203,7 @@ describe("performance comparison CLI", () => {
         firstTenSecondsPassed: true,
         worldTransitionWindowsPassed: true,
         fullSessionPassed: true,
+        sequentialWarmupPassed: true,
         diagnosticsPassed: true,
         domGrowthPassed: true,
         gameplayContractPassed: true
@@ -223,6 +244,27 @@ describe("performance comparison CLI", () => {
     expect(report.automatedChecks.firstTenSecondsPassed).toBe(false);
     expect(report.automatedChecks.worldTransitionWindowsPassed).toBe(false);
     expect(report.releaseGate.status).toBe("fail");
+  });
+
+  it("fails qualification when warming overlaps different worlds", () => {
+    const directory = mkdtempSync(path.join(tmpdir(), "amso-cold-start-qualification-"));
+    temporaryDirectories.push(directory);
+    for (const profile of ["cold-audio-enabled", "cold-audio-disabled",
+      "warm-audio-enabled", "full-session"] as const) {
+      const run = qualificationEvidence(profile);
+      if (profile === "full-session") run.decodeTimings[1].startedAtMs = 1_020;
+      writeFileSync(path.join(directory, `${profile}.json`), JSON.stringify(run));
+    }
+    const reportPath = path.join(directory, "qualification.json");
+    const result = spawnSync(process.execPath, [
+      "scripts/qualify-cold-start.mjs",
+      "--runs-dir", directory,
+      "--json-out", reportPath,
+      "--markdown-out", path.join(directory, "qualification.md")
+    ], { cwd: process.cwd(), encoding: "utf8" });
+    expect(result.status).toBe(1);
+    expect(JSON.parse(readFileSync(reportPath, "utf8")))
+      .toMatchObject({ automatedChecks: { sequentialWarmupPassed: false } });
   });
 
   it("fails qualification when the promoted panel was not presentation-ready", () => {

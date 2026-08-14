@@ -12,24 +12,30 @@ export const REQUIRED_WORLD_SEAM_DESTINATIONS = Object.freeze(
   REQUIRED_WORLD_SEAM_TRANSITIONS.map(({ worldId }) => worldId)
 );
 
+function requiredDestinations(scenarioId) {
+  if (scenarioId === "four-cycle-memory-v1") {
+    return Array.from({ length: 4 }, () => REQUIRED_WORLD_SEAM_DESTINATIONS).flat();
+  }
+  return scenarioId === "world-seam-performance-v1"
+    ? REQUIRED_WORLD_SEAM_DESTINATIONS
+    : [...QUALIFIED_WORLD_IDS];
+}
+
 export function qualifiedPanelTransitions(transitions, scenarioId = "performance-reference-v1") {
-  const qualifiedWorldIds = scenarioId === "world-seam-performance-v1"
+  const qualifiedWorldIds = scenarioId === "world-seam-performance-v1" ||
+    scenarioId === "four-cycle-memory-v1"
     ? new Set(REQUIRED_WORLD_SEAM_DESTINATIONS)
     : QUALIFIED_WORLD_IDS;
   return transitions.filter(({ worldId }) => qualifiedWorldIds.has(worldId));
 }
 
 export function requiredWorldTransitionsPassed(transitions, scenarioId) {
-  const required = scenarioId === "world-seam-performance-v1"
-    ? REQUIRED_WORLD_SEAM_DESTINATIONS
-    : [...QUALIFIED_WORLD_IDS];
+  const required = requiredDestinations(scenarioId);
   return selectRequiredWorldTransitions(transitions, scenarioId).length === required.length;
 }
 
 export function selectRequiredWorldTransitions(transitions, scenarioId) {
-  const required = scenarioId === "world-seam-performance-v1"
-    ? REQUIRED_WORLD_SEAM_DESTINATIONS
-    : [...QUALIFIED_WORLD_IDS];
+  const required = requiredDestinations(scenarioId);
   let requiredIndex = 0;
   const selected = [];
   for (const transition of transitions) {

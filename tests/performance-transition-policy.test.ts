@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   REQUIRED_WORLD_SEAM_DESTINATIONS,
+  REQUIRED_WORLD_SEAM_TRANSITIONS,
   qualifiedPanelTransitions,
-  requiredWorldTransitionsPassed
+  requiredWorldTransitionsPassed,
+  selectRequiredWorldTransitions
 } from "../scripts/performance-transition-policy.mjs";
 
 describe("performance transition policy", () => {
@@ -32,5 +34,14 @@ describe("performance transition policy", () => {
       transitions.filter(({ worldId }) => worldId !== "first-mile"),
       "world-seam-performance-v1"
     )).toBe(false);
+  });
+
+  it("requires four complete ordered cycles for memory qualification", () => {
+    const transitions = Array.from({ length: 4 }, () => REQUIRED_WORLD_SEAM_TRANSITIONS)
+      .flat().map(({ worldId }, index) => ({ worldId, atMs: index * 2_000 }));
+    expect(selectRequiredWorldTransitions(transitions, "four-cycle-memory-v1")).toHaveLength(28);
+    expect(requiredWorldTransitionsPassed(transitions, "four-cycle-memory-v1")).toBe(true);
+    expect(requiredWorldTransitionsPassed(transitions.slice(0, -1), "four-cycle-memory-v1"))
+      .toBe(false);
   });
 });

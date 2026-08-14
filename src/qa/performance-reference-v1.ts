@@ -121,10 +121,29 @@ export const WORLD_SEAM_PERFORMANCE_V1: PerformanceScenarioManifest = Object.fre
   expectedFinalDigest: "fnv1a32:842f4bbe"
 });
 
+export const FOUR_CYCLE_MEMORY_V1: PerformanceScenarioManifest = Object.freeze({
+  ...PERFORMANCE_REFERENCE_V1,
+  id: "four-cycle-memory-v1",
+  configVersion: "four-cycle-memory-v1",
+  challengeWorldDurationSeconds: 7,
+  visualDistanceMultiplier: 9,
+  expectedCheckpoints: Object.freeze([
+    { completedThroughStep: -1, expected: Object.freeze({ score: 0, collisionCount: 0, pickupCount: 0 }) },
+    { completedThroughStep: 2399, expected: Object.freeze({ simulationStep: 2400, score: 5645, collisionCount: 0, pickupCount: 16 }) },
+    { completedThroughStep: 4799, expected: Object.freeze({ simulationStep: 4800, score: 10747, collisionCount: 0, pickupCount: 37 }) }
+  ]),
+  requiredCoverage: Object.freeze(PERFORMANCE_REFERENCE_V1.requiredCoverage.map((requirement) =>
+    requirement.type === "world-change"
+      ? Object.freeze({ type: "world-change" as const, minCount: 8 })
+      : requirement)),
+  // One deterministic cycle is replayed four times in the same page/cache.
+  expectedFinalDigest: "fnv1a32:842f4bbe"
+});
+
 export function performanceScenario(id: PerformanceScenarioId): PerformanceScenarioManifest {
-  return id === "world-seam-performance-v1"
-    ? WORLD_SEAM_PERFORMANCE_V1
-    : PERFORMANCE_REFERENCE_V1;
+  if (id === "world-seam-performance-v1") return WORLD_SEAM_PERFORMANCE_V1;
+  if (id === "four-cycle-memory-v1") return FOUR_CYCLE_MEMORY_V1;
+  return PERFORMANCE_REFERENCE_V1;
 }
 
 export function checkpointMatches(

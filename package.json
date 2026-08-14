@@ -32,6 +32,7 @@
     "check:postdeploy": "npm run check:vercel-live && npm run check:performance-live",
     "check:performance-comparison": "node scripts/compare-performance-evidence.mjs",
     "check:cold-start-qualification": "node scripts/qualify-cold-start.mjs",
+    "check:runtime-readiness": "npm run build:vercel && node scripts/qualify-runtime-readiness.mjs",
     "check:performance-release": "npm run check:vercel && npm run check:vercel-live && node scripts/check-performance-release.mjs --require-evidence",
     "build:frames": "node scripts/make-comprehension-frame-review.mjs",
     "build:all": "npm run build:vercel && npm run build:frames",

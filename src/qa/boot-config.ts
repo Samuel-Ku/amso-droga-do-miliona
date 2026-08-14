@@ -4,6 +4,7 @@ export type AudioRunMode = "enabled" | "muted" | "disabled";
 export type PerformanceScenarioId =
   | "performance-reference-v1"
   | "world-seam-performance-v1"
+  | "four-cycle-memory-v1"
   | "full-story-reference-v1";
 
 export interface QaBootConfig {
@@ -38,6 +39,7 @@ export function parseQaBootConfig(url: URL): QaBootResult {
   const scenarioId = oneOf(url.searchParams.get("scenario"), [
     "performance-reference-v1",
     "world-seam-performance-v1",
+    "four-cycle-memory-v1",
     "full-story-reference-v1"
   ] as const, "scenario");
   const quality = oneOf(url.searchParams.get("quality"), ["auto", "force-full", "force-reduced"] as const, "quality");

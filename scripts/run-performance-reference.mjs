@@ -26,8 +26,9 @@ Options:
   --process cold|warm              Browser-process state for the measured run
   --profile cold-audio-enabled|cold-audio-disabled|warm-audio-enabled|full-session
   --variant before|after           Comparison label
-  --scenario performance-reference-v1|world-seam-performance-v1
+  --scenario performance-reference-v1|world-seam-performance-v1|four-cycle-memory-v1
   --browser chromium|webkit        Browser engine (default: chromium)
+  --cycles 1|4                     Replay count in one page/cache (default: 1)
   --output PATH                    Write machine-readable evidence JSON
   --help                           Show this help
 `;
@@ -50,13 +51,16 @@ const variant = option("variant", "after");
 const outputPath = option("output");
 const scenarioId = option("scenario", "performance-reference-v1");
 const browserEngine = option("browser", "chromium");
+const requestedCycles = Number.parseInt(option("cycles", "1"), 10);
 if (!(["enabled", "disabled"].includes(audioMode)) ||
     !(["before", "after"].includes(variant)) ||
     !(["cold", "warm"].includes(processState)) ||
     !(["cold-audio-enabled", "cold-audio-disabled", "warm-audio-enabled",
       "full-session"].includes(profile)) ||
-    !(["performance-reference-v1", "world-seam-performance-v1"].includes(scenarioId)) ||
+    !(["performance-reference-v1", "world-seam-performance-v1", "four-cycle-memory-v1"].includes(scenarioId)) ||
     !(["chromium", "webkit"].includes(browserEngine)) ||
+    !([1, 4].includes(requestedCycles)) ||
+    (requestedCycles === 4 && scenarioId !== "four-cycle-memory-v1") ||
     option("artifact") !== undefined) {
   console.error(usage);
   process.exit(1);
@@ -136,9 +140,10 @@ const browser = await browserType.launch({
 let exitCode = 1;
 try {
   const vercelAutomationBypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-  const page = await browser.newPage({
+  const context = await browser.newContext({
     viewport: { width: 960, height: 540 }
   });
+  const page = await context.newPage();
   if (vercelAutomationBypass) {
     await page.route("**/*", async (route) => {
       const request = route.request();
@@ -205,14 +210,66 @@ try {
       dom: { initialNodeCount: 0, maxNodeCount: 0, finalNodeCount: 0,
         addedNodeCount: 0, removedNodeCount: 0, activeImageNodesAdded: 0,
         activeImageNodesCreated: 0, samples: [] },
-      memorySamples: []
+      memorySamples: [],
+      memoryTimeline: [],
+      firstGestureAtMs: null,
+      audioContextsCreated: 0,
+      audioContextsBeforeFirstGesture: 0,
+      lifecycleChecks: {
+        visibilityResumePassed: false,
+        resizePassed: false,
+        orientationPassed: false,
+        fullscreenPassed: false
+      },
+      lifecycleObservations: { visibility: [], orientation: [], fullscreen: [] }
     };
+    document.addEventListener("visibilitychange", () => {
+      window.__performanceScenarioRuntime.lifecycleObservations.visibility.push({
+        hidden: document.hidden,
+        visibilityState: document.visibilityState,
+        atMs: performance.now()
+      });
+    });
+    window.addEventListener("orientationchange", () => {
+      window.__performanceScenarioRuntime.lifecycleObservations.orientation.push({
+        portrait: window.innerHeight > window.innerWidth,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        atMs: performance.now()
+      });
+    });
+    document.addEventListener("fullscreenchange", () => {
+      window.__performanceScenarioRuntime.lifecycleObservations.fullscreen.push({
+        entered: document.fullscreenElement !== null,
+        atMs: performance.now()
+      });
+    });
     const isActiveGameplay = () => {
       const worldVisual = document.querySelector("[data-campaign-world-visual]");
       return document.querySelector(".amso-million-runner-2026")?.getAttribute("data-view") === "game" &&
         worldVisual?.getAttribute("data-phase") === "game" &&
         worldVisual.getAttribute("data-paused") !== "true";
     };
+    const markFirstGesture = () => {
+      window.__performanceScenarioRuntime.firstGestureAtMs ??= performance.now();
+    };
+    for (const type of ["pointerdown", "keydown", "touchstart", "click"]) {
+      document.addEventListener(type, markFirstGesture, { capture: true, once: true });
+    }
+    const trackAudioContext = (property) => {
+      const NativeContext = window[property];
+      if (typeof NativeContext !== "function") return;
+      window[property] = new Proxy(NativeContext, {
+        construct(target, args, newTarget) {
+          const runtime = window.__performanceScenarioRuntime;
+          runtime.audioContextsCreated += 1;
+          if (runtime.firstGestureAtMs === null) runtime.audioContextsBeforeFirstGesture += 1;
+          return Reflect.construct(target, args, newTarget);
+        }
+      });
+    };
+    trackAudioContext("AudioContext");
+    trackAudioContext("webkitAudioContext");
     const originalDecode = HTMLImageElement.prototype.decode;
     const NativeImage = window.Image;
     const TrackedImage = function trackedImage(width, height) {
@@ -250,7 +307,9 @@ try {
             : rawSource,
           worldId: this.dataset.worldId ?? null,
           panel: this.dataset.worldPanel ??
-            (this.hasAttribute("data-world-staged-panel") ? "staged" : null)
+            (this.hasAttribute("data-world-staged-panel") ? "staged" : null),
+          panelRole: this.dataset.worldPanel ??
+            (this.hasAttribute("data-world-staged-panel") ? "staged" : "asset")
         });
       };
       try {
@@ -397,8 +456,9 @@ try {
         runtime.dom.maxNodeCount = Math.max(runtime.dom.maxNodeCount, nodeCount);
         if (runtime.dom.samples.length < 128) runtime.dom.samples.push(nodeCount);
         const heap = performance.memory?.usedJSHeapSize;
-        if (Number.isFinite(heap) && runtime.memorySamples.length < 128) {
+        if (Number.isFinite(heap) && runtime.memorySamples.length < 512) {
           runtime.memorySamples.push(heap);
+          runtime.memoryTimeline.push({ atMs: performance.now(), usedJsHeapSize: heap });
         }
       };
       sampleRuntime();
@@ -545,18 +605,138 @@ try {
       : null
   );
 
-  const deadline = Date.now() + timeoutMs;
+  let runFourCycleLifecycleChecks = null;
+  if (scenarioId === "four-cycle-memory-v1") {
+    const geometryReady = () => page.evaluate(() => {
+      const host = document.querySelector(".amso-million-runner-2026");
+      const visual = document.querySelector("[data-campaign-world-visual]");
+      const plate = visual?.querySelector("[data-world-plate]");
+      const panels = [...(visual?.querySelectorAll("[data-world-panel]") ?? [])]
+        .filter((panel) => panel instanceof HTMLImageElement && !panel.hidden &&
+          panel.dataset.presentationReady === "true");
+      if (host?.getAttribute("data-view") !== "game" || !(plate instanceof HTMLElement) ||
+          panels.length !== 2) return false;
+      const plateRect = plate.getBoundingClientRect();
+      const rects = panels.map((panel) => panel.getBoundingClientRect())
+        .sort((left, right) => left.left - right.left);
+      return rects[0].left <= plateRect.left + 1 && rects[0].right >= rects[1].left - 1 &&
+        rects[1].right >= plateRect.right - 1;
+    });
+    const setLifecycleCheck = (name, passed) => page.evaluate(({ key, value }) => {
+      window.__performanceScenarioRuntime.lifecycleChecks[key] = value;
+    }, { key: name, value: passed });
+
+    runFourCycleLifecycleChecks = async () => {
+      const visibilityPage = await page.context().newPage();
+      await visibilityPage.goto("about:blank");
+      await visibilityPage.bringToFront();
+      await page.waitForTimeout(100);
+      await page.bringToFront();
+      await page.waitForTimeout(100);
+      await visibilityPage.close();
+      const visibilityObserved = await page.evaluate(() => {
+        const values = window.__performanceScenarioRuntime.lifecycleObservations.visibility;
+        const hiddenIndex = values.findIndex(({ hidden }) => hidden === true);
+        return hiddenIndex >= 0 && values.findIndex(({ hidden }, index) =>
+          index > hiddenIndex && hidden === false) > hiddenIndex;
+      });
+      await setLifecycleCheck("visibilityResumePassed", visibilityObserved && await geometryReady());
+
+      await page.setViewportSize({ width: 1_024, height: 576 });
+      await page.waitForTimeout(100);
+      await setLifecycleCheck("resizePassed", await geometryReady());
+
+      await page.setViewportSize({ width: 576, height: 1_024 });
+      await page.evaluate(() => window.dispatchEvent(new Event("orientationchange")));
+      await page.waitForTimeout(100);
+      await setLifecycleCheck("orientationPassed", await geometryReady());
+      await page.setViewportSize({ width: 960, height: 540 });
+      await page.evaluate(() => window.dispatchEvent(new Event("orientationchange")));
+      const orientationObserved = await page.evaluate(() => {
+        const values = window.__performanceScenarioRuntime.lifecycleObservations.orientation;
+        const portraitIndex = values.findIndex(({ portrait }) => portrait === true);
+        return portraitIndex >= 0 && values.findIndex(({ portrait }, index) =>
+          index > portraitIndex && portrait === false) > portraitIndex;
+      });
+      await setLifecycleCheck("orientationPassed", orientationObserved && await geometryReady());
+
+      const resumeButton = page.locator("[data-campaign-resume]");
+      if (await resumeButton.isVisible()) {
+        await resumeButton.focus();
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(100);
+      }
+
+      const fullscreenButton = page.locator("[data-campaign-fullscreen]");
+      if (await fullscreenButton.count() > 0) {
+        await fullscreenButton.focus();
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(100);
+        const enteredFullscreen = await page.evaluate(() => document.fullscreenElement !== null);
+        const enteredReady = await geometryReady();
+        await fullscreenButton.focus();
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(100);
+        const exitedFullscreen = await page.evaluate(() => document.fullscreenElement === null);
+        await setLifecycleCheck("fullscreenPassed", enteredFullscreen && enteredReady &&
+          exitedFullscreen && await geometryReady());
+      }
+    };
+  }
+
   let report = null;
-  while (Date.now() < deadline) {
-    await page.waitForTimeout(1_000);
-    report = JSON.parse(await page.evaluate(
-      () => window.AMSOMillionRunnerQA?.qaReport() ?? "null"
-    ));
-    if (report?.scenarioValidation !== null) break;
-    if (await page.locator(".amso-million-runner-2026").getAttribute("data-view") ===
-        "challenge_result") {
-      break;
+  const cycleResults = [];
+  for (let cycleIndex = 0; cycleIndex < requestedCycles; cycleIndex += 1) {
+    const cycleStartedAtMs = await page.evaluate(() => performance.now());
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      await page.waitForTimeout(1_000);
+      report = JSON.parse(await page.evaluate(
+        () => window.AMSOMillionRunnerQA?.qaReport() ?? "null"
+      ));
+      if (report?.scenarioValidation != null) break;
+      if (await page.locator(".amso-million-runner-2026").getAttribute("data-view") ===
+          "challenge_result") break;
     }
+    cycleResults.push({
+      index: cycleIndex + 1,
+      startedAtMs: cycleStartedAtMs,
+      completedAtMs: await page.evaluate(() => performance.now()),
+      scenarioValidation: report?.scenarioValidation ?? null,
+      finalDigest: report?.scenarioArtifact?.digest ?? null,
+      canonicalState: report?.scenarioArtifact?.canonicalState ?? null
+    });
+    if (cycleIndex === 2 && runFourCycleLifecycleChecks !== null) {
+      const check = runFourCycleLifecycleChecks;
+      runFourCycleLifecycleChecks = null;
+      await check();
+    }
+    if (cycleIndex === requestedCycles - 1) break;
+    const currentView = await page.locator(".amso-million-runner-2026").getAttribute("data-view");
+    if (currentView === "challenge_result") {
+      const skipName = page.locator("[data-campaign-name-skip]");
+      if (await skipName.isVisible()) await skipName.click();
+      await page.locator("[data-campaign-restart-challenge]").click();
+    } else {
+      const menuButton = page.locator("[data-campaign-menu]");
+      if (!await menuButton.isVisible()) {
+        await page.locator("[data-campaign-pause]").click();
+      }
+      await menuButton.focus();
+      await page.keyboard.press("Enter");
+      await page.waitForFunction(() =>
+        document.querySelector(".amso-million-runner-2026")?.getAttribute("data-view") ===
+          "landing", null, { timeout: 30_000 });
+      await page.locator("[data-campaign-landing-actions] button").click();
+    }
+    await page.waitForFunction(() => {
+      const raw = window.AMSOMillionRunnerQA?.qaReport() ?? "null";
+      return JSON.parse(raw)?.scenarioValidation === null;
+    }, null,
+    { timeout: 30_000 });
+    await page.waitForFunction(() =>
+      document.querySelector(".amso-million-runner-2026")?.getAttribute("data-view") === "game",
+    null, { timeout: 30_000 });
   }
 
   const runtime = await page.evaluate(() => {
@@ -590,6 +770,22 @@ try {
       ? performance.memory.usedJSHeapSize
       : null
   );
+  const rawHtml = deployedArtifactBody ?? Buffer.from("");
+  const artifactSourceIdentity = rawHtml.toString("utf8")
+    .match(/<meta name="amso-build-source" content="([a-f0-9]{64})">/u)?.[1] ?? null;
+  const assetUrls = [...new Set(runtime.resourceTimings.map(({ resource }) => resource)
+    .filter((resource) => {
+      try {
+        const candidate = new URL(resource);
+        return candidate.origin === targetUrl.origin && /\.(?:js|css|webp)(?:\?|$)/u.test(candidate.href);
+      } catch { return false; }
+    }))].sort();
+  const assetIdentities = await Promise.all(assetUrls.map(async (assetUrl) => {
+    const response = await fetch(assetUrl);
+    const bytes = Buffer.from(await response.arrayBuffer());
+    return { url: assetUrl, status: response.status, bytes: bytes.length,
+      sha256: createHash("sha256").update(bytes).digest("hex") };
+  }));
   const intervals = runtime.activeFrameIntervals;
   const motionSlopes = runtime.visualMotionSlopes.map(({ slope }) => slope)
     .filter((slope) => Number.isFinite(slope) && slope > 0);
@@ -666,6 +862,12 @@ try {
       navigationHeaders.server?.toLowerCase() === "vercel" &&
       typeof navigationHeaders["x-vercel-id"] === "string" &&
       navigationHeaders["x-vercel-id"].length > 0);
+  const frameBudgetPassed = scenarioId === "world-seam-performance-v1"
+    ? true
+    : scenarioId === "four-cycle-memory-v1"
+      ? percentile(intervals, 0.95) <= 18 && percentile(intervals, 0.99) <= 33 &&
+        Math.max(...intervals) <= 100
+      : intervals.filter((interval) => interval > 33).length === 0;
   const capturePassed = report?.scenarioValidation?.passed === true &&
     checkpointsPassed &&
     report?.session?.inputQueueOverflows === 0 &&
@@ -673,20 +875,17 @@ try {
     transitionActiveDecodeStarts === 0 &&
     transitionWindows.every(({ framesOver33Ms }) => framesOver33Ms === 0) &&
     requiredPanelTransitionsPassed &&
-    (scenarioId !== "world-seam-performance-v1" || visualMotionPassed) &&
+    (!["world-seam-performance-v1", "four-cycle-memory-v1"].includes(scenarioId) || visualMotionPassed) &&
     runtime.dom.activeImageNodesAdded === 0 &&
     runtime.dom.activeImageNodesCreated === 0 &&
     deploymentProvenancePassed &&
-    // Headless WebKit can report unrelated process stalls; the seam scenario
-    // qualifies the explicit ±500 ms presentation windows while retaining the
-    // whole-run frame timeline as diagnostic evidence.
-    (scenarioId === "world-seam-performance-v1" ||
-      intervals.filter((interval) => interval > 33).length === 0) &&
+    frameBudgetPassed &&
     consoleErrors.length === 0 &&
     externalRequests.length === 0 &&
     failedResponses.length === 0;
   const evidence = {
     schema: "amso-performance-run-v1",
+    capturedAt: new Date().toISOString(),
     capturePassed,
     variant,
     profile,
@@ -707,6 +906,19 @@ try {
       vercelId: navigationHeaders["x-vercel-id"] ?? null,
       provenancePassed: deploymentProvenancePassed
     },
+    provenance: {
+      requestedUrl: url.href,
+      finalUrl: finalNavigationUrl,
+      status: navigationResponse?.status() ?? null,
+      server: navigationHeaders.server ?? null,
+      vercelId: navigationHeaders["x-vercel-id"] ?? null,
+      htmlSha256: createHash("sha256").update(rawHtml).digest("hex"),
+      sourceIdentity: artifactSourceIdentity,
+      browserVersion: browser.version(),
+      viewport: { width: 960, height: 540 },
+      deviceScaleFactor: 1,
+      assetIdentities
+    },
     configuration: {
       scenarioId: report?.qaRunConfiguration?.scenarioId ?? "performance-reference-v1",
       scenarioConfigVersion: report?.qaRunConfiguration?.scenarioConfigVersion ?? null,
@@ -718,7 +930,8 @@ try {
       dpr: 1,
       quality: "force-full",
       motion: "system",
-      audioMode
+      audioMode,
+      requestedCycles
     },
     environment: {
       host: {
@@ -788,14 +1001,27 @@ try {
       session: report?.session ?? null
     },
     diagnostics: { consoleErrors, consoleErrorDetails, externalRequests, failedResponses },
-    readiness: { coldStartMs, criticalReadyMs },
+    readiness: {
+      coldStartMs,
+      criticalReadyMs,
+      firstGestureAtMs: runtime.firstGestureAtMs,
+      audioContextsCreated: runtime.audioContextsCreated,
+      audioContextsBeforeFirstGesture: runtime.audioContextsBeforeFirstGesture,
+      preGestureWorldDecodes: runtime.decodeTimings.filter(({ startedAtMs, source }) =>
+        runtime.firstGestureAtMs !== null && startedAtMs < runtime.firstGestureAtMs &&
+        typeof source === "string" && /\/world-0[2-7]/u.test(source)).length
+    },
     memory: {
       available: false,
       reason: "physical-device-process-memory-required",
       auxiliaryJsHeapStartBytes: initialJsHeapBytes,
       auxiliaryJsHeapEndBytes: finalJsHeapBytes,
-      samples: runtime.memorySamples
+      samples: runtime.memorySamples,
+      timeline: runtime.memoryTimeline
     },
+    lifecycleChecks: runtime.lifecycleChecks,
+    lifecycleObservations: runtime.lifecycleObservations,
+    cycleResults,
     visualFixturesPassed: null,
     view: await page.locator(".amso-million-runner-2026").getAttribute("data-view")
   };

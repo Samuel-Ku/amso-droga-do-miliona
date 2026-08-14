@@ -300,6 +300,9 @@ export class CampaignController {
     this.lastWaveAudioKey = "";
     this.shownPowerUpHints.clear();
     this.scenarioCheckpointResults = [];
+    this.scenarioArtifact = null;
+    this.scenarioValidation = null;
+    this.scenarioInitialCheckpointPassed = false;
     this.shell.showLoading(undefined);
 
     if (this.config.audio.enabled && this.runtime.qa?.audio !== "disabled") void this.audio.start();

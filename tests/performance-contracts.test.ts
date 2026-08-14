@@ -6,6 +6,7 @@ import { VisualQualityCoordinator } from "../src/performance/visual-quality-coor
 import { resolveVisualPolicy } from "../src/performance/visual-policy";
 import { compareSemanticState, exactDeterminismArtifact } from "../src/qa/determinism";
 import {
+  FOUR_CYCLE_MEMORY_V1,
   PERFORMANCE_REFERENCE_V1,
   WORLD_SEAM_PERFORMANCE_V1,
   performanceScenario,
@@ -113,6 +114,16 @@ describe("performance contracts", () => {
     expect(PERFORMANCE_REFERENCE_V1.requiredCoverage.map(({ type }) => type)).toContain("world-change");
     expect(PERFORMANCE_REFERENCE_V1.inputs).toEqual([...PERFORMANCE_REFERENCE_V1.inputs]
       .sort((left, right) => left.stepIndex - right.stepIndex || left.sequence - right.sequence));
+  });
+
+  it("ships a bounded four-cycle memory route through all seven worlds", () => {
+    expect(FOUR_CYCLE_MEMORY_V1.durationSteps).toBe(7200);
+    expect(FOUR_CYCLE_MEMORY_V1.challengeWorldDurationSeconds).toBe(7);
+    expect(FOUR_CYCLE_MEMORY_V1.visualDistanceMultiplier).toBe(9);
+    expect(FOUR_CYCLE_MEMORY_V1.requiredCoverage).toContainEqual({
+      type: "world-change", minCount: 8
+    });
+    expect(FOUR_CYCLE_MEMORY_V1.expectedFinalDigest).toMatch(/^fnv1a32:[a-f0-9]{8}$/u);
   });
 
   it("does not auto-approve a missing scenario digest", () => {

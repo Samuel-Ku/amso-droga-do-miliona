@@ -2,22 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { artifactFingerprint } from "./runtime-readiness-policy.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
-function currentArtifactIdentity() {
-  const htmlPath = path.join(root, "dist-vercel/index.html");
-  if (!fs.existsSync(htmlPath)) return null;
-  const html = fs.readFileSync(htmlPath);
-  const sourceIdentity = html.toString("utf8").match(/<meta name="amso-build-source" content="([a-f0-9]{64})">/u)?.[1];
-  const relativeAssets = [...html.toString("utf8").matchAll(/(?:src|href)="\.\/(assets\/[^"?]+)"/gu)]
-    .map((match) => match[1]).concat("assets/milion-runner/boot-watchdog.js");
-  const assetIdentities = [...new Set(relativeAssets)].map((relative) => {
-    const bytes = fs.readFileSync(path.join(root, "dist-vercel", relative));
-    return { bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") };
-  });
-  return sourceIdentity ? { sourceIdentity, htmlSha256: createHash("sha256").update(html).digest("hex"), assetIdentities } : null;
-}
 const profiles = [
   { profile: "cold-audio-enabled", processState: "cold", audioMode: "enabled" },
   { profile: "cold-audio-disabled", processState: "cold", audioMode: "disabled" },
@@ -261,6 +248,8 @@ const runs = Object.fromEntries(profiles.map(({ profile }) => {
 const runValues = Object.values(runs);
 const identities = runValues.map(identity);
 const comparable = identities.every((candidate) => equal(candidate, identities[0])) &&
+  runValues.every(({ provenance }) => artifactFingerprint(provenance) !== null &&
+    artifactFingerprint(provenance) === artifactFingerprint(runValues[0].provenance)) &&
   runValues.every(({ artifact }) => Number.isFinite(artifact.bytes) && artifact.bytes > 0 &&
     typeof artifact.sha256 === "string" && artifact.sha256.length === 64) &&
   runs["cold-audio-enabled"].processState === "cold" &&
@@ -278,6 +267,25 @@ const gameplayContractPassed = runValues.every(scenarioPassed) &&
     scenario.canonicalState, runValues[0].scenario.canonicalState));
 const summaries = Object.fromEntries(Object.entries(runs)
   .map(([profile, run]) => [profile, summarizeRun(run)]));
+const sequentialWorldWarmup = ({ decodeTimings = [] }) => {
+  const decodes = decodeTimings.map((entry) => {
+    const match = /\/world-0([1-7])[^/]*\.webp/u.exec(entry.source ?? "");
+    return match === null ? null : { world: Number(match[1]),
+      start: entry.startedAtMs, end: entry.startedAtMs + entry.durationMs };
+  }).filter((entry) => entry !== null && Number.isFinite(entry.start) && Number.isFinite(entry.end))
+    .sort((left, right) => left.start - right.start);
+  let highestWorld = 0;
+  let activeWorld = null;
+  let activeUntil = -Infinity;
+  for (const decode of decodes) {
+    if (decode.world < highestWorld) return false;
+    highestWorld = Math.max(highestWorld, decode.world);
+    if (decode.start < activeUntil && decode.world !== activeWorld) return false;
+    if (decode.start >= activeUntil) activeWorld = decode.world;
+    activeUntil = Math.max(activeUntil, decode.end);
+  }
+  return decodes.length > 0;
+};
 const automatedChecks = {
   captureProcessesPassed: runValues.every(({ capturePassed }) => capturePassed === true) &&
     [...captureStatuses.values()].every(({ status, signal }) => status === 0 && signal === null),
@@ -291,6 +299,11 @@ const automatedChecks = {
     runs["full-session"].panelTransitions?.some(({ worldId }) => worldId === "quality-service"),
   startBudgetsPassed: runValues.every(({ readiness }) =>
     readiness.coldStartMs <= 3_000 && readiness.criticalReadyMs <= 2_000),
+  startupDecodeOrderPassed: runValues.every(({ readiness }) =>
+    readiness.preGestureWorldDecodes === 0),
+  sequentialWarmupPassed: runValues.every(sequentialWorldWarmup),
+  audioGestureLifecyclePassed: runValues.every(({ readiness }) =>
+    readiness.audioContextsBeforeFirstGesture === 0),
   attributionComplete: runValues.every(({ attribution, longTasks, longAnimationFrames,
     resourceTimings }) => attribution !== undefined && longTasks !== undefined &&
       longAnimationFrames !== undefined && Array.isArray(resourceTimings)),
@@ -323,7 +336,8 @@ missingEvidence.push("minimum-profile-device-unavailable", "iphone-safari-report
 const automatedFailed = !comparable || failedChecks.length > 0;
 const report = {
   schema: "amso-cold-start-qualification-v1",
-  provenance: currentArtifactIdentity(),
+  capturedAt: new Date().toISOString(),
+  provenance: runValues[0].provenance,
   comparable,
   target: runs["full-session"].target,
   runs: summaries,
