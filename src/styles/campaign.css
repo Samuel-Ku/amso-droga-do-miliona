@@ -245,6 +245,20 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   border-radius: 0;
 }
 
+.amso-million-runner-2026[data-css-game-mode="true"][data-mobile-layout="true"][data-view] {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.amso-million-runner-2026[data-css-game-mode="true"][data-mobile-layout="true"][data-view]
+  .amso-million-runner-2026__main {
+  height: auto;
+}
+
+.amso-million-runner-2026[data-css-game-mode="true"][data-mobile-layout="true"][data-view]
+  .amso-million-runner-2026__stage {
+  height: 100%;
+}
+
 .amso-million-runner-2026__backdrop {
   position: absolute;
   z-index: -2;
