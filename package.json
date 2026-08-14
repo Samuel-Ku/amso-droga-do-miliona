@@ -20,6 +20,7 @@
     "check:full-story-live:webkit": "node scripts/run-full-story-reference.mjs --browser webkit --audio enabled --url https://game.amso.pl/ --output .scratch/full-story-performance-reference/evidence/ticket-04/production-webkit.json",
     "check:full-story-live": "npm run check:full-story-live:chromium && npm run check:full-story-live:webkit",
     "check:full-story-comparison": "node scripts/compare-full-story-runtime.mjs",
+    "check:full-story-profile": "node scripts/profile-full-story-runtime.mjs",
     "check:full-story-release": "node scripts/check-full-story-performance-release.mjs --run-vercel-gate",
     "check:world-seam-performance-local:chromium": "node scripts/run-performance-reference.mjs --browser chromium --scenario world-seam-performance-v1 --audio disabled --output .scratch/challenge-soft-world-seams/evidence/ticket-04/local-chromium.json",
     "check:world-seam-performance-local:webkit": "node scripts/run-performance-reference.mjs --browser webkit --scenario world-seam-performance-v1 --audio disabled --output .scratch/challenge-soft-world-seams/evidence/ticket-04/local-webkit.json",

@@ -7,9 +7,9 @@ import { execFileSync } from "node:child_process";
 import { chromium, webkit } from "playwright";
 import { assessFullStoryEvidence } from "./full-story-performance-policy.mjs";
 import { nextFullStoryDriverCommand } from "./full-story-driver-policy.mjs";
+import { contextForTimelineEntry } from "./full-story-runtime-profile-policy.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
-const buildRoot = path.join(root, "dist-vercel");
 const recordsWorkerOrigin = "https://droga-do-miliona-records.s-kutsenko.workers.dev";
 const option = (name, fallback = undefined) => {
   const index = process.argv.indexOf(`--${name}`);
@@ -18,9 +18,11 @@ const option = (name, fallback = undefined) => {
 const browserName = option("browser", "chromium");
 const deploymentUrl = option("url");
 const outputPath = option("output");
+const buildRoot = path.resolve(option("build-root", path.join(root, "dist-vercel")));
 const stopAfterChapter = option("stop-after-chapter");
 const audioMode = option("audio", "enabled");
 const timeoutMs = Number.parseInt(option("timeout-ms", "480000"), 10);
+const hostDeviceClass = process.env.AMSO_PROFILE_DEVICE_CLASS?.trim() || null;
 const baseCommitSha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 const workingTreePatch = execFileSync("git", ["diff", "--binary", "HEAD"], {
   cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024
@@ -31,7 +33,7 @@ if (!["chromium", "webkit"].includes(browserName) ||
   throw new Error("Usage: run-full-story-reference.mjs --browser chromium|webkit [--url URL] [--output PATH] [--stop-after-chapter ID]");
 }
 if (deploymentUrl === undefined && !fs.existsSync(path.join(buildRoot, "index.html"))) {
-  throw new Error("dist-vercel/index.html missing; run npm run build:vercel first");
+  throw new Error(`${buildRoot}/index.html missing; run npm run build:vercel first`);
 }
 
 const percentile = (values, p) => {
@@ -122,20 +124,39 @@ try {
   page.on("requestfailed", (request) => failures.push(`requestfailed:${request.url()}:${request.failure()?.errorText ?? ""}`));
   page.on("response", (response) => {
     if (response.status() >= 400) failures.push(`response:${response.status()}:${response.url()}`);
-    if (/\.(?:js|css)(?:\?|$)/u.test(response.url())) responses.push(response.url());
+    if (/\.(?:js|css|webp)(?:\?|$)/u.test(response.url())) responses.push(response.url());
   });
   await page.route(`${recordsWorkerOrigin}/**`, (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({ entries: [] })
   }));
-  await page.addInitScript(() => {
+  await page.addInitScript(({ timelineContextSource }) => {
+    const timelineContext = (0, eval)(`(${timelineContextSource})`);
     const metrics = window.__amsoFullStoryMetrics = {
       frames: [], decodes: [], longTasks: [], longAnimationFrames: [], imageNodes: [],
       transitions: [], panelPromotions: [], blankFrames: [], countdowns: [], collectorCost: [],
       collectorEnabledFrames: [], collectorDisabledFrames: [],
       collectorEnabledExecution: [], collectorDisabledExecution: [],
-      collectorEnabledLayoutReads: 0, collectorDisabledLayoutReads: 0
+      collectorEnabledLayoutReads: 0, collectorDisabledLayoutReads: 0,
+      historyTruncations: {},
+      runtimeProfile: {
+        schemaVersion: "full-story-runtime-profile-v1",
+        sampleStride: 12,
+        sampledActiveFrames: 0,
+        canvas: { support: "instrumented", totals: {
+          calls: 0, durationMs: 0, shadowedPaintCalls: 0,
+          shadowedPaintDurationMs: 0, gradientAllocations: 0
+        }, bySegment: {}, byWorld: {} },
+        rendering: { support: "unsupported", entries: 0, totalRenderDurationMs: 0,
+          totalStyleAndLayoutDurationMs: 0, activeEntries: 0, activeRenderDurationMs: 0,
+          activeStyleAndLayoutDurationMs: 0, bySegment: {}, byWorld: {} },
+        gc: { support: "unsupported", entries: 0, totalDurationMs: 0,
+          activeEntries: 0, activeDurationMs: 0, bySegment: {}, byWorld: {} },
+        heap: { support: "unsupported", samples: 0, firstBytes: null, lastBytes: null,
+          minBytes: null, maxBytes: null, growthBytes: null },
+        paint: { support: "unsupported", entries: [] }
+      }
     };
     let root = null;
     let worldHost = null;
@@ -162,6 +183,62 @@ try {
       return { phase, segmentId: observation?.sectionId ?? null,
         worldId: observation?.worldId ?? worldHost?.getAttribute("data-world-id") ?? null };
     };
+    let runtimeProfileEnabled = false;
+    let runtimeProfileContext = { phase: "loading", segmentId: null, worldId: null };
+    const createProfileBucket = (group) => group === "canvas"
+        ? { calls: 0, durationMs: 0, shadowedPaintCalls: 0,
+          shadowedPaintDurationMs: 0, gradientAllocations: 0 }
+        : group === "rendering"
+          ? { entries: 0, renderDurationMs: 0, styleAndLayoutDurationMs: 0 }
+          : { entries: 0, durationMs: 0 };
+    const profileBuckets = (group, attributionContext = runtimeProfileContext) => {
+      const profile = metrics.runtimeProfile[group];
+      const segmentId = attributionContext.segmentId ?? "unattributed";
+      const worldId = attributionContext.worldId ?? "unattributed";
+      return [
+        profile.bySegment[segmentId] ??= createProfileBucket(group),
+        profile.byWorld[worldId] ??= createProfileBucket(group)
+      ];
+    };
+    const canvasPrototype = window.CanvasRenderingContext2D?.prototype;
+    const wrapCanvasMethod = (name, { gradient = false, paint = false } = {}) => {
+      const native = canvasPrototype?.[name];
+      if (typeof native !== "function") return;
+      Object.defineProperty(canvasPrototype, name, { configurable: true, writable: true,
+        value: function (...args) {
+          if (!runtimeProfileEnabled) return native.apply(this, args);
+          const startedAt = performance.now();
+          const result = native.apply(this, args);
+          const duration = performance.now() - startedAt;
+          const totals = metrics.runtimeProfile.canvas.totals;
+          const buckets = profileBuckets("canvas");
+          totals.calls += 1;
+          totals.durationMs += duration;
+          for (const bucket of buckets) {
+            bucket.calls += 1;
+            bucket.durationMs += duration;
+          }
+          if (gradient) {
+            totals.gradientAllocations += 1;
+            for (const bucket of buckets) bucket.gradientAllocations += 1;
+          }
+          if (paint && Number(this.shadowBlur) > 0) {
+            totals.shadowedPaintCalls += 1;
+            totals.shadowedPaintDurationMs += duration;
+            for (const bucket of buckets) {
+              bucket.shadowedPaintCalls += 1;
+              bucket.shadowedPaintDurationMs += duration;
+            }
+          }
+          return result;
+        }
+      });
+    };
+    wrapCanvasMethod("createLinearGradient", { gradient: true });
+    wrapCanvasMethod("createRadialGradient", { gradient: true });
+    for (const name of ["fill", "stroke", "fillRect", "strokeRect", "fillText", "strokeText", "drawImage"]) {
+      wrapCanvasMethod(name, { paint: true });
+    }
     let previous = null;
     let previousCollectorEnabled = null;
     let previousContext = null;
@@ -169,6 +246,10 @@ try {
     let previousPanelState = null;
     let previousObservedWorldId = null;
     let pendingWorldTransition = null;
+    const boundedPush = (items, value, label, limit = 50_000) => {
+      if (items.length < limit) items.push(value);
+      else metrics.historyTruncations[label] = (metrics.historyTruncations[label] ?? 0) + 1;
+    };
     const translatePercent = (panel) => {
       const match = panel?.style.transform.match(/translate3d\((-?[\d.]+)%/u);
       return match ? Number(match[1]) : null;
@@ -178,6 +259,21 @@ try {
       const current = context();
       const activeCollectorEnabled = current.phase !== "active-gameplay" ||
         Math.floor(activeSampleIndex / 120) % 2 === 0;
+      runtimeProfileContext = current;
+      runtimeProfileEnabled = current.phase === "active-gameplay" && activeCollectorEnabled &&
+        activeSampleIndex % metrics.runtimeProfile.sampleStride === 0;
+      if (runtimeProfileEnabled) metrics.runtimeProfile.sampledActiveFrames += 1;
+      const memory = performance.memory;
+      if (runtimeProfileEnabled && Number.isFinite(memory?.usedJSHeapSize)) {
+        const heap = metrics.runtimeProfile.heap;
+        heap.support = "performance-memory";
+        heap.samples += 1;
+        heap.firstBytes ??= memory.usedJSHeapSize;
+        heap.lastBytes = memory.usedJSHeapSize;
+        heap.minBytes = heap.minBytes === null ? memory.usedJSHeapSize : Math.min(heap.minBytes, memory.usedJSHeapSize);
+        heap.maxBytes = heap.maxBytes === null ? memory.usedJSHeapSize : Math.max(heap.maxBytes, memory.usedJSHeapSize);
+        heap.growthBytes = heap.lastBytes - heap.firstBytes;
+      }
       if (previousObservedWorldId && current.worldId && previousObservedWorldId !== current.worldId) {
         const priorPercent = previousPanelState?.nextWorldId === current.worldId
           ? previousPanelState.nextTranslatePercent : null;
@@ -196,51 +292,56 @@ try {
         const nextReady = nextPanel instanceof HTMLImageElement && !nextPanel.hidden &&
           (nextPanel.dataset.presentationReady === "true" || nextPanel.naturalWidth > 0);
         if (current.phase === "active-gameplay" && !currentReady && !nextReady) {
-          metrics.blankFrames.push({ at: now, ...current });
+          boundedPush(metrics.blankFrames, { at: now, ...current }, "blankFrames");
         }
-        const panelState = {
-          currentWorldId: currentPanel?.dataset.worldId ?? null,
-          currentTranslatePercent: translatePercent(currentPanel),
-          currentReady,
-          currentHidden: currentPanel?.hidden ?? true,
-          nextWorldId: nextPanel?.dataset.worldId ?? null,
-          nextTranslatePercent: translatePercent(nextPanel)
-        };
-        if (pendingWorldTransition) {
-          const destinationPanel = worldPanels.find((panel) => panel.dataset.worldId === pendingWorldTransition.toWorldId &&
-            !panel.hidden && (panel.dataset.presentationReady === "true" || panel.naturalWidth > 0));
-          if (destinationPanel instanceof HTMLImageElement) {
-            const destinationPercent = translatePercent(destinationPanel);
-            if (activeCollectorEnabled) metrics.collectorEnabledLayoutReads += 1;
-            else metrics.collectorDisabledLayoutReads += 1;
-            const plateWidth = document.querySelector("[data-world-plate]")?.getBoundingClientRect().width ?? 0;
-            metrics.panelPromotions.push({ at: now, fromWorldId: pendingWorldTransition.fromWorldId,
-              toWorldId: pendingWorldTransition.toWorldId, presentationReady: true, hidden: false,
-              phase: current.phase,
-              narrativeGapMs: now - pendingWorldTransition.startedAt,
-              phaseResidualPx: pendingWorldTransition.priorPercent === null || destinationPercent === null
-                ? null : Math.abs(pendingWorldTransition.priorPercent - destinationPercent) * plateWidth / 100 });
-            pendingWorldTransition = null;
+        const detailedPanelSampleDue = current.phase !== "active-gameplay" ||
+          activeSampleIndex % 24 === 0 || pendingWorldTransition !== null;
+        if (detailedPanelSampleDue) {
+          const panelState = {
+            currentWorldId: currentPanel?.dataset.worldId ?? null,
+            currentTranslatePercent: translatePercent(currentPanel),
+            currentReady,
+            currentHidden: currentPanel?.hidden ?? true,
+            nextWorldId: nextPanel?.dataset.worldId ?? null,
+            nextTranslatePercent: translatePercent(nextPanel)
+          };
+          if (pendingWorldTransition) {
+            const destinationPanel = worldPanels.find((panel) => panel.dataset.worldId === pendingWorldTransition.toWorldId &&
+              !panel.hidden && (panel.dataset.presentationReady === "true" || panel.naturalWidth > 0));
+            if (destinationPanel instanceof HTMLImageElement) {
+              const destinationPercent = translatePercent(destinationPanel);
+              metrics.collectorEnabledLayoutReads += 1;
+              const plateWidth = document.querySelector("[data-world-plate]")?.getBoundingClientRect().width ?? 0;
+              boundedPush(metrics.panelPromotions, { at: now, fromWorldId: pendingWorldTransition.fromWorldId,
+                toWorldId: pendingWorldTransition.toWorldId, presentationReady: true, hidden: false,
+                phase: current.phase,
+                narrativeGapMs: now - pendingWorldTransition.startedAt,
+                phaseResidualPx: pendingWorldTransition.priorPercent === null || destinationPercent === null
+                  ? null : Math.abs(pendingWorldTransition.priorPercent - destinationPercent) * plateWidth / 100 },
+              "panelPromotions");
+              pendingWorldTransition = null;
+            }
           }
+          previousPanelState = panelState;
         }
-        previousPanelState = panelState;
       }
       if (previous !== null && previousContext?.phase === "active-gameplay" &&
           previousCollectorEnabled !== null) {
-        (previousCollectorEnabled ? metrics.collectorEnabledFrames : metrics.collectorDisabledFrames)
-          .push(now - previous);
+        boundedPush(previousCollectorEnabled ? metrics.collectorEnabledFrames : metrics.collectorDisabledFrames,
+          now - previous, previousCollectorEnabled ? "collectorEnabledFrames" : "collectorDisabledFrames");
       }
       if (current.phase === "active-gameplay") {
         activeSampleIndex += 1;
       }
       if (current.worldId) previousObservedWorldId = current.worldId;
-      if (previous !== null) metrics.frames.push({ at: now, duration: now - previous, ...current });
+      if (previous !== null && previousContext !== null) boundedPush(metrics.frames,
+        { at: now, duration: now - previous, ...previousContext }, "frames");
       previous = now;
       const collectorDuration = performance.now() - started;
-      metrics.collectorCost.push(collectorDuration);
+      boundedPush(metrics.collectorCost, collectorDuration, "collectorCost");
       if (current.phase === "active-gameplay") {
-        (activeCollectorEnabled ? metrics.collectorEnabledExecution : metrics.collectorDisabledExecution)
-          .push(collectorDuration);
+        boundedPush(activeCollectorEnabled ? metrics.collectorEnabledExecution : metrics.collectorDisabledExecution,
+          collectorDuration, activeCollectorEnabled ? "collectorEnabledExecution" : "collectorDisabledExecution");
         previousCollectorEnabled = activeCollectorEnabled;
       } else {
         previousCollectorEnabled = null;
@@ -258,45 +359,109 @@ try {
       const entry = { source: this.currentSrc || this.src, nodeId: imageNodeIds.get(this),
         panelRole: this.dataset.worldPanel ?? (this.hasAttribute("data-world-staged-panel") ? "staged" : "asset"),
         startedAt, ...context(), duration: null };
-      metrics.decodes.push(entry);
+      boundedPush(metrics.decodes, entry, "decodes");
       return decode.apply(this, args).finally(() => { entry.duration = performance.now() - startedAt; });
     };
     const createElement = Document.prototype.createElement;
     Document.prototype.createElement = function (name, options) {
       const element = createElement.call(this, name, options);
-      if (String(name).toLowerCase() === "img") metrics.imageNodes.push({ at: performance.now(), ...context() });
+      if (String(name).toLowerCase() === "img") boundedPush(metrics.imageNodes,
+        { at: performance.now(), ...context() }, "imageNodes");
       return element;
     };
     const NativeImage = window.Image;
     function InstrumentedImage(width, height) {
-      metrics.imageNodes.push({ at: performance.now(), constructor: "Image", ...context() });
+      boundedPush(metrics.imageNodes, { at: performance.now(), constructor: "Image", ...context() }, "imageNodes");
       return Reflect.construct(NativeImage, width === undefined ? [] : height === undefined ? [width] : [width, height]);
     }
     InstrumentedImage.prototype = NativeImage.prototype;
     Object.defineProperty(window, "Image", { configurable: true, writable: true, value: InstrumentedImage });
+    const contextAt = (at) => {
+      return timelineContext(metrics.frames, at, context());
+    };
     try {
       new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) metrics.longTasks.push({
+        for (const entry of list.getEntries()) boundedPush(metrics.longTasks, {
           at: entry.startTime, duration: entry.duration,
-          blockingDuration: Math.max(0, entry.duration - 50), ...context()
-        });
+          blockingDuration: Math.max(0, entry.duration - 50), ...contextAt(entry.startTime)
+        }, "longTasks");
       }).observe({ type: "longtask", buffered: true });
     } catch {}
     try {
       new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) metrics.longAnimationFrames.push({
-          at: entry.startTime, duration: entry.duration,
-          blockingDuration: entry.blockingDuration ?? Math.max(0, entry.duration - 50), ...context()
-        });
+        metrics.runtimeProfile.rendering.support = "long-animation-frame";
+        for (const entry of list.getEntries()) {
+          const observedContext = contextAt(entry.startTime);
+          const frameEnd = entry.startTime + entry.duration;
+          const renderDuration = Number.isFinite(entry.renderStart)
+            ? Math.max(0, frameEnd - entry.renderStart) : 0;
+          const styleAndLayoutDuration = Number.isFinite(entry.styleAndLayoutStart)
+            ? Math.max(0, frameEnd - entry.styleAndLayoutStart) : 0;
+          boundedPush(metrics.longAnimationFrames, {
+            at: entry.startTime, duration: entry.duration,
+            blockingDuration: entry.blockingDuration ?? Math.max(0, entry.duration - 50),
+            renderDuration, styleAndLayoutDuration, ...observedContext
+          }, "longAnimationFrames");
+          const rendering = metrics.runtimeProfile.rendering;
+          rendering.entries += 1;
+          rendering.totalRenderDurationMs += renderDuration;
+          rendering.totalStyleAndLayoutDurationMs += styleAndLayoutDuration;
+          if (observedContext.phase === "active-gameplay") {
+            rendering.activeEntries += 1;
+            rendering.activeRenderDurationMs += renderDuration;
+            rendering.activeStyleAndLayoutDurationMs += styleAndLayoutDuration;
+            for (const bucket of profileBuckets("rendering", observedContext)) {
+              bucket.entries += 1;
+              bucket.renderDurationMs += renderDuration;
+              bucket.styleAndLayoutDurationMs += styleAndLayoutDuration;
+            }
+          }
+        }
       }).observe({ type: "long-animation-frame", buffered: true });
     } catch {}
+    if (PerformanceObserver.supportedEntryTypes?.includes("gc")) {
+      metrics.runtimeProfile.gc.support = "supported";
+      try {
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            const observedContext = contextAt(entry.startTime);
+            const gc = metrics.runtimeProfile.gc;
+            gc.entries += 1;
+            gc.totalDurationMs += entry.duration;
+            if (observedContext.phase === "active-gameplay") {
+              gc.activeEntries += 1;
+              gc.activeDurationMs += entry.duration;
+              for (const bucket of profileBuckets("gc", observedContext)) {
+                bucket.entries += 1;
+                bucket.durationMs += entry.duration;
+              }
+            }
+          }
+        }).observe({ type: "gc", buffered: true });
+      } catch {
+        metrics.runtimeProfile.gc.support = "unsupported";
+      }
+    }
+    if (PerformanceObserver.supportedEntryTypes?.includes("paint")) {
+      metrics.runtimeProfile.paint.support = "paint-timing";
+      try {
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) boundedPush(metrics.runtimeProfile.paint.entries, {
+            name: entry.name, at: entry.startTime, duration: entry.duration
+          }, "paintEntries");
+        }).observe({ type: "paint", buffered: true });
+      } catch {
+        metrics.runtimeProfile.paint.support = "unsupported";
+      }
+    }
     const transitionObserver = new MutationObserver((records) => {
       for (const record of records) {
         const target = record.target;
         if (!(target instanceof HTMLImageElement) || target.dataset.worldPanel !== "current") continue;
-        metrics.transitions.push({ at: performance.now(), attribute: record.attributeName,
+        boundedPush(metrics.transitions, { at: performance.now(), attribute: record.attributeName,
           worldId: target.dataset.worldId ?? null,
-          presentationReady: target.dataset.presentationReady === "true", hidden: target.hidden, ...context() });
+          presentationReady: target.dataset.presentationReady === "true", hidden: target.hidden, ...context() },
+        "transitions");
       }
     });
     addEventListener("DOMContentLoaded", () => transitionObserver.observe(document.documentElement, {
@@ -315,7 +480,9 @@ try {
         const previous = metrics.countdowns.at(-1);
         const expectedValue = previous?.value === 3 ? 2 : previous?.value === 2 ? 1 : 3;
         if (entry.sectionId && entry.value === expectedValue &&
-            (entry.value === 3 || previous?.sectionId === entry.sectionId)) metrics.countdowns.push(entry);
+            (entry.value === 3 || previous?.sectionId === entry.sectionId)) {
+          boundedPush(metrics.countdowns, entry, "countdowns");
+        }
       };
       const record = (records = []) => {
         for (const mutation of records) {
@@ -327,7 +494,7 @@ try {
       new MutationObserver(record).observe(host, { subtree: true, childList: true, characterData: true, attributes: true });
       record();
     }, { once: true });
-  });
+  }, { timelineContextSource: contextForTimelineEntry.toString() });
   const navigationResponse = await page.goto(target.href, { waitUntil: "networkidle", timeout: 60_000 });
   const finalUrl = page.url();
   const responseHeaders = navigationResponse?.headers() ?? {};
@@ -545,14 +712,21 @@ try {
   const activeFrames = captured.metrics.frames
     .filter((frame) => frame.phase === "active-gameplay")
     .map((frame) => frame.duration);
-  const activeSegments = Object.fromEntries([...new Set(captured.metrics.frames
-    .filter((frame) => frame.phase === "active-gameplay").map((frame) => frame.segmentId).filter(Boolean))]
-    .map((segmentId) => {
-      const values = captured.metrics.frames.filter((frame) =>
-        frame.phase === "active-gameplay" && frame.segmentId === segmentId).map((frame) => frame.duration);
-      return [segmentId, { frameCount: values.length, p95Ms: percentile(values, 0.95),
-        p99Ms: percentile(values, 0.99), maxMs: values.length ? Math.max(...values) : null }];
-    }));
+  const summarizeFrameValues = (values) => ({
+    frameCount: values.length,
+    p50Ms: percentile(values, 0.5),
+    p95Ms: percentile(values, 0.95),
+    p99Ms: percentile(values, 0.99),
+    maxMs: values.length ? Math.max(...values) : null,
+    over33Ms: values.filter((value) => value > 33).length,
+    over100Ms: values.filter((value) => value > 100).length
+  });
+  const activeAttribution = (key) => Object.fromEntries([...new Set(captured.metrics.frames
+    .filter((frame) => frame.phase === "active-gameplay").map((frame) => frame[key]).filter(Boolean))]
+    .map((id) => [id, summarizeFrameValues(captured.metrics.frames.filter((frame) =>
+      frame.phase === "active-gameplay" && frame[key] === id).map((frame) => frame.duration))]));
+  const activeSegments = activeAttribution("segmentId");
+  const activeWorlds = activeAttribution("worldId");
   const normalizedDigestPayload = {
     waves: captured.driver.waveResults.map(({ waveId, attempts, actionSucceeded, passed }) =>
       ({ waveId, attempts, actionSucceeded, passed })),
@@ -609,6 +783,7 @@ try {
       browserVersion: browser.version(),
       viewport: { width: 1280, height: 720 },
       deviceScaleFactor: 1,
+      hostDeviceClass,
       assetIdentities
     },
     configuration: {
@@ -648,6 +823,7 @@ try {
       hotPathImageNodesCreated: captured.metrics.imageNodes.filter((entry) => entry.phase === "active-gameplay").length,
       phaseAggregates,
       activeSegments,
+      activeWorlds,
       blankFrameCount: captured.metrics.blankFrames.length,
       collectorCostP95Ms: metricPercentile(captured.metrics.collectorCost, 0.95),
       emptyRafBaseline,
@@ -666,6 +842,8 @@ try {
         sampledLayoutReads: captured.metrics.collectorEnabledLayoutReads,
         controlLayoutReads: captured.metrics.collectorDisabledLayoutReads
       },
+      historyTruncations: captured.metrics.historyTruncations,
+      runtimeProfile: captured.metrics.runtimeProfile,
       decodes: captured.metrics.decodes,
       longTasks: captured.metrics.longTasks,
       longAnimationFrames: captured.metrics.longAnimationFrames,
