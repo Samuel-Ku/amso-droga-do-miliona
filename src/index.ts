@@ -1,16 +1,28 @@
 import "./styles/campaign.css";
 import { CampaignController } from "./CampaignController";
+import type { CampaignRuntimeOptions } from "./CampaignController";
 import { RUNNER_SCHEMA_VERSION } from "./config/defaults";
 import type {
   RunnerConfig,
   RunnerOpenOptions,
   RunnerPublicApi
 } from "./shared/types";
+import { campaignI18nFromDocument, localizeRunnerConfig } from "./localization";
+import {
+  FULL_STORY_QA_STEP_EVENT,
+  type FullStoryQaObservation
+} from "./qa/full-story-observation";
+import { FULL_STORY_REFERENCE_V1 } from "./qa/full-story-reference-v1";
 
 export interface CampaignMountApi {
   destroy(): void;
   qaReport(): string;
   copyQaReport(): Promise<boolean>;
+  qaStoryObservation(): Readonly<FullStoryQaObservation> | null;
+  qaStoryStepEventName(): typeof FULL_STORY_QA_STEP_EVENT;
+  qaStoryCanonicalState(): Readonly<Record<string, unknown>> | null;
+  qaStoryCountdownTrace(): readonly Readonly<{ sectionId: string; value: 3 | 2 | 1 }>[];
+  qaStoryManifest(): typeof FULL_STORY_REFERENCE_V1;
 }
 
 type CampaignNavigate = (path: string) => void;
@@ -38,14 +50,31 @@ function browserNavigate(path: string): void {
  */
 export function mountCampaign(
   configValue: RunnerConfig,
-  host: HTMLElement
+  host: HTMLElement,
+  runtime: CampaignRuntimeOptions = {}
 ): CampaignMountApi {
-  const config = requireEnabledConfig(configValue);
+  const i18n = campaignI18nFromDocument(host.ownerDocument);
+  const config = localizeRunnerConfig(requireEnabledConfig(configValue), i18n);
   mountedCampaign?.destroy();
-  const controller = new CampaignController(host, config);
+  const controller = new CampaignController(host, config, undefined, undefined, runtime, i18n);
   mountedCampaign = controller;
 
   return {
+    qaStoryManifest(): typeof FULL_STORY_REFERENCE_V1 {
+      return FULL_STORY_REFERENCE_V1;
+    },
+    qaStoryObservation(): Readonly<FullStoryQaObservation> | null {
+      return controller.fullStoryQaObservation();
+    },
+    qaStoryStepEventName(): typeof FULL_STORY_QA_STEP_EVENT {
+      return FULL_STORY_QA_STEP_EVENT;
+    },
+    qaStoryCanonicalState(): Readonly<Record<string, unknown>> | null {
+      return controller.fullStoryQaCanonicalState();
+    },
+    qaStoryCountdownTrace(): readonly Readonly<{ sectionId: string; value: 3 | 2 | 1 }>[] {
+      return controller.fullStoryQaCountdownTrace();
+    },
     qaReport(): string {
       return controller.qaReportText();
     },

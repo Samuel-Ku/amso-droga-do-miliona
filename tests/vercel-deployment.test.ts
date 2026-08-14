@@ -1,0 +1,53 @@
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+import { PARCEL_CELEBRATION_FRAME_PATHS } from "../src/game/runner-artwork";
+
+const outputDirectory = path.resolve("dist-vercel");
+
+describe("optimized Vercel deployment", () => {
+  it("is the sole production build and owns the canonical game domain", () => {
+    const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
+      scripts: Record<string, string>;
+    };
+    const sourceHtml = readFileSync("index.html", "utf8");
+
+    expect(packageJson.scripts.build).toBe("npm run build:vercel");
+    expect(packageJson.scripts["check:performance-scenario"]).toContain("build:vercel");
+    expect(Object.keys(packageJson.scripts).some((name) => name.includes("idosell"))).toBe(false);
+    expect(sourceHtml).toContain('rel="canonical" href="https://game.amso.pl/"');
+  });
+
+  it("ships a production page with the Vercel keyboard profile and no source maps", () => {
+    const htmlPath = path.join(outputDirectory, "index.html");
+    expect(existsSync(htmlPath)).toBe(true);
+    const html = readFileSync(htmlPath, "utf8");
+
+    expect(html).toContain('data-campaign-keyboard-profile="vercel"');
+    expect(html).not.toContain('data-campaign-keyboard-profile="idosell"');
+    expect(html).toMatch(/<script[^>]+src="\.\/assets\/[^"/]+\.js"/u);
+    expect(html).toMatch(/<link[^>]+href="\.\/assets\/[^"/]+\.css"/u);
+    expect(readdirSync(path.join(outputDirectory, "assets")))
+      .not.toContainEqual(expect.stringMatching(/\.map$/u));
+  });
+
+  it("omits source artwork and other files that the production runtime never requests", () => {
+    const files = (directory: string): string[] => readdirSync(directory, { withFileTypes: true })
+      .flatMap((entry) => {
+        const target = path.join(directory, entry.name);
+        return entry.isDirectory() ? files(target) : [target];
+      });
+    const deployedFiles = files(outputDirectory);
+    const deployedBytes = deployedFiles.reduce((total, file) => total + statSync(file).size, 0);
+
+    expect(deployedBytes).toBeLessThan(8 * 1024 * 1024);
+    expect(deployedFiles).not.toContainEqual(expect.stringMatching(/(?:\.DS_Store|\.map|\.png)$/u));
+  });
+
+  it("publishes every current parcel frame instead of falling back to the legacy atlas", () => {
+    for (const assetPath of PARCEL_CELEBRATION_FRAME_PATHS) {
+      expect(existsSync(path.join(outputDirectory, assetPath.replace(/^\//u, ""))), assetPath)
+        .toBe(true);
+    }
+  });
+});

@@ -1,4 +1,5 @@
 import type { DataLayerEvent, RunnerSource } from "../shared/types";
+import type { CampaignLocale } from "../localization";
 import {
   RUNNER_ANALYTICS_EVENTS,
   RUNNER_GAME_NAME,
@@ -11,6 +12,7 @@ export interface DataLayerTarget {
 
 export interface DataLayerTrackerOptions {
   gameVersion: string;
+  locale?: CampaignLocale;
   dataLayer?: DataLayerEvent[];
   target?: DataLayerTarget;
   consentGranted?: boolean | (() => boolean);
@@ -55,12 +57,14 @@ export class DataLayerTracker {
   private readonly directDataLayer: DataLayerEvent[] | undefined;
   private readonly target: DataLayerTarget | undefined;
   private readonly consentGranted: boolean | (() => boolean) | undefined;
+  private readonly locale: CampaignLocale | undefined;
 
   public constructor(options: DataLayerTrackerOptions) {
     this.gameVersion = safeVersion(options.gameVersion);
     this.directDataLayer = options.dataLayer;
     this.target = options.target ?? browserTarget();
     this.consentGranted = options.consentGranted;
+    this.locale = options.locale;
   }
 
   public setSourceLocation(_sourceLocation: RunnerSource): this {
@@ -82,6 +86,7 @@ export class DataLayerTracker {
       game_name: RUNNER_GAME_NAME,
       game_version: this.gameVersion
     };
+    if (this.locale !== undefined) event.locale = this.locale;
 
     if (safeEventName === "game_started") {
       const mode = safeMode(payload.mode);

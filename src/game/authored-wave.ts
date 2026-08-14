@@ -304,8 +304,10 @@ export class AuthoredWaveDirector {
   public get targetsCompleted(): boolean {
     const waveTarget = this.definition.repeatWavesUntil ?? this.definition.waves.length;
     const orderTarget = this.definition.finaleOrderTarget ?? 0;
-    return this.wavesCompleted >= waveTarget && this.totalOrdersCollected >= orderTarget &&
-      this.ordersCollected === 0;
+    const routeComplete = this.definition.id === "million-threshold"
+      ? true
+      : this.wavesCompleted >= waveTarget;
+    return routeComplete && this.totalOrdersCollected >= orderTarget && this.ordersCollected === 0;
   }
 
   public get completed(): boolean {
@@ -486,7 +488,7 @@ export const STORY_MICROLEVELS: readonly StoryMicrolevelDefinition[] = Object.fr
     speedStartMultiplier: 1.55,
     speedEndMultiplier: 1.85,
     repeatWavesUntil: 12,
-    finaleOrderTarget: 30,
+    finaleOrderTarget: 50,
     waves: [
       wave("million-single-jump", "jump", "pallet", 3, 1.55, "single"),
       wave("million-single-slide", "slide", "overhead", 3, 1.58, "single"),

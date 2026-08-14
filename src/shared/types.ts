@@ -1,3 +1,5 @@
+import type { GameInstructionCopyRef } from "../config/game-instructions-copy";
+
 export type RunnerSource = "homepage_logo" | "landing_hero" | "demo_logo" | "demo_hero" | string;
 
 export interface RunnerFact {
@@ -10,6 +12,17 @@ export interface RunnerFact {
 }
 
 export type PackageType = "notebook" | "telefon" | "pc" | "lcd";
+
+export interface RecordBoardEntry {
+  id?: string;
+  name: string;
+  /** Worker omitted an unsafe source name; UI supplies its locale-neutral replacement. */
+  nameModerated?: true;
+  challengeScore: number;
+  orders: number;
+  updatedAt: number;
+  rank?: number;
+}
 /** Visual form of one ordinary order. Physical facts still use PackageType. */
 export type OrderVisualType = PackageType | "parcel";
 export type CollectibleClass = "parcel" | "equipment";
@@ -118,6 +131,7 @@ export interface StorySceneConfig {
 
 export interface StoryScenePageConfig {
   id: string;
+  copyRef?: GameInstructionCopyRef;
   title?: string;
   body: string[];
   continueLabel: string;
@@ -151,14 +165,13 @@ export interface StoryModeHandoffConfig {
   to: "challenge";
   safe: true;
   confirmationRequired: true;
-  resumeCountdownSeconds: 3;
+  resumeCountdownSeconds: number;
 }
 
 export interface MillionThresholdConfig {
   counterStart: number;
   counterTarget: 1_000_000;
   orderTarget: number;
-  combinationTarget: 12;
 }
 
 export interface StoryConfig {
@@ -179,6 +192,8 @@ export interface StoryConfig {
 
 export interface ChallengeConfig {
   mode: "challenge";
+  /** Identifies the rule set so that results, records and leaderboard queries are versioned. */
+  challengeRuleVersion: number;
   speedStartMultiplier: number;
   speedMaxMultiplier: number;
   logisticWaveMinSeconds: number;
@@ -258,6 +273,9 @@ export interface RunnerConfig {
   discountCode?: DiscountCodeConfig;
   /** Narrative campaign definition (epochs + triggered facts). */
   narrative?: NarrativeConfig;
+  /** Absolute URL of the records board API. Defaults to relative "/api/records"
+   *  (same-origin Worker route). Set this when the API lives on another origin. */
+  recordsApi?: string;
 }
 
 export interface RunnerOpenOptions {

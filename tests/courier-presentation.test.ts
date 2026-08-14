@@ -10,11 +10,11 @@ import { createRunnerModel } from "../src/game/physics";
 import { readFileSync } from "node:fs";
 
 describe("courier presentation", () => {
-  it("keeps the running gait between two and four cycles per second", () => {
-    expect(runnerStrideCyclesPerSecond(280)).toBe(2);
-    expect(runnerStrideCyclesPerSecond(630)).toBe(3);
-    expect(runnerStrideCyclesPerSecond(980)).toBe(4);
-    expect(runnerStrideCyclesPerSecond(2_000)).toBe(4);
+  it("keeps the running gait between twelve and fifteen cycles per second", () => {
+    expect(runnerStrideCyclesPerSecond(280)).toBe(12);
+    expect(runnerStrideCyclesPerSecond(630)).toBeCloseTo(13.5, 1);
+    expect(runnerStrideCyclesPerSecond(980)).toBe(15);
+    expect(runnerStrideCyclesPerSecond(2_000)).toBe(15);
   });
 
   it("shows one energy bubble only while protection is active", () => {
@@ -60,14 +60,14 @@ describe("courier presentation", () => {
       reducedMotion: false
     });
 
-    expect(brightest.scale).toBeCloseTo(1.05, 3);
-    expect(brightest.alpha).toBeCloseTo(1, 3);
-    expect(softest.scale).toBeCloseTo(1, 3);
-    expect(softest.alpha).toBeCloseTo(0.8, 3);
+    expect(brightest.scale).toBeCloseTo(1.01, 3);
+    expect(brightest.alpha).toBeCloseTo(0.82, 3);
+    expect(softest.scale).toBeCloseTo(0.99, 3);
+    expect(softest.alpha).toBeCloseTo(0.72, 3);
     expect(oneSecond.meshRotationRadians).toBeCloseTo(Math.PI / 15, 5);
   });
 
-  it("appears with a short overshoot and bursts in under 140 milliseconds", () => {
+  it("appears with a restrained pulse and bursts in under 140 milliseconds", () => {
     const firstFrame = courierShieldAnimation({
       elapsedSeconds: 0,
       activationSecondsRemaining: SHIELD_APPEAR_SECONDS,
@@ -87,10 +87,11 @@ describe("courier presentation", () => {
       reducedMotion: false
     });
 
-    expect(SHIELD_BREAK_SECONDS).toBeLessThanOrEqual(0.14);
-    expect(firstFrame).toMatchObject({ scale: 0.72, alpha: 0, breakingProgress: 0 });
-    expect(overshoot.scale).toBeGreaterThan(1);
+    expect(SHIELD_BREAK_SECONDS).toBe(0.12);
+    expect(firstFrame).toMatchObject({ scale: 0.9, alpha: 0, breakingProgress: 0 });
+    expect(overshoot.scale).toBeCloseTo(1.03, 3);
     expect(halfBurst.breakingProgress).toBeCloseTo(0.5, 4);
+    expect(halfBurst.scale).toBeCloseTo(1.04, 4);
     expect(halfBurst.alpha).toBeCloseTo(0.5, 4);
   });
 

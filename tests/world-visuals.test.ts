@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import productionConfig from "../public/assets/milion-runner/runner-config.json";
 import {
   CAMPAIGN_WORLDS,
+  CHALLENGE_WORLD_SECONDS,
   ChallengeWorldDirector,
   resolvePlaySegmentVisual,
   sceneVisualState
@@ -17,7 +18,7 @@ import {
 import { GROUND_Y } from "../src/game/constants";
 
 describe("world visual continuity", () => {
-  it("keeps every generated background and the route on one contained 16:9 plane", () => {
+  it("keeps every generated background and the route on one canonical plate", () => {
     const css = readFileSync(new URL("../src/styles/campaign.css", import.meta.url), "utf8");
     const worldLayer = readFileSync(
       new URL("../src/visuals/WorldVisualLayer.ts", import.meta.url),
@@ -25,15 +26,24 @@ describe("world visual continuity", () => {
     );
     const renderer = readFileSync(new URL("../src/game/renderer.ts", import.meta.url), "utf8");
 
-    expect(css).toContain("object-fit: contain");
-    expect(css).not.toContain("object-fit: cover");
+    expect(css).not.toMatch(/\.amso-million-runner-2026-world-visual__panel\s*\{[^}]*object-fit:/u);
+    expect(css).toMatch(/\.amso-million-runner-2026-world-visual__image-stack\s*\{[^}]*transition:\s*none/u);
     expect(css).toContain("--world-position-portrait");
     expect(css).toContain("--world-position-landscape");
     expect(css).not.toContain("--world-tile-blend-width");
-    expect(css).not.toMatch(/\.amso-world-visual__panel\.is-leaving\s*\{/u);
-    expect(worldLayer).toContain('this.host.style.setProperty("--world-overlap", "0px")');
-    expect(worldLayer).toContain("WORLD_ROUTE_SVG");
-    expect(renderer).toContain("drawGameplayRoute(context)");
+    expect(css).not.toMatch(/\.amso-million-runner-2026-world-visual__panel\.is-leaving\s*\{/u);
+    expect(css).not.toContain("data-world-seam-side");
+    expect(css).not.toContain("--world-seam-overlap");
+    expect(css).not.toContain("mix-blend-mode: plus-lighter");
+    expect(css).not.toContain("backdrop-filter: blur(var(--world-seam-blur-radius");
+    expect(worldLayer).not.toContain("--world-overlap");
+    expect(worldLayer).not.toContain("worldSeamSide");
+    expect(worldLayer).toContain("data-world-plate");
+    expect(worldLayer).toContain("public applyGeometry(");
+    expect(worldLayer).toContain('<img class="amso-million-runner-2026-world-visual__panel"');
+    expect(worldLayer).not.toContain("context.drawImage(asset.image");
+    expect(renderer).not.toContain("drawFullWidthGameplayRoute");
+    expect(renderer).toContain("drawGameplayRoute(context, resources.routeGradient)");
     expect(WORLD_ROUTE_Y).toBe(GROUND_Y);
     expect(WORLD_ROUTE_BASE_WIDTH).toBe(18);
     expect(WORLD_ROUTE_ACCENT_WIDTH).toBe(7);
@@ -49,16 +59,22 @@ describe("world visual continuity", () => {
       .toBe(true);
   });
 
-  it("keeps the shared route on the full gameplay plane at the 390 px breakpoint", () => {
+  it("does not override canonical plate geometry at the 390 px breakpoint", () => {
     const css = readFileSync(new URL("../src/styles/campaign.css", import.meta.url), "utf8");
     const mobileRules = css.slice(css.indexOf("@media (max-width: 756px)"));
 
-    expect(mobileRules).toMatch(
-      /\[data-phase="story"\]\s+\.amso-world-visual__image-stack\s*\{[^}]*height:\s*42%/su
+    expect(mobileRules).not.toContain("height: 42%");
+  });
+
+  it("keeps system UI and the input canvas full-stage", () => {
+    const css = readFileSync(new URL("../src/styles/campaign.css", import.meta.url), "utf8");
+    expect(css).toMatch(
+      /\.amso-million-runner-2026__canvas\s*\{[^}]*inset:\s*0;[^}]*width:\s*100%;[^}]*height:\s*100%/su
     );
-    expect(mobileRules).not.toMatch(
-      /\.amso-world-visual__image-stack,\s*\n\s*\.amso-campaign__world-visual\[data-phase="story"\]\s+\.amso-world-visual__route/su
+    expect(css).toMatch(
+      /\[data-campaign-pause-screen\]\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0/su
     );
+    expect(css).toMatch(/\.amso-million-runner-2026-world-visual__image-stack\s*\{[^}]*transition:\s*none/su);
   });
 
   it("uses generated plates without the removed semantic illustration layer", () => {
@@ -89,8 +105,8 @@ describe("world visual continuity", () => {
     );
 
     expect(worldLayer.match(/<span data-world-counter/gu)).toHaveLength(1);
-    expect(worldLayer).toContain("999 970");
-    expect(css).toContain(".amso-world-visual__counter");
+    expect(worldLayer).toContain("999 950");
+    expect(css).toContain(".amso-million-runner-2026-world-visual__counter");
     expect(css).toContain('[data-world-id="million-finale"]');
     expect(css).toContain("color-scheme: only light");
   });
@@ -104,7 +120,7 @@ describe("world visual continuity", () => {
     }
     expect(existsSync(new URL("../src/visuals/semantic-world-svg.ts", import.meta.url)))
       .toBe(false);
-    expect(css).not.toContain(".amso-world-visual__semantic");
+    expect(css).not.toContain(".amso-million-runner-2026-world-visual__semantic");
   });
 
   it("keeps the confirmed scale figures in editable story copy", () => {
@@ -128,7 +144,7 @@ describe("world visual continuity", () => {
     const director = new ChallengeWorldDirector("direct");
     expect(director.snapshot.stateId).toBe("story.first_package");
 
-    director.advance(45, false);
+    director.advance(CHALLENGE_WORLD_SECONDS, false);
     expect(director.snapshot.stateId).toBe("story.first_package");
     expect(director.snapshot.transitionPending).toBe(true);
 
@@ -137,12 +153,24 @@ describe("world visual continuity", () => {
     expect(director.snapshot.worldElapsedSeconds).toBe(0);
   });
 
-  it("continues from the finale after story, then returns to the first world after 45 seconds", () => {
+  it("keeps the production cadence while allowing a versioned QA workload cadence", () => {
+    const production = new ChallengeWorldDirector("direct");
+    const performanceScenario = new ChallengeWorldDirector("direct", 24);
+
+    production.advance(24, true);
+    performanceScenario.advance(24, true);
+    performanceScenario.advance(24, true);
+
+    expect(production.snapshot.stateId).toBe("story.first_package");
+    expect(performanceScenario.snapshot.stateId).toBe("epoch_2.resolve");
+  });
+
+  it("continues from the finale after story, then returns after one world cycle", () => {
     const director = new ChallengeWorldDirector("story-continuation");
     expect(director.snapshot.stateId).toBe("story.million_finale");
     expect(sceneVisualState(director.snapshot.stateId).worldId).toBe("million-finale");
 
-    director.advance(44.99, true);
+    director.advance(CHALLENGE_WORLD_SECONDS - 0.01, true);
     expect(director.snapshot.stateId).toBe("story.million_finale");
     director.advance(0.01, true);
     expect(director.snapshot.stateId).toBe("story.first_package");
@@ -152,7 +180,7 @@ describe("world visual continuity", () => {
     const director = new ChallengeWorldDirector("direct");
     const seen = [director.snapshot.stateId];
     for (let index = 0; index < 7; index += 1) {
-      director.advance(45, true);
+      director.advance(CHALLENGE_WORLD_SECONDS, true);
       seen.push(director.snapshot.stateId);
     }
     expect(seen).toEqual([

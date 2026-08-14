@@ -23,6 +23,10 @@ import type {
 import type { AuthoredWaveProgressSnapshot } from "./authored-wave";
 import type { ActivePowerUpStatus } from "./power-ups";
 import type { ChallengePressureAxis } from "./challenge-pressure";
+import type { QualityCommitContext, QualityMode } from "../performance/visual-quality-coordinator";
+import type { RunnerArtwork } from "./runner-artwork";
+import type { GameplayInputAction } from "./input-queue";
+import type { FullStoryQaObservation } from "../qa/full-story-observation";
 
 export type GameState = "ready" | "running" | "paused" | "game_over" | "destroyed";
 export type ControlMethod = "keyboard" | "pointer" | "touch";
@@ -80,6 +84,10 @@ export interface GameSnapshot {
   frameRate?: number;
   /** Cumulative frames that missed a 60 Hz budget while the run was active. */
   droppedFrames?: number;
+  longFrames?: number;
+  inputQueueOverflows?: number;
+  replayValid?: boolean;
+  nextStepIndex?: number;
   /** Most recent collider category; no user or device identity is recorded. */
   lastCollisionType?: string | null;
   difficultyLevel: number;
@@ -149,6 +157,42 @@ export interface RunnerGameOptions {
   narrative?: NarrativeConfig | null;
   /** Configurable two-line labels used by procedural power-up collectibles. */
   powerUpCopy?: Partial<Readonly<Record<PowerUpKind, readonly [string, string]>>>;
+  /** True only for the deterministic local scenario harness. */
+  qaScenarioActive?: boolean;
+  /** QA acceptance boundary: expose the existing story result before Challenge. */
+  stopAfterStory?: boolean;
+  /** QA-only fixed-step driver for the versioned full-story browser replay. */
+  fullStoryQaActive?: boolean;
+  /** Read-only fixed-step observation sink; commands still enter through public input events. */
+  fullStoryQaStepSink?: (observation: Readonly<FullStoryQaObservation>) => void;
+  onQaAbort?: (reason: "input-queue-overflow") => void;
+  /** Internal visual clock sink; called from the sole gameplay rAF owner. */
+  visualFrameSink?: (visualDistancePixels: number, interpolationAlpha: number) => void;
+  qualityCommitContext?: () => QualityCommitContext;
+  qualityMode?: QualityMode;
+  runnerArtwork?: RunnerArtwork;
+  /** Locale-bound canvas formatter, created once outside the render loop. */
+  formatInteger?: (value: number) => string;
+  /** Locale-bound label displayed below the million counter. */
+  millionCounterLabel?: string;
+  replayInputs?: readonly {
+    readonly stepIndex: number;
+    readonly sequence: number;
+    readonly action: GameplayInputAction;
+    readonly active: boolean;
+    readonly controlMethod: ControlMethod;
+  }[];
+  scenarioDurationSteps?: number;
+  /** Versioned QA workload cadence; production Challenge keeps its authored default. */
+  challengeWorldDurationSeconds?: number;
+  /** QA-only visual clock acceleration used to traverse every world seam in one bounded run. */
+  qaVisualDistanceMultiplier?: number;
+  scenarioCheckpointSteps?: readonly number[];
+  onScenarioCheckpoint?: (
+    completedThroughStep: number,
+    canonicalState: Readonly<Record<string, unknown>>
+  ) => void;
+  onScenarioComplete?: (completedThroughStep: number) => void;
 }
 
 export interface RunnerGameApi {

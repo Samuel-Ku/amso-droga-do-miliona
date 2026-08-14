@@ -13,7 +13,7 @@ describe("migration redirect adapter", () => {
     api.open({ sourceLocation: "landing_hero" });
     api.close("user");
 
-    expect(navigate).toHaveBeenCalledExactlyOnceWith("/milion");
+    expect(navigate).toHaveBeenCalledExactlyOnceWith("/million");
   });
 
   it("stops redirecting after destroy", () => {

@@ -61,8 +61,7 @@ function playerPacedStory(): StoryConfig {
     millionThreshold: {
       counterStart: 999_950,
       counterTarget: 1_000_000,
-      orderTarget: 50,
-      combinationTarget: 12
+      orderTarget: 50
     }
   };
 }
@@ -135,6 +134,10 @@ describe("player-paced story timeline", () => {
     expect(timeline.snapshot.state).toBe("countdown");
     expect(timeline.snapshot.countdownValue).toBe(3);
     expect(timeline.snapshot.controlsEnabled).toBe(false);
+    expect(timeline.snapshot.trustCorridor).toBe(false);
+    expect(timeline.snapshot.safety).toEqual({
+      kind: "narrative_safe", hazardsEnabled: false, pickupsEnabled: false, controlsEnabled: false
+    });
     timeline.advance(1.01);
     expect(timeline.snapshot.countdownValue).toBe(2);
     timeline.advance(1);
@@ -223,7 +226,7 @@ describe("player-paced story timeline", () => {
 
     expect(playSteps).toBe(6);
     expect(powerUpDebuts).toBe(3);
-    expect(conservativeRuntimeSeconds).toBeCloseTo(326.72, 2);
+    expect(conservativeRuntimeSeconds).toBeCloseTo(325.4, 2);
     expect(conservativeRuntimeSeconds).toBeLessThanOrEqual(330);
   });
 });

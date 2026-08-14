@@ -90,7 +90,7 @@ describe("player-paced story presentation", () => {
   it("formats carried powers compactly for the persistent HUD", () => {
     expect(formatPowerUpHud([])).toBe("");
     expect(formatPowerUpHud(["podwojny_wynik", "gwarancja_48"]))
-      .toBe("×2 WYNIK · GWARANCJA 48 M ×1");
+      .toBe("×2 WYNIK · GWARANCJA AMSO CARE ×1");
     expect(formatPowerUpHud(["podwojny_wynik"], [{
       kind: "podwojny_wynik",
       remainingSeconds: 6.2
@@ -117,13 +117,13 @@ describe("player-paced story presentation", () => {
       ...base,
       microlevelId: "order-backlog",
       currentActions: ["jump", "slide"]
-    })).toBe("📦 FALE ZATORU 3/8 · ↑ SKOK + ↓ ŚLIZG");
+    })).toBe("📦 FALE ZATORU 3/8 · W SKOK + S ŚLIZG");
     expect(formatAuthoredWaveHud({
       ...base,
       microlevelId: "million-threshold",
       totalOrdersCollected: 12,
       totalOrderTarget: 50
-    })).toBe("999 962");
+    })).toBeNull();
   });
 
   it("uses recognizable object and process symbols in authored HUD slots", () => {
@@ -138,19 +138,20 @@ describe("player-paced story presentation", () => {
 
   it("keeps controls in the top HUD and removes visible bottom gameplay text", () => {
     expect(formatStoryControlsHud("epoch_1.training"))
-      .toBe("Skok: W/↑/Spacja/tap · Ślizg: S/↓");
+      .toBe("Skok: Spacja/W/tap · Ślizg: S/swipe w dół");
     expect(formatStoryControlsHud("epoch_2.quality_series")).toBeNull();
     expect(campaignShellSource).toContain("data-campaign-hud-controls");
     expect(campaignShellSource).not.toContain("data-campaign-gameplay-hint");
     expect(campaignShellSource).not.toContain("data-campaign-story-caption");
   });
 
-  it("separates total and challenge results and hides an unused protection stat", () => {
+  it("separates total and challenge results and removes the protection stat", () => {
     expect(campaignShellSource).toContain("Wynik łączny");
     expect(campaignShellSource).toContain("Wynik wyzwania");
     expect(campaignShellSource).toContain("Pierwszy wynik wyzwania");
     expect(campaignShellSource).toContain("Twój rekord wyzwania");
-    expect(campaignShellSource).toContain("result.warrantySaves === 0");
+    expect(campaignShellSource).not.toContain("data-campaign-challenge-saves-stat");
+    expect(campaignShellSource).not.toContain("Gwarancja AMSO Care uratowała bieg");
   });
 
   it("formats live order, peak, counter and finale progress for the HUD", () => {
@@ -176,9 +177,8 @@ describe("player-paced story presentation", () => {
 
     director.enterSegment("epoch_5.million_threshold", 72);
     for (let index = 0; index < 12; index += 1) director.recordMillionOrder();
-    for (let index = 0; index < 3; index += 1) director.recordMillionCombination();
     expect(formatStoryObjectiveHud(director.snapshot, []))
-      .toBe("Próg Miliona · ZAMÓWIENIA 12/50 · KOMBINACJE 3/12");
+      .toBe("Próg Miliona · ZAMÓWIENIA 12/50");
   });
 
   it("wraps keyboard focus inside the two-control story dialog", () => {
@@ -210,18 +210,18 @@ describe("player-paced story presentation", () => {
     expect(campaignCss).toContain("--campaign-orange: #f47100");
     expect(campaignCss).toContain("--campaign-coral: #f04f45");
     expect(campaignCss).toContain("--campaign-magenta: #eb32a4");
-    expect(campaignCss).toContain(".amso-campaign__world-visual");
-    expect(campaignCss).toContain(".amso-world-visual__image");
-    expect(campaignCss).toContain(".amso-world-visual__route");
+    expect(campaignCss).toContain(".amso-million-runner-2026__world-visual");
+    expect(campaignCss).toContain(".amso-million-runner-2026-world-visual__image");
+    expect(campaignCss).toContain(".amso-million-runner-2026-world-visual__route");
     expect(campaignShellSource).toContain("data-campaign-world-visual");
-    expect(campaignShellSource).toContain("amso-campaign__story-final-lockup");
+    expect(campaignShellSource).toContain("amso-million-runner-2026__story-final-lockup");
     expect(campaignShellSource).not.toContain("story-vignette");
   });
 
   it("grows milestone typography with its reward intensity", () => {
     for (const intensity of [2, 3, 4, 5, 6]) {
       expect(campaignCss).toContain(
-        `.amso-campaign__milestone-message[data-intensity="${intensity}"]`
+        `.amso-million-runner-2026__milestone-message[data-intensity="${intensity}"]`
       );
     }
   });
@@ -249,15 +249,31 @@ describe("player-paced story presentation", () => {
     );
     expect(worldLayerSource).toContain('dataset.assetState = "fallback"');
     expect(campaignCss).toContain("background: var(--campaign-paper)");
-    expect(campaignCss).toContain('[data-phase="story"] .amso-world-visual__image-stack');
+    expect(campaignCss).toContain('[data-phase="story"] .amso-million-runner-2026-world-visual__image-stack');
     expect(campaignCss).toContain("opacity: 0.8");
     expect(campaignCss).toContain("transition: none");
     expect(campaignCss).toContain("color-scheme: only light");
   });
 
+  it("keeps phone-landscape instructions readable with accessible actions", () => {
+    const phoneRule =
+      "@media (max-width: 960px) and (max-height: 520px) and (orientation: landscape)";
+    const phoneRuleStart = campaignCss.lastIndexOf(phoneRule);
+    expect(phoneRuleStart).toBeGreaterThan(-1);
+    const phoneCss = campaignCss.slice(phoneRuleStart);
+
+    expect(isCampaignViewportTooNarrow(844, 390)).toBe(false);
+    expect(isCampaignViewportTooNarrow(960, 540)).toBe(false);
+    expect(phoneCss).toContain(".amso-million-runner-2026__how-to");
+    expect(phoneCss).toContain("display: block");
+    expect(phoneCss).toContain("font-size: 0.75rem");
+    expect(phoneCss).toContain("min-height: 44px");
+    expect(phoneCss).toContain("font-size: 0.875rem");
+  });
+
   it("keeps the countdown route visible after every responsive scrim rule", () => {
     const countdownOverride =
-      '.amso-campaign__story-presentation[data-state="countdown"][data-copy-placement="right"]';
+      '.amso-million-runner-2026__story-presentation[data-state="countdown"][data-copy-placement="right"]';
     expect(campaignCss.lastIndexOf(countdownOverride)).toBeGreaterThan(
       campaignCss.lastIndexOf("@media (orientation: portrait)")
     );
@@ -266,16 +282,16 @@ describe("player-paced story presentation", () => {
   });
 
   it("removes the runner from every reading card", () => {
-    expect(campaignCss).toContain('[data-view="story_scene"] .amso-campaign__canvas');
+    expect(campaignCss).toContain('[data-view="story_scene"] .amso-million-runner-2026__canvas');
     expect(campaignCss).toContain("visibility: hidden");
-    expect(campaignCss).toContain('[data-phase="story"] .amso-world-visual__image-stack');
+    expect(campaignCss).toContain('[data-phase="story"] .amso-million-runner-2026-world-visual__image-stack');
   });
 
-  it("enforces 390 px portrait width and a separate landscape minimum", () => {
-    expect(isCampaignViewportTooNarrow(389, 844)).toBe(true);
-    expect(isCampaignViewportTooNarrow(390, 844)).toBe(false);
+  it("enforces a minimum viewport for the game container", () => {
+    expect(isCampaignViewportTooNarrow(279, 844)).toBe(true);
+    expect(isCampaignViewportTooNarrow(280, 844)).toBe(false);
     expect(isCampaignViewportTooNarrow(844, 315)).toBe(false);
-    expect(isCampaignViewportTooNarrow(844, 279)).toBe(true);
+    expect(isCampaignViewportTooNarrow(844, 219)).toBe(true);
     expect(campaignShellSource).toContain("this.callbacks.onPause(\"layout_change\")");
     expect(campaignShellSource).toContain('activeView === "story_reframe"');
     expect(campaignShellSource).toContain("!this.tooNarrowActive");

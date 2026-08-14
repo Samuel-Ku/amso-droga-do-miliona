@@ -1,4 +1,4 @@
-:root {
+#amso-million-runner-2026-root {
   color: #171717;
   background: #faf7f0;
   color-scheme: only light;
@@ -8,36 +8,29 @@
   text-rendering: optimizeLegibility;
 }
 
-* {
+#amso-million-runner-2026-root,
+#amso-million-runner-2026-root * {
   box-sizing: border-box;
 }
 
-html,
-body,
-#amso-campaign-root {
+#amso-million-runner-2026-root {
   width: 100%;
   min-height: 100%;
   margin: 0;
-}
-
-body {
-  min-height: 100vh;
-  min-height: 100dvh;
-  overflow: hidden;
   background: #faf7f0;
 }
 
-button,
-a {
+#amso-million-runner-2026-root button,
+#amso-million-runner-2026-root a {
   -webkit-tap-highlight-color: transparent;
 }
 
-.amso-campaign-boot,
-.amso-campaign-boot * {
+.amso-million-runner-2026-boot,
+.amso-million-runner-2026-boot * {
   box-sizing: border-box;
 }
 
-.amso-campaign-boot {
+.amso-million-runner-2026-boot {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   width: 100%;
@@ -57,7 +50,7 @@ a {
   text-align: center;
 }
 
-.amso-campaign-boot__card {
+.amso-million-runner-2026-boot__card {
   width: 100%;
   max-width: 620px;
   min-width: 0;
@@ -69,7 +62,7 @@ a {
   overflow-wrap: anywhere;
 }
 
-.amso-campaign-boot__eyebrow {
+.amso-million-runner-2026-boot__eyebrow {
   margin: 0 0 12px;
   color: #f47100;
   font-size: 0.75rem;
@@ -78,7 +71,7 @@ a {
   text-transform: uppercase;
 }
 
-.amso-campaign-boot h1 {
+.amso-million-runner-2026-boot h1 {
   margin: 0;
   font-size: clamp(2.6rem, 10vw, 5.5rem);
   font-weight: 950;
@@ -86,14 +79,14 @@ a {
   line-height: 0.94;
 }
 
-.amso-campaign-boot__status {
+.amso-million-runner-2026-boot__status {
   margin: 22px 0 0;
   color: #655f58;
   font-size: clamp(1rem, 2.6vw, 1.2rem);
   line-height: 1.5;
 }
 
-.amso-campaign-boot__retry {
+.amso-million-runner-2026-boot__retry {
   display: inline-flex;
   min-height: 48px;
   margin: 8px 0 0;
@@ -108,12 +101,12 @@ a {
   text-decoration: none;
 }
 
-.amso-campaign-boot__retry:focus-visible {
+.amso-million-runner-2026-boot__retry:focus-visible {
   outline: 3px solid #171717;
   outline-offset: 4px;
 }
 
-.amso-campaign-boot__help {
+.amso-million-runner-2026-boot__help {
   display: none;
   margin: 18px 0 0;
   color: #655f58;
@@ -123,19 +116,19 @@ a {
   visibility: hidden;
 }
 
-html[data-campaign-scripting="enabled"] .amso-campaign-boot__help {
+html[data-campaign-scripting="enabled"] .amso-million-runner-2026-boot__help {
   display: block;
-  animation: amso-campaign-boot-help 0s linear 8s forwards;
+  animation: amso-million-runner-2026-boot-help 0s linear 8s forwards;
 }
 
-.amso-campaign-boot[data-campaign-boot-state="error"] .amso-campaign-boot__help {
+.amso-million-runner-2026-boot[data-campaign-boot-state="error"] .amso-million-runner-2026-boot__help {
   display: block;
   opacity: 1;
   visibility: visible;
   animation: none;
 }
 
-.amso-campaign-boot__accent {
+.amso-million-runner-2026-boot__accent {
   width: min(100%, 360px);
   height: 8px;
   margin: 28px auto 0;
@@ -155,7 +148,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   display: none;
 }
 
-@keyframes amso-campaign-boot-help {
+@keyframes amso-million-runner-2026-boot-help {
   to {
     opacity: 1;
     visibility: visible;
@@ -163,39 +156,39 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 }
 
 @media (orientation: landscape) and (max-height: 430px) {
-  .amso-campaign-boot {
+  .amso-million-runner-2026-boot {
     padding: 14px;
   }
 
-  .amso-campaign-boot__card {
+  .amso-million-runner-2026-boot__card {
     padding: 18px 26px;
   }
 
-  .amso-campaign-boot h1 {
+  .amso-million-runner-2026-boot h1 {
     font-size: clamp(2rem, 16vh, 3.5rem);
   }
 
-  .amso-campaign-boot__status,
-  .amso-campaign-boot__help {
+  .amso-million-runner-2026-boot__status,
+  .amso-million-runner-2026-boot__help {
     margin-top: 10px;
   }
 
-  .amso-campaign-boot__accent {
+  .amso-million-runner-2026-boot__accent {
     height: 6px;
     margin-top: 14px;
   }
 }
 
-.amso-campaign,
-.amso-campaign * {
+.amso-million-runner-2026,
+.amso-million-runner-2026 * {
   box-sizing: border-box;
 }
 
-.amso-campaign [hidden] {
+.amso-million-runner-2026 [hidden] {
   display: none !important;
 }
 
-.amso-campaign {
+.amso-million-runner-2026 {
   --campaign-navy-950: #061426;
   --campaign-navy-900: #081b32;
   --campaign-navy-800: #0c294b;
@@ -206,6 +199,12 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   --campaign-cream: #fff8ed;
   --campaign-ink: #071a31;
   --campaign-muted: #aebed0;
+  --records-bg: rgba(255, 107, 0, 0.15);
+  --records-border: rgba(255, 107, 0, 0.3);
+  --records-radius: 14px;
+  --records-pad: 0.9rem 1rem 1.1rem;
+  --records-cell-pad: 0.4rem 0.6rem;
+  --records-max-width: 570px;
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -218,9 +217,11 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   color-scheme: only light;
   isolation: isolate;
   overscroll-behavior: contain;
+  container-name: campaign;
+  container-type: inline-size;
 }
 
-.amso-campaign[data-css-game-mode="true"] {
+.amso-million-runner-2026[data-css-game-mode="true"] {
   position: fixed;
   z-index: 2147483000;
   inset: 0;
@@ -229,22 +230,36 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   height: 100dvh;
 }
 
-.amso-campaign[data-css-game-mode="true"] .amso-campaign__header,
-.amso-campaign[data-css-game-mode="true"] .amso-campaign__footer {
+.amso-million-runner-2026[data-css-game-mode="true"] .amso-million-runner-2026__header,
+.amso-million-runner-2026[data-css-game-mode="true"] .amso-million-runner-2026__footer {
   display: none;
 }
 
-.amso-campaign[data-css-game-mode="true"] .amso-campaign__main {
+.amso-million-runner-2026[data-css-game-mode="true"] .amso-million-runner-2026__main {
   width: 100%;
   padding: 0;
 }
 
-.amso-campaign[data-css-game-mode="true"] .amso-campaign__stage {
+.amso-million-runner-2026[data-css-game-mode="true"] .amso-million-runner-2026__stage {
   border: 0;
   border-radius: 0;
 }
 
-.amso-campaign__backdrop {
+.amso-million-runner-2026[data-css-game-mode="true"][data-mobile-layout="true"][data-view] {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.amso-million-runner-2026[data-css-game-mode="true"][data-mobile-layout="true"][data-view]
+  .amso-million-runner-2026__main {
+  height: auto;
+}
+
+.amso-million-runner-2026[data-css-game-mode="true"][data-mobile-layout="true"][data-view]
+  .amso-million-runner-2026__stage {
+  height: 100%;
+}
+
+.amso-million-runner-2026__backdrop {
   position: absolute;
   z-index: -2;
   inset: 0;
@@ -254,7 +269,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     var(--campaign-navy-950);
 }
 
-.amso-campaign__backdrop::after {
+.amso-million-runner-2026__backdrop::after {
   position: absolute;
   inset: 0;
   background-image:
@@ -265,8 +280,8 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   mask-image: linear-gradient(#000, transparent 82%);
 }
 
-.amso-campaign__header,
-.amso-campaign__footer {
+.amso-million-runner-2026__header,
+.amso-million-runner-2026__footer {
   position: relative;
   z-index: 50;
   display: flex;
@@ -279,70 +294,94 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     max(16px, env(safe-area-inset-right));
 }
 
-.amso-campaign__header {
+.amso-million-runner-2026__header {
   min-height: 64px;
   padding-top: max(8px, env(safe-area-inset-top));
   padding-bottom: 8px;
 }
 
-.amso-campaign__footer {
+.amso-million-runner-2026__footer {
   min-height: 38px;
   padding-bottom: max(7px, env(safe-area-inset-bottom));
   color: #9fb1c3;
   font-size: 0.7rem;
 }
 
-.amso-campaign__footer a,
-.amso-campaign__brand {
+.amso-million-runner-2026__footer a,
+.amso-million-runner-2026__brand {
   color: inherit;
   text-decoration: none;
 }
 
-.amso-campaign__footer a {
+.amso-million-runner-2026__footer a {
   color: #dce6f1;
   font-weight: 750;
 }
 
-.amso-campaign__brand {
+.amso-million-runner-2026__brand {
   display: inline-flex;
   min-width: 0;
   align-items: center;
   gap: 12px;
 }
 
-.amso-campaign__brand-logo {
+.amso-million-runner-2026__brand-logo {
   display: block;
-  height: clamp(20px, 3.4vw, 30px);
-  width: auto;
+  width: clamp(132px, 12vw, 160px);
+  height: auto;
+  object-fit: contain;
 }
 
-.amso-campaign__brand-edition {
-  overflow: hidden;
-  color: #dce6f1;
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.amso-campaign__tools {
+.amso-million-runner-2026__tools {
   display: flex;
   gap: 8px;
 }
 
-.amso-campaign__icon-button,
-.amso-campaign__pause-button,
-.amso-campaign__button,
-.amso-campaign__text-link,
-.amso-campaign__share-actions button {
+.amso-million-runner-2026__language-control {
+  position: relative;
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 12px;
+  align-items: center;
+  justify-content: center;
+  background: rgb(8 27 50 / 92%);
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+.amso-million-runner-2026__language-flag {
+  font: 1.25rem/1 system-ui, sans-serif;
+  pointer-events: none;
+}
+
+.amso-million-runner-2026__language-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.amso-million-runner-2026__language-control:has(.amso-million-runner-2026__language-select:focus-visible) {
+  outline: 3px solid #ffad70;
+  outline-offset: 3px;
+}
+
+.amso-million-runner-2026__icon-button,
+.amso-million-runner-2026__pause-button,
+.amso-million-runner-2026__button,
+.amso-million-runner-2026__text-link,
+.amso-million-runner-2026__share-actions button {
   appearance: none;
   font: inherit;
   cursor: pointer;
 }
 
-.amso-campaign__icon-button {
+.amso-million-runner-2026__icon-button {
   display: inline-flex;
   min-height: 42px;
   padding: 0 13px;
@@ -357,12 +396,12 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   backdrop-filter: blur(10px);
 }
 
-.amso-campaign__icon-button[aria-pressed="true"] {
+.amso-million-runner-2026__icon-button[aria-pressed="true"] {
   border-color: rgb(255 133 51 / 70%);
   background: rgb(238 93 0 / 88%);
 }
 
-.amso-campaign__main {
+.amso-million-runner-2026__main {
   display: grid;
   min-width: 0;
   min-height: 0;
@@ -374,7 +413,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   place-items: center;
 }
 
-.amso-campaign__stage {
+.amso-million-runner-2026__stage {
   position: relative;
   width: 100%;
   height: 100%;
@@ -389,7 +428,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   contain: layout paint;
 }
 
-.amso-campaign__canvas {
+.amso-million-runner-2026__canvas {
   position: absolute;
   z-index: 2;
   inset: 0;
@@ -402,36 +441,37 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   touch-action: none;
 }
 
-.amso-campaign:not([data-view="game"]) .amso-campaign__canvas {
+.amso-million-runner-2026:not([data-view="game"]) .amso-million-runner-2026__canvas {
   pointer-events: none;
   touch-action: auto;
 }
 
-.amso-campaign__canvas:focus-visible,
-.amso-campaign :is(button, a):focus-visible {
+.amso-million-runner-2026__canvas:focus-visible,
+.amso-million-runner-2026 :is(button, a):focus-visible {
   outline: 3px solid #ffad70;
   outline-offset: 3px;
 }
 
-.amso-campaign__hud {
+.amso-million-runner-2026__hud {
   position: absolute;
   z-index: 25;
-  top: clamp(10px, 2vw, 20px);
-  right: clamp(10px, 2vw, 20px);
-  left: clamp(10px, 2vw, 20px);
+  top: max(clamp(10px, 2vw, 20px), env(safe-area-inset-top, 0px));
+  right: max(clamp(10px, 2vw, 20px), env(safe-area-inset-right, 0px));
+  left: max(clamp(10px, 2vw, 20px), env(safe-area-inset-left, 0px));
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
+  padding: 0;
   pointer-events: none;
   transition: opacity 180ms ease;
 }
 
-.amso-campaign__hud[data-muted] {
+.amso-million-runner-2026__hud[data-muted] {
   opacity: 0.28;
 }
 
-.amso-campaign__milestone-message {
+.amso-million-runner-2026__milestone-message {
   position: absolute;
   z-index: 20;
   top: var(--campaign-milestone-top, clamp(110px, 16%, 150px));
@@ -460,31 +500,31 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   animation: amso-milestone-pop 360ms cubic-bezier(0.2, 0.85, 0.2, 1) both;
 }
 
-.amso-campaign__milestone-message[hidden] {
+.amso-million-runner-2026__milestone-message[hidden] {
   display: none;
 }
 
-.amso-campaign__milestone-message[data-intensity="2"] {
+.amso-million-runner-2026__milestone-message[data-intensity="2"] {
   font-size: clamp(1.32rem, 3.35vw, 2.45rem);
 }
 
-.amso-campaign__milestone-message[data-intensity="3"] {
+.amso-million-runner-2026__milestone-message[data-intensity="3"] {
   font-size: clamp(1.38rem, 3.5vw, 2.55rem);
 }
 
-.amso-campaign__milestone-message[data-intensity="4"] {
+.amso-million-runner-2026__milestone-message[data-intensity="4"] {
   font-size: clamp(1.44rem, 3.65vw, 2.65rem);
 }
 
-.amso-campaign__milestone-message[data-intensity="5"] {
+.amso-million-runner-2026__milestone-message[data-intensity="5"] {
   font-size: clamp(1.5rem, 3.8vw, 2.75rem);
 }
 
-.amso-campaign__milestone-message[data-intensity="6"] {
+.amso-million-runner-2026__milestone-message[data-intensity="6"] {
   font-size: clamp(1.56rem, 3.95vw, 2.85rem);
 }
 
-.amso-campaign__milestone-message[data-reduced-motion] {
+.amso-million-runner-2026__milestone-message[data-reduced-motion] {
   animation: none;
 }
 
@@ -514,16 +554,16 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   to { opacity: 1; transform: translateX(-50%); }
 }
 
-.amso-campaign__hud-context,
-.amso-campaign__hud-stats,
-.amso-campaign__pause-button {
+.amso-million-runner-2026__hud-context,
+.amso-million-runner-2026__hud-stats,
+.amso-million-runner-2026__pause-button {
   border: 1px solid rgb(255 255 255 / 17%);
   background: rgb(6 20 38 / 82%);
   box-shadow: 0 8px 24px rgb(0 6 17 / 24%);
   backdrop-filter: blur(12px);
 }
 
-.amso-campaign__hud-context {
+.amso-million-runner-2026__hud-context {
   display: flex;
   width: fit-content;
   min-width: 0;
@@ -534,7 +574,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   justify-content: center;
 }
 
-.amso-campaign__hud-context strong {
+.amso-million-runner-2026__hud-context strong {
   overflow: hidden;
   color: #ffd23f;
   font-size: 0.73rem;
@@ -543,7 +583,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   white-space: nowrap;
 }
 
-.amso-campaign__hud-context span {
+.amso-million-runner-2026__hud-context span {
   overflow: hidden;
   color: #dbe7f2;
   font-size: 0.68rem;
@@ -551,23 +591,23 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   white-space: nowrap;
 }
 
-.amso-campaign__hud-context [data-campaign-hud-powerups] {
+.amso-million-runner-2026__hud-context [data-campaign-hud-powerups] {
   color: #b8f5ce;
 }
 
-.amso-campaign__hud-notice {
+.amso-million-runner-2026__hud-notice {
   border-left: 3px solid var(--campaign-pink-500);
   padding-left: 10px;
   color: var(--campaign-ink);
   font-weight: 850;
 }
 
-.amso-campaign__hud-notice[data-tone="parcel"] {
+.amso-million-runner-2026__hud-notice[data-tone="parcel"] {
   border-color: var(--campaign-orange-500);
   animation: amso-pickup-pop-a 0.6s ease-out both;
 }
 
-.amso-campaign__hud-notice[data-tone="equipment"] {
+.amso-million-runner-2026__hud-notice[data-tone="equipment"] {
   border-color: var(--campaign-pink-500);
   color: var(--campaign-pink-500);
   font-size: 1.16em;
@@ -575,7 +615,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   animation: amso-pickup-pop-a 0.6s cubic-bezier(.2, .8, .25, 1.18) both;
 }
 
-.amso-campaign__hud-notice[data-pulse="b"] {
+.amso-million-runner-2026__hud-notice[data-pulse="b"] {
   animation-name: amso-pickup-pop-b;
 }
 
@@ -591,12 +631,14 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   100% { opacity: 0; transform: translateY(-5px) scale(1); }
 }
 
-.amso-campaign__hud-stats {
+.amso-million-runner-2026__hud-stats {
   display: flex;
+  width: fit-content;
   min-height: 48px;
   padding: 7px 13px;
   border-radius: 14px;
   align-items: center;
+  justify-self: start;
   gap: 17px;
   color: var(--campaign-muted);
   font-size: 0.62rem;
@@ -605,7 +647,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   text-transform: uppercase;
 }
 
-.amso-campaign__hud-stats strong {
+.amso-million-runner-2026__hud-stats strong {
   display: block;
   color: #fff;
   font-size: 1rem;
@@ -613,11 +655,11 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   letter-spacing: 0;
 }
 
-.amso-campaign__hud-stats small {
+.amso-million-runner-2026__hud-stats small {
   font: inherit;
 }
 
-.amso-campaign__pause-button {
+.amso-million-runner-2026__pause-button {
   min-height: 44px;
   padding: 0 14px;
   border-radius: 13px;
@@ -627,7 +669,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   pointer-events: auto;
 }
 
-.amso-campaign__eyebrow {
+.amso-million-runner-2026__eyebrow {
   margin: 0 0 10px;
   color: var(--campaign-orange-400);
   font-size: clamp(0.67rem, 1.5vw, 0.8rem);
@@ -636,7 +678,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   text-transform: uppercase;
 }
 
-.amso-campaign__story-presentation {
+.amso-million-runner-2026__story-presentation {
   position: absolute;
   z-index: 150;
   inset: 0;
@@ -655,14 +697,14 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   backdrop-filter: none;
 }
 
-.amso-campaign__story-scrim {
+.amso-million-runner-2026__story-scrim {
   position: absolute;
   z-index: -1;
   inset: 0;
   pointer-events: none;
 }
 
-.amso-campaign__story-scene-card {
+.amso-million-runner-2026__story-scene-card {
   position: relative;
   z-index: 2;
   display: grid;
@@ -693,7 +735,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   }
 }
 
-.amso-campaign__story-scene-eyebrow {
+.amso-million-runner-2026__story-scene-eyebrow {
   margin: 0 0 clamp(8px, 1.7vmin, 14px);
   color: var(--campaign-orange-400);
   font-size: clamp(0.78rem, 1.4vmin, 0.9rem);
@@ -703,7 +745,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   text-transform: uppercase;
 }
 
-.amso-campaign__story-scene-card h2 {
+.amso-million-runner-2026__story-scene-card h2 {
   max-width: 18ch;
   margin: 0 auto;
   color: #fff;
@@ -714,7 +756,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   text-wrap: balance;
 }
 
-.amso-campaign__story-scene-body {
+.amso-million-runner-2026__story-scene-body {
   width: min(100%, 60ch);
   min-height: 0;
   margin: clamp(16px, 2.8vmin, 26px) auto 0;
@@ -728,39 +770,33 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   text-wrap: pretty;
 }
 
-.amso-campaign__story-scene-body p {
+.amso-million-runner-2026__story-scene-body p {
   margin: 0;
 }
 
-.amso-campaign__story-scene-body p + p {
+.amso-million-runner-2026__story-scene-body p + p {
   margin-top: 0.8em;
 }
 
-.amso-campaign__story-scene-body:focus-visible {
-  border-radius: 8px;
-  outline: 2px solid #ffad70;
-  outline-offset: 2px;
-}
-
-.amso-campaign__story-continue {
+.amso-million-runner-2026__story-continue {
   min-width: min(100%, 12rem);
   margin: clamp(18px, 3vmin, 30px) auto 0;
   flex: none;
 }
 
-.amso-campaign__story-continue:disabled {
+.amso-million-runner-2026__story-continue:disabled {
   cursor: wait;
   opacity: 0.62;
   transform: none;
 }
 
-.amso-campaign__story-countdown {
+.amso-million-runner-2026__story-countdown {
   position: relative;
   z-index: 2;
   text-align: center;
 }
 
-.amso-campaign__story-countdown p {
+.amso-million-runner-2026__story-countdown p {
   margin: 0 0 0.12em;
   color: #f2f6fa;
   font-size: clamp(1rem, 2.4vmin, 1.35rem);
@@ -769,7 +805,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   text-transform: uppercase;
 }
 
-.amso-campaign__story-countdown strong {
+.amso-million-runner-2026__story-countdown strong {
   display: block;
   color: #fff;
   font-size: clamp(5rem, 20vmin, 11rem);
@@ -780,19 +816,19 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   text-shadow: 0 12px 48px rgb(0 0 0 / 48%);
 }
 
-.amso-campaign__story-countdown strong[data-value="3"] {
+.amso-million-runner-2026__story-countdown strong[data-value="3"] {
   animation: campaign-countdown-three 800ms ease-out both;
 }
 
-.amso-campaign__story-countdown strong[data-value="2"] {
+.amso-million-runner-2026__story-countdown strong[data-value="2"] {
   animation: campaign-countdown-two 800ms ease-out both;
 }
 
-.amso-campaign__story-countdown strong[data-value="1"] {
+.amso-million-runner-2026__story-countdown strong[data-value="1"] {
   animation: campaign-countdown-one 800ms ease-out both;
 }
 
-.amso-campaign__pause-bonuses {
+.amso-million-runner-2026__pause-bonuses {
   display: grid;
   gap: 6px;
   margin: 18px 0 2px;
@@ -802,9 +838,19 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   text-align: left;
 }
 
-.amso-campaign__pause-bonuses strong,
-.amso-campaign__pause-bonuses b {
+.amso-million-runner-2026__pause-bonuses strong,
+.amso-million-runner-2026__pause-bonuses b {
   color: var(--campaign-ink);
+}
+
+[data-campaign-pause-screen] .amso-million-runner-2026__actions {
+  margin-top: clamp(20px, 3vw, 28px);
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  [data-campaign-pause-screen] .amso-million-runner-2026__actions {
+    margin-top: 16px;
+  }
 }
 
 @keyframes campaign-countdown-three {
@@ -822,14 +868,14 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   to { opacity: 1; transform: scale(1); }
 }
 
-.amso-campaign__screen {
+.amso-million-runner-2026__screen {
   position: absolute;
   z-index: 30;
   inset: 0;
   overflow: auto;
 }
 
-.amso-campaign__screen--landing {
+.amso-million-runner-2026__screen--landing {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(340px, 1.1fr);
   padding: clamp(24px, 5vw, 78px);
@@ -838,15 +884,15 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   background: linear-gradient(90deg, rgb(6 20 38 / 96%), rgb(6 20 38 / 72%) 52%, rgb(6 20 38 / 18%));
 }
 
-.amso-campaign__landing-copy {
+.amso-million-runner-2026__landing-copy {
   position: relative;
   z-index: 2;
   width: min(100%, 650px);
 }
 
-.amso-campaign__landing-copy h1,
-.amso-campaign__card h2,
-.amso-campaign__result-card h2 {
+.amso-million-runner-2026__landing-copy h1,
+.amso-million-runner-2026__card h2,
+.amso-million-runner-2026__result-card h2 {
   margin: 0;
   font-weight: 950;
   letter-spacing: -0.055em;
@@ -854,20 +900,20 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   text-wrap: balance;
 }
 
-.amso-campaign__landing-copy h1 {
+.amso-million-runner-2026__landing-copy h1 {
   font-size: clamp(2.8rem, 6.2vw, 6rem);
 }
 
-.amso-campaign__landing-copy h1 small {
+.amso-million-runner-2026__landing-copy h1 small {
   font: inherit;
 }
 
-.amso-campaign__landing-copy h1 span {
+.amso-million-runner-2026__landing-copy h1 span {
   display: block;
   color: var(--campaign-orange-500);
 }
 
-.amso-campaign__lead {
+.amso-million-runner-2026__lead {
   max-width: 590px;
   margin: clamp(18px, 3vw, 28px) 0 12px;
   color: #dce6f1;
@@ -875,14 +921,18 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   line-height: 1.55;
 }
 
-.amso-campaign__meta {
+.amso-million-runner-2026__landing-goal--mobile {
+  display: none;
+}
+
+.amso-million-runner-2026__meta {
   margin: 0 0 22px;
   color: var(--campaign-muted);
   font-size: 0.78rem;
   font-weight: 700;
 }
 
-.amso-campaign__how-to {
+.amso-million-runner-2026__how-to {
   max-width: 590px;
   margin: 0 0 20px;
   border: 1px solid rgb(23 23 23 / 18%);
@@ -891,44 +941,51 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   color: var(--campaign-ink);
 }
 
-.amso-campaign__how-to summary {
+.amso-million-runner-2026__how-to summary {
   padding: 12px 16px;
   cursor: pointer;
   font-weight: 850;
 }
 
-.amso-campaign__how-to div {
+.amso-million-runner-2026__how-to div {
   display: grid;
   gap: 8px;
   padding: 0 16px 15px;
 }
 
-.amso-campaign__how-to p {
+.amso-million-runner-2026__how-to p {
   margin: 0;
   font-size: 0.84rem;
   line-height: 1.45;
 }
 
-.amso-campaign__landing-actions {
+.amso-million-runner-2026__landing-cta-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 570px;
+}
+
+.amso-million-runner-2026__landing-actions {
   display: flex;
   max-width: 570px;
   flex-wrap: wrap;
   gap: 10px;
 }
 
-.amso-campaign__landing-actions h2 {
+.amso-million-runner-2026__landing-actions h2 {
   width: 100%;
   margin: 0 0 4px;
   font-size: clamp(1.25rem, 2.4vw, 1.75rem);
 }
 
-.amso-campaign__landing-art {
+.amso-million-runner-2026__landing-art {
   position: relative;
   min-height: min(56vh, 560px);
 }
 
-.amso-campaign__first-package,
-.amso-campaign__milestone {
+.amso-million-runner-2026__first-package,
+.amso-million-runner-2026__milestone {
   position: absolute;
   display: grid;
   border: 3px solid var(--campaign-ink);
@@ -937,7 +994,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   font-weight: 950;
 }
 
-.amso-campaign__first-package {
+.amso-million-runner-2026__first-package {
   bottom: 16%;
   left: 8%;
   width: clamp(130px, 17vw, 220px);
@@ -948,7 +1005,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   transform: rotate(-6deg);
 }
 
-.amso-campaign__milestone {
+.amso-million-runner-2026__milestone {
   top: 13%;
   right: 4%;
   min-width: 65%;
@@ -960,7 +1017,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   transform: rotate(3deg);
 }
 
-.amso-campaign__spark {
+.amso-million-runner-2026__spark {
   position: absolute;
   z-index: 2;
   top: 49%;
@@ -979,18 +1036,34 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   to { transform: scale(1.22) translateY(-8px); }
 }
 
-.amso-campaign__screen--dialog,
-.amso-campaign__screen--result {
+.amso-million-runner-2026__screen--dialog,
+.amso-million-runner-2026__screen--result {
   display: grid;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   padding: clamp(16px, 4vw, 46px);
   place-items: center;
   background: rgb(4 15 29 / 78%);
   backdrop-filter: blur(10px);
 }
 
-.amso-campaign__card,
-.amso-campaign__result-card {
+.amso-million-runner-2026__screen[data-campaign-pause-screen] {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+}
+
+.amso-million-runner-2026__card,
+.amso-million-runner-2026__result-card {
   width: min(100%, 650px);
+  max-width: 100%;
+  max-height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: clamp(24px, 4vw, 42px);
   border: 1px solid rgb(255 255 255 / 16%);
   border-radius: clamp(18px, 3vw, 28px);
@@ -999,26 +1072,26 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   text-align: center;
 }
 
-.amso-campaign__card h2,
-.amso-campaign__result-card h2 {
+.amso-million-runner-2026__card h2,
+.amso-million-runner-2026__result-card h2 {
   font-size: clamp(2rem, 4.6vw, 3.5rem);
 }
 
-.amso-campaign__card > p:not(.amso-campaign__eyebrow) {
+.amso-million-runner-2026__card > p:not(.amso-million-runner-2026__eyebrow) {
   max-width: 520px;
   margin: 16px auto 24px;
   color: #c7d4e1;
   line-height: 1.55;
 }
 
-.amso-campaign__actions {
+.amso-million-runner-2026__actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
 }
 
-.amso-campaign__button {
+.amso-million-runner-2026__button {
   display: inline-flex;
   min-height: 52px;
   padding: 0 22px;
@@ -1034,24 +1107,35 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   text-decoration: none;
 }
 
-.amso-campaign__button--primary {
-  background: var(--campaign-orange-500);
-  box-shadow: 0 12px 28px rgb(238 93 0 / 28%);
-  color: var(--campaign-ink);
+/* Button states (documented per QA v2):
+   - normal: variant background/border, no outline.
+   - :hover: lift -2px (see .amso-million-runner-2026__button:hover).
+   - :active: pressed feedback via slight scale + inset shadow.
+   - :focus-visible: accessibility outline (orange #ffad70 on light
+     surfaces, white on the dark result card) — intentional, not a bug. */
+.amso-million-runner-2026__button:active {
+  transform: translateY(1px) scale(0.99);
+  box-shadow: inset 0 2px 6px rgb(0 0 0 / 22%);
 }
 
-.amso-campaign__button--secondary {
+.amso-million-runner-2026__button--primary {
+  background: var(--campaign-orange-500);
+  box-shadow: 0 12px 28px rgb(238 93 0 / 28%);
+  color: #fff;
+}
+
+.amso-million-runner-2026__button--secondary {
   border-color: rgb(255 255 255 / 22%);
   background: rgb(255 255 255 / 10%);
   color: #fff;
 }
 
-.amso-campaign__button:hover,
-.amso-campaign__share-actions button:hover {
+.amso-million-runner-2026__button:hover,
+.amso-million-runner-2026__share-actions button:hover {
   transform: translateY(-2px);
 }
 
-.amso-campaign__card--loading progress {
+.amso-million-runner-2026__card--loading progress {
   width: min(100%, 360px);
   height: 9px;
   margin-top: 22px;
@@ -1061,11 +1145,11 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   accent-color: var(--campaign-orange-500);
 }
 
-.amso-campaign__card--loading progress[data-indeterminate] {
+.amso-million-runner-2026__card--loading progress[data-indeterminate] {
   animation: campaign-loading 1.1s ease-in-out infinite alternate;
 }
 
-.amso-campaign__loading-package {
+.amso-million-runner-2026__loading-package {
   display: block;
   width: 70px;
   height: 62px;
@@ -1082,24 +1166,28 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   to { opacity: 1; }
 }
 
-.amso-campaign__result-card {
+.amso-million-runner-2026__result-card {
   width: min(100%, 820px);
   background: var(--campaign-cream);
   color: var(--campaign-ink);
 }
 
-.amso-campaign__result-grid {
+.amso-million-runner-2026__result-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin: clamp(18px, 3vw, 28px) 0;
 }
 
-.amso-campaign__result-grid--challenge {
+.amso-million-runner-2026__result-grid--challenge {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
-.amso-campaign__result-grid > span {
+.amso-million-runner-2026__result-grid.amso-million-runner-2026__result-grid--challenge > span {
+  grid-template-rows: 4.5em auto;
+}
+
+.amso-million-runner-2026__result-grid > span {
   display: grid;
   min-width: 0;
   grid-template-rows: minmax(2.5em, auto) auto;
@@ -1116,14 +1204,18 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   text-transform: uppercase;
 }
 
-.amso-campaign__result-grid small {
+.amso-million-runner-2026__result-grid small {
   display: block;
   min-height: 2.5em;
   font: inherit;
 }
 
-.amso-campaign__result-grid strong,
-.amso-campaign__result-grid i {
+.amso-million-runner-2026__result-grid--challenge .amso-million-runner-2026__result-label--mobile {
+  display: none;
+}
+
+.amso-million-runner-2026__result-grid strong,
+.amso-million-runner-2026__result-grid i {
   display: block;
   margin-top: 4px;
   color: var(--campaign-ink);
@@ -1135,29 +1227,29 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   align-self: end;
 }
 
-.amso-campaign__result-grid i {
+.amso-million-runner-2026__result-grid i {
   display: inline;
   margin-top: 0;
 }
 
-.amso-campaign__result-grid--challenge strong,
-.amso-campaign__result-grid--challenge i {
+.amso-million-runner-2026__result-grid--challenge strong,
+.amso-million-runner-2026__result-grid--challenge i {
   font-size: clamp(1.05rem, 2.2vw, 1.6rem);
 }
 
-.amso-campaign__result-intro {
+.amso-million-runner-2026__result-intro {
   margin: -6px 0 20px;
   color: #607083;
   font-size: 0.88rem;
 }
 
-.amso-campaign__result-card .amso-campaign__button--secondary {
+.amso-million-runner-2026__result-card .amso-million-runner-2026__button--secondary {
   border-color: rgb(7 26 49 / 16%);
   background: #fff;
   color: var(--campaign-ink);
 }
 
-.amso-campaign__text-link {
+.amso-million-runner-2026__text-link {
   display: inline-flex;
   min-height: 44px;
   padding: 0 10px;
@@ -1171,7 +1263,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   text-underline-offset: 3px;
 }
 
-.amso-campaign__share-panel {
+.amso-million-runner-2026__share-panel {
   margin-top: 20px;
   padding: 16px;
   border: 1px solid rgb(7 26 49 / 12%);
@@ -1179,20 +1271,20 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   background: #fff;
 }
 
-.amso-campaign__share-panel p {
+.amso-million-runner-2026__share-panel p {
   margin: 0 0 12px;
   color: #4a5c6f;
   font-size: 0.82rem;
 }
 
-.amso-campaign__share-actions {
+.amso-million-runner-2026__share-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
 }
 
-.amso-campaign__share-actions button {
+.amso-million-runner-2026__share-actions button {
   min-height: 44px;
   padding: 0 15px;
   border: 1px solid rgb(7 26 49 / 13%);
@@ -1203,12 +1295,12 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   font-weight: 850;
 }
 
-.amso-campaign__share-status {
+.amso-million-runner-2026__share-status {
   min-height: 1.3em;
   margin-top: 10px !important;
 }
 
-.amso-campaign__too-narrow {
+.amso-million-runner-2026__too-narrow {
   position: absolute;
   z-index: 100;
   inset: 0;
@@ -1221,21 +1313,21 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   text-align: center;
 }
 
-.amso-campaign__too-narrow > * {
+.amso-million-runner-2026__too-narrow > * {
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-.amso-campaign__too-narrow strong {
+.amso-million-runner-2026__too-narrow strong {
   color: var(--campaign-orange-400);
   font-size: 1.2rem;
 }
 
-.amso-campaign__too-narrow span {
+.amso-million-runner-2026__too-narrow span {
   color: #dce6f1;
 }
 
-.amso-campaign__sr-only {
+.amso-million-runner-2026__sr-only {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -1248,37 +1340,634 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   white-space: nowrap;
 }
 
+/* v14 hero, leaderboard and compact result composition */
+.amso-million-runner-2026 {
+  --records-bg: rgb(255 255 255 / 90%);
+  --records-border: rgb(23 23 23 / 14%);
+  --records-radius: 16px;
+  --records-pad: 18px 20px;
+  --records-cell-pad: 9px 10px;
+  --records-max-width: 570px;
+}
+
+.amso-million-runner-2026__screen--landing {
+  overflow-y: auto;
+}
+
+.amso-million-runner-2026__landing-cta-group {
+  margin-top: 26px;
+}
+
+.amso-million-runner-2026__landing-actions {
+  gap: 10px;
+}
+
+.amso-million-runner-2026__landing-actions h2 {
+  margin: 0 0 12px;
+}
+
+.amso-million-runner-2026__landing-actions .amso-million-runner-2026__button {
+  min-height: 52px;
+  padding-inline: 22px;
+}
+
+.amso-million-runner-2026__button--secondary,
+.amso-million-runner-2026__result-card .amso-million-runner-2026__button--secondary {
+  border-color: rgb(23 23 23 / 28%);
+}
+
+.amso-million-runner-2026[data-view="landing"] [data-campaign-landing-records] {
+  margin-top: 24px;
+}
+
+.amso-million-runner-2026__how-to {
+  width: 100%;
+  max-width: var(--records-max-width);
+  margin: 14px 0 24px;
+  border: 1px solid var(--records-border);
+  border-radius: var(--records-radius);
+  background: var(--records-bg);
+  box-shadow: 0 10px 30px rgb(23 23 23 / 5%);
+}
+
+.amso-million-runner-2026__how-to summary {
+  position: relative;
+  min-height: 54px;
+  padding: 16px 52px 16px 20px;
+  list-style: none;
+  border-radius: inherit;
+  font-size: 0.96rem;
+  line-height: 1.35;
+}
+
+.amso-million-runner-2026__how-to summary::-webkit-details-marker {
+  display: none;
+}
+
+.amso-million-runner-2026__how-to summary::after {
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  content: "";
+  transform: translateY(-70%) rotate(45deg);
+  transition: transform 160ms ease;
+}
+
+.amso-million-runner-2026__how-to[open] summary::after {
+  transform: translateY(-30%) rotate(225deg);
+}
+
+.amso-million-runner-2026__how-to div {
+  gap: 9px;
+  padding: 0 20px 18px;
+}
+
+.amso-million-runner-2026__how-to p {
+  color: #514d48;
+  font-size: 0.82rem;
+}
+
+.amso-million-runner-2026 :is(button, a, summary):focus-visible,
+.amso-million-runner-2026__canvas:focus-visible {
+  outline: 3px solid var(--campaign-orange-500);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px rgb(255 255 255 / 88%);
+}
+
+.amso-million-runner-2026__main-lockup {
+  width: min(84%, 610px);
+  transform: translateX(5%) rotate(-1.5deg);
+}
+
+.amso-million-runner-2026-records {
+  box-shadow: 0 10px 30px rgb(23 23 23 / 5%);
+}
+
+.amso-million-runner-2026-records__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.amso-million-runner-2026-records__title {
+  margin: 0;
+  color: #3d3935;
+  font-size: 0.86rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+}
+
+.amso-million-runner-2026-records__badge {
+  padding: 4px 8px;
+  border: 1px solid rgb(23 23 23 / 12%);
+  border-radius: 999px;
+  background: rgb(250 247 240 / 85%);
+  color: #6c6863;
+  font-size: 0.6rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.amso-million-runner-2026-records__table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.amso-million-runner-2026-records__table th,
+.amso-million-runner-2026-records__table td {
+  border-bottom-color: rgb(23 23 23 / 7%);
+}
+
+.amso-million-runner-2026-records__table thead th {
+  color: #756f68;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.amso-million-runner-2026-records__rank {
+  width: 2.4rem;
+  font-weight: 850;
+}
+
+.amso-million-runner-2026-records__rank-value {
+  display: inline-grid;
+  width: 30px;
+  place-items: center;
+}
+
+.amso-million-runner-2026-records__row--podium .amso-million-runner-2026-records__rank {
+  width: 42px;
+  color: #2d2925;
+}
+
+.amso-million-runner-2026-records__row--podium .amso-million-runner-2026-records__rank-value {
+  height: 30px;
+  border-radius: 50%;
+}
+
+.amso-million-runner-2026-records__row--rank-1 .amso-million-runner-2026-records__rank-value { background: #f2c94c; }
+.amso-million-runner-2026-records__row--rank-2 .amso-million-runner-2026-records__rank-value { background: #d7dbe0; }
+.amso-million-runner-2026-records__row--rank-3 .amso-million-runner-2026-records__rank-value { background: #d9a06f; }
+
+.amso-million-runner-2026-records__row--rank-1 > :not(.amso-million-runner-2026-records__rank) {
+  background: rgb(255 244 210 / 45%);
+}
+
+.amso-million-runner-2026-records__name {
+  font-weight: 760;
+}
+
+.amso-million-runner-2026-records__name > span {
+  display: inline-block;
+  overflow: hidden;
+  max-width: 24ch;
+  vertical-align: middle;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.amso-million-runner-2026-records__name small {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgb(255 107 0 / 12%);
+  color: #b44900;
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.amso-million-runner-2026-records__score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+
+.amso-million-runner-2026-records__score strong {
+  color: #211e1b;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.amso-million-runner-2026-records__score small {
+  color: #77716a;
+  font-size: 0.68rem;
+  font-weight: 650;
+}
+
+.amso-million-runner-2026-records__row--me > :first-child {
+  box-shadow: inset 3px 0 0 var(--campaign-orange-500);
+}
+
+.amso-million-runner-2026-records__row--separator td {
+  padding: 2px 10px;
+  border: 0;
+  color: #8c857d;
+  text-align: center;
+  letter-spacing: 0.3em;
+}
+
+.amso-million-runner-2026__overlay {
+  position: absolute;
+  z-index: 120;
+  inset: 0;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  place-items: center;
+  background: rgb(23 23 23 / 72%);
+}
+
+.amso-million-runner-2026__overlay-card,
+.amso-million-runner-2026[data-mobile-layout="true"] .amso-million-runner-2026__share-panel {
+  position: relative;
+  width: min(100%, 680px);
+  max-height: 100%;
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid rgb(23 23 23 / 14%);
+  border-radius: 18px;
+  background: rgb(250 247 240 / 98%);
+  color: var(--campaign-black);
+  box-shadow: 0 24px 70px rgb(0 0 0 / 30%);
+}
+
+.amso-million-runner-2026__overlay-card h2 {
+  margin: 0 42px 14px 0;
+  font-size: 1.35rem;
+}
+
+.amso-million-runner-2026__overlay-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.amso-million-runner-2026__overlay-copy p {
+  margin: 0;
+  color: #514d48;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.amso-million-runner-2026__overlay-close {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid rgb(23 23 23 / 16%);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--campaign-black);
+  place-items: center;
+  font-size: 1.35rem;
+}
+
+.amso-million-runner-2026__share-panel:not([hidden]) .amso-million-runner-2026__overlay-close {
+  display: grid;
+}
+
+.amso-million-runner-2026__share-panel .amso-million-runner-2026__overlay-close {
+  display: none;
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse),
+  (max-width: 600px) {
+  .amso-million-runner-2026[data-mobile-layout="true"] {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    grid-template-rows: max-content minmax(0, 1fr) max-content;
+  }
+
+  .amso-million-runner-2026[data-view][data-mobile-layout="true"] .amso-million-runner-2026__main,
+  .amso-million-runner-2026[data-view][data-mobile-layout="true"] .amso-million-runner-2026__stage {
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    contain: layout paint;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__screen--landing {
+    position: absolute;
+    display: grid;
+    grid-template-columns: minmax(0, 1.12fr) minmax(150px, 0.88fr);
+    gap: 12px;
+    overflow: hidden;
+    padding: 8px 14px;
+    align-items: center;
+    text-align: left;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__landing-copy {
+    display: flex;
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    padding: 10px 14px;
+    border-radius: 16px;
+    flex-direction: column;
+    background: rgb(250 247 240 / 96%);
+    text-align: left;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__eyebrow {
+    margin-bottom: 3px;
+    font-size: 0.56rem;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__landing-copy h1 {
+    font-size: clamp(1.55rem, 7.5vh, 2.15rem);
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__landing-goal--desktop {
+    display: none;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__landing-goal--mobile {
+    display: block;
+    margin: 4px 0;
+    font-size: clamp(0.7rem, 2.6vh, 0.82rem);
+    line-height: 1.3;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__meta,
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] [data-campaign-landing-records] {
+    display: none;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__landing-cta-group {
+    width: 100%;
+    max-width: none;
+    margin: 7px 0 0;
+    align-items: stretch;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__landing-actions {
+    width: 100%;
+    max-width: none;
+    gap: 6px;
+    flex-direction: column;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__landing-actions h2 {
+    margin: 0 0 2px;
+    font-size: clamp(0.98rem, 3.8vh, 1.25rem);
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__landing-actions .amso-million-runner-2026__button {
+    width: 100%;
+    min-height: 40px;
+    padding: 7px 12px;
+    font-size: 0.72rem;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__how-to {
+    display: block;
+    margin: 7px 0 0;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__how-to summary {
+    min-height: 40px;
+    padding: 10px 42px 10px 14px;
+    font-size: 0.74rem;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__how-to > div {
+    display: none;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__landing-art {
+    position: relative;
+    z-index: 0;
+    display: grid;
+    inset: auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    opacity: 1;
+    place-items: center;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__main-lockup {
+    display: block;
+    width: min(100%, 19rem);
+    max-height: 68vh;
+    margin: 0;
+    transform: rotate(-1.5deg);
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__screen--result {
+    padding: 6px 12px;
+    overflow: hidden;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(260px, 1.1fr);
+    grid-template-rows: auto auto 1fr auto;
+    gap: 5px 12px;
+    width: min(100%, 960px);
+    height: 100%;
+    max-height: 100%;
+    padding: 10px 14px;
+    overflow: hidden;
+    align-items: start;
+    text-align: left;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-lockup {
+    position: absolute;
+    z-index: 0;
+    top: 10%;
+    right: 2%;
+    display: block;
+    width: 52%;
+    max-height: 82%;
+    margin: 0;
+    opacity: 0.08;
+    pointer-events: none;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-card > :not(.amso-million-runner-2026__result-lockup) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-card > .amso-million-runner-2026__eyebrow,
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-card > h2,
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid,
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-actions,
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-exit {
+    grid-column: 1;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-card > h2 {
+    margin: 0;
+    padding: 0;
+    font-size: clamp(1.2rem, 5vh, 1.65rem);
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid--challenge {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin: 2px 0;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid--challenge [data-campaign-result-metric="total"] {
+    grid-column: 1 / -1;
+    padding: 8px;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid--challenge [data-campaign-result-metric="challenge"],
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid--challenge [data-campaign-result-metric="distance"] {
+    display: none;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid--challenge [data-campaign-result-metric] {
+    min-width: 0;
+    padding: 6px 8px;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-actions .amso-million-runner-2026__button {
+    min-height: 40px;
+    padding: 7px 10px;
+    font-size: 0.72rem;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] [data-campaign-result-records] {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    align-self: center;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026-records {
+    padding: 10px 12px;
+    background: rgb(255 255 255 / 88%);
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026-records__heading {
+    margin-bottom: 4px;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026-records__table {
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.72rem;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026-records__table thead {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    clip: rect(0 0 0 0);
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026-records__table .amso-million-runner-2026-records__row {
+    display: table-row;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026-records__table .amso-million-runner-2026-records__row > :is(th, td) {
+    display: table-cell;
+    padding: 4px 6px;
+    border-bottom: 1px solid rgb(23 23 23 / 7%);
+    background: transparent;
+    vertical-align: middle;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026-records__score strong {
+    font-size: 0.78rem;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026-records__score small {
+    font-size: 0.58rem;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__share-panel:not([hidden]) {
+    position: absolute;
+    z-index: 130;
+    inset: 8px;
+    display: grid;
+    width: auto;
+    max-height: calc(100% - 16px);
+    margin: 0;
+    place-content: center;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__share-panel .amso-million-runner-2026__overlay-close {
+    display: grid;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-exit {
+    margin: 0;
+    font-size: 0.68rem;
+  }
+}
+
 @media (max-width: 820px) {
-  .amso-campaign__screen--landing {
+  .amso-million-runner-2026__screen--landing {
     grid-template-columns: 1fr;
     place-items: center;
     text-align: center;
   }
 
-  .amso-campaign__landing-copy {
+  .amso-million-runner-2026__landing-copy {
     margin-inline: auto;
   }
 
-  .amso-campaign__lead,
-  .amso-campaign__landing-actions {
+  .amso-million-runner-2026__lead,
+  .amso-million-runner-2026__landing-actions {
     margin-inline: auto;
     justify-content: center;
   }
 
-  .amso-campaign__landing-art {
+  .amso-million-runner-2026__landing-art {
     position: absolute;
     z-index: -1;
     inset: 0;
     opacity: 0.25;
   }
 
-  .amso-campaign__result-grid--challenge {
+  .amso-million-runner-2026__result-grid--challenge {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 720px) {
-  .amso-campaign__hud {
+  .amso-million-runner-2026__hud {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "context pause"
@@ -1287,31 +1976,33 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     gap: 6px;
   }
 
-  .amso-campaign__hud-context {
+  .amso-million-runner-2026__hud-context {
     grid-area: context;
     width: 100%;
     min-height: 43px;
     padding: 5px 8px;
   }
 
-  .amso-campaign__hud-context [data-campaign-hud-objective],
-  .amso-campaign__hud-context [data-campaign-hud-powerups] {
+  .amso-million-runner-2026__hud-context [data-campaign-hud-objective],
+  .amso-million-runner-2026__hud-context [data-campaign-hud-powerups] {
     overflow: visible;
     line-height: 1.25;
     text-overflow: clip;
     white-space: normal;
   }
 
-  .amso-campaign__hud-stats {
+  .amso-million-runner-2026__hud-stats {
     position: static;
     grid-area: stats;
-    justify-self: start;
+    justify-self: center;
+    width: fit-content;
+    max-width: 100%;
     min-height: 39px;
     padding: 5px 9px;
     gap: 12px;
   }
 
-  .amso-campaign__pause-button {
+  .amso-million-runner-2026__pause-button {
     grid-area: pause;
     min-height: 42px;
     padding: 0 10px;
@@ -1319,16 +2010,16 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 }
 
 @media (max-width: 600px) {
-  .amso-campaign__header {
+  .amso-million-runner-2026__header {
     min-height: 56px;
   }
 
-  .amso-campaign__brand-edition {
+  .amso-million-runner-2026__brand-edition {
     max-width: 128px;
     font-size: 0.62rem;
   }
 
-  .amso-campaign__tool-label {
+  .amso-million-runner-2026__tool-label {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -1336,34 +2027,38 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     clip-path: inset(50%);
   }
 
-  .amso-campaign__icon-button {
+  .amso-million-runner-2026__icon-button {
     width: 42px;
     padding: 0;
     justify-content: center;
   }
 
-  .amso-campaign__footer > span {
-    display: none;
-  }
-
-  .amso-campaign__screen--landing {
-    padding: 20px 16px;
-  }
-
-  .amso-campaign__landing-copy h1 {
-    font-size: clamp(2.45rem, 13vw, 4.1rem);
-  }
-
-  .amso-campaign__lead {
-    font-size: 0.95rem;
-  }
-
-  .amso-campaign__landing-actions,
-  .amso-campaign__landing-actions .amso-campaign__button {
+  .amso-million-runner-2026__language-select {
     width: 100%;
   }
 
-  .amso-campaign__story-presentation {
+  .amso-million-runner-2026__footer > span {
+    display: none;
+  }
+
+  .amso-million-runner-2026__screen--landing {
+    padding: 20px 16px;
+  }
+
+  .amso-million-runner-2026__landing-copy h1 {
+    font-size: clamp(2.45rem, 13vw, 4.1rem);
+  }
+
+  .amso-million-runner-2026__lead {
+    font-size: 0.95rem;
+  }
+
+  .amso-million-runner-2026__landing-actions,
+  .amso-million-runner-2026__landing-actions .amso-million-runner-2026__button {
+    width: 100%;
+  }
+
+  .amso-million-runner-2026__story-presentation {
     padding:
       max(12px, env(safe-area-inset-top))
       max(12px, env(safe-area-inset-right))
@@ -1371,113 +2066,100 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
       max(12px, env(safe-area-inset-left));
   }
 
-  .amso-campaign__story-scene-card {
+  .amso-million-runner-2026__story-scene-card {
     width: 100%;
     padding: clamp(20px, 6vw, 30px) clamp(16px, 5vw, 26px);
     border-radius: 20px;
   }
 
-  .amso-campaign__story-scene-card h2 {
+  .amso-million-runner-2026__story-scene-card h2 {
     font-size: clamp(1.7rem, 8vw, 2.55rem);
   }
 
-  .amso-campaign__story-scene-body {
+  .amso-million-runner-2026__story-scene-body {
     font-size: clamp(1.125rem, 4.8vw, 1.24rem);
     line-height: 1.55;
   }
 
-  .amso-campaign__story-continue {
+  .amso-million-runner-2026__story-continue {
     width: 100%;
     min-height: 52px;
   }
 
-  .amso-campaign__screen--dialog,
-  .amso-campaign__screen--result {
+  .amso-million-runner-2026__screen--dialog,
+  .amso-million-runner-2026__screen--result {
     padding: 10px;
     place-items: start center;
   }
 
-  .amso-campaign__card,
-  .amso-campaign__result-card {
+  .amso-million-runner-2026__card,
+  .amso-million-runner-2026__result-card {
     margin: auto 0;
     padding: 20px 15px;
     border-radius: 18px;
   }
 
-  .amso-campaign__result-grid,
-  .amso-campaign__result-grid--challenge {
+  .amso-million-runner-2026__result-grid,
+  .amso-million-runner-2026__result-grid--challenge {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     margin: 15px 0;
   }
 
-  .amso-campaign__result-grid > span:last-child:nth-child(odd) {
+  .amso-million-runner-2026__result-grid > span:last-child:nth-child(odd) {
     grid-column: 1 / -1;
   }
 
-  .amso-campaign__actions {
+  .amso-million-runner-2026__actions {
     flex-direction: column;
   }
 
-  .amso-campaign__actions > * {
+  .amso-million-runner-2026__actions > * {
     width: 100%;
   }
 
 }
 
 @media (orientation: portrait) and (max-width: 600px) {
-  .amso-campaign__stage {
-    border-radius: 18px;
+  .amso-million-runner-2026__stage {
+    border-radius: 0;
   }
-
-  .amso-campaign__canvas {
-    height: 68%;
-    top: 10%;
-  }
-
-  .amso-campaign[data-view="landing"] .amso-campaign__canvas,
-  .amso-campaign[data-view="story_result"] .amso-campaign__canvas,
-  .amso-campaign[data-view="challenge_result"] .amso-campaign__canvas {
-    height: 100%;
-    top: 0;
-  }
-
 }
 
 @media (max-height: 520px) and (min-width: 600px) {
-  .amso-campaign__header {
+  .amso-million-runner-2026__header {
     min-height: 48px;
     padding-block: 4px;
   }
 
-  .amso-campaign__footer {
+  .amso-million-runner-2026__footer {
     min-height: 28px;
     padding-block: 3px;
   }
 
-  .amso-campaign__screen--landing {
+  .amso-million-runner-2026__screen--landing {
     grid-template-columns: minmax(0, 1fr) minmax(280px, 0.75fr);
     padding: 14px 28px;
   }
 
-  .amso-campaign__landing-copy h1 {
+  .amso-million-runner-2026__landing-copy h1 {
     font-size: clamp(2.35rem, 12vh, 3.8rem);
   }
 
-  .amso-campaign__lead {
+  .amso-million-runner-2026__lead {
     margin-block: 11px 7px;
     font-size: 0.84rem;
   }
 
-  .amso-campaign__meta {
+  .amso-million-runner-2026__meta {
     margin-bottom: 10px;
     font-size: 0.68rem;
   }
 
-  .amso-campaign__button {
+  .amso-million-runner-2026__button {
     min-height: 42px;
   }
 
-  .amso-campaign__story-presentation {
+  .amso-million-runner-2026__story-presentation {
     padding:
       max(9px, env(safe-area-inset-top))
       max(12px, env(safe-area-inset-right))
@@ -1485,47 +2167,47 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
       max(12px, env(safe-area-inset-left));
   }
 
-  .amso-campaign__story-scene-card {
+  .amso-million-runner-2026__story-scene-card {
     width: min(100%, 52rem);
     padding: 14px clamp(20px, 4vw, 34px);
     border-radius: 18px;
   }
 
-  .amso-campaign__story-scene-eyebrow {
+  .amso-million-runner-2026__story-scene-eyebrow {
     margin-bottom: 5px;
     font-size: 0.72rem;
   }
 
-  .amso-campaign__story-scene-card h2 {
+  .amso-million-runner-2026__story-scene-card h2 {
     max-width: 24ch;
     font-size: clamp(1.5rem, 6.2vh, 2.2rem);
   }
 
-  .amso-campaign__story-scene-body {
+  .amso-million-runner-2026__story-scene-body {
     width: min(100%, 68ch);
     margin-top: 8px;
     font-size: 1rem;
     line-height: 1.44;
   }
 
-  .amso-campaign__story-continue {
+  .amso-million-runner-2026__story-continue {
     min-height: 48px;
     margin-top: 10px;
   }
 
-  .amso-campaign__story-countdown p {
+  .amso-million-runner-2026__story-countdown p {
     font-size: 0.92rem;
   }
 
-  .amso-campaign__story-countdown strong {
+  .amso-million-runner-2026__story-countdown strong {
     font-size: clamp(4rem, 38vh, 8rem);
   }
 
-  .amso-campaign__screen--result {
+  .amso-million-runner-2026__screen--result {
     padding: 8px 20px;
   }
 
-  .amso-campaign__result-card {
+  .amso-million-runner-2026__result-card {
     display: grid;
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
     width: min(100%, 1040px);
@@ -1535,39 +2217,248 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     text-align: left;
   }
 
-  .amso-campaign__result-card > :is(.amso-campaign__eyebrow, h2, .amso-campaign__result-grid) {
+  .amso-million-runner-2026__result-card > :is(.amso-million-runner-2026__eyebrow, h2, .amso-million-runner-2026__result-grid) {
     grid-column: 1;
   }
 
-  .amso-campaign__result-card > :is(.amso-campaign__result-intro, .amso-campaign__actions, .amso-campaign__share-panel) {
+  .amso-million-runner-2026__result-card > :is(.amso-million-runner-2026__result-intro, .amso-million-runner-2026__actions, .amso-million-runner-2026__share-panel) {
     grid-column: 2;
   }
 
-  .amso-campaign__result-card h2 {
+  .amso-million-runner-2026__result-card h2 {
     font-size: 1.65rem;
   }
 
-  .amso-campaign__result-grid,
-  .amso-campaign__result-grid--challenge {
+  .amso-million-runner-2026__result-grid,
+  .amso-million-runner-2026__result-grid--challenge {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     margin: 6px 0;
   }
 
-  .amso-campaign__result-grid > span {
+  .amso-million-runner-2026__result-grid > span {
     padding: 7px;
     font-size: 0.52rem;
   }
 
-  .amso-campaign__result-grid strong,
-  .amso-campaign__result-grid i {
+  .amso-million-runner-2026__result-grid strong,
+  .amso-million-runner-2026__result-grid i {
     font-size: 1rem;
   }
 }
 
+/* ---- Niski viewport (portrait) — redukcja odstępów, nie ukrywanie treści ---- */
+@media (max-height: 700px) and (max-width: 820px) and (orientation: portrait) {
+  .amso-million-runner-2026__header {
+    min-height: 48px;
+    padding-block: 4px;
+  }
+
+  .amso-million-runner-2026__footer {
+    min-height: 28px;
+    padding-block: 3px;
+  }
+
+  .amso-million-runner-2026__screen--landing {
+    padding: clamp(10px, 2.5vh, 16px) clamp(12px, 3vw, 20px);
+  }
+
+  .amso-million-runner-2026__landing-copy {
+    padding: clamp(10px, 2.5vh, 16px) clamp(12px, 3vw, 18px);
+    border-radius: 14px;
+  }
+
+  .amso-million-runner-2026__landing-copy h1 {
+    font-size: clamp(1.6rem, 4vh + 1vw, 2.8rem);
+  }
+
+  .amso-million-runner-2026__lead {
+    margin: 6px auto 4px;
+    font-size: clamp(0.78rem, 1.6vh + 0.3vw, 0.92rem);
+    line-height: 1.4;
+  }
+
+  .amso-million-runner-2026__meta {
+    margin-bottom: 6px;
+    font-size: 0.62rem;
+  }
+
+  .amso-million-runner-2026__how-to summary {
+    padding: 8px 12px;
+    font-size: 0.78rem;
+  }
+
+  .amso-million-runner-2026__how-to div {
+    padding: 0 12px 10px;
+    gap: 4px;
+  }
+
+  .amso-million-runner-2026__how-to p {
+    font-size: 0.72rem;
+  }
+
+  .amso-million-runner-2026__landing-actions .amso-million-runner-2026__button {
+    min-height: 40px;
+    font-size: 0.78rem;
+  }
+
+  .amso-million-runner-2026__story-presentation {
+    padding:
+      max(6px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right))
+      max(6px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+  }
+
+  .amso-million-runner-2026__story-scene-card {
+    padding: 10px clamp(16px, 3.5vw, 28px);
+    border-radius: 16px;
+  }
+
+  .amso-million-runner-2026__story-scene-card h2 {
+    font-size: clamp(1.3rem, 5vh, 2rem);
+  }
+
+  .amso-million-runner-2026__story-scene-body {
+    font-size: clamp(0.88rem, 2.2vh, 1rem);
+    line-height: 1.42;
+  }
+
+  .amso-million-runner-2026__story-continue {
+    min-height: 40px;
+    margin-top: 8px;
+  }
+
+  .amso-million-runner-2026__story-countdown p {
+    font-size: 0.82rem;
+  }
+
+  .amso-million-runner-2026__story-countdown strong {
+    font-size: clamp(3.5rem, 34vh, 7rem);
+  }
+}
+
+/* ---- Niski viewport (landscape + min-width 600px) ---- */
+@media (max-height: 520px) and (min-width: 600px) {
+  .amso-million-runner-2026__header {
+    min-height: 40px;
+    padding-block: 3px;
+  }
+
+  .amso-million-runner-2026__footer {
+    min-height: 22px;
+    padding-block: 2px;
+  }
+}
+
+/* ---- Wąski viewport ---- */
+@media (max-width: 390px) {
+  .amso-million-runner-2026__screen--landing {
+    padding: 10px 8px;
+  }
+
+  .amso-million-runner-2026__landing-copy {
+    padding: 12px 10px;
+  }
+
+  .amso-million-runner-2026__landing-copy h1 {
+    font-size: clamp(1.5rem, 10vw, 2rem);
+  }
+
+  .amso-million-runner-2026__lead {
+    font-size: 0.82rem;
+    margin: 8px auto 4px;
+  }
+
+  .amso-million-runner-2026__meta {
+    font-size: 0.6rem;
+    margin-bottom: 6px;
+  }
+
+  .amso-million-runner-2026__landing-actions .amso-million-runner-2026__button {
+    min-height: 40px;
+    font-size: 0.78rem;
+  }
+
+  .amso-million-runner-2026__hud-context {
+    min-height: 30px;
+    padding: 2px 5px;
+  }
+
+  .amso-million-runner-2026__hud-context strong {
+    font-size: 0.55rem;
+  }
+
+  .amso-million-runner-2026__hud-stats {
+    min-height: 28px;
+    padding: 2px 5px;
+    gap: 6px;
+    font-size: 0.5rem;
+  }
+
+  .amso-million-runner-2026__hud-stats strong {
+    font-size: 0.7rem;
+  }
+
+  .amso-million-runner-2026__pause-button {
+    min-height: 30px;
+    padding: 0 6px;
+    font-size: 0.6rem;
+  }
+}
+
+/* ---- Landscape mobile — zwarty HUD ---- */
+@media (orientation: landscape) and (max-height: 500px) {
+  .amso-million-runner-2026__hud {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: "context stats pause";
+    top: clamp(4px, 1vh, 10px);
+    right: clamp(4px, 1vh, 10px);
+    left: clamp(4px, 1vh, 10px);
+    gap: 6px;
+  }
+
+  .amso-million-runner-2026__hud-context {
+    grid-area: context;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    padding: 3px 8px;
+  }
+
+  .amso-million-runner-2026__hud-context strong {
+    font-size: 0.6rem;
+  }
+
+  .amso-million-runner-2026__hud-context span {
+    font-size: 0.55rem;
+  }
+
+  .amso-million-runner-2026__hud-stats {
+    grid-area: stats;
+    justify-self: center;
+    min-height: 32px;
+    padding: 3px 8px;
+    gap: 8px;
+    font-size: 0.55rem;
+  }
+
+  .amso-million-runner-2026__hud-stats strong {
+    font-size: 0.75rem;
+  }
+
+  .amso-million-runner-2026__pause-button {
+    grid-area: pause;
+    min-height: 32px;
+    padding: 0 8px;
+    font-size: 0.65rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .amso-campaign *,
-  .amso-campaign *::before,
-  .amso-campaign *::after {
+  .amso-million-runner-2026 *,
+  .amso-million-runner-2026 *::before,
+  .amso-million-runner-2026 *::after {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
@@ -1577,31 +2468,31 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 }
 
 @media (forced-colors: active) {
-  .amso-campaign__stage,
-  .amso-campaign__card,
-  .amso-campaign__result-card,
-  .amso-campaign__hud-context,
-  .amso-campaign__hud-stats,
-  .amso-campaign__pause-button {
+  .amso-million-runner-2026__stage,
+  .amso-million-runner-2026__card,
+  .amso-million-runner-2026__result-card,
+  .amso-million-runner-2026__hud-context,
+  .amso-million-runner-2026__hud-stats,
+  .amso-million-runner-2026__pause-button {
     border: 1px solid CanvasText;
   }
 
-  .amso-campaign__landing-art,
-  .amso-campaign__story-scrim {
+  .amso-million-runner-2026__landing-art,
+  .amso-million-runner-2026__story-scrim {
     display: none;
   }
 
-  .amso-campaign__story-scene-card {
+  .amso-million-runner-2026__story-scene-card {
     border: 2px solid CanvasText;
     background: Canvas;
     color: CanvasText;
   }
 
-  .amso-campaign__story-scene-body,
-  .amso-campaign__story-scene-card h2,
-  .amso-campaign__story-countdown,
-  .amso-campaign__story-countdown p,
-  .amso-campaign__story-countdown strong {
+  .amso-million-runner-2026__story-scene-body,
+  .amso-million-runner-2026__story-scene-card h2,
+  .amso-million-runner-2026__story-countdown,
+  .amso-million-runner-2026__story-countdown p,
+  .amso-million-runner-2026__story-countdown strong {
     color: CanvasText;
   }
 }
@@ -1614,7 +2505,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
    while reading and while playing.
    -------------------------------------------------------------------------- */
 
-.amso-campaign {
+.amso-million-runner-2026 {
   --campaign-black: #171717;
   --campaign-paper: #faf7f0;
   --campaign-white: #fff;
@@ -1636,30 +2527,30 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   color-scheme: only light;
 }
 
-.amso-campaign__backdrop {
+.amso-million-runner-2026__backdrop {
   background:
     linear-gradient(115deg, rgb(244 113 0 / 18%), transparent 28%),
     linear-gradient(295deg, rgb(235 50 164 / 16%), transparent 30%),
     var(--campaign-paper);
 }
 
-.amso-campaign__backdrop::after {
+.amso-million-runner-2026__backdrop::after {
   background-image: linear-gradient(90deg, transparent 0 49.8%, rgb(255 255 255 / 5%) 50%, transparent 50.2%);
   background-size: 48px 100%;
   mask-image: linear-gradient(90deg, transparent, #000 20% 80%, transparent);
 }
 
-.amso-campaign__header,
-.amso-campaign__footer {
+.amso-million-runner-2026__header,
+.amso-million-runner-2026__footer {
   color: #655f58;
 }
 
-.amso-campaign__footer a,
-.amso-campaign__brand-edition {
+.amso-million-runner-2026__footer a,
+.amso-million-runner-2026__brand-edition {
   color: var(--campaign-black);
 }
 
-.amso-campaign__stage {
+.amso-million-runner-2026__stage {
   border: 1px solid rgb(255 255 255 / 24%);
   background: var(--campaign-paper);
   box-shadow:
@@ -1667,7 +2558,7 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     inset 0 0 0 1px rgb(23 23 23 / 5%);
 }
 
-.amso-campaign__world-visual {
+.amso-million-runner-2026__world-visual {
   position: absolute;
   z-index: 0;
   inset: 0;
@@ -1676,60 +2567,61 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   isolation: isolate;
 }
 
-.amso-world-visual__image-stack,
-.amso-world-visual__panel,
-.amso-world-visual__route {
+.amso-million-runner-2026-world-visual__panel {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
 }
 
-.amso-world-visual__image-stack {
-  z-index: 0;
-  overflow: hidden;
-  transition:
-    top 720ms cubic-bezier(0.2, 0.7, 0.2, 1),
-    height 720ms cubic-bezier(0.2, 0.7, 0.2, 1);
+.amso-million-runner-2026-world-visual__route {
+  position: absolute;
 }
 
-.amso-world-visual__panel {
+.amso-million-runner-2026-world-visual__image-stack {
+  position: absolute;
+  z-index: 0;
+  overflow: hidden;
+  transition: none;
+}
+
+.amso-million-runner-2026-world-visual__panel {
   display: block;
   opacity: 0.8;
   background-color: var(--campaign-paper);
   background-image:
     linear-gradient(110deg, rgb(244 113 0 / 20%), rgb(240 79 69 / 10%) 48%, rgb(235 50 164 / 18%));
   background-position: var(--world-position-desktop, 50% 50%);
-  background-size: contain;
-  object-fit: contain;
-  object-position: var(--world-position-desktop, 50% 50%);
-  transition: object-position 720ms cubic-bezier(0.2, 0.7, 0.2, 1);
-  will-change: transform, object-position;
+  background-size: 100% 100%;
+  transition: none;
+  will-change: transform;
 }
 
-.amso-campaign__world-visual[data-phase="game"] .amso-world-visual__panel {
+.amso-million-runner-2026__world-visual[data-phase="game"] .amso-million-runner-2026-world-visual__panel {
   opacity: 0.6;
+  background-image: none;
 }
 
-.amso-campaign__world-visual[data-asset-state="fallback"] .amso-world-visual__panel {
+.amso-million-runner-2026__world-visual[data-asset-state="fallback"] .amso-million-runner-2026-world-visual__panel,
+.amso-million-runner-2026-world-visual__panel[data-asset-fallback="true"] {
   background-image:
     radial-gradient(circle at 20% 35%, rgb(244 113 0 / 22%), transparent 24%),
     radial-gradient(circle at 78% 42%, rgb(235 50 164 / 18%), transparent 26%),
     linear-gradient(180deg, #fff 0 70%, #f3ece2 70% 100%);
 }
 
-.amso-world-visual__route {
+.amso-million-runner-2026-world-visual__route {
   z-index: 1;
   pointer-events: none;
   opacity: 1;
   transition: opacity 220ms ease;
 }
 
-.amso-campaign__world-visual[data-phase="game"] .amso-world-visual__route {
+.amso-million-runner-2026__world-visual[data-phase="game"] .amso-million-runner-2026-world-visual__route {
   opacity: 0;
 }
 
-.amso-world-visual__counter {
+.amso-million-runner-2026-world-visual__counter {
   position: absolute;
   z-index: 2;
   top: 8%;
@@ -1749,11 +2641,11 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   transform: translateX(-50%);
 }
 
-.amso-campaign__world-visual:is([data-world-id="million-approach"], [data-world-id="million-finale"]) .amso-world-visual__counter {
+.amso-million-runner-2026__world-visual:is([data-world-id="million-approach"], [data-world-id="million-finale"]) .amso-million-runner-2026-world-visual__counter {
   display: block;
 }
 
-.amso-campaign__world-visual[data-world-id="million-finale"] .amso-world-visual__counter {
+.amso-million-runner-2026__world-visual[data-world-id="million-finale"] .amso-million-runner-2026-world-visual__counter {
   border-color: transparent;
   background:
     linear-gradient(var(--campaign-paper), var(--campaign-paper)) padding-box,
@@ -1763,25 +2655,29 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     0 0 2.5rem rgb(235 50 164 / 24%);
 }
 
-.amso-campaign__canvas {
+.amso-million-runner-2026[data-mode="challenge"] .amso-million-runner-2026__world-visual .amso-million-runner-2026-world-visual__counter {
+  display: none;
+}
+
+.amso-million-runner-2026__canvas {
   z-index: 5;
   opacity: 1;
   transition: opacity 260ms ease;
 }
 
-.amso-campaign[data-view="story_scene"] .amso-campaign__canvas {
+.amso-million-runner-2026[data-view="story_scene"] .amso-million-runner-2026__canvas {
   opacity: 0;
   visibility: hidden;
 }
 
-.amso-campaign[data-view="story_scene"][data-visual-state^="intro."] .amso-campaign__canvas {
+.amso-million-runner-2026[data-view="story_scene"][data-visual-state^="intro."] .amso-million-runner-2026__canvas {
   opacity: 0;
 }
 
-.amso-campaign__icon-button,
-.amso-campaign__hud-context,
-.amso-campaign__hud-stats,
-.amso-campaign__pause-button {
+.amso-million-runner-2026__icon-button,
+.amso-million-runner-2026__hud-context,
+.amso-million-runner-2026__hud-stats,
+.amso-million-runner-2026__pause-button {
   border-color: rgb(255 255 255 / 24%);
   background: rgb(23 23 23 / 90%);
   color: var(--campaign-paper);
@@ -1789,31 +2685,31 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   backdrop-filter: none;
 }
 
-.amso-campaign__icon-button[aria-pressed="true"] {
+.amso-million-runner-2026__icon-button[aria-pressed="true"] {
   border-color: rgb(255 255 255 / 52%);
   background: var(--campaign-gradient);
   color: #fff;
 }
 
-.amso-campaign__hud-context strong {
+.amso-million-runner-2026__hud-context strong {
   color: var(--campaign-coral);
 }
 
-.amso-campaign__eyebrow,
-.amso-campaign__story-scene-eyebrow {
+.amso-million-runner-2026__eyebrow,
+.amso-million-runner-2026__story-scene-eyebrow {
   color: #98214c;
 }
 
-.amso-campaign__hud-context span,
-.amso-campaign__hud-stats {
+.amso-million-runner-2026__hud-context span,
+.amso-million-runner-2026__hud-stats {
   color: #d8d4ce;
 }
 
-.amso-campaign__hud-context [data-campaign-hud-powerups] {
+.amso-million-runner-2026__hud-context [data-campaign-hud-powerups] {
   color: #ffd5ec;
 }
 
-.amso-campaign__story-presentation {
+.amso-million-runner-2026__story-presentation {
   z-index: 20;
   grid-template-columns: minmax(19rem, 42fr) minmax(0, 58fr);
   overflow: hidden;
@@ -1823,33 +2719,33 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   backdrop-filter: none;
 }
 
-.amso-campaign__story-scrim {
+.amso-million-runner-2026__story-scrim {
   z-index: 0;
   background: linear-gradient(90deg, rgb(250 247 240 / 94%) 0 37%, rgb(250 247 240 / 42%) 49%, transparent 68%);
   transition: opacity 180ms ease;
 }
 
-.amso-campaign__story-presentation[data-state="reframe"] .amso-campaign__story-scrim {
+.amso-million-runner-2026__story-presentation[data-state="reframe"] .amso-million-runner-2026__story-scrim {
   opacity: 0;
 }
 
-.amso-campaign__story-presentation[data-state="countdown"] .amso-campaign__story-scrim {
+.amso-million-runner-2026__story-presentation[data-state="countdown"] .amso-million-runner-2026__story-scrim {
   background: rgb(250 247 240 / 8%);
 }
 
-.amso-campaign__story-presentation[data-copy-placement="right"] {
+.amso-million-runner-2026__story-presentation[data-copy-placement="right"] {
   grid-template-columns: minmax(0, 58fr) minmax(19rem, 42fr);
 }
 
-.amso-campaign__story-presentation[data-copy-placement="right"] .amso-campaign__story-scrim {
+.amso-million-runner-2026__story-presentation[data-copy-placement="right"] .amso-million-runner-2026__story-scrim {
   background: linear-gradient(270deg, rgb(250 247 240 / 94%) 0 37%, rgb(250 247 240 / 42%) 49%, transparent 68%);
 }
 
-.amso-campaign__story-presentation[data-copy-placement="right"] .amso-campaign__story-scene-card {
+.amso-million-runner-2026__story-presentation[data-copy-placement="right"] .amso-million-runner-2026__story-scene-card {
   grid-column: 2;
 }
 
-.amso-campaign__story-scene-card {
+.amso-million-runner-2026__story-scene-card {
   z-index: 2;
   width: min(100%, 35rem);
   max-height: min(100%, 46rem);
@@ -1864,11 +2760,11 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   text-align: left;
 }
 
-.amso-campaign__story-scene-eyebrow {
+.amso-million-runner-2026__story-scene-eyebrow {
   font-size: clamp(0.72rem, 1vw, 0.82rem);
 }
 
-.amso-campaign__story-final-lockup {
+.amso-million-runner-2026__story-final-lockup {
   display: none;
   width: min(34%, 8.5rem);
   max-height: 7.5rem;
@@ -1876,35 +2772,38 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   object-fit: contain;
 }
 
-.amso-campaign[data-visual-state="story.million_finale"] .amso-campaign__story-final-lockup {
+.amso-million-runner-2026[data-visual-state="story.million_finale"] .amso-million-runner-2026__story-final-lockup {
   display: block;
 }
 
-.amso-campaign[data-visual-state="story.million_finale"] .amso-campaign__story-scene-card {
+.amso-million-runner-2026[data-visual-state="story.million_finale"] .amso-million-runner-2026__story-scene-card {
   grid-template-rows: auto auto auto minmax(0, 1fr) auto;
 }
 
-.amso-campaign__story-scene-card h2 {
+.amso-million-runner-2026__story-scene-card h2 {
   max-width: 16ch;
   margin: 0;
   color: var(--campaign-black);
   font-size: clamp(1.8rem, 3.1vw, 3.15rem);
 }
 
-.amso-campaign__story-scene-body {
+.amso-million-runner-2026__story-scene-body {
   width: 100%;
   margin-inline: 0;
+  padding: clamp(8px, 1.2vmin, 14px) clamp(10px, 1.4vmin, 16px);
+  border: 2px solid rgb(235 50 164 / 58%);
+  border-radius: clamp(10px, 1.2vw, 16px);
   color: #302e2b;
   font-size: clamp(1.02rem, 0.62vw + 0.78rem, 1.25rem);
   line-height: 1.55;
 }
 
-.amso-campaign__story-continue {
+.amso-million-runner-2026__story-continue {
   margin-right: 0;
   margin-left: 0;
 }
 
-.amso-campaign__story-countdown {
+.amso-million-runner-2026__story-countdown {
   z-index: 2;
   grid-column: 1 / -1;
   justify-self: center;
@@ -1915,49 +2814,49 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   box-shadow: 0 22px 60px rgb(0 0 0 / 34%);
 }
 
-.amso-campaign__story-countdown p,
-.amso-campaign__story-countdown strong {
+.amso-million-runner-2026__story-countdown p,
+.amso-million-runner-2026__story-countdown strong {
   color: #fff;
 }
 
-.amso-campaign__screen--landing {
+.amso-million-runner-2026__screen--landing {
   grid-template-columns: minmax(19rem, 43%) minmax(0, 57%);
   padding: clamp(24px, 4.7vw, 72px);
   background: linear-gradient(90deg, rgb(250 247 240 / 98%) 0 41%, rgb(250 247 240 / 76%) 48%, transparent 69%);
 }
 
-.amso-campaign__landing-copy {
+.amso-million-runner-2026__landing-copy {
   color: var(--campaign-black);
 }
 
-.amso-campaign__landing-copy h1 {
+.amso-million-runner-2026__landing-copy h1 {
   color: var(--campaign-black);
   font-size: clamp(2.7rem, 5.7vw, 5.8rem);
 }
 
-.amso-campaign__landing-copy h1 span {
+.amso-million-runner-2026__landing-copy h1 span {
   background: var(--campaign-gradient);
   background-clip: text;
   color: transparent;
   -webkit-background-clip: text;
 }
 
-.amso-campaign__lead {
+.amso-million-runner-2026__lead {
   color: #36332f;
 }
 
-.amso-campaign__meta {
+.amso-million-runner-2026__meta {
   color: #6c6863;
 }
 
-.amso-campaign__landing-art {
+.amso-million-runner-2026__landing-art {
   display: grid;
   min-width: 0;
   min-height: 0;
   place-items: center;
 }
 
-.amso-campaign__main-lockup {
+.amso-million-runner-2026__main-lockup {
   display: block;
   width: min(94%, 680px);
   max-height: min(70vh, 620px);
@@ -1966,14 +2865,14 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   transform: rotate(-1.5deg);
 }
 
-.amso-campaign__screen--dialog,
-.amso-campaign__screen--result {
+.amso-million-runner-2026__screen--dialog,
+.amso-million-runner-2026__screen--result {
   background: rgb(23 23 23 / 40%);
   backdrop-filter: none;
 }
 
-.amso-campaign__card,
-.amso-campaign__result-card {
+.amso-million-runner-2026__card,
+.amso-million-runner-2026__result-card {
   border: 1px solid rgb(23 23 23 / 12%);
   background: rgb(250 247 240 / 98%);
   color: var(--campaign-black);
@@ -1982,46 +2881,44 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     0 26px 72px rgb(0 0 0 / 22%);
 }
 
-.amso-campaign__card > p:not(.amso-campaign__eyebrow) {
+.amso-million-runner-2026__card > p:not(.amso-million-runner-2026__eyebrow) {
   color: #514d48;
 }
 
-.amso-campaign__button {
+.amso-million-runner-2026__button {
   border-radius: 12px;
 }
 
-.amso-campaign__button--primary {
+.amso-million-runner-2026__button--primary {
   background: var(--campaign-gradient);
   box-shadow: 0 12px 28px rgb(235 50 164 / 18%);
-  color: var(--campaign-black);
+  color: #fff;
 }
 
-.amso-campaign__canvas:focus-visible,
-.amso-campaign :is(button, a):focus-visible {
-  outline: 3px solid #fff;
+.amso-million-runner-2026__canvas:focus-visible,
+.amso-million-runner-2026 :is(button, a):focus-visible {
+  outline: 3px solid #ffad70;
   outline-offset: 3px;
-  box-shadow: 0 0 0 6px #171717;
+  box-shadow: 0 0 0 6px rgb(244 113 0 / 40%);
 }
 
-/* The story copy receives programmatic focus for screen readers and scroll
-   reset. Keep that focus visible without making static prose look like a form. */
-.amso-campaign__story-scene-body:focus-visible {
-  border-radius: 8px;
-  outline: 2px solid rgb(235 50 164 / 58%);
-  outline-offset: 2px;
+/* Programmatic focus resets scroll and supports screen readers. The permanent
+   magenta border is the only visible contour in every input mode. */
+.amso-million-runner-2026__story-scene-body:focus-visible {
+  outline: none;
   box-shadow: none;
 }
 
-.amso-campaign__button--secondary,
-.amso-campaign__result-card .amso-campaign__button--secondary {
+.amso-million-runner-2026__button--secondary,
+.amso-million-runner-2026__result-card .amso-million-runner-2026__button--secondary {
   border-color: rgb(23 23 23 / 18%);
   background: #fff;
   color: var(--campaign-black);
 }
 
-.amso-campaign__compact-lockup,
-.amso-campaign__result-lockup,
-.amso-campaign__share-lockup {
+.amso-million-runner-2026__compact-lockup,
+.amso-million-runner-2026__result-lockup,
+.amso-million-runner-2026__share-lockup {
   display: block;
   width: min(100%, 19rem);
   max-height: 8.5rem;
@@ -2029,16 +2926,16 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   object-fit: contain;
 }
 
-.amso-campaign__result-lockup--main {
+.amso-million-runner-2026__result-lockup--main {
   max-height: 10.5rem;
 }
 
-.amso-campaign__share-lockup {
+.amso-million-runner-2026__share-lockup {
   width: min(100%, 12rem);
   max-height: 5.5rem;
 }
 
-.amso-campaign__loading-package {
+.amso-million-runner-2026__loading-package {
   width: 66px;
   height: 56px;
   background:
@@ -2047,48 +2944,169 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
   box-shadow: 7px 7px 0 rgb(23 23 23 / 16%);
 }
 
-.amso-campaign__result-grid > span,
-.amso-campaign__share-panel {
+.amso-million-runner-2026__result-grid > span,
+.amso-million-runner-2026__share-panel {
   border-color: rgb(23 23 23 / 12%);
   background: #fff;
 }
 
-.amso-campaign__result-grid > span,
-.amso-campaign__result-intro,
-.amso-campaign__share-panel p {
+.amso-million-runner-2026__result-grid > span,
+.amso-million-runner-2026__result-intro,
+.amso-million-runner-2026__share-panel p {
   color: #655f58;
 }
 
-.amso-campaign__result-grid strong,
-.amso-campaign__result-grid i,
-.amso-campaign__text-link,
-.amso-campaign__share-actions button {
+.amso-million-runner-2026__result-grid strong,
+.amso-million-runner-2026__result-grid i,
+.amso-million-runner-2026__text-link,
+.amso-million-runner-2026__share-actions button {
   color: var(--campaign-black);
 }
 
-.amso-campaign__share-actions button {
+.amso-million-runner-2026__share-actions button {
   border-color: rgb(23 23 23 / 14%);
   background: var(--campaign-paper);
 }
 
-.amso-campaign__too-narrow {
+.amso-million-runner-2026__too-narrow {
   background: var(--campaign-paper);
 }
 
-.amso-campaign__too-narrow strong {
+.amso-million-runner-2026__too-narrow strong {
   color: var(--campaign-coral);
 }
 
-.amso-campaign__too-narrow span {
+.amso-million-runner-2026__too-narrow span {
   color: var(--campaign-black);
 }
 
+/* ---- Orientation hint (landing page, under CTA) ---- */
+.amso-million-runner-2026__orientation-hint {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  margin: 8px 0 0;
+  color: #6c6863;
+  font-size: clamp(0.72rem, 2.6vw, 0.82rem);
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.amso-million-runner-2026__orientation-hint span:first-child {
+  font-size: 1.15em;
+}
+
+@media (hover: none) and (pointer: coarse) and (orientation: portrait) {
+  .amso-million-runner-2026__orientation-hint {
+    display: flex;
+  }
+}
+
+/* ---- Orientation prompt (overlay, forces rotation) ---- */
+.amso-million-runner-2026__orientation-prompt {
+  position: absolute;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding:
+    max(24px, env(safe-area-inset-top))
+    max(24px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom))
+    max(24px, env(safe-area-inset-left));
+  background: rgb(23 23 23 / 92%);
+  color: var(--campaign-paper);
+  text-align: center;
+  pointer-events: auto;
+}
+
+.amso-million-runner-2026__orientation-prompt[hidden] {
+  display: none;
+}
+
+.amso-million-runner-2026__orientation-prompt-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 320px;
+}
+
+.amso-million-runner-2026__orientation-prompt-content h2 {
+  margin: 0;
+  font-size: clamp(1.3rem, 5vw, 1.7rem);
+  font-weight: 950;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.amso-million-runner-2026__orientation-prompt-content p {
+  margin: 0;
+  color: rgb(255 255 255 / 72%);
+  font-size: clamp(0.88rem, 2.8vw, 1rem);
+  line-height: 1.5;
+}
+
+/* ---- Orientation icon ---- */
+.amso-million-runner-2026__orientation-icon {
+  width: clamp(72px, 22vw, 110px);
+  height: auto;
+  color: #fff;
+}
+
+.amso-million-runner-2026__orientation-icon__group {
+  transform-origin: 60px 60px;
+  animation: amso-rotate-phone 1.8s ease-in-out infinite;
+}
+
+.amso-million-runner-2026__orientation-arrow,
+.amso-million-runner-2026__orientation-arrow-head {
+  animation: amso-rotate-arrow-fade 1.8s ease-in-out infinite;
+}
+
+@keyframes amso-rotate-phone {
+  0%, 18% {
+    transform: rotate(0deg);
+  }
+  50%, 72% {
+    transform: rotate(90deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes amso-rotate-arrow-fade {
+  0%, 18% {
+    opacity: 0.7;
+  }
+  50%, 72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .amso-million-runner-2026__orientation-icon__group {
+    animation: none;
+  }
+
+  .amso-million-runner-2026__orientation-arrow,
+  .amso-million-runner-2026__orientation-arrow-head {
+    animation: none;
+    opacity: 0.8;
+  }
+}
+
 @media (max-width: 820px) {
-  .amso-campaign__screen--landing {
+  .amso-million-runner-2026__screen--landing {
     text-align: left;
   }
 
-  .amso-campaign__landing-art {
+  .amso-million-runner-2026__landing-art {
     position: relative;
     z-index: 0;
     inset: auto;
@@ -2097,111 +3115,115 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
 }
 
 @media (max-width: 756px) {
-  .amso-world-visual__panel {
+  .amso-million-runner-2026-world-visual__panel {
     background-position: var(--world-position-portrait, 50% 50%);
-    object-position: var(--world-position-portrait, 50% 50%);
   }
 
-  .amso-campaign__main {
+  .amso-million-runner-2026__main {
     padding-inline:
       max(15px, env(safe-area-inset-left))
       max(15px, env(safe-area-inset-right));
   }
 
-  .amso-campaign__stage {
+  .amso-million-runner-2026__stage {
     border-radius: 20px;
   }
 
-  .amso-campaign__world-visual[data-phase="story"] .amso-world-visual__image-stack {
-    top: 0;
-    right: 0;
-    bottom: auto;
-    left: 0;
-    height: 42%;
-  }
-
-  .amso-campaign__canvas {
+  .amso-million-runner-2026__canvas {
     top: 0;
     height: 100%;
   }
 
-  .amso-campaign__milestone-message {
+  .amso-million-runner-2026__milestone-message {
     padding: 0.65rem 1rem;
     font-size: clamp(1.15rem, 6vw, 1.65rem);
   }
 
-  .amso-campaign__milestone-message[data-intensity="2"] {
+  .amso-million-runner-2026__milestone-message[data-intensity="2"] {
     font-size: clamp(1.18rem, 6.15vw, 1.7rem);
   }
 
-  .amso-campaign__milestone-message[data-intensity="3"] {
+  .amso-million-runner-2026__milestone-message[data-intensity="3"] {
     font-size: clamp(1.21rem, 6.3vw, 1.75rem);
   }
 
-  .amso-campaign__milestone-message[data-intensity="4"] {
+  .amso-million-runner-2026__milestone-message[data-intensity="4"] {
     font-size: clamp(1.24rem, 6.45vw, 1.8rem);
   }
 
-  .amso-campaign__milestone-message[data-intensity="5"] {
+  .amso-million-runner-2026__milestone-message[data-intensity="5"] {
     font-size: clamp(1.27rem, 6.6vw, 1.85rem);
   }
 
-  .amso-campaign__milestone-message[data-intensity="6"] {
+  .amso-million-runner-2026__milestone-message[data-intensity="6"] {
     font-size: clamp(1.3rem, 6.75vw, 1.9rem);
   }
 
-  .amso-campaign__screen--landing {
+  .amso-million-runner-2026__screen--landing {
     display: flex;
-    padding: clamp(18px, 4.5vw, 26px);
-    align-items: flex-end;
-    justify-content: center;
-    background: linear-gradient(180deg, transparent 0 34%, rgb(250 247 240 / 78%) 45%, rgb(250 247 240 / 98%) 58% 100%);
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: clamp(16px, 4vw, 28px);
+    background: transparent;
     text-align: center;
   }
 
-  .amso-campaign__landing-copy {
+  .amso-million-runner-2026__landing-copy {
     z-index: 2;
     width: 100%;
+    max-width: 600px;
     margin-inline: auto;
+    padding: clamp(16px, 4vw, 24px);
+    border-radius: 20px;
+    background: rgb(250 247 240 / 94%);
+    flex-shrink: 0;
   }
 
-  .amso-campaign__landing-copy h1 {
+  .amso-million-runner-2026__landing-copy h1 {
     font-size: clamp(2.25rem, 11vw, 3.65rem);
   }
 
-  .amso-campaign__lead {
+  .amso-million-runner-2026__lead {
     max-width: 34rem;
     margin: 12px auto 8px;
     font-size: clamp(0.9rem, 3.6vw, 1.03rem);
     line-height: 1.42;
   }
 
-  .amso-campaign__meta {
+  .amso-million-runner-2026__meta {
     margin-bottom: 14px;
   }
 
-  .amso-campaign__landing-actions {
+  .amso-million-runner-2026__landing-cta-group {
+    margin-inline: auto;
+    align-items: center;
+  }
+
+  .amso-million-runner-2026__landing-actions {
     margin-inline: auto;
   }
 
-  .amso-campaign__landing-art {
-    position: absolute;
-    z-index: 1;
-    top: 2%;
-    right: 3%;
-    left: 3%;
-    height: 43%;
+  .amso-million-runner-2026__landing-art {
+    position: relative;
+    z-index: 0;
+    inset: auto;
+    height: auto;
     min-height: 0;
     opacity: 1;
   }
 
-  .amso-campaign__main-lockup {
+  .amso-million-runner-2026__main-lockup {
     width: min(82%, 27rem);
-    max-height: 100%;
+    max-height: 42vh;
+    margin: 0 auto 8px;
   }
 
-  .amso-campaign__story-presentation,
-  .amso-campaign__story-presentation[data-copy-placement="right"] {
+  .amso-million-runner-2026__story-presentation,
+  .amso-million-runner-2026__story-presentation[data-copy-placement="right"] {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 42%) minmax(0, 58%);
@@ -2209,13 +3231,13 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     align-items: stretch;
   }
 
-  .amso-campaign__story-scrim,
-  .amso-campaign__story-presentation[data-copy-placement="right"] .amso-campaign__story-scrim {
+  .amso-million-runner-2026__story-scrim,
+  .amso-million-runner-2026__story-presentation[data-copy-placement="right"] .amso-million-runner-2026__story-scrim {
     background: linear-gradient(180deg, transparent 0 36%, rgb(250 247 240 / 36%) 46%, rgb(250 247 240 / 94%) 59%, rgb(250 247 240 / 98%) 100%);
   }
 
-  .amso-campaign__story-presentation[data-copy-placement="right"] .amso-campaign__story-scene-card,
-  .amso-campaign__story-scene-card {
+  .amso-million-runner-2026__story-presentation[data-copy-placement="right"] .amso-million-runner-2026__story-scene-card,
+  .amso-million-runner-2026__story-scene-card {
     grid-row: 2;
     grid-column: 1;
     width: 100%;
@@ -2226,57 +3248,57 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     box-shadow: 0 -12px 34px rgb(23 23 23 / 10%);
   }
 
-  .amso-campaign__story-scene-card h2 {
+  .amso-million-runner-2026__story-scene-card h2 {
     font-size: clamp(1.62rem, 7vw, 2.25rem);
   }
 
-  .amso-campaign__story-scene-body {
+  .amso-million-runner-2026__story-scene-body {
     margin-top: 13px;
     font-size: clamp(1rem, 4.15vw, 1.12rem);
     line-height: 1.5;
   }
 
-  .amso-campaign__story-continue {
+  .amso-million-runner-2026__story-continue {
     width: 100%;
     margin-top: 14px;
   }
 
-  .amso-campaign__story-countdown {
+  .amso-million-runner-2026__story-countdown {
     margin: auto;
   }
 
-  .amso-campaign__result-lockup--main {
+  .amso-million-runner-2026__result-lockup--main {
     max-height: 7.5rem;
   }
 }
 
 @media (max-height: 520px) and (min-width: 600px) {
-  .amso-campaign__story-presentation,
-  .amso-campaign__story-presentation[data-copy-placement="right"] {
+  .amso-million-runner-2026__story-presentation,
+  .amso-million-runner-2026__story-presentation[data-copy-placement="right"] {
     padding: 8px 12px;
   }
 
-  .amso-campaign__story-presentation {
+  .amso-million-runner-2026__story-presentation {
     grid-template-columns: minmax(18rem, 43%) minmax(0, 1fr);
   }
 
-  .amso-campaign__story-presentation[data-copy-placement="right"] {
+  .amso-million-runner-2026__story-presentation[data-copy-placement="right"] {
     grid-template-columns: minmax(0, 1fr) minmax(18rem, 43%);
   }
 
-  .amso-campaign__story-scene-card {
+  .amso-million-runner-2026__story-scene-card {
     width: 100%;
     max-height: 100%;
     padding: 13px clamp(16px, 2.3vw, 26px);
     border-radius: 16px;
   }
 
-  .amso-campaign__story-scene-eyebrow {
+  .amso-million-runner-2026__story-scene-eyebrow {
     margin-bottom: 4px;
     font-size: 0.65rem;
   }
 
-  .amso-campaign__story-final-lockup {
+  .amso-million-runner-2026__story-final-lockup {
     position: absolute;
     top: 12px;
     right: 16px;
@@ -2285,44 +3307,109 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     margin: 0;
   }
 
-  .amso-campaign__story-scene-card h2 {
+  .amso-million-runner-2026__story-scene-card h2 {
     max-width: 22ch;
     font-size: clamp(1.25rem, 5.4vh, 1.85rem);
   }
 
-  .amso-campaign__story-scene-body {
+  .amso-million-runner-2026__story-scene-body {
     margin-top: 7px;
     font-size: clamp(0.82rem, 2.6vh, 0.96rem);
     line-height: 1.38;
   }
 
-  .amso-campaign__story-continue {
+  .amso-million-runner-2026__story-continue {
     min-height: 40px;
     margin-top: 8px;
   }
 
-  .amso-campaign__screen--landing {
-    grid-template-columns: minmax(0, 48%) minmax(0, 52%);
-    padding: 12px 26px;
-    background: linear-gradient(90deg, rgb(250 247 240 / 98%) 0 43%, rgb(250 247 240 / 66%) 51%, transparent 72%);
+  .amso-million-runner-2026__screen--landing {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+    padding: 10px 20px;
+    align-items: start;
+    gap: clamp(16px, 3vw, 32px);
+    background: rgb(250 247 240 / 98%);
   }
 
-  .amso-campaign__main-lockup {
-    max-height: 78vh;
+  .amso-million-runner-2026__landing-copy {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    max-width: none;
+    padding: clamp(10px, 2vh, 16px) clamp(12px, 2vw, 20px);
+    align-items: start;
+    gap: clamp(8px, 1.5vw, 16px);
+    border-radius: 16px;
   }
 
-  .amso-campaign__compact-lockup,
-  .amso-campaign__result-lockup {
+  .amso-million-runner-2026__landing-copy h1 {
+    grid-column: 1;
+    font-size: clamp(1.7rem, 5vh, 2.4rem);
+  }
+
+  .amso-million-runner-2026__eyebrow {
+    grid-column: 1;
+    margin-bottom: 4px;
+    font-size: 0.6rem;
+  }
+
+  .amso-million-runner-2026__lead {
+    grid-column: 1;
+    margin: 4px 0 4px;
+    font-size: clamp(0.75rem, 1.6vh, 0.84rem);
+    line-height: 1.35;
+  }
+
+  .amso-million-runner-2026__meta {
+    grid-column: 1;
+    margin-bottom: 6px;
+    font-size: 0.62rem;
+  }
+
+  .amso-million-runner-2026__how-to {
+    display: none;
+  }
+
+  .amso-million-runner-2026__landing-cta-group {
+    grid-column: 1;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .amso-million-runner-2026__landing-actions {
+    width: 100%;
+  }
+
+  .amso-million-runner-2026__landing-actions .amso-million-runner-2026__button {
+    width: 100%;
+    min-height: 40px;
+    font-size: 0.78rem;
+  }
+
+  [data-campaign-landing-records] {
+    grid-column: 2;
+    grid-row: 1 / span 6;
+    margin-top: 0;
+    align-self: start;
+  }
+
+  .amso-million-runner-2026__landing-art,
+  .amso-million-runner-2026__main-lockup {
+    display: none;
+  }
+
+  .amso-million-runner-2026__compact-lockup,
+  .amso-million-runner-2026__result-lockup {
     max-height: 4.7rem;
     margin-bottom: 5px;
   }
 
-  .amso-campaign__result-card {
+  .amso-million-runner-2026__result-card {
     position: relative;
   }
 
-  .amso-campaign__result-lockup,
-  .amso-campaign__result-lockup--main {
+  .amso-million-runner-2026__result-lockup,
+  .amso-million-runner-2026__result-lockup--main {
     position: absolute;
     top: 12px;
     left: 16px;
@@ -2331,53 +3418,977 @@ html[data-campaign-scripting="enabled"] [data-campaign-noscript] {
     margin: 0;
   }
 
-  .amso-campaign__result-card > .amso-campaign__eyebrow,
-  .amso-campaign__result-card > h2 {
+  .amso-million-runner-2026__result-card > .amso-million-runner-2026__eyebrow,
+  .amso-million-runner-2026__result-card > h2 {
     padding-left: 5rem;
   }
 }
 
+@media (max-width: 960px) and (max-height: 520px) and (orientation: landscape) {
+  .amso-million-runner-2026__screen--landing {
+    overflow-y: auto;
+    padding: 9px 18px;
+    gap: clamp(14px, 2.7vw, 28px);
+  }
+
+  .amso-million-runner-2026__landing-copy {
+    padding: 9px clamp(12px, 2vw, 18px);
+    gap: 7px;
+  }
+
+  .amso-million-runner-2026__landing-copy h1 {
+    font-size: clamp(1.55rem, 4.6vh, 2.2rem);
+  }
+
+  .amso-million-runner-2026__how-to {
+    display: block;
+    grid-column: 1;
+    margin: 0;
+  }
+
+  .amso-million-runner-2026__how-to summary {
+    padding: 8px 12px;
+    font-size: 0.75rem;
+  }
+
+  .amso-million-runner-2026__how-to div {
+    gap: 6px;
+    padding: 0 12px 10px;
+  }
+
+  .amso-million-runner-2026__how-to p {
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+
+  .amso-million-runner-2026__landing-actions .amso-million-runner-2026__button,
+  .amso-million-runner-2026__story-continue {
+    min-height: 44px;
+    font-size: 0.875rem;
+  }
+
+  .amso-million-runner-2026__story-scene-card {
+    padding: 12px clamp(14px, 2.1vw, 24px);
+  }
+
+  .amso-million-runner-2026__story-scene-card h2 {
+    font-size: clamp(1.15rem, 4.9vh, 1.7rem);
+  }
+
+  .amso-million-runner-2026__story-scene-body {
+    margin-top: 6px;
+    font-size: clamp(0.75rem, 2.35vh, 0.88rem);
+    line-height: 1.34;
+  }
+
+  .amso-million-runner-2026__story-scene-body p + p {
+    margin-top: 0.6em;
+  }
+
+  .amso-million-runner-2026__story-continue {
+    margin-top: 7px;
+  }
+}
+
+@media (max-width: 600px), (max-height: 520px) {
+  .amso-million-runner-2026__story-scene-card {
+    animation: none;
+  }
+}
+
 @media (max-width: 756px) and (orientation: landscape) {
-  .amso-world-visual__panel {
+  .amso-million-runner-2026-world-visual__panel {
     background-position: var(--world-position-landscape, 50% 50%);
-    object-position: var(--world-position-landscape, 50% 50%);
   }
 }
 
 /* Copy placement belongs to the card, not to the 3–2–1 hand-off. Keep this
    final override after portrait/landscape rules so the route stays visible. */
-.amso-campaign__story-presentation[data-state="countdown"] .amso-campaign__story-scrim,
-.amso-campaign__story-presentation[data-state="countdown"][data-copy-placement="right"] .amso-campaign__story-scrim {
+.amso-million-runner-2026__story-presentation[data-state="countdown"] .amso-million-runner-2026__story-scrim,
+.amso-million-runner-2026__story-presentation[data-state="countdown"][data-copy-placement="right"] .amso-million-runner-2026__story-scrim {
   opacity: 1;
   background: rgb(250 247 240 / 8%);
 }
 
 /* Generated 16:9 plates remain the shared story and gameplay environment. */
-.amso-campaign__world-visual[data-phase="story"] .amso-world-visual__image-stack {
+.amso-million-runner-2026__world-visual[data-phase="story"] .amso-million-runner-2026-world-visual__image-stack {
   opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .amso-world-visual__panel,
-  .amso-world-visual__route {
+  .amso-million-runner-2026-world-visual__panel,
+  .amso-million-runner-2026-world-visual__route {
     transition: none;
   }
 }
 
 @media (forced-colors: active) {
-  .amso-campaign__world-visual {
+  .amso-million-runner-2026__world-visual {
     background: Canvas;
   }
 
-  .amso-world-visual__image-stack,
-  .amso-world-visual__route,
-  .amso-world-visual__counter {
+  .amso-million-runner-2026-world-visual__image-stack,
+  .amso-million-runner-2026-world-visual__route,
+  .amso-million-runner-2026-world-visual__counter {
     display: none;
   }
 
-  .amso-campaign__landing-copy h1 span {
+  .amso-million-runner-2026__landing-copy h1 span {
     background: none;
     color: CanvasText;
     -webkit-text-fill-color: CanvasText;
+  }
+}
+
+ /* ---- Records dashboard ----
+    Single source of truth: .amso-million-runner-2026-records carries all visuals.
+    The mount host (data-campaign-*-records) is layout-only and
+    matches the sibling action/button block width via --records-max-width. */
+ [data-campaign-landing-records],
+ [data-campaign-result-records] {
+   box-sizing: border-box;
+   width: 100%;
+   max-width: var(--records-max-width);
+   margin: 1.25rem 0 0;
+   margin-inline: 0;
+ }
+
+ /* On the result screen the host lives INSIDE .amso-million-runner-2026__result-card
+    (650px). Let it fill the card fully — no max-width cap — so .amso-million-runner-2026-records
+    width:100% matches the card's other content (buttons, stats). */
+ .amso-million-runner-2026__screen--result [data-campaign-result-records] {
+   max-width: none;
+ }
+
+ .amso-million-runner-2026-records {
+   box-sizing: border-box;
+   width: 100%;
+   background: var(--records-bg);
+   border: 1px solid var(--records-border);
+   border-radius: var(--records-radius);
+   padding: var(--records-pad);
+ }
+
+  .amso-million-runner-2026-records__title {
+    margin: 0 0 0.6rem;
+    font-size: 0.76rem;
+   letter-spacing: 0.04em;
+   text-transform: uppercase;
+   color: color-mix(in srgb, CanvasText 62%, transparent);
+ }
+
+ .amso-million-runner-2026-records__status {
+   margin: 0;
+   font-size: 0.9rem;
+   color: color-mix(in srgb, CanvasText 70%, transparent);
+ }
+
+ .amso-million-runner-2026-records__status--error {
+   color: #c0392b;
+ }
+
+ .amso-million-runner-2026-records__table {
+   width: 100%;
+   border-collapse: collapse;
+   font-variant-numeric: tabular-nums;
+   font-size: 0.92rem;
+ }
+
+ .amso-million-runner-2026-records__caption {
+   position: absolute;
+   width: 1px;
+   height: 1px;
+   padding: 0;
+   margin: -1px;
+   overflow: hidden;
+   clip: rect(0, 0, 0, 0);
+   white-space: nowrap;
+   border: 0;
+ }
+
+ .amso-million-runner-2026-records__table th,
+ .amso-million-runner-2026-records__table td {
+   text-align: left;
+   padding: var(--records-cell-pad);
+   border-bottom: 1px solid color-mix(in srgb, CanvasText 10%, transparent);
+ }
+
+ .amso-million-runner-2026-records__table th {
+   font-size: 0.72rem;
+   text-transform: uppercase;
+   letter-spacing: 0.03em;
+   color: color-mix(in srgb, CanvasText 55%, transparent);
+ }
+
+ .amso-million-runner-2026-records__rank {
+   width: 1.8rem;
+   color: color-mix(in srgb, CanvasText 55%, transparent);
+ }
+
+ .amso-million-runner-2026-records__name {
+   overflow: hidden;
+   color: inherit;
+   font-size: inherit;
+   letter-spacing: normal;
+   text-overflow: ellipsis;
+   text-transform: none;
+   white-space: nowrap;
+ }
+
+ .amso-million-runner-2026-records__score,
+ .amso-million-runner-2026-records__orders {
+   text-align: right;
+   font-weight: 600;
+ }
+
+ .amso-million-runner-2026-records__mobile-label,
+ .amso-million-runner-2026-records__mobile-separator,
+ .amso-million-runner-2026-records__mobile-rank-mark {
+   display: none;
+ }
+
+ .amso-million-runner-2026-records__row--me > :is(th, td) {
+    background: rgba(255, 107, 0, 0.15);
+   font-weight: 700;
+ }
+
+@container campaign (max-width: 600px) {
+  .amso-million-runner-2026-records {
+    padding: 12px;
+  }
+
+  .amso-million-runner-2026-records__title {
+    margin-bottom: 8px;
+  }
+
+  .amso-million-runner-2026-records__table {
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0 7px;
+    font-size: 0.86rem;
+  }
+
+  .amso-million-runner-2026-records__table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .amso-million-runner-2026-records__row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 4px 7px;
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid color-mix(in srgb, CanvasText 10%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, Canvas 92%, transparent);
+  }
+
+  .amso-million-runner-2026-records__table .amso-million-runner-2026-records__row > :is(th, td) {
+    width: auto;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    text-align: left;
+  }
+
+  .amso-million-runner-2026-records__rank {
+    grid-column: 1;
+    grid-row: 1;
+    font-weight: 800;
+  }
+
+  .amso-million-runner-2026-records__name {
+    grid-column: 2 / -1;
+    grid-row: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .amso-million-runner-2026-records__score {
+    grid-column: 1 / 3;
+    grid-row: 2;
+  }
+
+  .amso-million-runner-2026-records__orders {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  .amso-million-runner-2026-records__mobile-label,
+  .amso-million-runner-2026-records__mobile-separator,
+  .amso-million-runner-2026-records__mobile-rank-mark {
+    display: inline;
+  }
+
+  .amso-million-runner-2026-records__score,
+  .amso-million-runner-2026-records__orders {
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .amso-million-runner-2026-records__mobile-label {
+    margin-right: 0.3em;
+    color: color-mix(in srgb, CanvasText 60%, transparent);
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
+  .amso-million-runner-2026-records__mobile-separator {
+    margin-right: 0.4em;
+    color: color-mix(in srgb, CanvasText 45%, transparent);
+  }
+
+  .amso-million-runner-2026-records__row--me {
+    background: rgba(255, 107, 0, 0.15);
+  }
+}
+
+/* ---- Name prompt modal ---- */
+.amso-million-runner-2026-name-prompt {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  place-items: center;
+  background: color-mix(in srgb, CanvasText 55%, transparent);
+  z-index: 60;
+  padding: 1rem;
+}
+
+.amso-million-runner-2026-name-prompt[hidden] {
+  display: none;
+}
+
+.amso-million-runner-2026-name-prompt__card {
+  background: Canvas;
+  color: CanvasText;
+  border-radius: 16px;
+  padding: 1.4rem 1.4rem 1.5rem;
+  max-width: 22rem;
+  max-height: 100%;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+}
+
+.amso-million-runner-2026-name-prompt__eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #ff6b00;
+}
+
+.amso-million-runner-2026-name-prompt__title {
+  margin: 0.3rem 0 0.4rem;
+  font-size: 1.2rem;
+}
+
+.amso-million-runner-2026-name-prompt__lead {
+  margin: 0 0 1rem;
+  font-size: 0.92rem;
+  color: color-mix(in srgb, CanvasText 75%, transparent);
+}
+
+.amso-million-runner-2026-name-prompt__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.amso-million-runner-2026-name-prompt__input {
+  font: inherit;
+  padding: 0.6rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+  background: color-mix(in srgb, CanvasText 4%, transparent);
+  color: CanvasText;
+}
+
+.amso-million-runner-2026-name-prompt__help {
+  margin: -0.2rem 0 0;
+  color: color-mix(in srgb, CanvasText 68%, transparent);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.amso-million-runner-2026-name-prompt__error {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #c0392b;
+}
+
+.amso-million-runner-2026-name-prompt__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+/* Result actions keep the same geometry while the contextual share panel opens. */
+.amso-million-runner-2026__result-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: min(100%, 34rem);
+  margin-inline: auto;
+}
+
+.amso-million-runner-2026__result-actions .amso-million-runner-2026__button {
+  width: 100%;
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.amso-million-runner-2026__result-exit {
+  width: fit-content;
+  margin: 1rem auto 0;
+  justify-content: center;
+}
+
+.amso-million-runner-2026__result-label--mobile {
+  display: none;
+}
+
+.amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] {
+  height: auto;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  grid-template-rows: auto auto auto;
+}
+
+.amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__main {
+  display: block;
+  min-height: 0;
+}
+
+.amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__stage {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  contain: none;
+}
+
+.amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__screen--landing {
+  position: relative;
+}
+
+@container campaign (max-width: 600px) {
+  .amso-million-runner-2026__header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    min-height: 0;
+    padding-top: max(10px, env(safe-area-inset-top));
+    padding-bottom: 10px;
+  }
+
+  .amso-million-runner-2026__brand {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .amso-million-runner-2026__brand-logo {
+    width: clamp(118px, 38vw, 160px);
+    height: auto;
+  }
+
+  .amso-million-runner-2026__tools {
+    display: grid;
+    grid-template-columns: 44px repeat(2, minmax(0, 1fr));
+    width: 100%;
+    max-width: 24rem;
+    margin-inline: auto;
+  }
+
+  .amso-million-runner-2026__icon-button {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 12px;
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  .amso-million-runner-2026__language-control,
+  .amso-million-runner-2026__language-select {
+    width: 44px;
+  }
+
+  .amso-million-runner-2026__language-select {
+    height: 44px;
+  }
+
+  .amso-million-runner-2026__tool-label {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+  }
+
+  .amso-million-runner-2026__screen--landing {
+    display: block;
+    width: 100%;
+    min-height: 0;
+    padding: 10px 0 18px;
+    overflow: visible;
+    background: transparent;
+    text-align: left;
+  }
+
+  .amso-million-runner-2026__landing-copy {
+    display: flex;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 18px clamp(14px, 4.5vw, 22px);
+    border-radius: 18px;
+    flex-direction: column;
+    gap: 0;
+    background: rgb(250 247 240 / 95%);
+  }
+
+  .amso-million-runner-2026__landing-copy h1 {
+    font-size: clamp(2rem, 11vw, 3.25rem);
+  }
+
+  .amso-million-runner-2026__landing-goal--desktop {
+    display: none;
+  }
+
+  .amso-million-runner-2026__landing-goal--mobile {
+    display: block;
+    margin: 12px 0 8px;
+    font-size: clamp(0.94rem, 4vw, 1.04rem);
+    line-height: 1.45;
+  }
+
+  .amso-million-runner-2026__meta {
+    margin-bottom: 14px;
+    font-size: 0.72rem;
+    line-height: 1.4;
+  }
+
+  .amso-million-runner-2026__landing-cta-group,
+  .amso-million-runner-2026__landing-actions,
+  [data-campaign-landing-records],
+  .amso-million-runner-2026__how-to {
+    width: 100%;
+    max-width: none;
+  }
+
+  .amso-million-runner-2026__landing-actions .amso-million-runner-2026__button {
+    min-height: 48px;
+    width: 100%;
+  }
+
+  [data-campaign-landing-records] {
+    margin-top: 16px;
+  }
+
+  .amso-million-runner-2026__how-to {
+    display: block;
+    margin: 14px 0 0;
+  }
+
+  .amso-million-runner-2026__how-to summary {
+    min-height: 44px;
+    padding: 11px 14px;
+  }
+
+  .amso-million-runner-2026__how-to div {
+    overflow-wrap: anywhere;
+  }
+
+  .amso-million-runner-2026__landing-art {
+    display: none;
+    width: 0;
+    height: 0;
+    min-height: 0;
+    margin: 0;
+  }
+
+  .amso-million-runner-2026__footer {
+    gap: 12px;
+    padding-top: 8px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    flex-wrap: wrap;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+@container campaign (max-width: 600px) {
+  .amso-million-runner-2026__result-grid--challenge {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .amso-million-runner-2026__result-grid--challenge [data-campaign-result-metric] {
+    flex: 1 1 8rem;
+    min-width: min(100%, max-content);
+  }
+
+  .amso-million-runner-2026__result-grid--challenge [data-campaign-result-metric="total"] {
+    flex-basis: 100%;
+    order: -1;
+    padding-block: 16px;
+  }
+
+  .amso-million-runner-2026__result-grid--challenge [data-campaign-result-metric="challenge"],
+  .amso-million-runner-2026__result-grid--challenge [data-campaign-result-metric="distance"] {
+    display: none;
+  }
+
+  .amso-million-runner-2026__result-label--desktop {
+    display: none;
+  }
+
+  .amso-million-runner-2026__result-grid--challenge .amso-million-runner-2026__result-label--mobile {
+    display: block;
+  }
+
+  .amso-million-runner-2026__result-actions {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .amso-million-runner-2026__result-actions .amso-million-runner-2026__button {
+    min-width: 0;
+  }
+
+  .amso-million-runner-2026__screen--result [data-campaign-result-records] {
+    margin-top: 1rem;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  .amso-million-runner-2026[data-view="landing"] {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .amso-million-runner-2026[data-view="landing"] .amso-million-runner-2026__header {
+    display: flex;
+    min-height: 48px;
+    padding-block: 5px;
+  }
+
+  .amso-million-runner-2026[data-view="landing"] .amso-million-runner-2026__brand {
+    width: auto;
+    justify-content: flex-start;
+  }
+
+  .amso-million-runner-2026[data-view="landing"] .amso-million-runner-2026__tools {
+    display: flex;
+    width: auto;
+    margin: 0;
+  }
+
+  .amso-million-runner-2026[data-view="landing"] .amso-million-runner-2026__icon-button {
+    min-height: 40px;
+  }
+
+  .amso-million-runner-2026[data-view="landing"] .amso-million-runner-2026__main {
+    display: grid;
+    min-height: 0;
+  }
+
+  .amso-million-runner-2026[data-view="landing"] .amso-million-runner-2026__stage {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    contain: layout paint;
+  }
+
+  .amso-million-runner-2026[data-view="landing"] .amso-million-runner-2026__screen--landing {
+    position: absolute;
+    display: grid;
+    padding: 8px 14px;
+    overflow-y: auto;
+  }
+
+  .amso-million-runner-2026[data-view="landing"] .amso-million-runner-2026__landing-copy {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+    gap: 6px 14px;
+    padding: 10px 14px;
+  }
+
+  .amso-million-runner-2026[data-view="landing"] .amso-million-runner-2026__landing-copy > :not([data-campaign-landing-records]) {
+    grid-column: 1;
+  }
+
+  .amso-million-runner-2026[data-view="landing"] .amso-million-runner-2026__landing-copy h1 {
+    font-size: clamp(1.4rem, 7vh, 2rem);
+  }
+
+  .amso-million-runner-2026[data-view="landing"] .amso-million-runner-2026__landing-goal--mobile {
+    margin: 2px 0;
+    font-size: 0.72rem;
+    line-height: 1.3;
+  }
+
+  .amso-million-runner-2026[data-view="landing"] .amso-million-runner-2026__meta {
+    margin: 0;
+    font-size: 0.62rem;
+  }
+
+  .amso-million-runner-2026[data-view="landing"] [data-campaign-landing-records] {
+    grid-column: 2;
+    grid-row: 1 / span 6;
+    margin: 0;
+    align-self: start;
+  }
+
+  .amso-million-runner-2026[data-view="landing"] .amso-million-runner-2026__how-to {
+    display: none;
+  }
+
+  .amso-million-runner-2026[data-view="landing"] .amso-million-runner-2026__landing-actions .amso-million-runner-2026__button {
+    min-height: 40px;
+    font-size: 0.75rem;
+  }
+}
+
+.amso-million-runner-2026__qa-badge {
+  position: fixed;
+  z-index: 2147483647;
+  inset: 8px 8px auto auto;
+  max-width: min(360px, calc(100vw - 16px));
+  padding: 7px 10px;
+  border: 1px solid #ffb000;
+  border-radius: 4px;
+  background: rgb(20 20 20 / 94%);
+  color: #fff;
+  font: 700 11px/1.35 ui-monospace, monospace;
+  white-space: pre-line;
+  pointer-events: none;
+}
+
+/* Final compact-shell overrides live last so legacy container rules cannot
+   turn the no-scroll mobile composition back into the stacked layout. */
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse),
+  (max-width: 600px) {
+  .amso-million-runner-2026[data-view][data-mobile-layout="true"] {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    grid-template-rows: max-content minmax(0, 1fr) max-content;
+  }
+
+  .amso-million-runner-2026[data-view][data-mobile-layout="true"] .amso-million-runner-2026__main,
+  .amso-million-runner-2026[data-view][data-mobile-layout="true"] .amso-million-runner-2026__stage {
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    contain: layout paint;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__screen--landing {
+    position: absolute;
+    display: grid;
+    grid-template-columns: minmax(0, 1.12fr) minmax(150px, 0.88fr);
+    gap: 12px;
+    padding: 8px 14px;
+    overflow: hidden;
+    align-items: center;
+    text-align: left;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__landing-copy {
+    display: flex;
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    padding: 10px 14px;
+    border-radius: 16px;
+    flex-direction: column;
+    background: rgb(250 247 240 / 96%);
+    text-align: left;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] [data-campaign-landing-records],
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__meta {
+    display: none;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__landing-art {
+    position: relative;
+    z-index: 0;
+    display: grid;
+    inset: auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    opacity: 1;
+    place-items: center;
+  }
+
+  .amso-million-runner-2026[data-view="landing"][data-mobile-layout="true"] .amso-million-runner-2026__main-lockup {
+    display: block;
+    width: min(100%, 19rem);
+    max-height: 68vh;
+    margin: 0;
+    transform: rotate(-1.5deg);
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__screen--result {
+    padding: 6px 12px;
+    overflow: hidden;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(260px, 1.1fr);
+    grid-template-rows: auto auto auto auto auto;
+    gap: 4px 12px;
+    width: min(100%, 960px);
+    height: 100%;
+    max-height: 100%;
+    padding: 8px 14px;
+    overflow: hidden;
+    align-items: start;
+    text-align: left;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-card > .amso-million-runner-2026__eyebrow,
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-card > h2,
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid,
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-actions,
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-exit {
+    grid-column: 1;
+    width: 100%;
+    margin: 0;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid--challenge {
+    display: grid;
+    grid-template-columns: 1.2fr 0.9fr 0.9fr;
+    gap: 5px;
+    min-height: 0;
+    margin: 1px 0;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid--challenge [data-campaign-result-metric] {
+    display: flex;
+    min-width: 0;
+    min-height: 46px;
+    padding: 5px 6px;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid--challenge [data-campaign-result-metric="total"] {
+    grid-column: 1;
+    grid-row: 1;
+    order: 0;
+    padding: 5px 6px;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid--challenge [data-campaign-result-metric="orders"] {
+    grid-column: 2;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid--challenge [data-campaign-result-metric="best"] {
+    grid-column: 3;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid--challenge [data-campaign-result-metric="challenge"],
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid--challenge [data-campaign-result-metric="distance"] {
+    display: none;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid--challenge small {
+    font-size: 0.55rem;
+    line-height: 1.05;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid--challenge strong {
+    font-size: clamp(0.86rem, 3.5vh, 1.12rem);
+    line-height: 1.05;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid--challenge [data-campaign-result-metric="total"] strong {
+    color: var(--campaign-orange-600);
+    font-size: clamp(1.12rem, 4.6vh, 1.42rem);
+    font-weight: 950;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-grid--challenge [data-campaign-result-metric]:not([data-campaign-result-metric="total"]) strong {
+    font-size: clamp(0.76rem, 3vh, 0.96rem);
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026-records__score > :is(strong, small) {
+    display: block;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026-records__rank-value {
+    width: 22px;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026-records__row--podium .amso-million-runner-2026-records__rank-value {
+    height: 22px;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-actions .amso-million-runner-2026__button {
+    min-width: 0;
+    min-height: 38px;
+    padding: 6px 8px;
+    font-size: 0.68rem;
+    white-space: normal;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] [data-campaign-result-records] {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    align-self: center;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-lockup {
+    top: 8%;
+    right: 1%;
+    left: auto;
+    width: 48%;
+    max-height: 84%;
+    opacity: 0.08;
+  }
+
+  .amso-million-runner-2026[data-view="challenge_result"][data-mobile-layout="true"] .amso-million-runner-2026__result-exit {
+    font-size: 0.64rem;
+    line-height: 1.1;
   }
 }

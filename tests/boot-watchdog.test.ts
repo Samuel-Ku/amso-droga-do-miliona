@@ -14,6 +14,8 @@ class FakeHTMLElement {
     private readonly children: Record<string, FakeHTMLElement> = {}
   ) {}
 
+  public lang = "pl";
+
   public querySelector(selector: string): FakeHTMLElement | null {
     return this.children[selector] ?? null;
   }
@@ -27,8 +29,8 @@ describe("campaign boot watchdog", () => {
     const eyebrow = new FakeHTMLElement();
     const status = new FakeHTMLElement();
     const boot = new FakeHTMLElement({
-      ".amso-campaign-boot__eyebrow": eyebrow,
-      ".amso-campaign-boot__status": status
+      ".amso-million-runner-2026-boot__eyebrow": eyebrow,
+      ".amso-million-runner-2026-boot__status": status
     });
     let activeBoot: FakeHTMLElement | null = null;
 
@@ -58,5 +60,26 @@ describe("campaign boot watchdog", () => {
     expect(boot.dataset.campaignBootState).toBe("error");
     expect(eyebrow.textContent).toBe("Trasa chwilowo niedostępna");
     expect(status.textContent).toBe("Nie udało się uruchomić gry.");
+  });
+
+  it("uses the document locale and English fallback before the app mounts", () => {
+    const listeners = new Map<string, () => void>();
+    const documentElement = new FakeHTMLElement();
+    documentElement.lang = "uk-UA";
+    const eyebrow = new FakeHTMLElement();
+    const status = new FakeHTMLElement();
+    const boot = new FakeHTMLElement({
+      ".amso-million-runner-2026-boot__eyebrow": eyebrow,
+      ".amso-million-runner-2026-boot__status": status
+    });
+    const execute = new Function("window", "document", "HTMLElement", watchdogSource);
+    execute({ addEventListener(type: string, listener: () => void) { listeners.set(type, listener); } }, {
+      documentElement,
+      querySelector: () => boot,
+      addEventListener() {}
+    }, FakeHTMLElement);
+    listeners.get("error")?.();
+    expect(eyebrow.textContent).toBe("Маршрут тимчасово недоступний");
+    expect(status.textContent).toBe("Не вдалося запустити гру.");
   });
 });

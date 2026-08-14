@@ -1,6 +1,8 @@
 {
   "width": 960,
   "height": 540,
+  "plateWidth": 1780,
+  "plateHeight": 941,
   "y": 432,
   "baseOffsetY": 5,
   "baseWidth": 18,

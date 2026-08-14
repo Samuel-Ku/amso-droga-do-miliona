@@ -1,5 +1,7 @@
 # Raport odbioru release candidate v8
 
+> Dokument historyczny. Aktualną procedurę wdrożenia Vercel określa ADR 0009.
+
 ## Stan automatyczny
 
 - `npm run build:all` buduje wersję produkcyjną, autonomiczny HTML, CSV dla
@@ -42,7 +44,7 @@ przeglądarki. Nie przenoś wyniku z wcześniejszego uruchomienia.
    kolekcjonerskie i bonusowe paczki zachowują własne oznaczenia.
 11. Na bezpiecznym starcie sprawdź pomarańczowy ciągły shield bez wpisu bonusu
     w HUD. Poczekaj na koniec ochrony startowej i potwierdź stan bez shielda.
-12. Po zebraniu bonusu sprawdź ten sam shield i `GWARANCJA 48 M ×1`. Z aktywną
+12. Po zebraniu bonusu sprawdź ten sam shield i `GWARANCJA AMSO CARE ×1`. Z aktywną
     Gwarancją wykonaj skok i ślizg: obrys ma podążać za kurierem, zmienić się w
     niższy owal podczas ślizgu i nie obejmować niesionej paczki.
 13. Wymuś kolizję z aktywną Gwarancją. Powinien pojawić się krótki efekt

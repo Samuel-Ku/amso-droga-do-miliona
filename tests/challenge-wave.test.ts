@@ -3,11 +3,12 @@ import { getChallengeDifficulty } from "../src/game/difficulty";
 import { LogisticWaveDirector } from "../src/game/logistic-wave";
 
 describe("Próba Miliona pacing", () => {
-  it("starts at its configured speed and never exceeds the tested cap", () => {
+  it("starts at its configured speed and never exceeds the tested cap via smootherstep", () => {
     const settings = { speedStartMultiplier: 1.3, speedMaxMultiplier: 2.2 };
     expect(getChallengeDifficulty(0, settings).speedMultiplier).toBe(1.3);
-    expect(getChallengeDifficulty(30, settings).speedMultiplier).toBeCloseTo(1.75);
-    expect(getChallengeDifficulty(60, settings).speedMultiplier).toBe(2.2);
+    // smootherstep at t=30/240 ≈ 0.125 → ~0.033 → lerp(1.3, 2.2, 0.033) ≈ 1.330
+    expect(getChallengeDifficulty(30, settings).speedMultiplier).toBeCloseTo(1.33, 1);
+    expect(getChallengeDifficulty(240, settings).speedMultiplier).toBeCloseTo(2.2, 1);
     expect(getChallengeDifficulty(10_000, settings).speedMultiplier).toBe(2.2);
   });
 

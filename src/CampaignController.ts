@@ -20,6 +20,7 @@ import type {
 import { RunnerGame } from "./game/RunnerGame";
 import type { StoryTimelineSnapshot } from "./game/story-timeline";
 import { PlayerProfileStore } from "./profile";
+import { RecordsClient } from "./records-client";
 import { QaSessionReportCollector } from "./qa/session-report";
 import type { RunnerConfig } from "./shared/types";
 import {
@@ -32,6 +33,44 @@ import {
   storyPageVisualStateId,
   type CampaignWorldId
 } from "./visuals/scene-manifest";
+import type { QaBootConfig } from "./qa/boot-config";
+import { DecodedImageStore } from "./assets/DecodedImageStore";
+import {
+  COURIER_CROUCH_SPRITE_PATH,
+  COURIER_JUMP_SPRITE_PATH,
+  COURIER_SPRITE_PATH,
+  OBSTACLE_ASSET_PATHS,
+  ORDER_ATLAS_PATH,
+  PARCEL_CELEBRATION_FRAME_PATHS,
+  POWER_UP_ATLAS_PATH,
+  OVERHEAD_VARIANT_ASSET_PATHS,
+  RunnerArtwork
+} from "./game/runner-artwork";
+import {
+  PERFORMANCE_REFERENCE_V1,
+  checkpointMatches,
+  performanceScenario,
+  validateScenarioRun,
+  type ScenarioValidationResult
+} from "./qa/performance-reference-v1";
+import { exactDeterminismArtifact, type ExactDeterminismArtifact } from "./qa/determinism";
+import { evaluatePerformanceReleaseGate } from "./qa/release-gate";
+import { createCampaignI18n, type CampaignI18n } from "./localization";
+import { vercelCampaignUrl } from "./localization/vercel-locale";
+import {
+  FULL_STORY_REFERENCE_SCENARIO_ID,
+  FULL_STORY_REFERENCE_V1,
+  validateFullStoryReferenceManifest
+} from "./qa/full-story-reference-v1";
+import {
+  FULL_STORY_QA_STEP_EVENT,
+  type FullStoryQaObservation
+} from "./qa/full-story-observation";
+
+export interface CampaignRuntimeOptions {
+  readonly qa?: QaBootConfig;
+  readonly onLanguageChange?: (locale: CampaignI18n["locale"]) => void;
+}
 
 type AnalyticsConsentWindow = Window & { AMSOAnalyticsConsent?: boolean };
 
@@ -99,15 +138,20 @@ export function authoredAudioFeedback(snapshot: Readonly<GameSnapshot>): {
 
 export class CampaignController {
   private readonly profile: PlayerProfileStore;
+  private readonly recordsClient: RecordsClient;
   private readonly tracker: DataLayerTracker;
   private readonly shell: CampaignShell;
   private readonly audio: CampaignAudio;
   private readonly assetLoader: AssetBundleLoader;
+  private readonly decodedImageStore = new DecodedImageStore();
   private game: RunnerGame | null = null;
+  private detachGameGeometry: (() => void) | null = null;
   private lastSnapshot: GameSnapshot | null = null;
   private lastTrustCorridor = false;
   private lastStorySegmentId = "";
   private lastStorySceneId = "";
+  private lastStoryCountdownValue: 3 | 2 | 1 | null = null;
+  private readonly fullStoryCountdownTrace: Array<Readonly<{ sectionId: string; value: 3 | 2 | 1 }>> = [];
   private lastVisualWorldId: CampaignWorldId | null = null;
   private lastLogisticPhase: GameSnapshot["logisticWavePhase"] = "inactive";
   private lastWaveAudioKey = "";
@@ -116,20 +160,39 @@ export class CampaignController {
   private pendingStart: CampaignStartRequest | null = null;
   private startToken = 0;
   private destroyed = false;
+  private scenarioArtifact: ExactDeterminismArtifact<Readonly<Record<string, unknown>>> | null = null;
+  private scenarioValidation: ScenarioValidationResult | null = null;
+  private scenarioInitialCheckpointPassed = false;
+  private lastFullStoryQaObservation: Readonly<FullStoryQaObservation> | null = null;
+  private scenarioCheckpointResults: Array<{
+    completedThroughStep: number;
+    passed: boolean;
+  }> = [];
 
   public constructor(
     host: HTMLElement,
     private readonly config: RunnerConfig,
     profile = new PlayerProfileStore(),
-    assetLoader = new AssetBundleLoader(config.assets.bundles)
+    assetLoader?: AssetBundleLoader,
+    private readonly runtime: CampaignRuntimeOptions = {},
+    private readonly i18n: CampaignI18n = createCampaignI18n("pl")
   ) {
     this.profile = profile;
+    this.recordsClient = new RecordsClient(config.recordsApi ?? "/api/records", {
+      readsEnabled: runtime.qa === undefined,
+      writesEnabled: runtime.qa === undefined
+    });
     this.tracker = new DataLayerTracker({
       gameVersion: config.gameVersion,
-      consentGranted: hasAnalyticsConsent
+      locale: i18n.locale,
+      consentGranted: runtime.qa === undefined && hasAnalyticsConsent
     });
-    this.audio = new CampaignAudio({ muted: profile.snapshot.soundMuted });
-    this.assetLoader = assetLoader;
+    this.audio = new CampaignAudio({
+      muted: runtime.qa?.audio === "muted" || profile.snapshot.soundMuted
+    });
+    this.assetLoader = assetLoader ?? new AssetBundleLoader(config.assets.bundles, {
+      decodedImageStore: this.decodedImageStore
+    });
     this.shell = new CampaignShell(host, {
       onStart: (request) => {
         void this.startRun(request);
@@ -162,15 +225,26 @@ export class CampaignController {
       onFullscreenPreferenceChange: (choice) => this.profile.setFullscreenPreference(choice),
       onStoryContinue: (sceneId) => {
         this.game?.continueStoryScene(sceneId);
-      }
+      },
+      onLanguageChange: runtime.onLanguageChange
     }, {
-      campaignUrl: config.cta.path,
-      fullStoryUrl: config.cta.path,
+      keyboardProfile: "vercel",
+      languageSelector: runtime.onLanguageChange !== undefined,
+      campaignUrl: vercelCampaignUrl(this.i18n.locale),
+      fullStoryUrl: vercelCampaignUrl(this.i18n.locale),
+      recordsClient: this.recordsClient,
+      profile: this.profile,
       copy: {
         ...config.ui,
         startChallenge: config.cta.challengeLabel,
         fullStory: config.cta.campaignLabel
-      }
+      },
+      ...(runtime.qa === undefined ? {} : {
+        qaDpr: runtime.qa.dpr,
+        qaBadgeText: `QA PERFORMANCE\n${runtime.qa.scenarioId}\n${runtime.qa.quality.toUpperCase()} · ${runtime.qa.motion.toUpperCase()} · AUDIO ${runtime.qa.audio.toUpperCase()} · DPR ${runtime.qa.dpr}`
+      }),
+      decodedImageStore: this.decodedImageStore,
+      i18n: this.i18n
     });
 
     this.showLanding();
@@ -180,9 +254,9 @@ export class CampaignController {
     if (this.destroyed) return;
     this.destroyed = true;
     this.startToken += 1;
-    this.game?.destroy();
-    this.game = null;
+    this.destroyGame();
     this.shell.destroy();
+    this.decodedImageStore.destroy();
     void this.audio.destroy();
   }
 
@@ -197,13 +271,26 @@ export class CampaignController {
 
   private async startRun(request: CampaignStartRequest): Promise<void> {
     if (this.destroyed) return;
-    const safeRequest = request.mode === "challenge" && !this.profile.snapshot.storyCompleted
+    const fullStoryQa = this.runtime.qa?.scenarioId === FULL_STORY_REFERENCE_SCENARIO_ID;
+    const scriptedQaScenario = this.runtime.qa !== undefined && !fullStoryQa;
+    const scenario = this.runtime.qa === undefined || fullStoryQa
+      ? PERFORMANCE_REFERENCE_V1
+      : performanceScenario(this.runtime.qa.scenarioId);
+    if (fullStoryQa) {
+      const issues = validateFullStoryReferenceManifest(FULL_STORY_REFERENCE_V1);
+      if (issues.length > 0) throw new Error(`full_story_manifest_invalid:${issues.join("|")}`);
+    }
+    const requested = fullStoryQa
+      ? { mode: "story" as const, restartStory: true }
+      : scriptedQaScenario
+        ? { mode: "challenge" as const, restartStory: false }
+        : request;
+    const safeRequest = requested.mode === "challenge" && !this.profile.snapshot.storyCompleted && !scriptedQaScenario
       ? { mode: "story" as const, restartStory: false }
-      : request;
+      : requested;
     this.pendingStart = safeRequest;
     const token = ++this.startToken;
-    this.game?.destroy();
-    this.game = null;
+    this.destroyGame();
     this.lastSnapshot = null;
     this.lastTrustCorridor = false;
     this.lastStorySegmentId = "";
@@ -212,9 +299,13 @@ export class CampaignController {
     this.lastLogisticPhase = "inactive";
     this.lastWaveAudioKey = "";
     this.shownPowerUpHints.clear();
+    this.scenarioCheckpointResults = [];
+    this.scenarioArtifact = null;
+    this.scenarioValidation = null;
+    this.scenarioInitialCheckpointPassed = false;
     this.shell.showLoading(undefined);
 
-    if (this.config.audio.enabled) void this.audio.start();
+    if (this.config.audio.enabled && this.runtime.qa?.audio !== "disabled") void this.audio.start();
 
     try {
       const requiredBundles = requiredStartAssetBundles(safeRequest.mode);
@@ -229,13 +320,25 @@ export class CampaignController {
           );
         }
       });
+      const runnerArtwork = await this.loadRunnerArtwork();
+      if (this.destroyed || token !== this.startToken) return;
+      runnerArtwork.prepareForFirstFrame();
+      if (safeRequest.mode === "challenge") {
+        await this.shell.prepareChallengeWorlds();
+      }
+      await this.shell.waitForWorldPresentation();
       // The page shell is already present; this paint is the real hand-off from
       // resource readiness to Canvas/context readiness.
       await nextPaint();
       if (this.destroyed || token !== this.startToken) return;
       const callbacks = this.createGameCallbacks();
+      const reducedMotion = this.runtime.qa?.motion === "reduced"
+        ? true
+        : this.runtime.qa?.motion === "full"
+          ? false
+          : prefersReducedMotion();
       this.game = new RunnerGame(this.shell.canvas, callbacks, {
-        reducedMotion: prefersReducedMotion(),
+        reducedMotion,
         mode: safeRequest.mode,
         story: safeRequest.mode === "story" ? this.config.story : null,
         challenge: this.config.challenge,
@@ -245,20 +348,94 @@ export class CampaignController {
         powerUpCopy: {
           gwarancja_48: [
             this.uiCopy("parcelWarrantyLine1", "GWARANCJA"),
-            this.uiCopy("parcelWarrantyLine2", "48 M")
+            this.uiCopy("parcelWarrantyLine2", "AMSO CARE")
           ],
           podwojny_wynik: [
             this.uiCopy("parcelSecondLifeLine1", "2×"),
             this.uiCopy("parcelSecondLifeLine2", "PUNKTY")
           ]
-        }
+        },
+        formatInteger: this.i18n.formatInteger,
+        millionCounterLabel: this.i18n.translate("ZAMÓWIEŃ").toLocaleUpperCase(this.i18n.intlLocale),
+        visualFrameSink: (visualDistancePixels, interpolationAlpha) => {
+          this.shell.updateVisualFrame(
+            visualDistancePixels,
+            interpolationAlpha,
+            reducedMotion
+          );
+        },
+        qualityCommitContext: () => this.shell.qualityCommitContext(),
+        qualityMode: this.runtime.qa?.quality ?? "auto",
+        runnerArtwork,
+        ...(fullStoryQa ? {
+          seed: FULL_STORY_REFERENCE_V1.seed,
+          stopAfterStory: true,
+          fullStoryQaActive: true,
+          fullStoryQaStepSink: (observation: Readonly<FullStoryQaObservation>) => {
+            this.shell.canvas.ownerDocument.dispatchEvent(new CustomEvent(FULL_STORY_QA_STEP_EVENT, {
+              detail: observation
+            }));
+          }
+        } : {}),
+        ...(scriptedQaScenario ? {
+          seed: scenario.seed,
+          qaScenarioActive: true,
+          replayInputs: scenario.inputs,
+          scenarioDurationSteps: scenario.durationSteps,
+          challengeWorldDurationSeconds:
+            scenario.challengeWorldDurationSeconds,
+          qaVisualDistanceMultiplier: scenario.visualDistanceMultiplier,
+          scenarioCheckpointSteps: scenario.expectedCheckpoints
+            .map(({ completedThroughStep }) => completedThroughStep)
+            .filter((completedThroughStep) => completedThroughStep >= 0),
+          onScenarioCheckpoint: (completedThroughStep, canonicalState) => {
+            const checkpoint = scenario.expectedCheckpoints.find(
+              (candidate) => candidate.completedThroughStep === completedThroughStep
+            );
+            this.scenarioCheckpointResults.push({
+              completedThroughStep,
+              passed: checkpoint !== undefined &&
+                checkpointMatches(checkpoint, canonicalState)
+            });
+          },
+          onQaAbort: () => this.shell.showError("QA Scenario failed: input queue overflow."),
+          onScenarioComplete: () => {
+            if (this.game?.isReplayValid) {
+              this.scenarioArtifact = exactDeterminismArtifact(
+                this.game.canonicalDeterministicState()
+              );
+              this.scenarioValidation = validateScenarioRun(scenario, {
+                completedThroughStep: scenario.durationSteps - 1,
+                checkpointResults: this.scenarioCheckpointResults,
+                coverage: this.game.scenarioCoverage(),
+                finalDigest: this.scenarioArtifact.digest,
+                expectedFinalDigest: scenario.expectedFinalDigest,
+                inputQueueOverflows: 0
+              });
+            }
+            this.shell.announce("QA Performance Scenario complete.");
+          }
+        } : {})
       });
-      this.shell.showGame(safeRequest.mode);
-      this.game.start("pointer");
-      this.tracker.track("game_started", { mode: safeRequest.mode });
+      if (scriptedQaScenario) {
+        const initial = scenario.expectedCheckpoints[0];
+        this.scenarioInitialCheckpointPassed = initial !== undefined &&
+          checkpointMatches(initial, this.game.canonicalDeterministicState());
+        this.scenarioCheckpointResults.push({
+          completedThroughStep: -1,
+          passed: this.scenarioInitialCheckpointPassed
+        });
+      }
+      this.scheduleCelebrationArtworkWarmup(runnerArtwork, token);
+      const game = this.game;
+      this.detachGameGeometry = this.shell.attachGameGeometry(game, () => {
+        if (this.destroyed || token !== this.startToken || this.game !== game) return;
+        this.shell.showGame(safeRequest.mode);
+        game.start("pointer");
+        this.tracker.track("game_started", { mode: safeRequest.mode });
+      });
     } catch (error: unknown) {
-      this.game?.destroy();
-      this.game = null;
+      this.destroyGame();
       this.tracker.loadFailed(
         error instanceof AssetBundleLoadError ? error.code : "runtime_init_failed"
       );
@@ -290,7 +467,7 @@ export class CampaignController {
           "epoch_4.order_peak_final": "Szczyt Zamówień opanowany.",
           "epoch_5.million_threshold": "1 000 000 zamówień. Droga trwa dalej."
         }[objectiveId];
-        this.shell.announce(label);
+        this.shell.announce(this.i18n.translate(label));
       },
       onSpecialPickup: (kind) => {
         if (this.shownPowerUpHints.has(kind)) return;
@@ -299,10 +476,10 @@ export class CampaignController {
           podwojny_wynik: "2× WYNIK — punkty za każde zamówienie liczą się podwójnie.",
           gwarancja_48: this.uiCopy(
             "powerupWarranty",
-            "GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania."
+            "GWARANCJA AMSO CARE — uratuje jedną próbę w Trybie Wyzwania."
           )
         } as const;
-        this.shell.showPickupNotice(copy[kind]);
+        this.shell.showPickupNotice(this.i18n.translate(copy[kind]));
       },
       onCollectiblePickup: (pickup) => {
         if (pickup.collectibleClass === "equipment") {
@@ -316,22 +493,93 @@ export class CampaignController {
       onMilestoneCelebration: (celebration) => {
         this.audio.playMilestoneCue(celebration.kind, celebration.intensity);
         if (celebration.achievement === "record") this.audio.playRecordCue();
-        this.shell.announce(celebration.text);
+        this.shell.announce(this.i18n.translate(celebration.text));
       },
       onModeChange: (mode) => {
         this.shell.showStoryObjective(null);
         this.shell.showGame(mode);
         if (mode === "challenge") {
-          this.shell.announce(
+          this.shell.announce(this.i18n.translate(
             "Tryb Wyzwania. Wynik i zamówienia zostały zachowane. Tempo rośnie, a pierwsze niezabezpieczone zderzenie kończy bieg."
-          );
+          ));
         }
         this.tracker.track("game_started", { mode });
       }
     };
   }
 
+  private async loadRunnerArtwork(): Promise<RunnerArtwork> {
+    const load = (assetId: string, source: string) =>
+      this.decodedImageStore.load(assetId, source).then(({ image }) => image);
+    // Decode serially: mobile browsers can otherwise spike memory and main-thread work.
+    const orders = await load("order-atlas", ORDER_ATLAS_PATH);
+    const powerUps = await load("power-up-atlas", POWER_UP_ATLAS_PATH);
+    const courier = await load("courier-run-sheet", COURIER_SPRITE_PATH);
+    const courierCrouch = await load("courier-crouch", COURIER_CROUCH_SPRITE_PATH);
+    const courierJump = await load("courier-jump-sheet", COURIER_JUMP_SPRITE_PATH);
+    const boxStack = await load("obstacle-box-stack", OBSTACLE_ASSET_PATHS["box-stack"]);
+    const pallet = await load("obstacle-pallet", OBSTACLE_ASSET_PATHS.pallet);
+    const trolley = await load("obstacle-trolley", OBSTACLE_ASSET_PATHS.trolley);
+    const overhead = await load("obstacle-overhead", OBSTACLE_ASSET_PATHS.overhead);
+    const overheadDoor = await load("obstacle-overhead-door", OVERHEAD_VARIANT_ASSET_PATHS[1]!);
+    const overheadConveyor = await load("obstacle-overhead-conveyor", OVERHEAD_VARIANT_ASSET_PATHS[2]!);
+    if (!orders || !powerUps || !courier || !courierCrouch || !courierJump || !boxStack ||
+        !pallet || !trolley || !overhead || !overheadDoor || !overheadConveyor) {
+      throw new Error("critical_runner_artwork_missing");
+    }
+    return new RunnerArtwork({
+      orders,
+      powerUps,
+      courier,
+      courierCrouch,
+      courierJump,
+      obstacles: { "box-stack": boxStack, pallet, trolley, overhead },
+      overheadVariants: [overhead, overheadDoor, overheadConveyor],
+      parcelFrames: []
+    });
+  }
+
+  private scheduleCelebrationArtworkWarmup(artwork: RunnerArtwork, token: number): void {
+    let index = 0;
+    const scheduleNext = (): void => {
+      if (this.destroyed || token !== this.startToken || index >= PARCEL_CELEBRATION_FRAME_PATHS.length) return;
+      const run = (): void => {
+        if (this.destroyed || token !== this.startToken) return;
+        if (!this.shell.isDecodeSafePhase()) {
+          window.setTimeout(scheduleNext, 250);
+          return;
+        }
+        const current = index++;
+        void this.decodedImageStore.load(
+          `parcel-celebration-${current + 1}`,
+          PARCEL_CELEBRATION_FRAME_PATHS[current]!
+        ).then(({ image }) => {
+          if (this.destroyed || token !== this.startToken) return;
+          artwork.installParcelFrame(current, image);
+          scheduleNext();
+        }).catch(() => scheduleNext());
+      };
+      if (typeof window.requestIdleCallback === "function") {
+        window.requestIdleCallback(() => run());
+      } else {
+        const runWhenPaused = (): void => {
+          if (this.destroyed || token !== this.startToken) return;
+          if (this.game?.state === "running") {
+            window.setTimeout(runWhenPaused, 250);
+            return;
+          }
+          run();
+        };
+        window.setTimeout(runWhenPaused, 50);
+      }
+    };
+    scheduleNext();
+  }
+
   private handleSnapshot(snapshot: GameSnapshot): void {
+    if (this.runtime.qa?.scenarioId === FULL_STORY_REFERENCE_SCENARIO_ID && this.game !== null) {
+      this.lastFullStoryQaObservation = this.game.fullStoryQaObservation();
+    }
     this.qaReport.record(snapshot);
     const authoredAudio = authoredAudioFeedback(snapshot);
     this.audio.setMusicState(authoredAudio.music);
@@ -340,7 +588,6 @@ export class CampaignController {
       if (authoredAudio.resultCue !== null) this.audio.playCue(authoredAudio.resultCue);
       if (authoredAudio.completionCue !== null) this.audio.playCue(authoredAudio.completionCue);
     }
-    this.warmWorldAssetWindow(snapshot.visualWorldId);
     const previous = this.lastSnapshot;
     if (previous !== null) {
       if (snapshot.collisions > previous.collisions) {
@@ -349,7 +596,7 @@ export class CampaignController {
       if (snapshot.warrantySaves > previous.warrantySaves) {
         this.shell.showPickupNotice(this.uiCopy(
           "warrantyConsumed",
-          "GWARANCJA 48 M zadziałała — próba trwa dalej."
+          "GWARANCJA AMSO CARE zadziałała — próba trwa dalej."
         ));
       }
       const activatedPowerUp = snapshot.activePowerUps.find(
@@ -375,10 +622,82 @@ export class CampaignController {
   }
 
   public qaReportText(): string {
-    return this.qaReport.text();
+    if (this.runtime.qa === undefined) return this.qaReport.text(this.shell.geometryDiagnostics);
+    if (this.runtime.qa.scenarioId === FULL_STORY_REFERENCE_SCENARIO_ID) {
+      const session = this.qaReport.snapshot(this.shell.geometryDiagnostics);
+      return JSON.stringify({
+        qaRunConfiguration: {
+          qaMode: "performance",
+          scenarioId: FULL_STORY_REFERENCE_V1.scenarioId,
+          scenarioConfigVersion: FULL_STORY_REFERENCE_V1.configVersion,
+          seed: FULL_STORY_REFERENCE_V1.seed,
+          qualityRequest: this.runtime.qa.quality,
+          motionRequest: this.runtime.qa.motion,
+          audioMode: this.runtime.qa.audio,
+          requestedDpr: this.runtime.qa.dpr,
+          externalWritesDisabled: true
+        },
+        session,
+        manifestValidation: validateFullStoryReferenceManifest(FULL_STORY_REFERENCE_V1)
+      }, null, 2);
+    }
+    const scenario = performanceScenario(this.runtime.qa.scenarioId);
+    const session = this.qaReport.snapshot(this.shell.geometryDiagnostics);
+    return JSON.stringify({
+      qaRunConfiguration: {
+        qaMode: "performance",
+        scenarioId: this.runtime.qa.scenarioId,
+        scenarioConfigVersion: scenario.configVersion,
+        seed: scenario.seed,
+        inputTraceDigest: exactDeterminismArtifact(scenario.inputs).digest,
+        challengeWorldDurationSeconds:
+          scenario.challengeWorldDurationSeconds,
+        visualDistanceMultiplier: scenario.visualDistanceMultiplier,
+        qualityRequest: this.runtime.qa.quality,
+        motionRequest: this.runtime.qa.motion,
+        resolvedMotionPreference: this.runtime.qa.motion === "reduced" ||
+          (this.runtime.qa.motion === "system" && prefersReducedMotion())
+          ? "reduced-motion"
+          : "full-motion",
+        audioMode: this.runtime.qa.audio,
+        requestedDpr: this.runtime.qa.dpr,
+        effectiveDpr: this.runtime.qa.dpr,
+        externalWritesDisabled: true
+      },
+      session,
+      scenarioArtifact: this.scenarioArtifact,
+      scenarioCheckpoints: this.scenarioCheckpointResults,
+      scenarioValidation: this.scenarioValidation,
+      releaseGate: evaluatePerformanceReleaseGate({
+        inputQueueOverflows: session.inputQueueOverflows,
+        reportMetadataComplete: false,
+        minimumProfileDeviceAvailable: false,
+        checkpointsPassed: this.scenarioValidation?.checkpointsPassed,
+        digestPassed: this.scenarioValidation?.digestPassed,
+        requiredCoveragePassed: this.scenarioValidation?.coveragePassed
+      })
+    }, null, 2);
+  }
+
+  public fullStoryQaObservation(): Readonly<FullStoryQaObservation> | null {
+    if (this.runtime.qa?.scenarioId !== FULL_STORY_REFERENCE_SCENARIO_ID) return null;
+    return this.game?.fullStoryQaObservation() ?? this.lastFullStoryQaObservation;
+  }
+
+  public fullStoryQaCanonicalState(): Readonly<Record<string, unknown>> | null {
+    if (this.runtime.qa?.scenarioId !== FULL_STORY_REFERENCE_SCENARIO_ID) return null;
+    return this.game?.canonicalDeterministicState() ?? null;
+  }
+
+  public fullStoryQaCountdownTrace(): readonly Readonly<{ sectionId: string; value: 3 | 2 | 1 }>[] {
+    if (this.runtime.qa?.scenarioId !== FULL_STORY_REFERENCE_SCENARIO_ID) return [];
+    return Object.freeze([...this.fullStoryCountdownTrace]);
   }
 
   private handleStoryUpdate(update: StoryTimelineSnapshot): void {
+    if (update.state !== "countdown") {
+      this.lastStoryCountdownValue = null;
+    }
     if (update.trustCorridor !== this.lastTrustCorridor) {
       this.audio.playCue(update.trustCorridor ? "corridor-enter" : "corridor-exit");
       if (!update.trustCorridor) {
@@ -388,7 +707,6 @@ export class CampaignController {
     }
     if (update.state === "scene" && update.scene) {
       const visualState = sceneVisualState(update.scene.id);
-      this.warmWorldAssetWindow(visualState.worldId);
       if (update.scene.id !== this.lastStorySceneId) {
         this.lastStorySceneId = update.scene.id;
         this.audio.playCue(visualState.soundCue);
@@ -412,6 +730,9 @@ export class CampaignController {
           ? {}
           : { finalFrame: update.sceneFinalFrame })
       });
+      // Mark the narrative-safe phase before decode/pre-composite begins so
+      // neither work nor evidence is attributed to active gameplay.
+      this.warmWorldAssetWindow(visualState.worldId);
       return;
     }
     if (update.state === "reframe") {
@@ -419,7 +740,15 @@ export class CampaignController {
       return;
     }
     if (update.state === "countdown" && update.countdownValue !== null) {
-      this.shell.showStoryCountdown(update.countdownValue as 3 | 2 | 1);
+      const countdownValue = update.countdownValue as 3 | 2 | 1;
+      if (countdownValue !== this.lastStoryCountdownValue) {
+        this.lastStoryCountdownValue = countdownValue;
+        if (this.runtime.qa?.scenarioId === FULL_STORY_REFERENCE_SCENARIO_ID) {
+          this.fullStoryCountdownTrace.push(Object.freeze({ sectionId: update.sectionId, value: countdownValue }));
+        }
+        this.audio.playCountdownCue(countdownValue);
+      }
+      this.shell.showStoryCountdown(countdownValue);
       return;
     }
     if (update.state === "play") {
@@ -473,15 +802,21 @@ export class CampaignController {
     if (this.game?.state !== "paused") return;
     this.game.resume();
     this.shell.setPaused(false);
-    if (this.config.audio.enabled) void this.audio.start();
+    if (this.config.audio.enabled && this.runtime.qa?.audio !== "disabled") void this.audio.start();
   }
 
   private returnToMenu(): void {
     this.startToken += 1;
-    this.game?.destroy();
-    this.game = null;
+    this.destroyGame();
     this.audio.stop();
     this.showLanding();
+  }
+
+  private destroyGame(): void {
+    this.detachGameGeometry?.();
+    this.detachGameGeometry = null;
+    this.game?.destroy();
+    this.game = null;
   }
 
   /**
@@ -502,7 +837,14 @@ export class CampaignController {
 
     // Artwork has a semantic vector fallback, so background transport failures
     // must never replace a readable scene with the global loading error.
-    void this.assetLoader.warmBundles(bundleWindow).catch(() => undefined);
+    const warmNext = (index: number): void => {
+      const bundleId = bundleWindow[index];
+      if (bundleId === undefined) return;
+      void this.assetLoader.warmBundles([bundleId])
+        .then(() => warmNext(index + 1))
+        .catch(() => undefined);
+    };
+    warmNext(0);
   }
 
   private uiCopy(key: string, fallback: string): string {

@@ -1,0 +1,7 @@
+dist
+dist-demo
+.scratch
+docs
+tests
+worker
+*.md

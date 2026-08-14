@@ -31,6 +31,12 @@ import type {
   RunnerConfigValidationResult
 } from "./types";
 import embeddedResourcePolicy from "./embedded-resource-policy.json";
+import {
+  GAME_INSTRUCTION_COPY_BY_REF,
+  GAME_INSTRUCTION_PAGE_ID_BY_REF,
+  GAME_INTRODUCTION_COPY_REF,
+  isGameInstructionCopyRef
+} from "./game-instructions-copy";
 
 const IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9_.-]{0,63}$/;
 const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$/;
@@ -73,10 +79,17 @@ const CANONICAL_SEQUENCE = [
 ] as const;
 const UI_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9]{0,63}$/;
 const CRITICAL_UI_KEYS = [
-  "landingLead", "startStory", "choosePath", "replayStory", "challengeMode",
+  "startStory", "choosePath", "replayStory", "challengeMode", "challengeCta",
   "startChallenge", "fullStory", "loading", "errorTitle", "errorBody",
   "pauseTitle", "pauseBody", "narrowTitle", "narrowBody", "sharePublication"
 ] as const;
+const RETIRED_INSTRUCTION_UI_KEYS = new Set([
+  "landingLead",
+  "controlsHud",
+  "hudPackages",
+  "tutorialJump",
+  "tutorialSlide"
+]);
 const ASSET_BUNDLE_IDS: readonly AssetBundleId[] = [
   "common", "prologue", "epoch_1", "epoch_2", "epoch_3", "epoch_4", "epoch_5",
   "finale", "challenge"
@@ -264,21 +277,51 @@ function parseAssets(
 function parseScenePage(value: unknown): StoryScenePageConfig | null {
   if (!isRecord(value) || !hasExactKeys(
     value,
-    ["id", "title", "body", "continueLabel", "safe", "fact", "action", "finalFrame"],
-    ["id", "body", "continueLabel", "safe"]
-  ) || !isIdentifier(value.id) ||
-      (value.title !== undefined && !isSafeText(value.title, 160)) ||
-      !Array.isArray(value.body) || value.body.length < 1 || value.body.length > 2 ||
-      value.body.some((paragraph) => !isSafeText(paragraph, 420)) ||
-      !isSafeText(value.continueLabel, 80) || value.safe !== true ||
+    [
+      "id", "copyRef", "title", "body", "continueLabel", "safe", "fact", "action",
+      "finalFrame"
+    ],
+    ["id", "safe"]
+  ) || !isIdentifier(value.id) || value.safe !== true ||
       (value.fact !== undefined && !isSafeText(value.fact, 220)) ||
       (value.action !== undefined && !isSafeText(value.action, 220)) ||
       (value.finalFrame !== undefined && !isSafeText(value.finalFrame, 220))) return null;
+
+  const copyRef = isGameInstructionCopyRef(value.copyRef) ? value.copyRef : null;
+  const hasSemanticCopy = copyRef !== null;
+  if (value.copyRef !== undefined && copyRef === null) return null;
+  if (hasSemanticCopy) {
+    if (value.id !== GAME_INSTRUCTION_PAGE_ID_BY_REF[copyRef] ||
+        value.title !== undefined ||
+        value.body !== undefined ||
+        value.continueLabel !== undefined) return null;
+  } else if (
+    value.id === GAME_INSTRUCTION_PAGE_ID_BY_REF[GAME_INTRODUCTION_COPY_REF] ||
+    (value.title !== undefined && !isSafeText(value.title, 160)) ||
+    !Array.isArray(value.body) ||
+    value.body.length < 1 ||
+    value.body.length > 3 ||
+    value.body.some((paragraph) => !isSafeText(paragraph, 420)) ||
+    !isSafeText(value.continueLabel, 80)
+  ) {
+    return null;
+  }
+
+  const resolvedCopy = hasSemanticCopy
+    ? {
+        title: GAME_INSTRUCTION_COPY_BY_REF[copyRef].title,
+        body: [...GAME_INSTRUCTION_COPY_BY_REF[copyRef].body],
+        continueLabel: GAME_INSTRUCTION_COPY_BY_REF[copyRef].continueLabel
+      }
+    : {
+        ...(typeof value.title === "string" ? { title: value.title } : {}),
+        body: value.body as string[],
+        continueLabel: value.continueLabel as string
+      };
   return {
     id: value.id,
-    ...(typeof value.title === "string" ? { title: value.title } : {}),
-    body: value.body as string[],
-    continueLabel: value.continueLabel,
+    ...(hasSemanticCopy ? { copyRef } : {}),
+    ...resolvedCopy,
     safe: true,
     ...(typeof value.fact === "string" ? { fact: value.fact } : {}),
     ...(typeof value.action === "string" ? { action: value.action } : {}),
@@ -356,14 +399,14 @@ function parseModeHandoff(value: unknown): StoryModeHandoffConfig | null {
     ["id", "from", "to", "safe", "confirmationRequired", "resumeCountdownSeconds"]
   ) || !isIdentifier(value.id) || value.from !== "story" || value.to !== "challenge" ||
       value.safe !== true || value.confirmationRequired !== true ||
-      value.resumeCountdownSeconds !== 3) return null;
+      !finiteInRange(value.resumeCountdownSeconds, 2, 3)) return null;
   return {
     id: value.id,
     from: "story",
     to: "challenge",
     safe: true,
     confirmationRequired: true,
-    resumeCountdownSeconds: 3
+    resumeCountdownSeconds: value.resumeCountdownSeconds
   };
 }
 
@@ -373,19 +416,17 @@ function parseMillionThreshold(value: unknown): StoryConfig["millionThreshold"] 
   const usesLegacyTarget = Object.hasOwn(value, "packageTarget");
   if (usesCanonicalTarget === usesLegacyTarget) return null;
   const acceptedKeys = usesCanonicalTarget
-    ? ["counterStart", "counterTarget", "orderTarget", "combinationTarget"]
-    : ["counterStart", "counterTarget", "packageTarget", "combinationTarget"];
+    ? ["counterStart", "counterTarget", "orderTarget"]
+    : ["counterStart", "counterTarget", "packageTarget"];
   const orderTarget = usesCanonicalTarget ? value.orderTarget : value.packageTarget;
   if (!hasExactKeys(value, acceptedKeys, acceptedKeys) ||
       value.counterTarget !== 1_000_000 || !Number.isInteger(orderTarget) ||
       !finiteInRange(orderTarget, 30, 60) ||
-      value.counterStart !== 1_000_000 - (orderTarget as number) ||
-      value.combinationTarget !== 12) return null;
+      value.counterStart !== 1_000_000 - (orderTarget as number)) return null;
   return {
     counterStart: value.counterStart as number,
     counterTarget: 1_000_000,
-    orderTarget: orderTarget as number,
-    combinationTarget: 12
+    orderTarget: orderTarget as number
   };
 }
 
@@ -449,7 +490,7 @@ function parseStory(value: unknown): StoryConfig | null {
       !finiteInRange(value.readingSpeedMultiplier, 0.1, 0.5) ||
       !finiteInRange(value.speedStartMultiplier, 0.5, 1.5) ||
       !finiteInRange(value.speedMaxMultiplier, value.speedStartMultiplier, 2) ||
-      value.resumeCountdownSeconds !== 3 ||
+      !finiteInRange(value.resumeCountdownSeconds, 2, 3) ||
       !finiteInRange(value.firstCompletionBonusScore, 0, 1_000_000) ||
       !Number.isInteger(value.firstCompletionBonusScore) ||
       !Array.isArray(value.scenes) || !Array.isArray(value.sequence) ||
@@ -483,7 +524,8 @@ function parseStory(value: unknown): StoryConfig | null {
   if (typedScenes.filter(({ id }) => activeSceneIds.has(id)).some((scene) =>
     (scene.steps ?? []).some((page) =>
       page.fact === undefined || page.action === undefined || page.finalFrame === undefined ||
-      (page.title?.trim().split(/\s+/u).length ?? 0) > 8 || page.body.join(" ").length > 220
+      (page.title?.trim().split(/\s+/u).length ?? 0) > 8 ||
+      page.body.join(" ").length > (page.copyRef === GAME_INTRODUCTION_COPY_REF ? 360 : 220)
     ))) return null;
   const playSteps = typedSequence.filter((step) => step.type === "play");
   if (playSteps.some((step) => step.epochIndex < 0 || step.epochIndex >= typedEpochs.length) ||
@@ -514,21 +556,24 @@ function parseChallenge(value: unknown): ChallengeConfig | null {
   if (!isRecord(value) || !hasExactKeys(
     value,
     [
-      "mode", "speedStartMultiplier", "speedMaxMultiplier", "logisticWaveMinSeconds",
-      "logisticWaveMaxSeconds", "warrantyOneUse"
+      "mode", "challengeRuleVersion", "speedStartMultiplier", "speedMaxMultiplier",
+      "logisticWaveMinSeconds", "logisticWaveMaxSeconds", "warrantyOneUse"
     ],
     [
-      "mode", "speedStartMultiplier", "speedMaxMultiplier", "logisticWaveMinSeconds",
-      "logisticWaveMaxSeconds", "warrantyOneUse"
+      "mode", "challengeRuleVersion", "speedStartMultiplier", "speedMaxMultiplier",
+      "logisticWaveMinSeconds", "logisticWaveMaxSeconds", "warrantyOneUse"
     ]
   )) return null;
-  if (value.mode !== "challenge" || !finiteInRange(value.speedStartMultiplier, 0.8, 2) ||
-      !finiteInRange(value.speedMaxMultiplier, value.speedStartMultiplier, 3.5) ||
+  if (value.mode !== "challenge" || !Number.isInteger(value.challengeRuleVersion) ||
+      !finiteInRange(value.challengeRuleVersion, 1, 999) ||
+      !finiteInRange(value.speedStartMultiplier, 0.8, 2) ||
+      !finiteInRange(value.speedMaxMultiplier, value.speedStartMultiplier, 4) ||
       !finiteInRange(value.logisticWaveMinSeconds, 20, 90) ||
       !finiteInRange(value.logisticWaveMaxSeconds, value.logisticWaveMinSeconds, 120) ||
       value.warrantyOneUse !== true) return null;
   return {
     mode: "challenge",
+    challengeRuleVersion: value.challengeRuleVersion as number,
     speedStartMultiplier: value.speedStartMultiplier,
     speedMaxMultiplier: value.speedMaxMultiplier,
     logisticWaveMinSeconds: value.logisticWaveMinSeconds,
@@ -543,7 +588,9 @@ function parseUiCopy(value: unknown): Readonly<Record<string, string>> | null {
   }
   const copy: Record<string, string> = {};
   for (const [key, text] of Object.entries(value)) {
-    if (!UI_KEY_PATTERN.test(key) || !isSafeText(text, 420)) return null;
+    if (RETIRED_INSTRUCTION_UI_KEYS.has(key) ||
+        !UI_KEY_PATTERN.test(key) ||
+        !isSafeText(text, 420)) return null;
     copy[key] = text;
   }
   return copy;
@@ -586,14 +633,14 @@ export function validateRunnerConfig(
   if (!isRecord(value)) return issue("invalid_type", "$" );
   const rootKeys = [
     "schemaVersion", "enabled", "gameVersion", "claim", "modulePath", "stylePath",
-    "triggerSelector", "cta", "story", "challenge", "audio", "assets", "ui"
+    "triggerSelector", "cta", "story", "challenge", "audio", "assets", "ui", "recordsApi"
   ];
   if (!hasExactKeys(
     value,
     rootKeys,
     [
       "schemaVersion", "enabled", "gameVersion", "claim", "cta", "story", "challenge",
-      "audio", "assets", "ui"
+      "audio", "assets", "ui", "recordsApi"
     ]
   )) return issue("unknown_key", "$" );
   if (value.schemaVersion !== RUNNER_SCHEMA_VERSION) return issue("unsupported_schema", "$.schemaVersion");
@@ -625,6 +672,13 @@ export function validateRunnerConfig(
   if (assets === null) return issue("invalid_value", "$.assets");
   const ui = parseUiCopy(value.ui);
   if (ui === null) return issue("invalid_value", "$.ui");
+  const recordsApi =
+    value.recordsApi === undefined
+      ? undefined
+      : typeof value.recordsApi === "string" && value.recordsApi.length > 0
+        ? value.recordsApi
+        : null;
+  if (recordsApi === null) return issue("invalid_value", "$.recordsApi");
 
   return {
     success: true,
@@ -650,7 +704,8 @@ export function validateRunnerConfig(
       assets,
       ui,
       narrativeMode: true,
-      narrative: { epochs: story.epochs, facts: [] }
+      narrative: { epochs: story.epochs, facts: [] },
+      ...(recordsApi !== undefined ? { recordsApi } : {})
     }
   };
 }

@@ -3,6 +3,17 @@ import { DataLayerTracker } from "../src/analytics/data-layer";
 import type { DataLayerEvent } from "../src/shared/types";
 
 describe("DataLayerTracker v3 contract", () => {
+  it("adds the mount locale without changing event names", () => {
+    const dataLayer: DataLayerEvent[] = [];
+    new DataLayerTracker({
+      gameVersion: "3.0.0",
+      locale: "uk",
+      dataLayer,
+      consentGranted: true
+    }).track("game_started", { mode: "story" });
+    expect(dataLayer[0]).toMatchObject({ event: "game_started", locale: "uk" });
+  });
+
   it("emits only the three approved events when analytics consent exists", () => {
     const dataLayer: DataLayerEvent[] = [];
     const tracker = new DataLayerTracker({

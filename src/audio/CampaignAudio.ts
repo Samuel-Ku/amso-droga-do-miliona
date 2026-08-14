@@ -45,6 +45,11 @@ export interface CampaignAudioOptions {
 }
 
 type AudioContextConstructor = new () => AudioContext;
+type OfflineAudioContextConstructor = new (
+  numberOfChannels: number,
+  length: number,
+  sampleRate: number
+) => OfflineAudioContext;
 
 interface ToneOptions {
   frequency: number;
@@ -54,6 +59,14 @@ interface ToneOptions {
   frequencyEnd?: number;
   delay?: number;
   destination: AudioNode;
+}
+
+interface BufferedTone {
+  readonly frequency: number;
+  readonly start: number;
+  readonly duration: number;
+  readonly volume: number;
+  readonly type: OscillatorType;
 }
 
 const MUSIC_PHRASE_SECONDS = 2.4;
@@ -78,6 +91,14 @@ function audioContextConstructor(): AudioContextConstructor | null {
   return scope.AudioContext ?? scope.webkitAudioContext ?? null;
 }
 
+function offlineAudioContextConstructor(): OfflineAudioContextConstructor | null {
+  const scope = globalThis as typeof globalThis & {
+    OfflineAudioContext?: OfflineAudioContextConstructor;
+    webkitOfflineAudioContext?: OfflineAudioContextConstructor;
+  };
+  return scope.OfflineAudioContext ?? scope.webkitOfflineAudioContext ?? null;
+}
+
 /**
  * Small synthesized soundtrack used by the campaign shell.
  *
@@ -93,7 +114,12 @@ export class CampaignAudio {
   private masterGain: GainNode | null = null;
   private musicGain: GainNode | null = null;
   private cueGain: GainNode | null = null;
-  private phraseTimer: ReturnType<typeof globalThis.setInterval> | null = null;
+  private musicSource: AudioBufferSourceNode | null = null;
+  private pendingMusicSource: AudioBufferSourceNode | null = null;
+  private musicLoopStartedAt = 0;
+  private musicSwapAt: number | null = null;
+  private musicRenderRevision = 0;
+  private musicRenderRunning = false;
   private readonly activeOscillators = new Set<OscillatorNode>();
   private _muted: boolean;
   private _unlocked = false;
@@ -156,21 +182,15 @@ export class CampaignAudio {
     if (this._started) return true;
 
     this._started = true;
-    this.scheduleMusicPhrase();
-    this.phraseTimer = globalThis.setInterval(
-      () => this.scheduleMusicPhrase(),
-      MUSIC_PHRASE_SECONDS * 1_000
-    );
+    this.requestMusicRender();
     return true;
   }
 
   /** Stops the soundtrack and cues while keeping the preference and context reusable. */
   public stop(): void {
-    if (this.phraseTimer !== null) {
-      globalThis.clearInterval(this.phraseTimer);
-      this.phraseTimer = null;
-    }
     this._started = false;
+    this.musicRenderRevision += 1;
+    this.stopMusicLoop();
     this.stopActiveOscillators();
   }
 
@@ -195,11 +215,16 @@ export class CampaignAudio {
 
   /** Selects musical layers without starting audio or changing gameplay. */
   public setMusicState(state: Readonly<CampaignMusicState>): void {
-    this.musicState = {
+    const nextState: CampaignMusicState = {
       chapter: Math.max(0, Math.min(6, Math.floor(state.chapter))),
       phase: state.phase,
       finaleLayer: Math.max(0, Math.min(4, Math.floor(state.finaleLayer))) as CampaignMusicState["finaleLayer"]
     };
+    if (nextState.chapter === this.musicState.chapter &&
+        nextState.phase === this.musicState.phase &&
+        nextState.finaleLayer === this.musicState.finaleLayer) return;
+    this.musicState = nextState;
+    if (this._started) this.requestMusicRender();
   }
 
   /** Plays a short synthesized cue after audio has been explicitly started. */
@@ -371,6 +396,20 @@ export class CampaignAudio {
     });
   }
 
+  /** Keeps the UI countdown audible while gameplay and locomotion stay frozen. */
+  public playCountdownCue(value: 3 | 2 | 1): void {
+    const frequency = value === 3 ? 659.25 : value === 2 ? 523.25 : 392;
+    this.withCueOutput((destination) => {
+      this.playTone({
+        frequency,
+        duration: 0.11,
+        volume: 0.38,
+        type: "sine",
+        destination
+      });
+    });
+  }
+
   private withCueOutput(play: (destination: GainNode) => void): void {
     if (this._muted || !this._started || this.destroyed || this.context === null ||
         this.cueGain === null) return;
@@ -437,55 +476,192 @@ export class CampaignAudio {
     }
   }
 
-  private scheduleMusicPhrase(): void {
-    if (!this._started || this.context === null || this.musicGain === null) return;
+  private requestMusicRender(): void {
+    this.musicRenderRevision += 1;
+    if (this.musicRenderRunning) return;
+    this.musicRenderRunning = true;
+    void this.processMusicRenderQueue();
+  }
 
-    const notes = [261.63, 329.63, 392, 329.63, 293.66, 349.23];
-    for (let index = 0; index < notes.length; index += 1) {
-      const frequency = notes[index];
-      if (frequency === undefined) continue;
-      this.playTone({
-        frequency,
-        duration: 0.32,
-        volume: index % 3 === 0 ? 0.46 : 0.34,
-        type: index % 2 === 0 ? "sine" : "triangle",
-        delay: index * 0.4,
-        destination: this.musicGain
-      });
-    }
-    const chapterRoot = 98 * Math.pow(2, (this.musicState.chapter % 4) / 12);
-    this.playMusicSequence([chapterRoot, chapterRoot * 1.5], 1.2, 0.28, 0.18, "triangle");
-    if (this.musicState.phase === "burst") {
-      this.playMusicSequence([82, 118, 82], 0.8, 0.08, 0.16, "square");
-    }
-    for (let layer = 0; layer < this.musicState.finaleLayer; layer += 1) {
-      this.playMusicSequence(
-        [392 * Math.pow(2, layer / 12)],
-        0.4 + layer * 0.08,
-        0.2,
-        0.12,
-        "sine"
-      );
+  private async processMusicRenderQueue(): Promise<void> {
+    let processedRevision = -1;
+    try {
+      while (this._started && !this.destroyed && processedRevision !== this.musicRenderRevision) {
+        const revision = this.musicRenderRevision;
+        const state = { ...this.musicState };
+        let buffer: AudioBuffer;
+        try {
+          const sampleRate = this.context?.sampleRate;
+          if (sampleRate === undefined) return;
+          buffer = await this.renderMusicPhrase(state, sampleRate);
+        } catch {
+          processedRevision = revision;
+          continue;
+        }
+        processedRevision = revision;
+        if (!this._started || this.destroyed || revision !== this.musicRenderRevision) continue;
+        if (this.musicSource === null) this.startMusicLoop(buffer);
+        else this.scheduleMusicStateChange(buffer);
+      }
+    } finally {
+      this.musicRenderRunning = false;
+      if (this._started && !this.destroyed && processedRevision !== this.musicRenderRevision) {
+        this.musicRenderRunning = true;
+        void this.processMusicRenderQueue();
+      }
     }
   }
 
-  private playMusicSequence(
-    frequencies: readonly number[],
-    spacing: number,
-    duration: number,
-    volume: number,
-    type: OscillatorType
-  ): void {
+  private startMusicLoop(buffer: AudioBuffer): void {
+    const context = this.context;
     const destination = this.musicGain;
-    if (destination === null) return;
-    frequencies.forEach((frequency, index) => this.playTone({
-      frequency,
-      duration,
-      volume,
-      type,
-      delay: index * spacing,
-      destination
-    }));
+    if (!this._started || context === null || destination === null || context.state === "closed") {
+      return;
+    }
+
+    try {
+      const source = this.createLoopingMusicSource(context, destination, buffer);
+      source.start();
+      this.musicSource = source;
+      this.musicLoopStartedAt = context.currentTime;
+      this.musicSwapAt = null;
+    } catch {
+      this.musicSource = null;
+      // The soundtrack is enhancement-only; cues and gameplay continue.
+    }
+  }
+
+  private scheduleMusicStateChange(buffer: AudioBuffer): void {
+    const context = this.context;
+    const destination = this.musicGain;
+    if (!this._started || context === null || destination === null || this.musicSource === null ||
+        context.state === "closed") return;
+
+    this.promotePendingMusicSourceIfDue(context.currentTime);
+    const swapAt = this.musicSwapAt ?? this.musicLoopStartedAt +
+      (Math.floor(Math.max(0, context.currentTime - this.musicLoopStartedAt) /
+        MUSIC_PHRASE_SECONDS) + 1) * MUSIC_PHRASE_SECONDS;
+    try {
+      if (this.pendingMusicSource !== null) {
+        this.stopAndDisconnectSource(this.pendingMusicSource);
+        this.pendingMusicSource = null;
+      }
+      const source = this.createLoopingMusicSource(context, destination, buffer);
+      source.start(swapAt);
+      if (this.musicSwapAt === null) this.musicSource.stop(swapAt);
+      this.pendingMusicSource = source;
+      this.musicSwapAt = swapAt;
+    } catch {
+      // Keep the currently audible phrase if a replacement cannot be prepared.
+    }
+  }
+
+  private createLoopingMusicSource(
+    context: AudioContext,
+    destination: GainNode,
+    buffer: AudioBuffer
+  ): AudioBufferSourceNode {
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    source.loopStart = 0;
+    source.loopEnd = MUSIC_PHRASE_SECONDS;
+    source.connect(destination);
+    source.addEventListener("ended", () => source.disconnect(), { once: true });
+    return source;
+  }
+
+  private promotePendingMusicSourceIfDue(now: number): void {
+    if (this.pendingMusicSource === null || this.musicSwapAt === null || now < this.musicSwapAt) return;
+    this.musicSource = this.pendingMusicSource;
+    this.pendingMusicSource = null;
+    this.musicLoopStartedAt = this.musicSwapAt;
+    this.musicSwapAt = null;
+  }
+
+  private renderMusicPhrase(
+    state: Readonly<CampaignMusicState>,
+    sampleRate: number
+  ): Promise<AudioBuffer> {
+    const OfflineContext = offlineAudioContextConstructor();
+    if (OfflineContext === null) return Promise.reject(new Error("offline_audio_unsupported"));
+    const context = new OfflineContext(
+      1,
+      Math.ceil(MUSIC_PHRASE_SECONDS * sampleRate),
+      sampleRate
+    );
+    const tones: BufferedTone[] = [];
+    const notes = [261.63, 329.63, 392, 329.63, 293.66, 349.23];
+    for (let index = 0; index < notes.length; index += 1) {
+      tones.push({
+        frequency: notes[index]!,
+        start: index * 0.4,
+        duration: 0.32,
+        volume: index % 3 === 0 ? 0.46 : 0.34,
+        type: index % 2 === 0 ? "sine" : "triangle"
+      });
+    }
+    const chapterRoot = 98 * Math.pow(2, (state.chapter % 4) / 12);
+    tones.push(
+      { frequency: chapterRoot, start: 0, duration: 0.28, volume: 0.18, type: "triangle" },
+      { frequency: chapterRoot * 1.5, start: 1.2, duration: 0.28, volume: 0.18, type: "triangle" }
+    );
+    if (state.phase === "burst") {
+      [82, 118, 82].forEach((frequency, index) => tones.push({
+        frequency,
+        start: index * 0.8,
+        duration: 0.08,
+        volume: 0.16,
+        type: "square"
+      }));
+    }
+    for (let layer = 0; layer < state.finaleLayer; layer += 1) {
+      tones.push({
+        frequency: 392 * Math.pow(2, layer / 12),
+        start: 0,
+        duration: 0.2,
+        volume: 0.12,
+        type: "sine"
+      });
+    }
+    for (const tone of tones) this.scheduleOfflineTone(context, tone);
+    return context.startRendering();
+  }
+
+  private scheduleOfflineTone(context: OfflineAudioContext, tone: BufferedTone): void {
+    const startAt = Math.max(0, tone.start);
+    const endAt = startAt + Math.max(0.03, tone.duration);
+    const oscillator = context.createOscillator();
+    const envelope = context.createGain();
+    oscillator.type = tone.type;
+    oscillator.frequency.setValueAtTime(Math.max(1, tone.frequency), startAt);
+    const peak = Math.max(MIN_GAIN, Math.min(1, tone.volume));
+    envelope.gain.setValueAtTime(MIN_GAIN, startAt);
+    envelope.gain.exponentialRampToValueAtTime(peak, startAt + 0.018);
+    envelope.gain.exponentialRampToValueAtTime(MIN_GAIN, endAt);
+    oscillator.connect(envelope);
+    envelope.connect(context.destination);
+    oscillator.start(startAt);
+    oscillator.stop(endAt + 0.02);
+  }
+
+  private stopMusicLoop(): void {
+    const source = this.musicSource;
+    const pendingSource = this.pendingMusicSource;
+    this.musicSource = null;
+    this.pendingMusicSource = null;
+    this.musicSwapAt = null;
+    if (source !== null) this.stopAndDisconnectSource(source);
+    if (pendingSource !== null && pendingSource !== source) this.stopAndDisconnectSource(pendingSource);
+  }
+
+  private stopAndDisconnectSource(source: AudioBufferSourceNode): void {
+    try {
+      source.stop();
+      source.disconnect();
+    } catch {
+      // A source may already have ended while the campaign was stopping.
+    }
   }
 
   private playSequence(

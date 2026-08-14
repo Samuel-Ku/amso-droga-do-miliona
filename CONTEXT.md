@@ -28,12 +28,12 @@ _Avoid_: Snapshot loop, CSS smoothing
 Jedna kompozytowana warstwa obrazu reprezentująca bieżący albo następny świat podczas parallaxu. Panel korzysta z dekodowanego assetu bez pośredniej kopii do osobnego canvas.
 _Avoid_: Canvas tła, kopia świata
 
-**Autonomiczny HTML**:
-Jedyny wdrażalny artefakt kampanii, zawierający kod, konfigurację i wszystkie wymagane assety bez zewnętrznych plików ani połączeń sieciowych. Ten sam plik służy do produkcji i lokalnego odbioru.
-_Avoid_: QA build, multi-file production build
+**Wdrożenie Vercel**:
+Jedyny produkcyjny frontend kampanii, publikowany z `dist-vercel/` pod `https://game.amso.pl/`. Ten sam runtime obsługuje osiem języków, sterowanie klawiaturą, touch i pointer oraz ograniczony query-parametr QA do pomiarów wydajnościowych.
+_Avoid_: Wariant awaryjny, drugi build produkcyjny
 
 **Gotowość startowa**:
-Stan, w którym Autonomiczny HTML pokazuje interaktywny ekran startowy w ciągu 3 sekund od zimnego otwarcia, a gameplay jest gotowy najwyżej 2 sekundy po wybraniu Start na Urządzeniu bazowym. Assety dalszych światów mogą być osadzone, lecz nie są wcześniej dekodowane.
+Stan, w którym Wdrożenie Vercel pokazuje interaktywny ekran startowy w ciągu 3 sekund od zimnego otwarcia, a gameplay jest gotowy najwyżej 2 sekundy po wybraniu Start na Urządzeniu bazowym. Assety dalszych światów nie są wcześniej dekodowane.
 _Avoid_: Załadowana strona, widoczny loader
 
 **Pamięć światów**:
@@ -41,23 +41,19 @@ Sesyjny cache, który dekoduje każdy z siedmiu cyklicznych światów dopiero pr
 _Avoid_: Cache dwóch światów, ponowne dekodowanie
 
 **Budżet pamięci**:
-Maksymalnie około 220 MB pamięci karty na Urządzeniu bazowym po uwzględnieniu Autonomicznego HTML i Pamięci światów. Po pierwszym pełnym obiegu światów trzy kolejne obiegi mogą zwiększyć użycie łącznie najwyżej o 10 MB.
+Maksymalnie około 220 MB pamięci karty na Urządzeniu bazowym po uwzględnieniu runtime Vercel i Pamięci światów. Po pierwszym pełnym obiegu światów trzy kolejne obiegi mogą zwiększyć użycie łącznie najwyżej o 10 MB.
 _Avoid_: Najmniejsze zużycie pamięci, brak cache
 
 **Scenariusz wzorcowy**:
 Deterministyczna 60-sekundowa próba wydajności obejmująca maksymalną zatwierdzoną gęstość trasy, skoki, przysiady, collectible, power-up, celebrację, Gwarancję i co najmniej dwie zmiany świata. Towarzyszy jej osobny pomiar zimnego startu oraz czterech pełnych obiegów światów.
 _Avoid_: Losowy benchmark, ręczny przebieg
 
-**Budżet Autonomicznego HTML**:
-Maksymalnie około 24 MB dla jedynego artefaktu kampanii. Produkcyjne WebP zachowują zatwierdzoną rozdzielczość, a kompresja jest akceptowana wyłącznie wtedy, gdy różnica pozostaje niewidoczna w porównaniu story i gameplay na docelowym ekranie.
-_Avoid_: Najmniejszy plik, kompresja bez odbioru wizualnego
-
 **Kolejka rozgrzewania**:
-Sekwencyjny mechanizm dekodowania assetów wewnątrz Autonomicznego HTML. Ekran startowy uruchamia wyłącznie minimum interfejsu; po wybraniu Start kolejka przygotowuje kuriera, bieżący świat i krytyczne assety gameplayu, a kolejne światy dekoduje pojedynczo podczas bezczynności lub pauz fabularnych. AudioContext jest tworzony dopiero po pierwszym geście użytkownika, najpierw przygotowuje krytyczne sygnały, a resztę audio później w tej samej kolejce. Brak gotowego dźwięku nigdy nie opóźnia startu gameplayu. Kolejka nie uruchamia równoległego dekodowania całego zestawu.
+Sekwencyjny mechanizm pobierania i dekodowania assetów we Wdrożeniu Vercel. Ekran startowy uruchamia wyłącznie minimum interfejsu; po wybraniu Start kolejka przygotowuje kuriera, bieżący świat i krytyczne assety gameplayu, a kolejne światy dekoduje pojedynczo podczas bezczynności lub pauz fabularnych. AudioContext jest tworzony dopiero po pierwszym geście użytkownika, najpierw przygotowuje krytyczne sygnały, a resztę audio później w tej samej kolejce. Brak gotowego dźwięku nigdy nie opóźnia startu gameplayu. Kolejka nie uruchamia równoległego dekodowania całego zestawu.
 _Avoid_: Preload wszystkiego, równoległy decode
 
 **Bramka wydania**:
-Warunek dopuszczenia Autonomicznego HTML do publikacji. Automatycznie sprawdza poprawność konfiguracji, Scenariusz wzorcowy, brak błędów konsoli i Budżet Autonomicznego HTML; następnie wymaga ręcznego raportu ze Scenariusza wzorcowego na Urządzeniu bazowym oraz Safari na iPhonie, obejmującego płynność, pamięć, start i przejścia światów. Wynik wyłącznie desktopowego lub headless benchmarku nie zastępuje testu mobilnego.
+Warunek dopuszczenia kampanii do publikacji. Automatycznie sprawdza konfigurację, Wdrożenie Vercel, Scenariusz wzorcowy i brak błędów konsoli; następnie wymaga ręcznego raportu ze Scenariusza wzorcowego na Urządzeniu bazowym oraz Safari na iPhonie, obejmującego płynność, pamięć, start i przejścia światów. Wynik wyłącznie desktopowego lub headless benchmarku nie zastępuje testu mobilnego.
 _Avoid_: CI performance, test na komputerze
 
 **Kontrakt niezmienności gameplayu**:
@@ -73,5 +69,5 @@ Ocena pojedynczej optymalizacji na podstawie raportów before/after wykonanych w
 _Avoid_: Optymalizacja na oko, szybszy kod
 
 **Gotowość wydajnościowa**:
-Stan zakończenia etapu optymalizacji: spełnione są budżety klatki, startu, pamięci i rozmiaru Autonomicznego HTML; Bramka wydania przechodzi na Urządzeniu bazowym oraz Safari na iPhonie; cztery cykle Trybu Wyzwania nie wykazują szarpnięć ani ponownego dekodowania światów; zachowane są oba kontrakty jakościowe; sterowanie nie zawiesza się, konsola pozostaje bez błędów, a lokalny i produkcyjny offline HTML zachowują się jednakowo. Raport wydajności zawiera wyniki before/after.
+Stan zakończenia etapu optymalizacji: spełnione są budżety klatki, startu i pamięci; Bramka wydania przechodzi dla lokalnej kompilacji Vercel, produkcyjnego `https://game.amso.pl/`, Urządzenia bazowego oraz Safari na iPhonie; cztery cykle Trybu Wyzwania nie wykazują szarpnięć ani ponownego dekodowania światów; zachowane są oba kontrakty jakościowe; sterowanie nie zawiesza się, a konsola pozostaje bez błędów. Raport wydajności zawiera wyniki before/after.
 _Avoid_: Optymalizacja zakończona, działa szybciej

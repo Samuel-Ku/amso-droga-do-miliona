@@ -58,6 +58,83 @@ function scene(overrides: Partial<RenderScene> = {}): RenderScene {
 }
 
 describe("v10 production artwork contract", () => {
+  it("warms every unique critical canvas asset once and releases the scratch canvas", () => {
+    const image = () => ({
+      complete: true,
+      naturalWidth: 512,
+      naturalHeight: 512
+    }) as HTMLImageElement;
+    const assets = {
+      orders: image(),
+      powerUps: image(),
+      courier: image(),
+      courierCrouch: image(),
+      courierJump: image(),
+      obstacles: {
+        "box-stack": image(),
+        pallet: image(),
+        trolley: image(),
+        overhead: image()
+      },
+      overheadVariants: [] as HTMLImageElement[]
+    };
+    assets.overheadVariants = [assets.obstacles.overhead, image(), image()];
+    const artwork = new RunnerArtwork(assets);
+    const drawImage = vi.fn();
+    const clearRect = vi.fn();
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => ({ drawImage, clearRect }))
+    } as unknown as HTMLCanvasElement;
+
+    artwork.prepareForFirstFrame(() => canvas);
+    artwork.prepareForFirstFrame(() => canvas);
+    const restartedArtwork = new RunnerArtwork(assets);
+    const restartedCanvasFactory = vi.fn(() => canvas);
+    restartedArtwork.prepareForFirstFrame(restartedCanvasFactory);
+
+    expect(drawImage).toHaveBeenCalledTimes(11);
+    expect(new Set(drawImage.mock.calls.map(([drawn]) => drawn))).toEqual(new Set([
+      assets.orders,
+      assets.powerUps,
+      assets.courier,
+      assets.courierCrouch,
+      assets.courierJump,
+      ...Object.values(assets.obstacles),
+      ...assets.overheadVariants
+    ]));
+    expect(clearRect).toHaveBeenCalledTimes(11);
+    expect(canvas.width).toBe(0);
+    expect(canvas.height).toBe(0);
+    expect(restartedCanvasFactory).not.toHaveBeenCalled();
+  });
+
+  it("keeps the controlled critical error when first-frame artwork is incomplete", () => {
+    const image = {
+      complete: true,
+      naturalWidth: 512,
+      naturalHeight: 512
+    } as HTMLImageElement;
+    const artwork = new RunnerArtwork({
+      orders: image,
+      powerUps: image,
+      courier: image,
+      courierCrouch: image,
+      courierJump: image,
+      obstacles: {
+        "box-stack": image,
+        pallet: image,
+        trolley: image,
+        overhead: undefined
+      },
+      overheadVariants: [image]
+    });
+
+    expect(() => artwork.prepareForFirstFrame())
+      .toThrowError("critical_runner_artwork_missing");
+  });
+
   it("has five equal ordinary order visuals", () => {
     expect(ORDER_VISUAL_TYPES).toEqual(["notebook", "telefon", "pc", "lcd", "parcel"]);
     expect(Object.keys(ORDER_ASSET_PATHS)).toEqual(ORDER_VISUAL_TYPES);
@@ -86,6 +163,83 @@ describe("v10 production artwork contract", () => {
     const visibleUndersideY = GROUND_Y - OVERHEAD.clearance - OVERHEAD.visualLift;
 
     expect(visibleUndersideY).toBe(344);
+  });
+
+  it("starts raster overhead rails at the visible world plate ceiling", () => {
+    const moveTo = vi.fn();
+    const context = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo,
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      drawImage: vi.fn()
+    } as unknown as CanvasRenderingContext2D;
+    const factory = () => ({
+      complete: true,
+      naturalWidth: 768,
+      naturalHeight: 185,
+      decoding: "async",
+      src: ""
+    }) as unknown as HTMLImageElement;
+    const artwork = new RunnerArtwork(factory);
+    const ceilingY = 16.247;
+
+    artwork.drawObstacle(context, {
+      active: true,
+      kind: "overhead",
+      source: "normal",
+      x: 420,
+      y: 200,
+      width: 76,
+      height: 178,
+      visualVariant: 0
+    }, ceilingY);
+
+    expect(moveTo.mock.calls.map(([, y]) => y)).toEqual([ceilingY, ceilingY]);
+  });
+
+  it("aligns the door overhead rails with its outer artwork mounts", () => {
+    const moveTo = vi.fn();
+    const context = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo,
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      drawImage: vi.fn()
+    } as unknown as CanvasRenderingContext2D;
+    const image = (naturalWidth: number, naturalHeight: number) => ({
+      complete: true,
+      naturalWidth,
+      naturalHeight
+    }) as HTMLImageElement;
+    const ordinary = image(768, 185);
+    const artwork = new RunnerArtwork({
+      obstacles: { overhead: ordinary },
+      overheadVariants: [ordinary, image(768, 251), image(768, 201)]
+    });
+    const obstacle = {
+      active: true,
+      kind: "overhead" as const,
+      source: "normal" as const,
+      x: 420,
+      y: 200,
+      width: 76,
+      height: 178,
+      visualVariant: 1
+    };
+    const drawWidth = obstacle.width + 18;
+    const drawX = obstacle.x - (drawWidth - obstacle.width) / 2;
+
+    artwork.drawObstacle(context, obstacle, 0);
+
+    expect(moveTo.mock.calls.map(([x]) => x)).toEqual([
+      drawX + drawWidth * 0.05,
+      drawX + drawWidth * 0.95
+    ]);
   });
 
   it("ships the selected Todd courier and preserves pose-state timing", () => {

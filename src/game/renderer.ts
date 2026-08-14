@@ -1,13 +1,14 @@
-import { BACKGROUND, BOSS, GROUND_Y, WORLD_HEIGHT, WORLD_WIDTH } from "./constants";
+import { BACKGROUND, BOSS, GAMEPLAY, GROUND_Y, WORLD_HEIGHT, WORLD_WIDTH } from "./constants";
 import type {
   BossModel,
+  ObstacleKind,
   ObstacleModel,
   PackageModel,
   RenderScene,
   RunnerModel
 } from "./types";
 import type { PackageType, PowerUpKind } from "../shared/types";
-import type { StoryObstacleTransformation } from "./story-effects";
+import type { EffectConfig } from "./celebration-manager";
 import {
   COURIER_PALETTE,
   DEFAULT_COURIER_BRAND_ARTWORK,
@@ -27,6 +28,8 @@ import {
   WORLD_ROUTE_Y
 } from "../visuals/world-route";
 import { RunnerArtwork } from "./runner-artwork";
+import type { WorldGeometryViewport } from "../visuals/WorldGeometryCoordinator";
+import type { WorldPlateTransform } from "../visuals/world-plate-transform";
 
 const COLORS = {
   ink: "#171717",
@@ -44,13 +47,20 @@ const COLORS = {
   blue: "#eb32a4"
 } as const;
 
-let warrantyShieldMesh: Path2D | null | undefined;
+export const DEFAULT_VISUAL_OVERSCAN = 64;
+const OBSTACLE_VISUAL_BLEED: Readonly<Record<ObstacleKind, number>> = {
+  "box-stack": 18,
+  pallet: 18,
+  trolley: 24,
+  overhead: 96
+};
+const PACKAGE_VISUAL_BLEED = 20;
 
-function getWarrantyShieldMesh(): Path2D | null {
-  if (warrantyShieldMesh !== undefined) return warrantyShieldMesh;
+const SHIELD_SPARK_ANGLES = new Float32Array([-1.03, -0.32, 0.46, 2.65]);
+
+function createWarrantyShieldMesh(): Path2D | null {
   if (typeof Path2D === "undefined") {
-    warrantyShieldMesh = null;
-    return warrantyShieldMesh;
+    return null;
   }
   const mesh = new Path2D();
   const hexRadius = 11;
@@ -70,11 +80,34 @@ function getWarrantyShieldMesh(): Path2D | null {
       mesh.closePath();
     }
   }
-  warrantyShieldMesh = mesh;
-  return warrantyShieldMesh;
+  return mesh;
 }
 
-const INTEGER_FORMATTER = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
+export class RendererResourceCache {
+  public readonly routeGradient: CanvasGradient;
+  public readonly completedMillionGradient: CanvasGradient;
+  public readonly screenFlashGradient: CanvasGradient;
+  public readonly warrantyShieldMesh = createWarrantyShieldMesh();
+  public constructor(readonly context: CanvasRenderingContext2D) {
+    this.routeGradient = context.createLinearGradient(0, 0, WORLD_WIDTH, 0);
+    for (const { offset, color } of WORLD_ROUTE_GRADIENT_STOPS) {
+      this.routeGradient.addColorStop(offset, color);
+    }
+    this.completedMillionGradient = context.createLinearGradient(560, 0, 914, 0);
+    this.completedMillionGradient.addColorStop(0, "#f47100");
+    this.completedMillionGradient.addColorStop(0.52, "#f04f45");
+    this.completedMillionGradient.addColorStop(1, "#eb32a4");
+    this.screenFlashGradient = context.createLinearGradient(200, 0, 760, 0);
+    this.screenFlashGradient.addColorStop(0, COLORS.orange);
+    this.screenFlashGradient.addColorStop(0.5, COLORS.white);
+    this.screenFlashGradient.addColorStop(1, COLORS.redDark);
+  }
+  public destroy(): void {
+    // Dropping the renderer releases its context-bound resources as one unit.
+  }
+}
+
+const DEFAULT_INTEGER_FORMATTER = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
 
 interface BackgroundTheme {
   wall: string;
@@ -598,21 +631,17 @@ function drawScaleVignette(
 
 function drawMillionVignette(
   context: CanvasRenderingContext2D,
-  scene: Readonly<RenderScene>
+  scene: Readonly<RenderScene>,
+  completedGradient: CanvasGradient,
+  formatInteger: (value: number) => string,
+  counterLabel: string
 ): void {
   const finale = scene.storyObjectives?.epoch5.millionThreshold;
   const completed = finale?.completed === true || scene.storyPhase === "finale" ||
     scene.storyPhase === "completed";
   const counter = finale?.counterValue ?? (completed ? 1_000_000 : 999_950);
   context.save();
-  const frame = completed
-    ? context.createLinearGradient(560, 0, 914, 0)
-    : COLORS.inkSoft;
-  if (completed && typeof frame !== "string") {
-    frame.addColorStop(0, "#f47100");
-    frame.addColorStop(0.52, "#f04f45");
-    frame.addColorStop(1, "#eb32a4");
-  }
+  const frame = completed ? completedGradient : COLORS.inkSoft;
   fillRoundedRectangle(context, 565, 74, 348, 112, 18, COLORS.white);
   context.strokeStyle = frame;
   context.lineWidth = 8;
@@ -621,10 +650,10 @@ function drawMillionVignette(
   context.fillStyle = frame;
   context.font = "950 44px ui-monospace, monospace";
   context.textAlign = "center";
-  context.fillText(INTEGER_FORMATTER.format(counter), 739, 133);
+  context.fillText(formatInteger(counter), 739, 133);
   context.fillStyle = COLORS.inkSoft;
   context.font = "850 16px system-ui, sans-serif";
-  context.fillText("ZAMÓWIEŃ", 739, 163);
+  context.fillText(counterLabel, 739, 163);
 
   for (let index = 0; index < (completed ? 8 : 4); index += 1) {
     const x = 579 + index * 43;
@@ -677,7 +706,10 @@ function drawChallengeVignette(
 function drawNarrativeVignette(
   context: CanvasRenderingContext2D,
   scene: Readonly<RenderScene>,
-  theme: Readonly<BackgroundTheme>
+  theme: Readonly<BackgroundTheme>,
+  resources: RendererResourceCache,
+  formatInteger: (value: number) => string,
+  millionCounterLabel: string
 ): void {
   if (scene.mode === "challenge") {
     drawChallengeVignette(context, scene, theme);
@@ -701,77 +733,15 @@ function drawNarrativeVignette(
       drawScaleVignette(context, scene, theme);
       break;
     case 4:
-      drawMillionVignette(context, scene);
+      drawMillionVignette(
+        context,
+        scene,
+        resources.completedMillionGradient,
+        formatInteger,
+        millionCounterLabel
+      );
       break;
   }
-}
-
-function drawTransformedObstacle(
-  context: CanvasRenderingContext2D,
-  transformation: Readonly<StoryObstacleTransformation>,
-  reducedMotion: boolean
-): void {
-  if (!transformation.active) return;
-  const obstacle = transformation;
-  const lift = reducedMotion ? 0 : transformation.progress * 14;
-  context.save();
-  context.globalAlpha = 0.9 - transformation.progress * 0.24;
-  context.translate(0, -lift);
-  if (transformation.motif === "process-zones") {
-    const zoneWidth = Math.max(18, obstacle.width / 3);
-    for (let zone = 0; zone < 3; zone += 1) {
-      fillRoundedRectangle(
-        context,
-        obstacle.x + zone * zoneWidth,
-        obstacle.y + 8,
-        zoneWidth - 4,
-        Math.max(18, obstacle.height - 12),
-        4,
-        zone % 2 === 0 ? COLORS.white : "#fff0f8"
-      );
-    }
-  } else if (transformation.motif === "quality-mark") {
-    context.fillStyle = "rgba(255,240,248,0.94)";
-    context.beginPath();
-    context.arc(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2, 26, 0, Math.PI * 2);
-    context.fill();
-    drawCheckMark(context, obstacle.x + obstacle.width / 2 - 14, obstacle.y + obstacle.height / 2 - 12, 28);
-  } else if (transformation.motif === "matched-order") {
-    fillRoundedRectangle(
-      context,
-      obstacle.x + obstacle.width / 2 - 26,
-      GROUND_Y - 58,
-      52,
-      42,
-      5,
-      COLORS.cardboard
-    );
-    context.fillStyle = COLORS.white;
-    context.fillRect(obstacle.x + obstacle.width / 2 - 18, GROUND_Y - 44, 36, 13);
-    drawCheckMark(context, obstacle.x + obstacle.width / 2 - 8, GROUND_Y - 43, 16);
-  } else if (obstacle.obstacleKind === "overhead") {
-    context.strokeStyle = "#eb32a4";
-    context.lineWidth = 5;
-    context.beginPath();
-    context.moveTo(obstacle.x, obstacle.y + obstacle.height);
-    context.quadraticCurveTo(
-      obstacle.x + obstacle.width / 2,
-      obstacle.y - 24,
-      obstacle.x + obstacle.width,
-      obstacle.y + obstacle.height
-    );
-    context.stroke();
-    drawCheckMark(context, obstacle.x + obstacle.width / 2 - 10, obstacle.y + 8, 20);
-  } else {
-    context.fillStyle = COLORS.inkSoft;
-    context.fillRect(obstacle.x - 12, GROUND_Y - 14, obstacle.width + 24, 8);
-    context.fillStyle = COLORS.cardboard;
-    context.fillRect(obstacle.x + obstacle.width / 2 - 17, GROUND_Y - 43, 34, 28);
-    context.fillStyle = COLORS.white;
-    context.fillRect(obstacle.x + obstacle.width / 2 - 10, GROUND_Y - 36, 20, 7);
-    drawCheckMark(context, obstacle.x + obstacle.width / 2 - 8, GROUND_Y - 69, 17);
-  }
-  context.restore();
 }
 
 const POWER_UP_COLORS: Readonly<Record<PowerUpKind, string>> = {
@@ -782,7 +752,7 @@ const POWER_UP_COLORS: Readonly<Record<PowerUpKind, string>> = {
 // Fail-safe labels for direct RunnerGame embeds. Campaign builds pass the
 // marketing-owned equivalents from runner-config.json through RenderScene.
 const DEFAULT_POWER_UP_COPY: Readonly<Record<PowerUpKind, readonly [string, string]>> = {
-  gwarancja_48: ["GWARANCJA", "48 M"],
+  gwarancja_48: ["GWARANCJA", "AMSO CARE"],
   podwojny_wynik: ["2×", "PUNKTY"]
 };
 
@@ -803,8 +773,9 @@ function drawParcel(
   const bob = scene.reducedMotion
     ? 0
     : Math.sin(scene.elapsedSeconds * 4.4 + parcel.phase) * 3;
-  const x = parcel.x;
-  const y = parcel.y + bob;
+  const alpha = scene.interpolationAlpha ?? 1;
+  const x = (parcel.previousX ?? parcel.x) + (parcel.x - (parcel.previousX ?? parcel.x)) * alpha;
+  const y = (parcel.previousY ?? parcel.y) + (parcel.y - (parcel.previousY ?? parcel.y)) * alpha + bob;
   const size = parcel.size;
 
   if (parcel.kind === "standard") {
@@ -965,14 +936,17 @@ function drawForkliftBoss(
   context: CanvasRenderingContext2D,
   boss: Readonly<BossModel>,
   elapsedSeconds: number,
-  reducedMotion: boolean
+  reducedMotion: boolean,
+  alpha: number
 ): void {
   if (boss.phase === "inactive" || boss.phase === "pending") return;
 
   drawBossStatus(context, boss);
   const bob = reducedMotion ? 0 : Math.sin(elapsedSeconds * 5.2) * 2;
-  const x = reducedMotion ? WORLD_WIDTH - 160 : boss.x;
-  const y = boss.y + bob;
+  const previousX = boss.previousX ?? boss.x;
+  const previousY = boss.previousY ?? boss.y;
+  const x = reducedMotion ? WORLD_WIDTH - 160 : previousX + (boss.x - previousX) * alpha;
+  const y = previousY + (boss.y - previousY) * alpha + bob;
 
   context.save();
   if (boss.phase === "warning") {
@@ -1014,7 +988,8 @@ function drawForkliftBoss(
   context.fill();
 
   context.fillStyle = COLORS.ink;
-  for (const wheelX of [x + 64, x + 132]) {
+  for (let wheel = 0; wheel < 2; wheel += 1) {
+    const wheelX = x + (wheel === 0 ? 64 : 132);
     context.beginPath();
     context.arc(wheelX, y + 154, 19, 0, Math.PI * 2);
     context.fill();
@@ -1095,13 +1070,17 @@ function drawTrolley(context: CanvasRenderingContext2D, obstacle: Readonly<Obsta
   context.fill();
 }
 
-function drawOverhead(context: CanvasRenderingContext2D, obstacle: Readonly<ObstacleModel>): void {
+function drawOverhead(
+  context: CanvasRenderingContext2D,
+  obstacle: Readonly<ObstacleModel>,
+  ceilingY: number
+): void {
   const { x, y, width, height } = obstacle;
   context.fillStyle = "rgba(23,49,59,0.16)";
   context.fillRect(x - 7, y - 6, width + 14, 6);
   context.fillStyle = COLORS.ink;
-  context.fillRect(x - 8, 0, 10, y + 8);
-  context.fillRect(x + width - 2, 0, 10, y + 8);
+  context.fillRect(x - 8, ceilingY, 10, y + 8 - ceilingY);
+  context.fillRect(x + width - 2, ceilingY, 10, y + 8 - ceilingY);
   fillRoundedRectangle(context, x, y, width, height, 8, COLORS.inkSoft);
   context.fillStyle = COLORS.orange;
   context.fillRect(x + 6, y + 12, width - 12, 7);
@@ -1117,7 +1096,11 @@ function drawOverhead(context: CanvasRenderingContext2D, obstacle: Readonly<Obst
   context.stroke();
 }
 
-function drawObstacle(context: CanvasRenderingContext2D, obstacle: Readonly<ObstacleModel>): void {
+function drawObstacle(
+  context: CanvasRenderingContext2D,
+  obstacle: Readonly<ObstacleModel>,
+  ceilingY: number
+): void {
   if (!obstacle.active) return;
   switch (obstacle.kind) {
     case "box-stack":
@@ -1130,7 +1113,7 @@ function drawObstacle(context: CanvasRenderingContext2D, obstacle: Readonly<Obst
       drawTrolley(context, obstacle);
       break;
     case "overhead":
-      drawOverhead(context, obstacle);
+      drawOverhead(context, obstacle, ceilingY);
       break;
   }
 }
@@ -1168,7 +1151,8 @@ function drawFirstAmsoParcel(
 function drawWarrantyShield(
   context: CanvasRenderingContext2D,
   runner: Readonly<RunnerModel>,
-  scene: Readonly<RenderScene>
+  scene: Readonly<RenderScene>,
+  resources: RendererResourceCache
 ): void {
   const presentation = courierProtectionPresentation(
     runner,
@@ -1195,24 +1179,43 @@ function drawWarrantyShield(
   context.globalAlpha = animation.alpha;
   context.setLineDash([]);
 
-  const field = context.createRadialGradient(
-    -radiusX * 0.28,
-    -radiusY * 0.34,
-    radiusX * 0.08,
+  const bubbleColor = "244,113,0";
+
+  const fillGradient = context.createRadialGradient(
+    -radiusX * 0.3,
+    -radiusY * 0.35,
+    radiusX * 0.05,
     0,
     0,
     radiusY
   ) as CanvasGradient | undefined;
-  if (field !== undefined) {
-    field.addColorStop(0, "rgba(244,113,0,0.14)");
-    field.addColorStop(0.5, "rgba(244,113,0,0.06)");
-    field.addColorStop(0.82, "rgba(244,113,0,0.04)");
-    field.addColorStop(1, "rgba(244,113,0,0.02)");
+  if (fillGradient !== undefined) {
+    fillGradient.addColorStop(0, `rgba(${bubbleColor},0.22)`);
+    fillGradient.addColorStop(0.3, `rgba(${bubbleColor},0.1)`);
+    fillGradient.addColorStop(0.65, `rgba(${bubbleColor},0.04)`);
+    fillGradient.addColorStop(1, `rgba(${bubbleColor},0)`);
   }
-  context.fillStyle = field ?? "rgba(244,113,0,0.07)";
+  context.fillStyle = fillGradient ?? `rgba(${bubbleColor},0.08)`;
   context.beginPath();
   context.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
   context.fill();
+
+  // Specular highlight — bright curved arc at top-left for glass/bubble reflection
+  context.save();
+  context.beginPath();
+  context.ellipse(
+    -radiusX * 0.2,
+    -radiusY * 0.22,
+    radiusX * 0.5,
+    radiusY * 0.4,
+    -0.45,
+    -Math.PI * 0.7,
+    Math.PI * 0.22
+  );
+  context.strokeStyle = "rgba(255,255,255,0.4)";
+  context.lineWidth = 3;
+  context.stroke();
+  context.restore();
 
   // Only the inner energy texture rotates. The outer bubble remains upright,
   // so it reads as protection attached to the courier instead of a spinner.
@@ -1221,26 +1224,45 @@ function drawWarrantyShield(
   context.ellipse(0, 0, radiusX - 2, radiusY - 2, 0, 0, Math.PI * 2);
   context.clip();
   context.rotate(animation.meshRotationRadians);
-  context.strokeStyle = "rgba(244,113,0,0.16)";
-  context.lineWidth = 0.85;
-  const mesh = getWarrantyShieldMesh();
+  context.strokeStyle = `rgba(${bubbleColor},0.2)`;
+  context.lineWidth = 1;
+  const mesh = resources.warrantyShieldMesh;
   if (mesh !== null) context.stroke(mesh);
   context.restore();
 
-  context.strokeStyle = "rgba(244,113,0,0.6)";
-  context.lineWidth = 3;
-  context.shadowColor = "rgba(244,113,0,0.45)";
-  context.shadowBlur = scene.reducedMotion ? 3 : 7;
-  context.beginPath();
-  context.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
-  context.stroke();
+  if (scene.reducedMotion) {
+    context.shadowBlur = 5;
+    context.shadowColor = `rgba(${bubbleColor},0.5)`;
+    context.strokeStyle = `rgba(${bubbleColor},0.6)`;
+    context.lineWidth = 3;
+    context.beginPath();
+    context.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
+    context.stroke();
+    context.shadowBlur = 0;
+  } else {
+    context.shadowBlur = 24;
+    context.shadowColor = `rgba(${bubbleColor},0.65)`;
+    context.strokeStyle = `rgba(${bubbleColor},0.8)`;
+    context.lineWidth = 3.5;
+    context.beginPath();
+    context.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
+    context.stroke();
 
-  context.shadowBlur = 5;
-  context.strokeStyle = "rgba(244,113,0,0.5)";
-  context.lineWidth = 2.2;
-  context.beginPath();
-  context.ellipse(0, 0, radiusX - 3, radiusY - 3, 0, Math.PI * 1.08, Math.PI * 1.58);
-  context.stroke();
+    context.shadowBlur = 14;
+    context.shadowColor = `rgba(${bubbleColor},0.3)`;
+    context.strokeStyle = `rgba(${bubbleColor},0.4)`;
+    context.lineWidth = 2;
+    context.beginPath();
+    context.ellipse(0, 0, radiusX + 5, radiusY + 5, 0, 0, Math.PI * 2);
+    context.stroke();
+
+    context.shadowBlur = 0;
+    context.strokeStyle = `rgba(${bubbleColor},0.5)`;
+    context.lineWidth = 2;
+    context.beginPath();
+    context.ellipse(0, 0, radiusX - 2, radiusY - 2, 0, Math.PI * 1.08, Math.PI * 1.58);
+    context.stroke();
+  }
 
   if (presentation.breaking && !scene.reducedMotion) {
     const burstAlpha = 1 - animation.breakingProgress;
@@ -1257,7 +1279,8 @@ function drawWarrantyShield(
     context.shadowBlur = 12;
     context.strokeStyle = "rgba(255,255,255,0.95)";
     context.lineWidth = 3;
-    for (const angle of [-1.03, -0.32, 0.46, 2.65]) {
+    for (let angleIndex = 0; angleIndex < SHIELD_SPARK_ANGLES.length; angleIndex += 1) {
+      const angle = SHIELD_SPARK_ANGLES[angleIndex] ?? 0;
       const innerX = Math.cos(angle) * radiusX * 0.72;
       const innerY = Math.sin(angle) * radiusY * 0.72;
       context.beginPath();
@@ -1459,11 +1482,13 @@ function drawCourier(
 }
 
 /**
- * The generated world plate is framed independently of the fixed 960×540
- * gameplay viewport. This foreground route gives the runner, parcels and
- * obstacles one explicit shared ground line at every stage aspect ratio.
+ * Draws the gameplay route in world coordinates (inside the world-space clip).
+ * Used when no external CSS world visual is present.
  */
-function drawGameplayRoute(context: CanvasRenderingContext2D): void {
+function drawGameplayRoute(
+  context: CanvasRenderingContext2D,
+  routeGradient: CanvasGradient
+): void {
   context.save();
   context.lineCap = "round";
   context.strokeStyle = WORLD_ROUTE_BASE_COLOR;
@@ -1473,10 +1498,6 @@ function drawGameplayRoute(context: CanvasRenderingContext2D): void {
   context.lineTo(WORLD_WIDTH + 12, WORLD_ROUTE_Y + WORLD_ROUTE_BASE_OFFSET_Y);
   context.stroke();
 
-  const routeGradient = context.createLinearGradient(0, 0, WORLD_WIDTH, 0);
-  for (const { offset, color } of WORLD_ROUTE_GRADIENT_STOPS) {
-    routeGradient.addColorStop(offset, color);
-  }
   context.strokeStyle = routeGradient;
   context.lineWidth = WORLD_ROUTE_ACCENT_WIDTH;
   context.beginPath();
@@ -1486,87 +1507,329 @@ function drawGameplayRoute(context: CanvasRenderingContext2D): void {
   context.restore();
 }
 
-function drawMilestoneParticles(
+/**
+ * Draws the gameplay route (base + gradient accent lines) at full canvas
+ * pixel width so the track always reaches both screen edges regardless of
+ * aspect ratio.  Called *before* the world-space clip in render(), inside
+ * the translate/scale transform — all coordinates are in world space.
+ */
+function effectOriginX(
+  origin: EffectConfig["origin"],
+  playerX: number,
+): number {
+  switch (origin) {
+    case "player": return playerX;
+    case "left": return 0;
+    case "right": return WORLD_WIDTH;
+    case "center":
+    case "sides": return WORLD_WIDTH / 2;
+  }
+}
+
+function effectOriginY(origin: EffectConfig["origin"], playerY: number): number {
+  return origin === "player" ? playerY : WORLD_HEIGHT / 2;
+}
+
+function effectiveCount(
+  count: [number, number],
+  progress: number,
+  quality: "full" | "reduced" | undefined,
+  smallScreen: boolean,
+): number {
+  const [minC, maxC] = count;
+  const diff = maxC - minC;
+  const base = Math.ceil(minC + diff * progress);
+  const reduced = quality === "reduced" ? Math.ceil(base * 0.5) : base;
+  return smallScreen ? Math.ceil(reduced * 0.6) : reduced;
+}
+
+function drawConfettiBurst(
   context: CanvasRenderingContext2D,
-  scene: Readonly<RenderScene>,
-  artwork: RunnerArtwork
+  effect: EffectConfig,
+  progress: number,
+  reducedMotion: boolean,
+  playerX: number,
+  playerY: number,
+  quality: "full" | "reduced" | undefined,
+  smallScreen: boolean,
 ): void {
-  const celebration = scene.milestoneCelebration;
-  if (celebration === null || celebration === undefined) return;
-  const progress = Math.max(0, Math.min(1, celebration.progress));
-  const motion = scene.reducedMotion ? 0 : progress;
-  const alpha = scene.reducedMotion ? 0.66 : Math.sin(progress * Math.PI) * 0.86;
-  const fullParticleCount = Math.min(62, 16 + celebration.intensity * 7);
-  const particleCount = scene.decorationQuality === "reduced"
-    ? Math.ceil(fullParticleCount * 0.52)
-    : fullParticleCount;
+  const count = effectiveCount(effect.particleCount, progress, quality, smallScreen);
+  const ox = effectOriginX(effect.origin, playerX);
+  const oy = effectOriginY(effect.origin, playerY);
+  const motion = reducedMotion ? 0 : progress;
+  const alpha = reducedMotion ? 0.66 : Math.sin(Math.min(1, progress * 2) * Math.PI) * 0.86;
+
   context.save();
   context.globalAlpha = alpha;
-  if (celebration.intensity >= 2) {
-    const flash = scene.reducedMotion
-      ? 0.12
-      : Math.sin(Math.min(1, progress * 2.2) * Math.PI) * 0.2;
-    context.save();
-    context.globalAlpha = flash;
-    const flashGradient = context.createLinearGradient(200, 0, 760, 0);
-    flashGradient.addColorStop(0, COLORS.orange);
-    flashGradient.addColorStop(0.5, COLORS.red);
-    flashGradient.addColorStop(1, COLORS.redDark);
-    context.fillStyle = flashGradient;
-    context.fillRect(210, 56, 540, 138);
-    context.restore();
-  }
-  for (let index = 0; index < particleCount; index += 1) {
-    const sourceX = positiveModulo(index * 137 + celebration.threshold, WORLD_WIDTH - 60) + 30;
-    const x = sourceX + Math.sin(index * 1.7) * motion * 34;
-    const y = 18 + positiveModulo(index * 53 + motion * (150 + (index % 5) * 24), 188);
-    context.fillStyle = index % 3 === 0
-      ? COLORS.orange
-      : index % 3 === 1
-        ? COLORS.red
-        : COLORS.redDark;
+
+  for (let index = 0; index < count; index++) {
+    const angle = (index / count) * Math.PI * 2 + motion * 2;
+    const dist = 30 + (index % 5) * 8 + motion * 40;
+    const x = ox + Math.cos(angle) * dist * (effect.spread / 100);
+    const y = oy + Math.sin(angle) * dist * (effect.spread / 100) - motion * 60;
+    context.fillStyle = effect.colors[index % effect.colors.length] ?? COLORS.orange;
     context.save();
     context.translate(x, y);
-    if (!scene.reducedMotion) context.rotate(motion * 5 + index);
-    context.fillRect(-5, -2, 10 + celebration.intensity * 0.5, 4);
+    if (!reducedMotion) context.rotate(motion * 5 + index);
+    context.fillRect(-4, -2, 8, 4);
     context.restore();
   }
 
-  const decorativeOrders = Math.min(5, Math.max(1, celebration.intensity));
-  for (let index = 0; index < decorativeOrders; index += 1) {
-    const side = index % 2 === 0 ? 1 : -1;
-    const lane = Math.floor(index / 2);
-    const x = side > 0 ? 68 + lane * 70 : WORLD_WIDTH - 122 - lane * 70;
-    const y = 46 + lane * 34 + (scene.reducedMotion ? 0 : Math.sin(progress * Math.PI) * -18);
-    const size = 54 + Math.min(10, celebration.intensity * 2);
-    if (!artwork.drawParcelOrder(
-      context,
-      x,
-      y,
-      size,
-      progress * 0.8,
-      index,
-      scene.reducedMotion
-    )) {
-      context.save();
-      context.translate(x + size / 2, y + size / 2);
-      if (!scene.reducedMotion) context.rotate(side * (0.08 + progress * 0.12));
-      context.fillStyle = COLORS.orange;
-      context.fillRect(-size / 2, -size / 2, size, size);
-      context.fillStyle = "#fff";
-      context.fillRect(-size * 0.09, -size / 2, size * 0.18, size);
-      context.fillRect(-size / 2, -size * 0.09, size, size * 0.18);
-      context.restore();
-    }
-  }
   context.restore();
 }
 
+function drawSideCannon(
+  context: CanvasRenderingContext2D,
+  effect: EffectConfig,
+  progress: number,
+  reducedMotion: boolean,
+  quality: "full" | "reduced" | undefined,
+  smallScreen: boolean,
+): void {
+  if (smallScreen) return;
+  const count = effectiveCount(effect.particleCount, progress, quality, smallScreen);
+  const motion = reducedMotion ? 0 : progress;
+  const alpha = reducedMotion ? 0.66 : Math.sin(Math.min(1, progress * 2) * Math.PI) * 0.8;
+
+  context.save();
+  context.globalAlpha = alpha;
+
+  for (let index = 0; index < count; index++) {
+    const t = index / count;
+    const x = t < 0.5 ? 0 : WORLD_WIDTH;
+    const yTarget = 100 + t * 300;
+    const y = yTarget + motion * 80;
+    const xOff = motion * (60 + (index % 3) * 15) * (t < 0.5 ? 1 : -1);
+    context.fillStyle = effect.colors[index % effect.colors.length] ?? COLORS.orange;
+    context.save();
+    context.translate(x + xOff, y);
+    if (!reducedMotion) context.rotate(motion * 3 + index);
+    context.fillRect(-3, -2, 6, 4);
+    context.restore();
+  }
+
+  context.restore();
+}
+
+function drawSparkles(
+  context: CanvasRenderingContext2D,
+  effect: EffectConfig,
+  progress: number,
+  reducedMotion: boolean,
+  playerX: number,
+  playerY: number,
+  quality: "full" | "reduced" | undefined,
+  smallScreen: boolean,
+): void {
+  if (quality === "reduced") return;
+  const count = effectiveCount(effect.particleCount, progress, quality, smallScreen);
+  const ox = effectOriginX(effect.origin, playerX);
+  const oy = effectOriginY(effect.origin, playerY);
+  const motion = reducedMotion ? 0 : progress;
+  const alpha = reducedMotion ? 0.66 : Math.sin(Math.min(1, progress * 2) * Math.PI) * 0.9;
+
+  context.save();
+  context.globalAlpha = alpha;
+
+  for (let index = 0; index < count; index++) {
+    const angle = (index / count) * Math.PI * 2 + motion * 1.5;
+    const dist = 10 + (index % 3) * 6 + motion * 20;
+    const x = ox + Math.cos(angle) * dist * (effect.spread / 100);
+    const y = oy + Math.sin(angle) * dist * (effect.spread / 100) - motion * 30;
+    context.fillStyle = effect.colors[index % effect.colors.length] ?? COLORS.orange;
+    const size = reducedMotion ? 2 : 2 + (index % 3);
+    context.fillRect(x - size / 2, y - size / 2, size, size);
+  }
+
+  context.restore();
+}
+
+function drawEnergyWave(
+  context: CanvasRenderingContext2D,
+  effect: EffectConfig,
+  progress: number,
+  reducedMotion: boolean,
+  quality: "full" | "reduced" | undefined,
+): void {
+  const baseAlpha = quality === "reduced" ? 0.15 : 0.35;
+  const alpha = reducedMotion ? 0.2 : Math.sin(progress * Math.PI) * baseAlpha;
+  const radius = reducedMotion ? 60 : 60 + progress * 200;
+  const color = effect.colors[0] ?? COLORS.orange;
+
+  context.save();
+  context.globalAlpha = alpha;
+  context.strokeStyle = color;
+  context.lineWidth = reducedMotion ? 4 : 8 - progress * 6;
+
+  context.beginPath();
+  context.ellipse(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, radius, radius * 0.3, 0, 0, Math.PI * 2);
+  context.stroke();
+
+  if (!reducedMotion) {
+    context.globalAlpha = alpha * 0.4;
+    context.lineWidth = 3 - progress * 2;
+    context.beginPath();
+    context.ellipse(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, radius * 0.8, radius * 0.24, 0, 0, Math.PI * 2);
+    context.stroke();
+  }
+
+  context.restore();
+}
+
+function drawPackageParticles(
+  context: CanvasRenderingContext2D,
+  effect: EffectConfig,
+  progress: number,
+  reducedMotion: boolean,
+  playerX: number,
+  playerY: number,
+  quality: "full" | "reduced" | undefined,
+  smallScreen: boolean,
+): void {
+  const count = effectiveCount(effect.particleCount, progress, quality, smallScreen);
+  const ox = effectOriginX(effect.origin, playerX);
+  const oy = effectOriginY(effect.origin, playerY);
+  const motion = reducedMotion ? 0 : progress;
+  const alpha = reducedMotion ? 0.66 : Math.sin(Math.min(1, progress * 1.5) * Math.PI) * 0.85;
+
+  context.save();
+  context.globalAlpha = alpha;
+
+  for (let index = 0; index < count; index++) {
+    const angle = (index / count) * Math.PI * 2 + motion * 1.2;
+    const dist = 20 + (index % 4) * 10 + motion * 50;
+    const x = ox + Math.cos(angle) * dist * (effect.spread / 100);
+    const y = oy + Math.sin(angle) * dist * (effect.spread / 100) - motion * 80;
+    const size = reducedMotion ? 6 : 6 + (index % 3) * 3;
+    context.fillStyle = effect.colors[index % effect.colors.length] ?? COLORS.orange;
+    context.fillRect(x - size / 2, y - size / 2, size, size * 0.7);
+    context.fillStyle = COLORS.white;
+    context.fillRect(x - size * 0.1, y - size * 0.35, size * 0.2, size * 0.7);
+  }
+
+  context.restore();
+}
+
+function drawCoinParticles(
+  context: CanvasRenderingContext2D,
+  effect: EffectConfig,
+  progress: number,
+  reducedMotion: boolean,
+  quality: "full" | "reduced" | undefined,
+  smallScreen: boolean,
+): void {
+  const count = effectiveCount(effect.particleCount, progress, quality, smallScreen);
+  const ox = effectOriginX(effect.origin, 0);
+  const oy = effectOriginY(effect.origin, 0);
+  const motion = reducedMotion ? 0 : progress;
+  const alpha = reducedMotion ? 0.66 : Math.sin(Math.min(1, progress * 1.5) * Math.PI) * 0.85;
+
+  context.save();
+  context.globalAlpha = alpha;
+
+  for (let index = 0; index < count; index++) {
+    const angle = (index / count) * Math.PI * 2 + motion * 0.8;
+    const dist = 40 + (index % 4) * 20 + motion * 50;
+    const x = ox + Math.cos(angle) * dist * (effect.spread / 100);
+    const y = oy + Math.sin(angle) * dist * (effect.spread / 100) - motion * 80;
+    context.fillStyle = effect.colors[index % effect.colors.length] ?? COLORS.orange;
+    context.beginPath();
+    context.arc(x, y, reducedMotion ? 6 : 6 + (index % 2) * 3, 0, Math.PI * 2);
+    context.fill();
+    if (!reducedMotion) {
+      context.fillStyle = COLORS.white;
+      context.font = "bold 9px system-ui, sans-serif";
+      context.textAlign = "center";
+      context.fillText("+" + (index + 1) * 100, x, y - 10);
+    }
+  }
+
+  context.restore();
+}
+
+function drawScreenFlash(
+  context: CanvasRenderingContext2D,
+  progress: number,
+  reducedMotion: boolean,
+  quality: "full" | "reduced" | undefined,
+  gradient: CanvasGradient
+): void {
+  if (reducedMotion || quality === "reduced") return;
+
+  const alpha = Math.sin(Math.min(1, progress * 3) * Math.PI) * 0.2;
+  if (alpha <= 0) return;
+
+  context.save();
+  context.globalAlpha = alpha;
+  context.fillStyle = gradient;
+  context.fillRect(180, 40, 600, 150);
+  context.restore();
+}
+
+function drawCelebrationEffects(
+  context: CanvasRenderingContext2D,
+  scene: Readonly<RenderScene>,
+  resources: RendererResourceCache
+): void {
+  const celebration = scene.celebration;
+  if (celebration === null || celebration === undefined) return;
+
+  const progress = Math.max(0, Math.min(1, celebration.phaseProgress));
+  const { playerX, playerY } = celebration;
+
+  const smallScreen = celebration.isSmallScreen;
+
+  for (const effect of celebration.effects) {
+    switch (effect.type) {
+      case "confetti-burst":
+        drawConfettiBurst(context, effect, progress, scene.reducedMotion, playerX, playerY, scene.decorationQuality, smallScreen);
+        break;
+      case "side-cannon":
+        drawSideCannon(context, effect, progress, scene.reducedMotion, scene.decorationQuality, smallScreen);
+        break;
+      case "sparkles":
+        drawSparkles(context, effect, progress, scene.reducedMotion, playerX, playerY, scene.decorationQuality, smallScreen);
+        break;
+      case "energy-wave":
+        drawEnergyWave(context, effect, progress, scene.reducedMotion, scene.decorationQuality);
+        break;
+      case "package-particles":
+        drawPackageParticles(context, effect, progress, scene.reducedMotion, playerX, playerY, scene.decorationQuality, smallScreen);
+        break;
+      case "coin-particles":
+        drawCoinParticles(context, effect, progress, scene.reducedMotion, scene.decorationQuality, smallScreen);
+        break;
+      case "screen-flash":
+        drawScreenFlash(context, progress, scene.reducedMotion, scene.decorationQuality, resources.screenFlashGradient);
+        break;
+    }
+  }
+}
+
 export class WarehouseRenderer {
+  private geometry: Readonly<WorldPlateTransform> | null = null;
+  private viewport: Readonly<WorldGeometryViewport> | null = null;
+  private readonly obstacleSeenGeneration = new Float64Array(GAMEPLAY.obstaclePoolSize).fill(-1);
+  private readonly obstacleSeenRevision = new Float64Array(GAMEPLAY.obstaclePoolSize).fill(-1);
+  private readonly packageSeenGeneration = new Float64Array(GAMEPLAY.packagePoolSize).fill(-1);
+  private readonly packageSeenRevision = new Float64Array(GAMEPLAY.packagePoolSize).fill(-1);
+  private resources: RendererResourceCache | null = null;
+
   public constructor(
     _brandArtwork: CourierBrandArtwork = DEFAULT_COURIER_BRAND_ARTWORK,
-    private readonly artwork: RunnerArtwork = new RunnerArtwork()
+    private readonly artwork: RunnerArtwork = new RunnerArtwork({}),
+    private readonly formatInteger: (value: number) => string = (value) =>
+      DEFAULT_INTEGER_FORMATTER.format(value),
+    private readonly millionCounterLabel = "ZAMÓWIEŃ"
   ) {}
+
+  public applyGeometry(
+    snapshot: Readonly<WorldPlateTransform>,
+    viewport: Readonly<WorldGeometryViewport>
+  ): void {
+    this.geometry = snapshot;
+    this.viewport = viewport;
+  }
 
   render(
     context: CanvasRenderingContext2D,
@@ -1574,6 +1837,11 @@ export class WarehouseRenderer {
     pixelHeight: number,
     scene: Readonly<RenderScene>
   ): void {
+    if (this.resources === null || this.resources.context !== context) {
+      this.resources?.destroy();
+      this.resources = new RendererResourceCache(context);
+    }
+    const resources = this.resources;
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.globalAlpha = 1;
     const externalWorldVisual = scene.worldVisual !== undefined;
@@ -1583,19 +1851,30 @@ export class WarehouseRenderer {
       context.fillStyle = COLORS.ink;
       context.fillRect(0, 0, pixelWidth, pixelHeight);
     }
+    const geometry = this.geometry;
+    const viewport = this.viewport;
+    if (geometry === null || viewport === null) return;
 
-    const scale = Math.min(pixelWidth / WORLD_WIDTH, pixelHeight / WORLD_HEIGHT);
-    const viewportWidth = WORLD_WIDTH * scale;
-    const viewportHeight = WORLD_HEIGHT * scale;
-    const offsetX = (pixelWidth - viewportWidth) / 2;
-    const offsetY = (pixelHeight - viewportHeight) / 2;
+    context.setTransform(
+      pixelWidth / viewport.width,
+      0,
+      0,
+      pixelHeight / viewport.height,
+      0,
+      0
+    );
 
     context.save();
-    context.translate(offsetX, offsetY);
-    context.scale(scale, scale);
     context.beginPath();
-    context.rect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    context.rect(
+      geometry.clipRect.x,
+      geometry.clipRect.y,
+      geometry.clipRect.width,
+      geometry.clipRect.height
+    );
     context.clip();
+    context.translate(geometry.worldOffsetX, geometry.worldOffsetY);
+    context.scale(geometry.worldScale, geometry.worldScale);
     context.imageSmoothingEnabled = false;
 
     const theme = scene.mode === "challenge"
@@ -1603,6 +1882,7 @@ export class WarehouseRenderer {
       : scene.themeIndex >= 0 && scene.themeIndex < BACKGROUND_THEMES.length
         ? BACKGROUND_THEMES[scene.themeIndex]!
         : selectBackgroundTheme(scene.distancePixels, BACKGROUND.zonePixels);
+    const ceilingY = 0;
 
     if (!externalWorldVisual) {
       drawWarehouse(
@@ -1612,30 +1892,90 @@ export class WarehouseRenderer {
         scene.reducedMotion,
         theme
       );
-      drawNarrativeVignette(context, scene, theme);
-    } else {
-      drawGameplayRoute(context);
+      drawNarrativeVignette(
+        context,
+        scene,
+        theme,
+        resources,
+        this.formatInteger,
+        this.millionCounterLabel
+      );
     }
-    drawMilestoneParticles(context, scene, this.artwork);
+    drawGameplayRoute(context, resources.routeGradient);
+    drawCelebrationEffects(context, scene, resources);
+    const alpha = scene.interpolationAlpha ?? 1;
     drawForkliftBoss(
       context,
       scene.boss,
       scene.elapsedSeconds,
-      scene.reducedMotion
+      scene.reducedMotion,
+      alpha
     );
-    for (const parcel of scene.packages) drawParcel(context, parcel, scene, this.artwork);
-    for (const obstacle of scene.obstacles) {
-      if (!this.artwork.drawObstacle(context, obstacle)) {
-        drawObstacle(context, obstacle);
+    for (const parcel of scene.packages) {
+      if (!parcel.active) continue;
+      const slotId = parcel.slotId ?? -1;
+      const continuous = slotId >= 0 &&
+        this.packageSeenGeneration[slotId] === (parcel.generation ?? 0) &&
+        this.packageSeenRevision[slotId] === (parcel.motionRevision ?? 0);
+      if (slotId >= 0) {
+        this.packageSeenGeneration[slotId] = parcel.generation ?? 0;
+        this.packageSeenRevision[slotId] = parcel.motionRevision ?? 0;
+      }
+      const renderX = continuous
+        ? (parcel.previousX ?? parcel.x) + (parcel.x - (parcel.previousX ?? parcel.x)) * alpha
+        : parcel.x;
+      const renderY = continuous
+        ? (parcel.previousY ?? parcel.y) + (parcel.y - (parcel.previousY ?? parcel.y)) * alpha
+        : parcel.y;
+      if (renderX + parcel.size + PACKAGE_VISUAL_BLEED < -DEFAULT_VISUAL_OVERSCAN ||
+          renderX - PACKAGE_VISUAL_BLEED > WORLD_WIDTH + DEFAULT_VISUAL_OVERSCAN ||
+          renderY + parcel.size + PACKAGE_VISUAL_BLEED < -DEFAULT_VISUAL_OVERSCAN ||
+          renderY - PACKAGE_VISUAL_BLEED > WORLD_HEIGHT + DEFAULT_VISUAL_OVERSCAN) continue;
+      if (continuous) drawParcel(context, parcel, scene, this.artwork);
+      else {
+        const interpolatedX = (parcel.previousX ?? parcel.x) + (parcel.x - (parcel.previousX ?? parcel.x)) * alpha;
+        const interpolatedY = (parcel.previousY ?? parcel.y) + (parcel.y - (parcel.previousY ?? parcel.y)) * alpha;
+        context.save();
+        context.translate(parcel.x - interpolatedX, parcel.y - interpolatedY);
+        drawParcel(context, parcel, scene, this.artwork);
+        context.restore();
       }
     }
-    for (const transformation of scene.obstacleTransformations ?? []) {
-      drawTransformedObstacle(context, transformation, scene.reducedMotion);
+    for (const obstacle of scene.obstacles) {
+      if (!obstacle.active) continue;
+      const slotId = obstacle.slotId ?? -1;
+      const continuous = slotId >= 0 &&
+        this.obstacleSeenGeneration[slotId] === (obstacle.generation ?? 0) &&
+        this.obstacleSeenRevision[slotId] === (obstacle.motionRevision ?? 0);
+      if (slotId >= 0) {
+        this.obstacleSeenGeneration[slotId] = obstacle.generation ?? 0;
+        this.obstacleSeenRevision[slotId] = obstacle.motionRevision ?? 0;
+      }
+      const renderX = continuous
+        ? (obstacle.previousX ?? obstacle.x) + (obstacle.x - (obstacle.previousX ?? obstacle.x)) * alpha
+        : obstacle.x;
+      const renderY = continuous
+        ? (obstacle.previousY ?? obstacle.y) + (obstacle.y - (obstacle.previousY ?? obstacle.y)) * alpha
+        : obstacle.y;
+      const bleed = OBSTACLE_VISUAL_BLEED[obstacle.kind];
+      if (renderX + obstacle.width + bleed < -DEFAULT_VISUAL_OVERSCAN ||
+          renderX - bleed > WORLD_WIDTH + DEFAULT_VISUAL_OVERSCAN ||
+          renderY + obstacle.height + bleed < -DEFAULT_VISUAL_OVERSCAN ||
+          renderY - bleed > WORLD_HEIGHT + DEFAULT_VISUAL_OVERSCAN) continue;
+      context.save();
+      context.translate(renderX - obstacle.x, renderY - obstacle.y);
+      if (!this.artwork.drawObstacle(context, obstacle, ceilingY)) drawObstacle(context, obstacle, ceilingY);
+      context.restore();
     }
-    drawWarrantyShield(context, scene.runner, scene);
-    if (!this.artwork.drawCourier(context, scene.runner, scene)) {
-      drawCourier(context, scene.runner, scene);
-    }
+    const runnerRenderX = (scene.runner.previousX ?? scene.runner.x) +
+      (scene.runner.x - (scene.runner.previousX ?? scene.runner.x)) * alpha;
+    const runnerRenderY = (scene.runner.previousY ?? scene.runner.y) +
+      (scene.runner.y - (scene.runner.previousY ?? scene.runner.y)) * alpha;
+    context.save();
+    context.translate(runnerRenderX - scene.runner.x, runnerRenderY - scene.runner.y);
+    drawWarrantyShield(context, scene.runner, scene, resources);
+    if (!this.artwork.drawCourier(context, scene.runner, scene)) drawCourier(context, scene.runner, scene);
+    context.restore();
 
     if (scene.cutscene) {
       context.fillStyle = "rgba(17,39,48,0.86)";
@@ -1648,18 +1988,16 @@ export class WarehouseRenderer {
       context.font = "800 46px system-ui, sans-serif";
       context.fillText(scene.cutscene.title, WORLD_WIDTH / 2, WORLD_HEIGHT / 2 + 28);
       context.textAlign = "start";
-    } else if (scene.state === "paused") {
-      context.fillStyle = "rgba(17,39,48,0.22)";
-      context.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-      fillRoundedRectangle(context, WORLD_WIDTH / 2 - 31, WORLD_HEIGHT / 2 - 31, 62, 62, 12, "rgba(255,255,255,0.9)");
-      context.fillStyle = COLORS.ink;
-      context.fillRect(WORLD_WIDTH / 2 - 13, WORLD_HEIGHT / 2 - 14, 9, 28);
-      context.fillRect(WORLD_WIDTH / 2 + 5, WORLD_HEIGHT / 2 - 14, 9, 28);
     } else if (scene.state === "game_over") {
       context.fillStyle = "rgba(227,6,19,0.08)";
       context.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     }
 
     context.restore();
+  }
+
+  public destroy(): void {
+    this.resources?.destroy();
+    this.resources = null;
   }
 }

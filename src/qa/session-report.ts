@@ -1,4 +1,5 @@
 import type { GameResult, GameSnapshot } from "../game/contracts";
+import type { GeometryDiagnostics } from "../visuals/WorldGeometryCoordinator";
 
 export interface QaWaveRecord {
   segmentId: string;
@@ -40,6 +41,9 @@ export interface QaSessionSnapshot {
   frameRate: number;
   lowestFrameRate: number | null;
   droppedFrames: number;
+  longFrames: number;
+  inputQueueOverflows: number;
+  replayValid: boolean;
   lastCollisionType: string | null;
   challengePressureAxis: GameSnapshot["challengePressureAxis"];
   retries: number;
@@ -48,6 +52,7 @@ export interface QaSessionSnapshot {
   segments: QaSegmentRecord[];
   waves: QaWaveRecord[];
   challengeDeath: QaChallengeDeathRecord | null;
+  geometry: GeometryDiagnostics | null;
 }
 
 /** In-memory, PII-free balance report for local playtests. */
@@ -104,7 +109,7 @@ export class QaSessionReportCollector {
     };
   }
 
-  public snapshot(): QaSessionSnapshot {
+  public snapshot(geometry: Readonly<GeometryDiagnostics> | null = null): QaSessionSnapshot {
     const latest = this.latest;
     const waves = [...this.waves.values()];
     const completedWaves = waves.filter(({ passed }) => passed);
@@ -142,6 +147,9 @@ export class QaSessionReportCollector {
       frameRate: latest?.frameRate ?? 0,
       lowestFrameRate: this.lowestFrameRate,
       droppedFrames: latest?.droppedFrames ?? 0,
+      longFrames: latest?.longFrames ?? 0,
+      inputQueueOverflows: latest?.inputQueueOverflows ?? 0,
+      replayValid: latest?.replayValid ?? true,
       lastCollisionType: latest?.lastCollisionType ?? null,
       challengePressureAxis: latest?.challengePressureAxis ?? null,
       retries,
@@ -151,11 +159,12 @@ export class QaSessionReportCollector {
         : firstAttemptPasses / completedWaves.length,
       segments,
       waves,
-      challengeDeath: this.challengeDeath
+      challengeDeath: this.challengeDeath,
+      geometry: geometry === null ? null : { ...geometry }
     };
   }
 
-  public text(): string {
-    return JSON.stringify(this.snapshot(), null, 2);
+  public text(geometry: Readonly<GeometryDiagnostics> | null = null): string {
+    return JSON.stringify(this.snapshot(geometry), null, 2);
   }
 }

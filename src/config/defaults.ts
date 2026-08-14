@@ -6,7 +6,7 @@ export const RUNNER_CONFIG_TTL_MS = 60_000;
 export const DEFAULT_RUNNER_MODULE_PATH = "/assets/milion-runner/runner.js";
 export const DEFAULT_RUNNER_STYLE_PATH = "/assets/milion-runner/runner.css";
 export const DEFAULT_RUNNER_TRIGGER_SELECTOR = "[data-amso-million-runner]";
-export const RUNNER_CTA_PATH_ALLOWLIST = Object.freeze(["/milion"] as const);
+export const RUNNER_CTA_PATH_ALLOWLIST = Object.freeze(["/million"] as const);
 
 /** Fail-closed value used before a validated external campaign config is available. */
 export const DEFAULT_DISABLED_RUNNER_CONFIG: Readonly<RunnerConfig> = Object.freeze({
@@ -46,14 +46,14 @@ export const DEFAULT_DISABLED_RUNNER_CONFIG: Readonly<RunnerConfig> = Object.fre
     millionThreshold: Object.freeze({
       counterStart: 999_950,
       counterTarget: 1_000_000,
-      orderTarget: 50,
-      combinationTarget: 12
+      orderTarget: 50
     })
   }),
   challenge: Object.freeze({
     mode: "challenge",
+    challengeRuleVersion: 13,
     speedStartMultiplier: 1.85,
-    speedMaxMultiplier: 3.5,
+    speedMaxMultiplier: 4,
     logisticWaveMinSeconds: 20,
     logisticWaveMaxSeconds: 30,
     warrantyOneUse: true

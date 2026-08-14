@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import productionConfig from "../public/assets/milion-runner/runner-config.json";
+import { parseRunnerConfig } from "../src/config/schema";
 
-const scenes = productionConfig.story.scenes;
+const parsedConfig = parseRunnerConfig(productionConfig);
+if (parsedConfig === null) throw new Error("Production config should parse");
+const scenes = parsedConfig.story.scenes;
 const scene = (id: string) => {
   const found = scenes.find((candidate) => candidate.id === id);
   if (!found) throw new Error(`Missing scene: ${id}`);
@@ -11,22 +14,23 @@ const text = (id: string) => JSON.stringify(scene(id));
 
 describe("v6 player-paced story content", () => {
   it("uses explicit perspectives and safe, concrete active beats", () => {
-    const activeSceneIds = new Set(productionConfig.story.sequence
+    const activeSceneIds = new Set(parsedConfig.story.sequence
       .filter((step) => step.type === "scene")
       .map((step) => step.sceneId));
     const activeScenes = scenes.filter(({ id }) => activeSceneIds.has(id));
     for (const candidate of activeScenes) {
+      const steps = candidate.steps ?? [];
       expect(["amso", "client", "challenge"]).toContain(candidate.perspective);
-      expect(candidate.steps.length).toBeGreaterThanOrEqual(1);
-      expect(candidate.steps.every((step) => step.safe === true && step.continueLabel.length > 0))
+      expect(steps.length).toBeGreaterThanOrEqual(1);
+      expect(steps.every((step) => step.safe === true && step.continueLabel.length > 0))
         .toBe(true);
-      expect(candidate.steps.every((step) =>
+      expect(steps.every((step) =>
         "fact" in step && "action" in step && "finalFrame" in step
       )).toBe(true);
     }
     expect(scene("client.business_start").steps).toHaveLength(1);
     expect(scene("client.business_growth").steps).toHaveLength(3);
-    expect(activeScenes.flatMap(({ steps }) => steps)).toHaveLength(14);
+    expect(activeScenes.flatMap(({ steps }) => steps ?? [])).toHaveLength(14);
   });
 
   it("preserves the approved 300 zł to 100 000 zł growth facts", () => {
@@ -38,7 +42,7 @@ describe("v6 player-paced story content", () => {
   });
 
   it("reveals client outcomes and annual scale only after their gameplay", () => {
-    const sequence = productionConfig.story.sequence.map((step) =>
+    const sequence = parsedConfig.story.sequence.map((step) =>
       step.type === "scene" ? `scene:${step.sceneId}` : `play:${step.id}`
     );
     expect(sequence.indexOf("scene:client.business_start"))
@@ -56,7 +60,7 @@ describe("v6 player-paced story content", () => {
   });
 
   it("uses one annual PKiN comparison and removes the Boeing comparison", () => {
-    const steps = scene("story.scale").steps;
+    const steps = scene("story.scale").steps ?? [];
     expect(steps).toHaveLength(1);
     expect(JSON.stringify(steps[0])).toContain("28 000");
     expect(JSON.stringify(steps[0])).toContain("240 metrów");

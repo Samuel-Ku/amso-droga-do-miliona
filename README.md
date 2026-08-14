@@ -29,22 +29,26 @@ Kontrole jakości:
 npm run typecheck
 npm test
 npm run build:all
+npm run check:vercel
 ~~~
 
-`npm run build:demo` tworzy dedykowaną stronę w `dist-demo/`.
-`npm run build:single` dodatkowo składa wersję testową do
-`droga-do-miliona-qa.html`, którą można otworzyć bez serwera.
+`npm run build` i `npm run build:vercel` tworzą jedyny artefakt produkcyjny w
+`dist-vercel/`. Jest publikowany przez Vercel pod `https://game.amso.pl/`.
+`npm run check:performance-scenario` mierzy dokładnie tę samą kompilację przez
+lokalny serwer HTTP; opcja `--url https://game.amso.pl/` uruchamia pomiar wdrożenia.
+Po deployu `npm run check:postdeploy` wykonuje live smoke i pełny scenariusz
+wydajnościowy bezpośrednio na `https://game.amso.pl/`.
 
 ## Co jest zaimplementowane
 
 - zewnętrzny config z całym polskim copy, 18 scenami i tuningiem czasu/trudności;
 - trzyczęściowe intro, pięć epok i finał uruchamiany wyłącznie przyciskiem gracza;
 - pełnoekranowe, czytelne sceny, autopilot 0,3×, pusta trasa i odliczanie 3–2–1;
-- skok oraz ślizg na klawiaturze, pointerze i touchu;
+- skok oraz ślizg na klawiaturze, pointerze i touchu, w tym `↑` i `↓`;
 - fabularna regeneracja po kolizji bez zmiany prędkości ani trajektorii;
 - cele wszystkich epok z postępem w HUD, typowana kolejka zamówień, trzy power-upy
   i finalna Fala Miliona;
-- cztery różne mikro-kulminacje, transformacje przeszkód i pozytywne motywy;
+- cztery różne mikro-kulminacje bez dawnych proceduralnych nakładek na świat;
 - osiem fizycznie zbieranych symboli finału z uczciwym ponownym spawnem po pominięciu;
 - przejście do Próby Miliona w tym samym biegu, bez resetu wyniku, paczek i aktywnych bonusów;
 - brak checkpointów story; profil zapisuje ukończenie, rekord, mute i preferencję fullscreen;
@@ -70,7 +74,7 @@ public/assets/milion-runner/
 ~~~
 
 Kanoniczne doświadczenie montuje `mountCampaign()` na osobnej stronie. Stare
-triggery sklepu korzystają wyłącznie z adaptera przekierowującego do `/milion`;
+triggery sklepu korzystają wyłącznie z adaptera przekierowującego do `/million`;
 pełna modalna kopia gry nie jest utrzymywana.
 
 ## Przed publikacją

@@ -61,20 +61,23 @@ export function getStoryDifficulty(
   };
 }
 
+/** Classic smootherstep (Ken Perlin): 6t^5 − 15t^4 + 10t^3 — C2 continuous with zero derivatives at both ends. */
+function smootherstep(t: number): number {
+  const c = clamp01(t);
+  return c * c * c * (c * (c * 6 - 15) + 10);
+}
+
+const CHALLENGE_SPEED_CURVE_SECONDS = 240;
+
 export function getChallengeDifficulty(
   elapsedSeconds: number,
   settings: ChallengeDifficultySettings
 ): Difficulty {
   const seconds = Math.max(0, elapsedSeconds);
   const start = Math.max(0.8, Math.min(2, settings.speedStartMultiplier));
-  const maximum = Math.max(start, Math.min(3.5, settings.speedMaxMultiplier));
-  const minuteOne = Math.min(maximum, 2.4);
-  const minuteTwo = Math.min(maximum, 3);
-  const multiplier = seconds <= 60
-    ? lerp(start, minuteOne, seconds / 60)
-    : seconds <= 120
-      ? lerp(minuteOne, minuteTwo, (seconds - 60) / 60)
-      : lerp(minuteTwo, maximum, (seconds - 120) / 60);
+  const maximum = Math.max(start, Math.min(4, settings.speedMaxMultiplier));
+  const t = Math.min(1, seconds / CHALLENGE_SPEED_CURVE_SECONDS);
+  const multiplier = lerp(start, maximum, smootherstep(t));
   return {
     level: Math.min(16, 1 + Math.floor(seconds / 20)),
     speed: BASE_SPEED * multiplier,

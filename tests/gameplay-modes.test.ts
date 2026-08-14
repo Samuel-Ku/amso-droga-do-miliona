@@ -11,6 +11,10 @@ import {
 } from "../src/game/story-timeline";
 import type { StoryConfig } from "../src/shared/types";
 import type { PackageModel } from "../src/game/types";
+import {
+  WORLD_ARTWORK_CONTRACT,
+  calculateWorldPlateTransform
+} from "../src/visuals/world-plate-transform";
 
 function createGameHarness(
   mode: "story" | "challenge",
@@ -66,16 +70,19 @@ function createGameHarness(
   const canvas = {
     width: 960,
     height: 540,
-    clientWidth: 960,
-    clientHeight: 540,
+    style: { width: "", height: "" },
     ownerDocument: documentMock,
     getContext: () => context,
-    getBoundingClientRect: () => ({ width: 960, height: 540 })
+    getBoundingClientRect: () => { throw new Error("gameplay_dom_read"); }
   } as unknown as HTMLCanvasElement;
   const config = parseRunnerConfig(productionConfig);
   if (!config) throw new Error("production config should parse");
   const snapshots: GameSnapshot[] = [];
   const storyUpdates: StoryTimelineSnapshot[] = [];
+  const storyUpdateSnapshots: Array<GameSnapshot | undefined> = [];
+  const storyUpdateRunnerStates: Array<Readonly<Record<string, unknown>> | undefined> = [];
+  const storyUpdateCounters: Array<number | undefined> = [];
+  const visualFrames: Array<{ distance: number; alpha: number }> = [];
   const modeChanges: string[] = [];
   const milestoneCelebrations: MilestoneCelebrationEvent[] = [];
   const milestoneModes: string[] = [];
@@ -91,7 +98,16 @@ function createGameHarness(
         gameOvers += 1;
         outcome = result.outcome;
       },
-      onStoryUpdate: (snapshot) => storyUpdates.push(snapshot),
+      onStoryUpdate: (snapshot) => {
+        storyUpdates.push(snapshot);
+        storyUpdateSnapshots.push(snapshots.at(-1));
+        storyUpdateRunnerStates.push(
+          game.canonicalDeterministicState().runner as
+            | Readonly<Record<string, unknown>>
+            | undefined
+        );
+        storyUpdateCounters.push(snapshots.at(-1)?.millionCounterValue);
+      },
       onModeChange: (mode) => modeChanges.push(mode),
       onMilestoneCelebration: (celebration) => {
         milestoneCelebrations.push(celebration);
@@ -106,8 +122,13 @@ function createGameHarness(
       mode,
       story: storyOverride ?? config.story,
       challenge: config.challenge,
+      visualFrameSink: (distance, alpha) => visualFrames.push({ distance, alpha }),
       awardStoryCompletionBonus
     }
+  );
+  game.applyGeometry(
+    calculateWorldPlateTransform(960, 540, WORLD_ARTWORK_CONTRACT)!,
+    { width: 960, height: 540, dpr: 1 }
   );
   let jumpedObstacle: object | null = null;
   const avoidObstacles = (): void => {
@@ -156,6 +177,10 @@ function createGameHarness(
     game,
     snapshots,
     storyUpdates,
+    storyUpdateSnapshots,
+    storyUpdateRunnerStates,
+    storyUpdateCounters,
+    visualFrames,
     modeChanges,
     milestoneCelebrations,
     milestoneModes,
@@ -326,6 +351,49 @@ describe("campaign collision contract", () => {
     harness.game.destroy();
   });
 
+  it("keeps spawning packages and obstacles until the story card actually opens", () => {
+    const config = parseRunnerConfig(productionConfig);
+    if (!config) throw new Error("production config should parse");
+    const extendedFirstRun: StoryConfig = {
+      ...config.story,
+      sequence: config.story.sequence.map((step) =>
+        step.type === "play" && step.id === "epoch_1.first_package"
+          ? { ...step, durationSeconds: 60 }
+          : step
+      )
+    };
+    const harness = createGameHarness("story", extendedFirstRun);
+    harness.game.start("keyboard");
+    harness.continueCurrentSceneFully();
+    harness.advance(STORY_REFRAME_SECONDS + 3.05);
+
+    let sawPackageAfterProgram = false;
+    let sawObstacleAfterProgram = false;
+    const internals = harness.game as unknown as {
+      obstacles: Array<{ active: boolean; authoredWaveId?: string }>;
+      packages: Array<{ active: boolean; authoredWaveId?: string }>;
+    };
+    for (let guard = 0; guard < 240; guard += 1) {
+      harness.advance(0.25, harness.avoidObstacles);
+      const story = harness.storyUpdates.at(-1);
+      const authoredProgramComplete =
+        harness.snapshots.at(-1)?.authoredWave?.completed === true;
+      if (authoredProgramComplete && story?.state === "play") {
+        sawPackageAfterProgram ||= internals.packages.some(
+          ({ active, authoredWaveId }) => active && authoredWaveId === undefined
+        );
+        sawObstacleAfterProgram ||= internals.obstacles.some(
+          ({ active, authoredWaveId }) => active && authoredWaveId === undefined
+        );
+      }
+      if (sawPackageAfterProgram && sawObstacleAfterProgram) break;
+    }
+
+    expect(sawPackageAfterProgram).toBe(true);
+    expect(sawObstacleAfterProgram).toBe(true);
+    harness.game.destroy();
+  });
+
   it("holds the tutorial until the required jump and slide patterns are cleared", () => {
     const harness = createGameHarness("story");
     harness.game.start("keyboard");
@@ -387,6 +455,10 @@ describe("campaign collision contract", () => {
     expect(harness.gameOvers).toBe(0);
     expect(harness.storyCompletions).toBe(1);
     expect(harness.modeChanges).toEqual(["challenge"]);
+    const finaleStoryUpdateIndex = harness.storyUpdates.findIndex(({ scene }) =>
+      scene?.id === "story.million_finale");
+    expect(finaleStoryUpdateIndex).toBeGreaterThanOrEqual(0);
+    expect(harness.storyUpdateCounters[finaleStoryUpdateIndex]).toBe(1_000_000);
     expect(harness.milestoneCelebrations.length).toBeGreaterThan(0);
     expect(harness.milestoneCelebrations[0]).toMatchObject({
       threshold: 10,
@@ -419,8 +491,11 @@ describe("campaign collision contract", () => {
     expect(challengeSnapshot?.score).toBeGreaterThanOrEqual(config.story.firstCompletionBonusScore);
     expect(challengeSnapshot?.challengeScore).toBe(0);
     expect(challengeSnapshot?.challengeOrdersCollected).toBe(0);
-    expect(harness.snapshots.some(({ authoredWave }) =>
-      authoredWave?.microlevelId === "million-threshold" && authoredWave.completed
+    expect(harness.snapshots.some(({ millionCounterValue }) =>
+      millionCounterValue === 1_000_000
+    )).toBe(true);
+    expect(harness.snapshots.some(({ visualStateId }) =>
+      visualStateId === "story.million_finale"
     )).toBe(true);
     expect(harness.snapshots.some(({ powerUpDemoRemaining }) => powerUpDemoRemaining > 0))
       .toBe(true);
@@ -514,6 +589,29 @@ describe("campaign collision contract", () => {
     harness.game.destroy();
   });
 
+  it("continues from the game-purpose CTA to the first authored story beat", () => {
+    const harness = createGameHarness("story");
+    harness.game.start("keyboard");
+
+    expect(harness.storyUpdates.at(-1)).toMatchObject({
+      state: "scene",
+      scene: { id: "story.first_package" },
+      scenePageId: "game-purpose",
+      controlsEnabled: false
+    });
+
+    expect(harness.game.continueStoryScene("story.first_package")).toBe(true);
+    expect(harness.storyUpdates.at(-1)).toMatchObject({
+      state: "scene",
+      scene: { id: "story.first_package" },
+      scenePageId: "first-hand-packed",
+      controlsEnabled: false
+    });
+    expect(harness.snapshots.at(-1)?.mode).toBe("story");
+
+    harness.game.destroy();
+  });
+
   it("adds the configured completion bonus only when the profile marks this as the first pass", () => {
     const config = parseRunnerConfig(productionConfig);
     if (!config) throw new Error("production config should parse");
@@ -573,7 +671,7 @@ describe("campaign collision contract", () => {
     harness.game.destroy();
   });
 
-  it("runs a twelve-combination final with no boss", () => {
+  it("ends the boss-free finale only when the order counter reaches one million", () => {
     const harness = createGameHarness("story");
     harness.game.start("keyboard");
     for (let guard = 0; guard < 2_000; guard += 1) {
@@ -598,9 +696,23 @@ describe("campaign collision contract", () => {
     expect(harness.snapshots.at(-1)?.bossPhase).toBe("inactive");
     expect(harness.snapshots.at(-1)?.authoredWave?.waveTarget).toBe(12);
     harness.advance(80, harness.avoidObstacles);
-    expect(harness.snapshots.some(({ authoredWave }) =>
-      authoredWave?.microlevelId === "million-threshold" && authoredWave.completed
-    )).toBe(true);
+    // The finale has one completion condition: the order counter reaches 1 000 000.
+    const finaleReached = harness.snapshots.some(({ millionCounterValue }) =>
+      millionCounterValue === 1_000_000);
+    expect(finaleReached).toBe(true);
+    const finalMillionGameplaySnapshot = harness.snapshots
+      .filter(({ storyObjectiveSegmentId }) =>
+        storyObjectiveSegmentId === "epoch_5.million_threshold"
+      )
+      .at(-1);
+    expect(finalMillionGameplaySnapshot?.millionCounterValue).toBe(1_000_000);
+    // Continue through the finale scenes to reach the challenge handoff.
+    for (let guard = 0; guard < 60 && harness.snapshots.at(-1)?.mode === "story"; guard += 1) {
+      const story = harness.storyUpdates.at(-1);
+      if (story?.state === "scene" && story.scene) harness.game.continueStoryScene(story.scene.id);
+      else harness.advance(1, harness.avoidObstacles);
+    }
+    expect(harness.snapshots.at(-1)?.mode).toBe("challenge");
     harness.game.destroy();
   });
 });
@@ -728,16 +840,20 @@ describe("direct slide control", () => {
     const harness = createGameHarness("challenge");
     const internals = harness.game as unknown as {
       powerUpDemoRemaining: number;
-      runner: { grounded: boolean; jumpBufferRemaining: number; crouching: boolean };
+      runner: { grounded: boolean; jumpBufferRemaining: number; crouching: boolean; velocityY: number };
     };
     harness.game.start("keyboard");
     internals.powerUpDemoRemaining = 1;
 
     harness.game.jump("keyboard");
-    expect(internals.runner.jumpBufferRemaining).toBeGreaterThan(0);
+    harness.advance(0.02);
+    expect(internals.runner.velocityY).toBeLessThan(0);
 
     internals.runner.jumpBufferRemaining = 0;
     harness.game.crouch(true, "keyboard");
+    harness.advance(0.02);
+    expect(internals.runner.crouching).toBe(false);
+    harness.advance(1);
     expect(internals.runner.crouching).toBe(true);
     harness.game.destroy();
   });
@@ -750,22 +866,176 @@ describe("direct slide control", () => {
     harness.game.start("keyboard");
 
     harness.game.crouch(true, "keyboard");
+    harness.advance(0.02);
     expect(runner.crouching).toBe(true);
     harness.advance(0.1);
     expect(runner.crouchElapsedSeconds).toBeGreaterThan(0);
     harness.game.crouch(false, "keyboard");
+    harness.advance(0.02);
     expect(runner.crouching).toBe(false);
     expect(runner.crouchElapsedSeconds).toBe(0);
 
     harness.game.crouch(true, "touch");
+    harness.advance(0.02);
     expect(runner.crouching).toBe(true);
     harness.game.crouch(false, "touch");
+    harness.advance(0.02);
     expect(runner.crouching).toBe(false);
     harness.game.destroy();
   });
 });
 
 describe("story lifecycle pauses", () => {
+  it("does not carry legacy generated obstacle motifs into the return countdown", () => {
+    const harness = createGameHarness("story");
+    harness.game.start("keyboard");
+    harness.continueCurrentSceneFully();
+    harness.advance(STORY_REFRAME_SECONDS + 3.1);
+
+    const internals = harness.game as unknown as {
+      obstacles: Array<{
+        active: boolean;
+        kind: "box-stack" | "pallet" | "trolley" | "overhead";
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      }>;
+      storyTimeline: { forceCompletePlayStep(): void };
+      storyObstacleTransformer: { models: readonly unknown[] };
+    };
+    expect(harness.storyUpdates.at(-1)?.state).toBe("play");
+    Object.assign(internals.obstacles[0]!, {
+      active: true,
+      kind: "box-stack",
+      x: 640,
+      y: 380,
+      width: 64,
+      height: 70,
+    });
+
+    internals.storyTimeline.forceCompletePlayStep();
+    harness.advance(0.05);
+    expect(harness.storyUpdates.at(-1)?.state).toBe("scene");
+    expect(internals.storyObstacleTransformer.models.length).toBeGreaterThan(0);
+
+    harness.continueCurrentSceneFully();
+    harness.advance(STORY_REFRAME_SECONDS + 0.05);
+    expect(harness.storyUpdates.at(-1)?.state).toBe("countdown");
+    expect(internals.storyObstacleTransformer.models).toHaveLength(0);
+    harness.game.destroy();
+  });
+
+  it("keeps countdown controls and visual travel frozen until play resumes", () => {
+    const config = parseRunnerConfig(productionConfig);
+    if (!config) throw new Error("production config should parse");
+    const harness = createGameHarness("story", {
+      ...config.story,
+      resumeCountdownSeconds: 3
+    });
+    harness.game.start("keyboard");
+    harness.continueCurrentSceneFully();
+    harness.advance(STORY_REFRAME_SECONDS + 0.05);
+
+    const countdownStart = harness.storyUpdates.at(-1);
+    expect(countdownStart?.state).toBe("countdown");
+    expect(countdownStart?.countdownValue).toBe(3);
+    expect(countdownStart?.controlsEnabled).toBe(false);
+    const startDistance = harness.visualFrames.at(-1)?.distance;
+    const frozenSnapshot = harness.storyUpdateSnapshots.at(-1);
+    const frozenState = (snapshot: GameSnapshot | undefined) => snapshot === undefined
+      ? undefined
+      : {
+          score: snapshot.score,
+          packagesCollected: snapshot.packagesCollected,
+          ordersCollected: snapshot.ordersCollected,
+          collisions: snapshot.collisions,
+          recoverySeconds: snapshot.recoverySeconds,
+          startProtectionSeconds: snapshot.startProtectionSeconds,
+          durationSeconds: snapshot.durationSeconds,
+          distanceM: snapshot.distanceM,
+          backgroundTravelPixels: snapshot.backgroundTravelPixels,
+          difficultyLevel: snapshot.difficultyLevel,
+          storyProgress: snapshot.storyProgress,
+          storyObjectives: snapshot.storyObjectives,
+          activePowerUps: snapshot.activePowerUps,
+          activePowerUpStatuses: snapshot.activePowerUpStatuses,
+          powerUpDemoRemaining: snapshot.powerUpDemoRemaining,
+          milestoneCelebration: snapshot.milestoneCelebration,
+          authoredWave: snapshot.authoredWave
+        };
+
+    harness.game.jump("keyboard");
+    harness.game.crouch(true, "keyboard");
+    harness.advance(1);
+
+    expect(harness.storyUpdates.at(-1)?.state).toBe("countdown");
+    expect(harness.storyUpdates.at(-1)?.countdownValue).toBe(2);
+    expect(harness.visualFrames.at(-1)?.distance).toBe(startDistance);
+    expect(frozenState(harness.storyUpdateSnapshots.at(-1))).toEqual(frozenState(frozenSnapshot));
+
+    harness.advance(1);
+    expect(harness.storyUpdates.at(-1)?.countdownValue).toBe(1);
+    expect(harness.visualFrames.at(-1)?.distance).toBe(startDistance);
+    expect(frozenState(harness.storyUpdateSnapshots.at(-1))).toEqual(frozenState(frozenSnapshot));
+
+    harness.advance(1.1);
+    expect(harness.storyUpdates.at(-1)?.state).toBe("play");
+    expect(harness.visualFrames.at(-1)?.distance).toBeGreaterThan(startDistance ?? 0);
+    harness.game.destroy();
+  });
+
+  it("produces the same seeded play after countdown inputs are rejected", () => {
+    const baseline = createGameHarness("story");
+    const attemptedInput = createGameHarness("story");
+    for (const harness of [baseline, attemptedInput]) {
+      harness.game.start("keyboard");
+      harness.continueCurrentSceneFully();
+      harness.advance(STORY_REFRAME_SECONDS + 0.05);
+      expect(harness.storyUpdates.at(-1)?.state).toBe("countdown");
+    }
+
+    attemptedInput.game.jump("keyboard");
+    attemptedInput.game.crouch(true, "keyboard");
+    baseline.advance(3.1);
+    attemptedInput.advance(3.1);
+    const baselinePlayIndex = baseline.storyUpdates.findIndex(({ state }) => state === "play");
+    const attemptedPlayIndex = attemptedInput.storyUpdates.findIndex(
+      ({ state }) => state === "play"
+    );
+    expect(attemptedInput.storyUpdateRunnerStates[attemptedPlayIndex])
+      .toEqual(baseline.storyUpdateRunnerStates[baselinePlayIndex]);
+    expect(attemptedInput.storyUpdateRunnerStates[attemptedPlayIndex]).toMatchObject({
+      grounded: true,
+      velocityY: 0,
+      crouching: false,
+      jumpBufferRemaining: 0
+    });
+    baseline.advance(8);
+    attemptedInput.advance(8);
+
+    const publicOutcome = (snapshot: GameSnapshot | undefined) => snapshot === undefined
+      ? undefined
+      : {
+          score: snapshot.score,
+          packagesCollected: snapshot.packagesCollected,
+          ordersCollected: snapshot.ordersCollected,
+          collisions: snapshot.collisions,
+          distanceM: snapshot.distanceM,
+          durationSeconds: snapshot.durationSeconds,
+          difficultyLevel: snapshot.difficultyLevel,
+          nextStepIndex: snapshot.nextStepIndex,
+          authoredWave: snapshot.authoredWave,
+          storyObjectives: snapshot.storyObjectives
+        };
+    expect(publicOutcome(attemptedInput.snapshots.at(-1)))
+      .toEqual(publicOutcome(baseline.snapshots.at(-1)));
+    expect(attemptedInput.outcome).toBe(baseline.outcome);
+
+    baseline.game.destroy();
+    attemptedInput.game.destroy();
+  });
+
   it("ignores blur and visibility while a story scene or countdown owns focus", () => {
     const harness = createGameHarness("story");
     harness.game.start("keyboard");

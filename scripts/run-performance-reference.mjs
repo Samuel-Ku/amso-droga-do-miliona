@@ -1,0 +1,1063 @@
+import fs from "node:fs";
+import path from "node:path";
+import process from "node:process";
+import os from "node:os";
+import http from "node:http";
+import { createHash } from "node:crypto";
+import { chromium, webkit } from "playwright";
+import {
+  EXPECTED_CAMPAIGN_ASSETS,
+  headersForPerformanceRequest,
+  isExpectedPerformanceRequest
+} from "./performance-request-policy.mjs";
+import {
+  qualifiedPanelTransitions,
+  REQUIRED_WORLD_SEAM_TRANSITIONS,
+  requiredWorldTransitionsPassed,
+  selectRequiredWorldTransitions
+} from "./performance-transition-policy.mjs";
+
+const root = path.resolve(import.meta.dirname, "..");
+
+const usage = `Usage: node scripts/run-performance-reference.mjs [options]
+
+Options:
+  --url URL                        Deployed Vercel page to profile (default: local dist-vercel)
+  --audio enabled|disabled         Audio mode for this run
+  --process cold|warm              Browser-process state for the measured run
+  --profile cold-audio-enabled|cold-audio-disabled|warm-audio-enabled|full-session
+  --variant before|after           Comparison label
+  --scenario performance-reference-v1|world-seam-performance-v1|four-cycle-memory-v1
+  --browser chromium|webkit        Browser engine (default: chromium)
+  --cycles 1|4                     Replay count in one page/cache (default: 1)
+  --output PATH                    Write machine-readable evidence JSON
+  --help                           Show this help
+`;
+
+function option(name, fallback = undefined) {
+  const index = process.argv.indexOf(`--${name}`);
+  return index < 0 ? fallback : process.argv[index + 1];
+}
+
+if (process.argv.includes("--help")) {
+  process.stdout.write(usage);
+  process.exit(0);
+}
+
+const deploymentUrl = option("url");
+const audioMode = option("audio", "enabled");
+const processState = option("process", "cold");
+const profile = option("profile", "full-session");
+const variant = option("variant", "after");
+const outputPath = option("output");
+const scenarioId = option("scenario", "performance-reference-v1");
+const browserEngine = option("browser", "chromium");
+const requestedCycles = Number.parseInt(option("cycles", "1"), 10);
+if (!(["enabled", "disabled"].includes(audioMode)) ||
+    !(["before", "after"].includes(variant)) ||
+    !(["cold", "warm"].includes(processState)) ||
+    !(["cold-audio-enabled", "cold-audio-disabled", "warm-audio-enabled",
+      "full-session"].includes(profile)) ||
+    !(["performance-reference-v1", "world-seam-performance-v1", "four-cycle-memory-v1"].includes(scenarioId)) ||
+    !(["chromium", "webkit"].includes(browserEngine)) ||
+    !([1, 4].includes(requestedCycles)) ||
+    (requestedCycles === 4 && scenarioId !== "four-cycle-memory-v1") ||
+    option("artifact") !== undefined) {
+  console.error(usage);
+  process.exit(1);
+}
+const timeoutMs = Number.parseInt(
+  process.env.AMSO_PERFORMANCE_SCENARIO_TIMEOUT_MS ?? "90000",
+  10
+);
+
+function percentile(values, percentileValue) {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((left, right) => left - right);
+  return sorted[Math.max(0, Math.ceil(sorted.length * percentileValue) - 1)];
+}
+
+function rounded(value) {
+  return value === null ? null : Math.round(value * 1_000) / 1_000;
+}
+
+const vercelDirectory = path.join(root, "dist-vercel");
+if (deploymentUrl === undefined && !fs.existsSync(path.join(vercelDirectory, "index.html"))) {
+  console.error("performance scenario failed: dist-vercel/index.html is missing");
+  process.exit(1);
+}
+
+const contentTypes = new Map([
+  [".html", "text/html; charset=utf-8"], [".js", "text/javascript; charset=utf-8"],
+  [".css", "text/css; charset=utf-8"], [".json", "application/json; charset=utf-8"],
+  [".webp", "image/webp"], [".avif", "image/avif"], [".svg", "image/svg+xml"]
+]);
+const localServer = deploymentUrl === undefined ? http.createServer((request, response) => {
+  const pathname = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
+  const relativePath = pathname === "/" || pathname === "/million"
+    ? "index.html"
+    : decodeURIComponent(pathname).replace(/^\/+/, "");
+  const filePath = path.resolve(vercelDirectory, relativePath);
+  if (!filePath.startsWith(`${vercelDirectory}${path.sep}`) || !fs.existsSync(filePath) ||
+      !fs.statSync(filePath).isFile()) {
+    response.writeHead(404).end("Not found");
+    return;
+  }
+  response.setHeader("content-type", contentTypes.get(path.extname(filePath)) ?? "application/octet-stream");
+  response.setHeader("cache-control", "no-store");
+  response.end(fs.readFileSync(filePath));
+}) : null;
+if (localServer !== null) {
+  await new Promise((resolve) => localServer.listen(0, "127.0.0.1", resolve));
+}
+const localAddress = localServer?.address();
+const targetUrl = deploymentUrl === undefined
+  ? new URL(`http://127.0.0.1:${localAddress.port}/million`)
+  : new URL(deploymentUrl);
+
+const systemChromeCandidates = process.platform === "darwin"
+  ? ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"]
+  : process.platform === "win32"
+    ? [
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"
+      ]
+    : ["/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"];
+const configuredExecutable = process.env.AMSO_CHROME_EXECUTABLE;
+const executablePath = configuredExecutable && fs.existsSync(configuredExecutable)
+  ? configuredExecutable
+  : systemChromeCandidates.find((candidate) => fs.existsSync(candidate));
+const browserType = browserEngine === "webkit" ? webkit : chromium;
+const browser = await browserType.launch({
+  headless: true,
+  ...(browserEngine === "chromium" && executablePath ? { executablePath } : {}),
+  ...(browserEngine === "chromium" ? { args: [
+    "--disable-background-timer-throttling",
+    "--disable-renderer-backgrounding",
+    "--disable-backgrounding-occluded-windows"
+  ] } : {})
+});
+
+let exitCode = 1;
+try {
+  const vercelAutomationBypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  const context = await browser.newContext({
+    viewport: { width: 960, height: 540 }
+  });
+  const page = await context.newPage();
+  if (vercelAutomationBypass) {
+    await page.route("**/*", async (route) => {
+      const request = route.request();
+      const requestUrl = new URL(request.url());
+      await route.continue({
+        headers: headersForPerformanceRequest(
+          requestUrl, targetUrl, request.headers(), vercelAutomationBypass
+        )
+      });
+    });
+  }
+  const browserRuntime = await page.evaluate(() => ({
+    userAgent: navigator.userAgent,
+    hardwareConcurrency: navigator.hardwareConcurrency ?? null,
+    deviceMemoryGiB: navigator.deviceMemory ?? null
+  }));
+  const consoleErrors = [];
+  const consoleErrorDetails = [];
+  const externalRequests = [];
+  const failedResponses = [];
+  page.on("console", (message) => {
+    if (message.type() !== "error") return;
+    consoleErrors.push(message.text());
+    consoleErrorDetails.push({ text: message.text(), location: message.location() });
+  });
+  page.on("pageerror", (error) => {
+    consoleErrors.push(error.message);
+    consoleErrorDetails.push({ text: error.message, location: null });
+  });
+  page.on("response", (response) => {
+    if (response.status() < 400) return;
+    const responseUrl = new URL(response.url());
+    failedResponses.push({
+      status: response.status(),
+      resource: `${responseUrl.origin}${responseUrl.pathname}`
+    });
+  });
+  page.on("request", (request) => {
+    const requestUrl = new URL(request.url());
+    if (!isExpectedPerformanceRequest(requestUrl, targetUrl)) {
+      externalRequests.push(request.url());
+    }
+  });
+  await page.addInitScript(() => {
+    const panelTranslateXPercent = (panel) => {
+      const match = /translate3d\((-?[\d.]+)%/u.exec(panel.style.transform);
+      return match === null ? Number.NaN : Number.parseFloat(match[1]);
+    };
+    window.__performanceScenarioRuntime = {
+      activeDecodeStarts: 0,
+      activeFrameIntervals: [],
+      activeFrameTimeline: [],
+      activeFramesOver33Ms: 0,
+      maxActiveFrameMs: 0,
+      decodeTimings: [],
+      worldTransitions: [],
+      panelTransitions: [],
+      visualMotionSlopes: [],
+      qualityHistory: [{ level: "full", atMs: 0, reason: "force-full" }],
+      longTasks: { support: "unsupported", count: 0, totalDurationMs: 0,
+        maxDurationMs: 0, entries: [] },
+      longAnimationFrames: { support: "unsupported", count: 0,
+        totalBlockingDurationMs: 0, entries: [] },
+      dom: { initialNodeCount: 0, maxNodeCount: 0, finalNodeCount: 0,
+        addedNodeCount: 0, removedNodeCount: 0, activeImageNodesAdded: 0,
+        activeImageNodesCreated: 0, samples: [] },
+      memorySamples: [],
+      memoryTimeline: [],
+      firstGestureAtMs: null,
+      audioContextsCreated: 0,
+      audioContextsBeforeFirstGesture: 0,
+      lifecycleChecks: {
+        visibilityResumePassed: false,
+        resizePassed: false,
+        orientationPassed: false,
+        fullscreenPassed: false
+      },
+      lifecycleObservations: { visibility: [], orientation: [], fullscreen: [] }
+    };
+    document.addEventListener("visibilitychange", () => {
+      window.__performanceScenarioRuntime.lifecycleObservations.visibility.push({
+        hidden: document.hidden,
+        visibilityState: document.visibilityState,
+        atMs: performance.now()
+      });
+    });
+    window.addEventListener("orientationchange", () => {
+      window.__performanceScenarioRuntime.lifecycleObservations.orientation.push({
+        portrait: window.innerHeight > window.innerWidth,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        atMs: performance.now()
+      });
+    });
+    document.addEventListener("fullscreenchange", () => {
+      window.__performanceScenarioRuntime.lifecycleObservations.fullscreen.push({
+        entered: document.fullscreenElement !== null,
+        atMs: performance.now()
+      });
+    });
+    const isActiveGameplay = () => {
+      const worldVisual = document.querySelector("[data-campaign-world-visual]");
+      return document.querySelector(".amso-million-runner-2026")?.getAttribute("data-view") === "game" &&
+        worldVisual?.getAttribute("data-phase") === "game" &&
+        worldVisual.getAttribute("data-paused") !== "true";
+    };
+    const markFirstGesture = () => {
+      window.__performanceScenarioRuntime.firstGestureAtMs ??= performance.now();
+    };
+    for (const type of ["pointerdown", "keydown", "touchstart", "click"]) {
+      document.addEventListener(type, markFirstGesture, { capture: true, once: true });
+    }
+    const trackAudioContext = (property) => {
+      const NativeContext = window[property];
+      if (typeof NativeContext !== "function") return;
+      window[property] = new Proxy(NativeContext, {
+        construct(target, args, newTarget) {
+          const runtime = window.__performanceScenarioRuntime;
+          runtime.audioContextsCreated += 1;
+          if (runtime.firstGestureAtMs === null) runtime.audioContextsBeforeFirstGesture += 1;
+          return Reflect.construct(target, args, newTarget);
+        }
+      });
+    };
+    trackAudioContext("AudioContext");
+    trackAudioContext("webkitAudioContext");
+    const originalDecode = HTMLImageElement.prototype.decode;
+    const NativeImage = window.Image;
+    const TrackedImage = function trackedImage(width, height) {
+      const image = new NativeImage(width, height);
+      if (isActiveGameplay()) window.__performanceScenarioRuntime.dom.activeImageNodesCreated += 1;
+      return image;
+    };
+    TrackedImage.prototype = NativeImage.prototype;
+    Object.setPrototypeOf(TrackedImage, NativeImage);
+    window.Image = TrackedImage;
+    const nativeCreateElement = Document.prototype.createElement;
+    Document.prototype.createElement = function trackedCreateElement(name, options) {
+      const element = nativeCreateElement.call(this, name, options);
+      if (String(name).toLowerCase() === "img" && isActiveGameplay()) {
+        window.__performanceScenarioRuntime.dom.activeImageNodesCreated += 1;
+      }
+      return element;
+    };
+    HTMLImageElement.prototype.decode = function trackedDecode() {
+      const startedAt = performance.now();
+      const active = isActiveGameplay();
+      if (active) {
+        window.__performanceScenarioRuntime.activeDecodeStarts += 1;
+      }
+      const record = (status) => {
+        const rawSource = this.dataset.assetPath || this.currentSrc || this.src || null;
+        window.__performanceScenarioRuntime.decodeTimings.push({
+          startedAtMs: startedAt,
+          durationMs: performance.now() - startedAt,
+          active,
+          status,
+          assetId: this.dataset.assetId ?? null,
+          source: typeof rawSource === "string" && rawSource.startsWith("data:")
+            ? this.dataset.assetId ?? rawSource.slice(0, rawSource.indexOf(",") + 1)
+            : rawSource,
+          worldId: this.dataset.worldId ?? null,
+          panel: this.dataset.worldPanel ??
+            (this.hasAttribute("data-world-staged-panel") ? "staged" : null),
+          panelRole: this.dataset.worldPanel ??
+            (this.hasAttribute("data-world-staged-panel") ? "staged" : "asset")
+        });
+      };
+      try {
+        return Promise.resolve(originalDecode.call(this)).then(
+          (value) => {
+            record("fulfilled");
+            return value;
+          },
+          (error) => {
+            record("rejected");
+            throw error;
+          }
+        );
+      } catch (error) {
+        record("threw");
+        throw error;
+      }
+    };
+    const supportedEntries = PerformanceObserver.supportedEntryTypes ?? [];
+    if (supportedEntries.includes("longtask")) {
+      window.__performanceScenarioRuntime.longTasks.support = "supported";
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          const summary = window.__performanceScenarioRuntime.longTasks;
+          summary.count += 1;
+          summary.totalDurationMs += entry.duration;
+          summary.maxDurationMs = Math.max(summary.maxDurationMs, entry.duration);
+          if (summary.entries.length < 128) {
+            summary.entries.push({ startedAtMs: entry.startTime, durationMs: entry.duration,
+              active: isActiveGameplay() });
+          }
+        }
+      }).observe({ entryTypes: ["longtask"] });
+    }
+    if (supportedEntries.includes("long-animation-frame")) {
+      window.__performanceScenarioRuntime.longAnimationFrames.support = "supported";
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          const summary = window.__performanceScenarioRuntime.longAnimationFrames;
+          const scripts = Array.from(entry.scripts ?? []).map((script) => ({
+            durationMs: script.duration ?? 0,
+            executionStartMs: script.executionStart ?? null,
+            invokerType: script.invokerType ?? null,
+            source: script.sourceFunctionName || script.sourceURL || "anonymous"
+          }));
+          summary.count += 1;
+          summary.totalBlockingDurationMs += entry.blockingDuration ?? 0;
+          if (summary.entries.length < 128) {
+            summary.entries.push({
+              startedAtMs: entry.startTime,
+              durationMs: entry.duration,
+              blockingDurationMs: entry.blockingDuration ?? 0,
+              renderStartMs: entry.renderStart ?? null,
+              styleAndLayoutStartMs: entry.styleAndLayoutStart ?? null,
+              scripts,
+              active: isActiveGameplay()
+            });
+          }
+        }
+      }).observe({ entryTypes: ["long-animation-frame"] });
+    }
+    let previousActiveFrame = null;
+    const lastPanelRects = new WeakMap();
+    let lastWorldPhase = null;
+    let lastCurrentPanel = null;
+    let lastCurrentPanelTranslate = null;
+    const observeFrame = (timestamp) => {
+      const active = document.visibilityState === "visible" && isActiveGameplay();
+      if (active && previousActiveFrame !== null) {
+        const interval = timestamp - previousActiveFrame;
+        window.__performanceScenarioRuntime.maxActiveFrameMs = Math.max(
+          window.__performanceScenarioRuntime.maxActiveFrameMs,
+          interval
+        );
+        window.__performanceScenarioRuntime.activeFrameIntervals.push(interval);
+        window.__performanceScenarioRuntime.activeFrameTimeline.push({
+          atMs: timestamp,
+          intervalMs: interval
+        });
+        if (interval > 33) {
+          window.__performanceScenarioRuntime.activeFramesOver33Ms += 1;
+        }
+      }
+      const worldVisual = document.querySelector("[data-campaign-world-visual]");
+      const previousWorldPhase = lastWorldPhase;
+      if (worldVisual instanceof HTMLElement) {
+        const phase = Number.parseFloat(worldVisual.style.getPropertyValue("--world-phase-px"));
+        if (Number.isFinite(phase)) {
+          lastWorldPhase = {
+            value: phase,
+            previousValue: lastWorldPhase?.value ?? phase,
+            timestamp,
+            previousTimestamp: lastWorldPhase?.timestamp ?? timestamp
+          };
+        }
+      }
+      const currentPanel = worldVisual?.querySelector('[data-world-panel="current"]');
+      if (currentPanel instanceof HTMLImageElement) {
+        const currentTranslate = panelTranslateXPercent(currentPanel);
+        const phaseDelta = lastWorldPhase === null || previousWorldPhase === null
+          ? Number.NaN
+          : lastWorldPhase.value - previousWorldPhase.value;
+        if (active && currentPanel === lastCurrentPanel &&
+            Number.isFinite(currentTranslate) && Number.isFinite(lastCurrentPanelTranslate) &&
+            Number.isFinite(phaseDelta) && Math.abs(phaseDelta) > 0.001) {
+          const slope = Math.abs((currentTranslate - lastCurrentPanelTranslate) / phaseDelta);
+          if (Number.isFinite(slope) && slope > 0 &&
+              window.__performanceScenarioRuntime.visualMotionSlopes.length < 20_000) {
+            window.__performanceScenarioRuntime.visualMotionSlopes.push({ atMs: timestamp, slope });
+          }
+        }
+        lastCurrentPanel = currentPanel;
+        lastCurrentPanelTranslate = currentTranslate;
+      } else {
+        lastCurrentPanel = null;
+        lastCurrentPanelTranslate = null;
+      }
+      for (const panel of worldVisual?.querySelectorAll("[data-world-panel]") ?? []) {
+        if (panel instanceof HTMLImageElement) {
+          const rect = panel.getBoundingClientRect();
+          const previous = lastPanelRects.get(panel);
+          lastPanelRects.set(panel, {
+            left: rect.left,
+            right: rect.right,
+            previousLeft: previous?.left ?? rect.left,
+            timestamp,
+            previousTimestamp: previous?.timestamp ?? timestamp,
+            translateXPercent: panelTranslateXPercent(panel)
+          });
+        }
+      }
+      previousActiveFrame = active ? timestamp : null;
+      requestAnimationFrame(observeFrame);
+    };
+    requestAnimationFrame(observeFrame);
+    document.addEventListener("DOMContentLoaded", () => {
+      const runtime = window.__performanceScenarioRuntime;
+      const countNodes = () => document.getElementsByTagName("*").length;
+      runtime.dom.initialNodeCount = countNodes();
+      runtime.dom.maxNodeCount = runtime.dom.initialNodeCount;
+      const sampleRuntime = () => {
+        const nodeCount = countNodes();
+        runtime.dom.finalNodeCount = nodeCount;
+        runtime.dom.maxNodeCount = Math.max(runtime.dom.maxNodeCount, nodeCount);
+        if (runtime.dom.samples.length < 128) runtime.dom.samples.push(nodeCount);
+        const heap = performance.memory?.usedJSHeapSize;
+        if (Number.isFinite(heap) && runtime.memorySamples.length < 512) {
+          runtime.memorySamples.push(heap);
+          runtime.memoryTimeline.push({ atMs: performance.now(), usedJsHeapSize: heap });
+        }
+      };
+      sampleRuntime();
+      setInterval(sampleRuntime, 1_000);
+      new MutationObserver((records) => {
+        for (const record of records) {
+          runtime.dom.addedNodeCount += record.addedNodes.length;
+          runtime.dom.removedNodeCount += record.removedNodes.length;
+          if (isActiveGameplay()) {
+            for (const node of record.addedNodes) {
+              if (node instanceof HTMLImageElement) runtime.dom.activeImageNodesAdded += 1;
+              if (node instanceof Element) {
+                runtime.dom.activeImageNodesAdded += node.querySelectorAll("img").length;
+              }
+            }
+          }
+        }
+        runtime.dom.maxNodeCount = Math.max(runtime.dom.maxNodeCount, countNodes());
+      }).observe(document.documentElement, { childList: true, subtree: true });
+      const worldVisual = document.querySelector("[data-campaign-world-visual]");
+      if (!(worldVisual instanceof HTMLElement)) return;
+      let previousWorldId = worldVisual.dataset.worldId ?? null;
+      new MutationObserver(() => {
+        const worldId = worldVisual.dataset.worldId ?? null;
+        if (worldId === null || worldId === previousWorldId) return;
+        previousWorldId = worldId;
+        window.__performanceScenarioRuntime.worldTransitions.push({
+          worldId,
+          atMs: performance.now(),
+          phase: worldVisual.dataset.phase ?? null,
+          paused: worldVisual.dataset.paused === "true"
+        });
+      }).observe(worldVisual, { attributes: true, attributeFilter: ["data-world-id"] });
+      let previousCurrentPanel = null;
+      let previousCurrentPanelWorldId = null;
+      const recordCurrentPanel = () => {
+        const panel = worldVisual.querySelector('[data-world-panel="current"]');
+        if (!(panel instanceof HTMLImageElement)) return;
+        const worldId = panel.dataset.worldId ?? null;
+        if (worldId === null ||
+            (panel === previousCurrentPanel && worldId === previousCurrentPanelWorldId)) return;
+        previousCurrentPanel = panel;
+        previousCurrentPanelWorldId = worldId;
+        const previousIncomingRect = lastPanelRects.get(panel) ?? null;
+        const previousWorldPhase = lastWorldPhase;
+        const transition = {
+          worldId,
+          atMs: performance.now(),
+          assetPath: panel.dataset.assetPath ?? null,
+          presentationReady: panel.dataset.presentationReady === "true",
+          hidden: panel.hidden,
+          visual: null
+        };
+        runtime.panelTransitions.push(transition);
+        requestAnimationFrame((sampledAt) => {
+          const plate = worldVisual.querySelector("[data-world-plate]");
+          const activePanels = [...worldVisual.querySelectorAll("[data-world-panel]")]
+            .filter((candidate) => candidate instanceof HTMLImageElement);
+          if (!(plate instanceof HTMLElement) || activePanels.length !== 2) return;
+          const plateRect = plate.getBoundingClientRect();
+          const panelRects = activePanels.map((candidate) => candidate.getBoundingClientRect())
+            .sort((left, right) => left.left - right.left);
+          const currentRect = panel.getBoundingClientRect();
+          const currentTranslateXPercent = panelTranslateXPercent(panel);
+          const currentWorldPhase = Number.parseFloat(
+            worldVisual.style.getPropertyValue("--world-phase-px")
+          );
+          // Cover one normal 60 Hz visual step in the accelerated QA route;
+          // an actual wrap discontinuity is still tens of CSS pixels.
+          const tolerancePx = Math.max(4, plateRect.width / 240);
+          transition.visual = {
+            covered: activePanels.every((candidate) => !candidate.hidden) &&
+              panelRects[0].left <= plateRect.left + tolerancePx &&
+              panelRects[0].right >= panelRects[1].left - tolerancePx &&
+              panelRects[1].right >= plateRect.right - tolerancePx,
+            phaseJumpPx: previousWorldPhase === null || !Number.isFinite(currentWorldPhase)
+              ? null
+              : Math.abs(currentWorldPhase - (
+                  previousWorldPhase.value +
+                  (previousWorldPhase.timestamp === previousWorldPhase.previousTimestamp
+                    ? 0
+                    : (previousWorldPhase.value - previousWorldPhase.previousValue) /
+                      (previousWorldPhase.timestamp - previousWorldPhase.previousTimestamp) *
+                      (sampledAt - previousWorldPhase.timestamp))
+                )),
+            panelContinuityResidualPx: previousIncomingRect === null
+              ? null
+              : Math.abs(currentRect.left - (
+                  previousIncomingRect.left +
+                  (Number.isFinite(previousIncomingRect.translateXPercent) &&
+                    Number.isFinite(currentTranslateXPercent)
+                    ? (currentTranslateXPercent - previousIncomingRect.translateXPercent) /
+                      100 * plateRect.width
+                    : 0)
+                )),
+            renderedPixelTolerancePx: 1 / (window.devicePixelRatio || 1),
+            tolerancePx,
+            plate: { left: plateRect.left, right: plateRect.right },
+            panels: panelRects.map(({ left, right }) => ({ left, right }))
+          };
+        });
+      };
+      recordCurrentPanel();
+      new MutationObserver(recordCurrentPanel).observe(worldVisual, {
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["data-world-panel", "data-world-id", "data-presentation-ready", "hidden"]
+      });
+    }, { once: true });
+  });
+
+  const url = new URL(targetUrl);
+  url.searchParams.set("qa", "performance");
+  url.searchParams.set("scenario", scenarioId);
+  url.searchParams.set("quality", "force-full");
+  url.searchParams.set("motion", "system");
+  url.searchParams.set("audio", audioMode);
+  url.searchParams.set("dpr", "1");
+  if (processState === "warm") {
+    await page.goto(url.href, { waitUntil: "load", timeout: 30_000 });
+    await page.waitForSelector("[data-campaign-landing-actions] button", { timeout: 30_000 });
+    await page.goto("about:blank");
+  }
+  const navigationStartedAt = Date.now();
+  const navigationResponse = await page.goto(url.href, { waitUntil: "load", timeout: 30_000 });
+  const deployedArtifactBody = navigationResponse === null ? null : await navigationResponse.body();
+  const navigationHeaders = navigationResponse === null ? {} : await navigationResponse.allHeaders();
+  const finalNavigationUrl = navigationResponse?.url() ?? page.url();
+  await page.waitForSelector("[data-campaign-landing-actions] button", {
+    timeout: 30_000
+  });
+  const coldStartMs = Date.now() - navigationStartedAt;
+  const startRequestedAt = Date.now();
+  await page.click("[data-campaign-landing-actions] button");
+  await page.waitForFunction(
+    () => document.querySelector(".amso-million-runner-2026")?.getAttribute("data-view") === "game",
+    undefined,
+    { timeout: 30_000 }
+  );
+  const criticalReadyMs = Date.now() - startRequestedAt;
+  const initialJsHeapBytes = await page.evaluate(() =>
+    "memory" in performance && Number.isFinite(performance.memory?.usedJSHeapSize)
+      ? performance.memory.usedJSHeapSize
+      : null
+  );
+
+  let runFourCycleLifecycleChecks = null;
+  if (scenarioId === "four-cycle-memory-v1") {
+    const geometryReady = () => page.evaluate(() => {
+      const host = document.querySelector(".amso-million-runner-2026");
+      const visual = document.querySelector("[data-campaign-world-visual]");
+      const plate = visual?.querySelector("[data-world-plate]");
+      const panels = [...(visual?.querySelectorAll("[data-world-panel]") ?? [])]
+        .filter((panel) => panel instanceof HTMLImageElement && !panel.hidden &&
+          panel.dataset.presentationReady === "true");
+      if (host?.getAttribute("data-view") !== "game" || !(plate instanceof HTMLElement) ||
+          panels.length !== 2) return false;
+      const plateRect = plate.getBoundingClientRect();
+      const rects = panels.map((panel) => panel.getBoundingClientRect())
+        .sort((left, right) => left.left - right.left);
+      return rects[0].left <= plateRect.left + 1 && rects[0].right >= rects[1].left - 1 &&
+        rects[1].right >= plateRect.right - 1;
+    });
+    const setLifecycleCheck = (name, passed) => page.evaluate(({ key, value }) => {
+      window.__performanceScenarioRuntime.lifecycleChecks[key] = value;
+    }, { key: name, value: passed });
+
+    runFourCycleLifecycleChecks = async () => {
+      const visibilityPage = await page.context().newPage();
+      await visibilityPage.goto("about:blank");
+      await visibilityPage.bringToFront();
+      await page.waitForTimeout(100);
+      await page.bringToFront();
+      await page.waitForTimeout(100);
+      await visibilityPage.close();
+      const visibilityObserved = await page.evaluate(() => {
+        const values = window.__performanceScenarioRuntime.lifecycleObservations.visibility;
+        const hiddenIndex = values.findIndex(({ hidden }) => hidden === true);
+        return hiddenIndex >= 0 && values.findIndex(({ hidden }, index) =>
+          index > hiddenIndex && hidden === false) > hiddenIndex;
+      });
+      await setLifecycleCheck("visibilityResumePassed", visibilityObserved && await geometryReady());
+
+      await page.setViewportSize({ width: 1_024, height: 576 });
+      await page.waitForTimeout(100);
+      await setLifecycleCheck("resizePassed", await geometryReady());
+
+      await page.setViewportSize({ width: 576, height: 1_024 });
+      await page.evaluate(() => window.dispatchEvent(new Event("orientationchange")));
+      await page.waitForTimeout(100);
+      await setLifecycleCheck("orientationPassed", await geometryReady());
+      await page.setViewportSize({ width: 960, height: 540 });
+      await page.evaluate(() => window.dispatchEvent(new Event("orientationchange")));
+      const orientationObserved = await page.evaluate(() => {
+        const values = window.__performanceScenarioRuntime.lifecycleObservations.orientation;
+        const portraitIndex = values.findIndex(({ portrait }) => portrait === true);
+        return portraitIndex >= 0 && values.findIndex(({ portrait }, index) =>
+          index > portraitIndex && portrait === false) > portraitIndex;
+      });
+      await setLifecycleCheck("orientationPassed", orientationObserved && await geometryReady());
+
+      const resumeButton = page.locator("[data-campaign-resume]");
+      if (await resumeButton.isVisible()) {
+        await resumeButton.focus();
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(100);
+      }
+
+      const fullscreenButton = page.locator("[data-campaign-fullscreen]");
+      if (await fullscreenButton.count() > 0) {
+        await fullscreenButton.focus();
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(100);
+        const enteredFullscreen = await page.evaluate(() => document.fullscreenElement !== null);
+        const enteredReady = await geometryReady();
+        await fullscreenButton.focus();
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(100);
+        const exitedFullscreen = await page.evaluate(() => document.fullscreenElement === null);
+        await setLifecycleCheck("fullscreenPassed", enteredFullscreen && enteredReady &&
+          exitedFullscreen && await geometryReady());
+      }
+    };
+  }
+
+  let report = null;
+  const cycleResults = [];
+  for (let cycleIndex = 0; cycleIndex < requestedCycles; cycleIndex += 1) {
+    const cycleStartedAtMs = await page.evaluate(() => performance.now());
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      await page.waitForTimeout(1_000);
+      report = JSON.parse(await page.evaluate(
+        () => window.AMSOMillionRunnerQA?.qaReport() ?? "null"
+      ));
+      if (report?.scenarioValidation != null) break;
+      if (await page.locator(".amso-million-runner-2026").getAttribute("data-view") ===
+          "challenge_result") break;
+    }
+    cycleResults.push({
+      index: cycleIndex + 1,
+      startedAtMs: cycleStartedAtMs,
+      completedAtMs: await page.evaluate(() => performance.now()),
+      scenarioValidation: report?.scenarioValidation ?? null,
+      finalDigest: report?.scenarioArtifact?.digest ?? null,
+      canonicalState: report?.scenarioArtifact?.canonicalState ?? null
+    });
+    if (cycleIndex === 2 && runFourCycleLifecycleChecks !== null) {
+      const check = runFourCycleLifecycleChecks;
+      runFourCycleLifecycleChecks = null;
+      await check();
+    }
+    if (cycleIndex === requestedCycles - 1) break;
+    const currentView = await page.locator(".amso-million-runner-2026").getAttribute("data-view");
+    if (currentView === "challenge_result") {
+      const skipName = page.locator("[data-campaign-name-skip]");
+      if (await skipName.isVisible()) await skipName.click();
+      await page.locator("[data-campaign-restart-challenge]").click();
+    } else {
+      const menuButton = page.locator("[data-campaign-menu]");
+      if (!await menuButton.isVisible()) {
+        await page.locator("[data-campaign-pause]").click();
+      }
+      await menuButton.focus();
+      await page.keyboard.press("Enter");
+      await page.waitForFunction(() =>
+        document.querySelector(".amso-million-runner-2026")?.getAttribute("data-view") ===
+          "landing", null, { timeout: 30_000 });
+      await page.locator("[data-campaign-landing-actions] button").click();
+    }
+    await page.waitForFunction(() => {
+      const raw = window.AMSOMillionRunnerQA?.qaReport() ?? "null";
+      return JSON.parse(raw)?.scenarioValidation === null;
+    }, null,
+    { timeout: 30_000 });
+    await page.waitForFunction(() =>
+      document.querySelector(".amso-million-runner-2026")?.getAttribute("data-view") === "game",
+    null, { timeout: 30_000 });
+  }
+
+  const runtime = await page.evaluate(() => {
+    const runtime = window.__performanceScenarioRuntime;
+    runtime.dom.finalNodeCount = document.getElementsByTagName("*").length;
+    const timingEntries = [
+      ...performance.getEntriesByType("navigation"),
+      ...performance.getEntriesByType("resource")
+    ];
+    runtime.resourceTimings = timingEntries.map((entry) => {
+      let resource = entry.name;
+      try {
+        const url = new URL(entry.name);
+        resource = `${url.origin}${url.pathname}`;
+      } catch {
+        resource = entry.name.split(",", 1)[0];
+      }
+      return {
+        resource,
+        initiatorType: entry.entryType === "navigation" ? "navigation" : entry.initiatorType,
+        startedAtMs: entry.startTime,
+        durationMs: entry.duration,
+        transferSizeBytes: entry.transferSize ?? 0,
+        decodedBodySizeBytes: entry.decodedBodySize ?? 0
+      };
+    });
+    return runtime;
+  });
+  const finalJsHeapBytes = await page.evaluate(() =>
+    "memory" in performance && Number.isFinite(performance.memory?.usedJSHeapSize)
+      ? performance.memory.usedJSHeapSize
+      : null
+  );
+  const rawHtml = deployedArtifactBody ?? Buffer.from("");
+  const artifactSourceIdentity = rawHtml.toString("utf8")
+    .match(/<meta name="amso-build-source" content="([a-f0-9]{64})">/u)?.[1] ?? null;
+  const requiredWorldAssetUrls = [...EXPECTED_CAMPAIGN_ASSETS]
+    .filter((assetPath) => /\/world-0[1-7][^/]*\.webp$/u.test(assetPath))
+    .map((assetPath) => new URL(assetPath, targetUrl.origin).href);
+  const assetUrls = [...new Set([...runtime.resourceTimings.map(({ resource }) => resource)
+    .filter((resource) => {
+      try {
+        const candidate = new URL(resource);
+        return candidate.origin === targetUrl.origin && /\.(?:js|css|webp)(?:\?|$)/u.test(candidate.href);
+      } catch { return false; }
+    }), ...requiredWorldAssetUrls])].sort();
+  const assetIdentities = await Promise.all(assetUrls.map(async (assetUrl) => {
+    const response = await fetch(assetUrl);
+    const bytes = Buffer.from(await response.arrayBuffer());
+    return { url: assetUrl, status: response.status, bytes: bytes.length,
+      sha256: createHash("sha256").update(bytes).digest("hex") };
+  }));
+  const intervals = runtime.activeFrameIntervals;
+  const motionSlopes = runtime.visualMotionSlopes.map(({ slope }) => slope)
+    .filter((slope) => Number.isFinite(slope) && slope > 0);
+  const medianMotionSlope = percentile(motionSlopes, 0.5);
+  const motionVelocityRatios = Number.isFinite(medianMotionSlope) && medianMotionSlope > 0
+    ? motionSlopes.map((slope) => slope / medianMotionSlope)
+    : [];
+  const visualMotion = {
+    sampleCount: motionVelocityRatios.length,
+    medianSlope: rounded(medianMotionSlope),
+    minVelocityRatio: rounded(motionVelocityRatios.length === 0 ? null
+      : Math.min(...motionVelocityRatios)),
+    maxVelocityRatio: rounded(motionVelocityRatios.length === 0 ? null
+      : Math.max(...motionVelocityRatios))
+  };
+  const visualMotionPassed = visualMotion.sampleCount > 0 &&
+    visualMotion.minVelocityRatio >= 0.95 && visualMotion.maxVelocityRatio <= 1.05;
+  const scriptDurationMs = runtime.longAnimationFrames.entries.reduce((total, entry) =>
+    total + entry.scripts.reduce((nested, script) => nested + script.durationMs, 0), 0);
+  const renderingProxyDurationMs = runtime.longAnimationFrames.entries.reduce((total, entry) => {
+    const nestedScriptDuration = entry.scripts.reduce((nested, script) =>
+      nested + script.durationMs, 0);
+    return total + Math.max(0, entry.durationMs - nestedScriptDuration);
+  }, 0);
+  const resourceDurationMs = runtime.resourceTimings.reduce((total, entry) =>
+    total + entry.durationMs, 0);
+  const transferSizeBytes = runtime.resourceTimings.reduce((total, entry) =>
+    total + entry.transferSizeBytes, 0);
+  const decodeDurationMs = runtime.decodeTimings.reduce((total, entry) =>
+    total + entry.durationMs, 0);
+  const checkpointsPassed = Array.isArray(report?.scenarioCheckpoints) &&
+    report.scenarioCheckpoints.length > 1 &&
+    report.scenarioCheckpoints.every(({ passed }) => passed === true);
+  const qualifiedTransitions = qualifiedPanelTransitions(runtime.panelTransitions, scenarioId);
+  const requiredTransitions = selectRequiredWorldTransitions(runtime.panelTransitions, scenarioId);
+  const transitionWindows = requiredTransitions.map((transition) => {
+    const frames = runtime.activeFrameTimeline.filter(({ atMs }) =>
+      Math.abs(atMs - transition.atMs) <= 500);
+    const decodeStarts = runtime.decodeTimings.filter(({ active, startedAtMs }) =>
+      active === true && Math.abs(startedAtMs - transition.atMs) <= 500);
+    return {
+      worldId: transition.worldId,
+      atMs: transition.atMs,
+      frameCount: frames.length,
+      framesOver33Ms: frames.filter(({ intervalMs }) => intervalMs > 33).length,
+      maxFrameMs: rounded(frames.length === 0 ? null :
+        Math.max(...frames.map(({ intervalMs }) => intervalMs))),
+      activeDecodeStarts: decodeStarts.length
+    };
+  });
+  const transitionActiveDecodeStarts = transitionWindows.reduce((total, window) =>
+    total + window.activeDecodeStarts, 0);
+  const assetFragments = new Map(REQUIRED_WORLD_SEAM_TRANSITIONS.map(
+    ({ worldId, assetFragment }) => [worldId, assetFragment]
+  ));
+  const requiredPanelTransitionsPassed = requiredWorldTransitionsPassed(
+    runtime.panelTransitions,
+    scenarioId
+  ) && requiredTransitions.every((transition) =>
+    transition.presentationReady === true && transition.hidden === false &&
+    transition.assetPath?.includes(assetFragments.get(transition.worldId)) &&
+    transition.visual?.covered === true &&
+    Number.isFinite(transition.visual?.phaseJumpPx) &&
+    transition.visual.phaseJumpPx <= transition.visual.tolerancePx &&
+    Number.isFinite(transition.visual?.panelContinuityResidualPx) &&
+    transition.visual.panelContinuityResidualPx <=
+      transition.visual.renderedPixelTolerancePx);
+  const finalTarget = new URL(finalNavigationUrl);
+  const expectedTarget = new URL(targetUrl);
+  const normalizedPath = (value) => value.replace(/\/+$/u, "") || "/";
+  const deploymentProvenancePassed = deploymentUrl === undefined ||
+    (finalTarget.origin === expectedTarget.origin &&
+      normalizedPath(finalTarget.pathname) === normalizedPath(expectedTarget.pathname) &&
+      navigationHeaders.server?.toLowerCase() === "vercel" &&
+      typeof navigationHeaders["x-vercel-id"] === "string" &&
+      navigationHeaders["x-vercel-id"].length > 0);
+  const frameBudgetPassed = scenarioId === "world-seam-performance-v1"
+    ? true
+    : scenarioId === "four-cycle-memory-v1"
+      ? percentile(intervals, 0.95) <= 18 && percentile(intervals, 0.99) <= 33 &&
+        Math.max(...intervals) <= 100
+      : intervals.filter((interval) => interval > 33).length === 0;
+  const capturePassed = report?.scenarioValidation?.passed === true &&
+    checkpointsPassed &&
+    report?.session?.inputQueueOverflows === 0 &&
+    report?.session?.replayValid === true &&
+    transitionActiveDecodeStarts === 0 &&
+    transitionWindows.every(({ framesOver33Ms }) => framesOver33Ms === 0) &&
+    requiredPanelTransitionsPassed &&
+    (!["world-seam-performance-v1", "four-cycle-memory-v1"].includes(scenarioId) || visualMotionPassed) &&
+    runtime.dom.activeImageNodesAdded === 0 &&
+    runtime.dom.activeImageNodesCreated === 0 &&
+    deploymentProvenancePassed &&
+    frameBudgetPassed &&
+    consoleErrors.length === 0 &&
+    externalRequests.length === 0 &&
+    failedResponses.length === 0;
+  const evidence = {
+    schema: "amso-performance-run-v1",
+    capturedAt: new Date().toISOString(),
+    capturePassed,
+    variant,
+    profile,
+    processState,
+    target: deploymentUrl === undefined
+      ? { kind: "vercel-build", value: "dist-vercel" }
+      : { kind: "url", value: targetUrl.href },
+    artifact: {
+      name: deploymentUrl === undefined ? "dist-vercel/index.html" : targetUrl.href,
+      bytes: deployedArtifactBody?.byteLength ?? null,
+      sha256: deployedArtifactBody === null ? null
+        : createHash("sha256").update(deployedArtifactBody).digest("hex")
+    },
+    deployment: {
+      requestedUrl: url.href,
+      finalUrl: finalNavigationUrl,
+      server: navigationHeaders.server ?? null,
+      vercelId: navigationHeaders["x-vercel-id"] ?? null,
+      provenancePassed: deploymentProvenancePassed
+    },
+    provenance: {
+      requestedUrl: url.href,
+      finalUrl: finalNavigationUrl,
+      status: navigationResponse?.status() ?? null,
+      server: navigationHeaders.server ?? null,
+      vercelId: navigationHeaders["x-vercel-id"] ?? null,
+      htmlSha256: createHash("sha256").update(rawHtml).digest("hex"),
+      sourceIdentity: artifactSourceIdentity,
+      browserVersion: browser.version(),
+      viewport: { width: 960, height: 540 },
+      deviceScaleFactor: 1,
+      assetIdentities
+    },
+    configuration: {
+      scenarioId: report?.qaRunConfiguration?.scenarioId ?? "performance-reference-v1",
+      scenarioConfigVersion: report?.qaRunConfiguration?.scenarioConfigVersion ?? null,
+      seed: report?.qaRunConfiguration?.seed ?? null,
+      inputTraceDigest: report?.qaRunConfiguration?.inputTraceDigest ?? null,
+      challengeWorldDurationSeconds:
+        report?.qaRunConfiguration?.challengeWorldDurationSeconds ?? null,
+      viewport: { width: 960, height: 540 },
+      dpr: 1,
+      quality: "force-full",
+      motion: "system",
+      audioMode,
+      requestedCycles
+    },
+    environment: {
+      host: {
+        platform: process.platform,
+        architecture: process.arch,
+        release: os.release(),
+        cpuModel: os.cpus()[0]?.model ?? null
+      },
+      browser: {
+        engine: browserEngine,
+        version: browser.version(),
+        executableSource: browserEngine === "chromium"
+          ? executablePath ?? "playwright-bundled"
+          : "playwright-bundled",
+        userAgent: browserRuntime.userAgent,
+        headless: true
+      },
+      profiler: {
+        name: "playwright-browser-attribution",
+        version: 2
+      },
+      hardwareConcurrency: browserRuntime.hardwareConcurrency,
+      deviceMemoryGiB: browserRuntime.deviceMemoryGiB
+    },
+    frames: {
+      sampleCount: intervals.length,
+      p50Ms: rounded(percentile(intervals, 0.5)),
+      p95Ms: rounded(percentile(intervals, 0.95)),
+      p99Ms: rounded(percentile(intervals, 0.99)),
+      maxMs: rounded(intervals.length === 0 ? null : Math.max(...intervals)),
+      over33Ms: intervals.filter((interval) => interval > 33).length,
+      over50Ms: intervals.filter((interval) => interval > 50).length,
+      over100Ms: intervals.filter((interval) => interval > 100).length
+    },
+    visualMotion,
+    frameTimeline: runtime.activeFrameTimeline,
+    qualityHistory: runtime.qualityHistory,
+    decodeTimings: runtime.decodeTimings,
+    worldTransitions: runtime.worldTransitions,
+    panelTransitions: runtime.panelTransitions,
+    transitionWindows,
+    longTasks: runtime.longTasks,
+    longAnimationFrames: runtime.longAnimationFrames,
+    resourceTimings: runtime.resourceTimings,
+    attribution: {
+      network: { support: "supported", durationMs: rounded(resourceDurationMs),
+        transferSizeBytes },
+      decode: { support: "supported", durationMs: rounded(decodeDurationMs) },
+      gpuCompositing: { support: runtime.longAnimationFrames.support === "supported"
+        ? "proxy" : "unsupported", durationMs: runtime.longAnimationFrames.support === "supported"
+          ? rounded(renderingProxyDurationMs) : null },
+      javascript: { support: runtime.longAnimationFrames.support === "supported"
+        ? "proxy" : runtime.longTasks.support, durationMs: rounded(
+          scriptDurationMs || runtime.longTasks.totalDurationMs) },
+      gc: { support: "unsupported", durationMs: null,
+        reason: "browser-process-trace-required" }
+    },
+    dom: runtime.dom,
+    scenario: {
+      checkpointsPassed,
+      coveragePassed: report?.scenarioValidation?.coveragePassed === true,
+      digestPassed: report?.scenarioValidation?.digestPassed === true,
+      finalDigest: report?.scenarioArtifact?.digest ?? null,
+      canonicalState: report?.scenarioArtifact?.canonicalState ?? null,
+      replayValid: report?.session?.replayValid === true,
+      inputQueueOverflows: report?.session?.inputQueueOverflows ?? null,
+      session: report?.session ?? null
+    },
+    diagnostics: { consoleErrors, consoleErrorDetails, externalRequests, failedResponses },
+    readiness: {
+      coldStartMs,
+      criticalReadyMs,
+      firstGestureAtMs: runtime.firstGestureAtMs,
+      audioContextsCreated: runtime.audioContextsCreated,
+      audioContextsBeforeFirstGesture: runtime.audioContextsBeforeFirstGesture,
+      preGestureWorldDecodes: runtime.decodeTimings.filter(({ startedAtMs, source }) =>
+        runtime.firstGestureAtMs !== null && startedAtMs < runtime.firstGestureAtMs &&
+        typeof source === "string" && /\/world-0[2-7]/u.test(source)).length
+    },
+    memory: {
+      available: false,
+      reason: "physical-device-process-memory-required",
+      auxiliaryJsHeapStartBytes: initialJsHeapBytes,
+      auxiliaryJsHeapEndBytes: finalJsHeapBytes,
+      samples: runtime.memorySamples,
+      timeline: runtime.memoryTimeline
+    },
+    lifecycleChecks: runtime.lifecycleChecks,
+    lifecycleObservations: runtime.lifecycleObservations,
+    cycleResults,
+    visualFixturesPassed: null,
+    view: await page.locator(".amso-million-runner-2026").getAttribute("data-view")
+  };
+  const serializedEvidence = `${JSON.stringify(evidence, null, 2)}\n`;
+  if (outputPath) {
+    const absoluteOutputPath = path.resolve(root, outputPath);
+    fs.mkdirSync(path.dirname(absoluteOutputPath), { recursive: true });
+    fs.writeFileSync(absoluteOutputPath, serializedEvidence);
+    process.stdout.write(`${JSON.stringify({
+      output: absoluteOutputPath,
+      variant,
+      audioMode,
+      profile,
+      processState,
+      frames: evidence.frames,
+      activeDecodeStarts: runtime.activeDecodeStarts,
+      transitionActiveDecodeStarts,
+      transitionWindows,
+      activeImageNodesAdded: runtime.dom.activeImageNodesAdded,
+      activeImageNodesCreated: runtime.dom.activeImageNodesCreated,
+      worldTransitions: evidence.worldTransitions,
+      scenarioPassed: report?.scenarioValidation?.passed === true
+    }, null, 2)}\n`);
+  } else {
+    process.stdout.write(serializedEvidence);
+  }
+  if (capturePassed) {
+    exitCode = 0;
+  }
+} finally {
+  await browser.close();
+  if (localServer !== null) await new Promise((resolve) => localServer.close(resolve));
+}
+
+process.exitCode = exitCode;

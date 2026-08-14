@@ -10,7 +10,7 @@ import {
 import { getAuthoredStoryDifficulty, getChallengeDifficulty } from "../src/game/difficulty";
 
 describe("v7 authored story waves", () => {
-  it("offers exactly 75 packages across the denser twelve finale combinations", () => {
+  it("offers enough varied finale routes to collect the last fifty orders", () => {
     const finale = STORY_MICROLEVELS.find(({ id }) => id === "million-threshold");
     expect(finale).toBeDefined();
     expect(finale!.waves.reduce((sum, item) => sum + availablePackages(item), 0)).toBe(75);
@@ -21,6 +21,7 @@ describe("v7 authored story waves", () => {
     for (const target of [40, 50, 60]) {
       const director = new AuthoredWaveDirector({ ...finale, finaleOrderTarget: target });
       for (const item of finale.waves) {
+        if (director.currentWave === null) break;
         for (let count = 0; count < availablePackages(item); count += 1) director.recordPackage();
         director.resolve(true);
       }
@@ -28,6 +29,22 @@ describe("v7 authored story waves", () => {
       expect(director.snapshot.totalOrderTarget).toBe(target);
       expect(director.completed).toBe(true);
     }
+  });
+
+  it("does not require completing every finale route after the order target is met", () => {
+    const finale = STORY_MICROLEVELS.find(({ id }) => id === "million-threshold")!;
+    const director = new AuthoredWaveDirector({ ...finale, finaleOrderTarget: 30 });
+    while (director.currentWave !== null) {
+      const active = director.currentWave;
+      for (let count = 0; count < availablePackages(active); count += 1) {
+        director.recordPackage();
+      }
+      director.resolve(true);
+    }
+    director.advance(finale.minimumDurationSeconds);
+
+    expect(director.snapshot.wavesCompleted).toBeLessThan(finale.waves.length);
+    expect(director.completed).toBe(true);
   });
 
   it("publishes six valid microlevels with the approved speed curve", () => {
@@ -136,22 +153,26 @@ describe("v7 authored story waves", () => {
       }));
   });
 
-  it("defines twelve distinct finale combinations and derives the million counter", () => {
+  it("defines varied finale routes and derives the canonical order counter", () => {
     const finale = STORY_MICROLEVELS.at(-1)!;
     expect(finale.waves).toHaveLength(12);
     expect(new Set(finale.waves.map(({ id }) => id)).size).toBe(12);
-    expect(finale.finaleOrderTarget).toBe(30);
-    expect(1_000_000 - finale.finaleOrderTarget!).toBe(999_970);
+    expect(finale.finaleOrderTarget).toBe(50);
+    expect(1_000_000 - finale.finaleOrderTarget!).toBe(999_950);
   });
 
   it("follows the approved story and challenge speed points", () => {
     expect(getAuthoredStoryDifficulty(0, 25, 0.95, 1.15).speedMultiplier).toBe(0.95);
     expect(getAuthoredStoryDifficulty(25, 25, 0.95, 1.15).speedMultiplier).toBe(1.15);
-    const challenge = { speedStartMultiplier: 1.85, speedMaxMultiplier: 3.5 };
+    const challenge = { speedStartMultiplier: 1.85, speedMaxMultiplier: 4 };
     expect(getChallengeDifficulty(0, challenge).speedMultiplier).toBe(1.85);
-    expect(getChallengeDifficulty(60, challenge).speedMultiplier).toBe(2.4);
-    expect(getChallengeDifficulty(120, challenge).speedMultiplier).toBe(3);
-    expect(getChallengeDifficulty(180, challenge).speedMultiplier).toBe(3.5);
-    expect(getChallengeDifficulty(300, challenge).speedMultiplier).toBe(3.5);
+    // smootherstep at 60/240=0.25 → 0.1035 → lerp(1.85, 4, 0.1035) ≈ 2.07
+    expect(getChallengeDifficulty(60, challenge).speedMultiplier).toBeCloseTo(2.07, 1);
+    // smootherstep at 120/240=0.5 → 0.5 → lerp(1.85, 4, 0.5) = 2.925
+    expect(getChallengeDifficulty(120, challenge).speedMultiplier).toBeCloseTo(2.93, 1);
+    // smootherstep at 180/240=0.75 → 0.8965 → lerp(1.85, 4, 0.8965) ≈ 3.73
+    expect(getChallengeDifficulty(180, challenge).speedMultiplier).toBeCloseTo(3.73, 1);
+    expect(getChallengeDifficulty(240, challenge).speedMultiplier).toBeCloseTo(4, 1);
+    expect(getChallengeDifficulty(300, challenge).speedMultiplier).toBeCloseTo(4, 1);
   });
 });

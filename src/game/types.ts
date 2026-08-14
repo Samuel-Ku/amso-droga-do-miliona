@@ -12,6 +12,7 @@ import type { StoryObstacleTransformation } from "./story-effects";
 import type { StoryObjectivesSnapshot } from "./story-objectives";
 import type { CampaignWorldId } from "../visuals/scene-manifest";
 import type { MilestoneCelebrationSnapshot } from "./milestone-celebration";
+import type { CelebrationState } from "./celebration-manager";
 import type { AuthoredWaveProgressSnapshot } from "./authored-wave";
 import type { SemanticObstacleVariant } from "./semantic-obstacle";
 
@@ -23,6 +24,8 @@ export type BossPhase = "inactive" | "pending" | "warning" | "attacking" | "rewa
 export interface RunnerModel {
   x: number;
   y: number;
+  previousX?: number;
+  previousY?: number;
   width: number;
   height: number;
   velocityY: number;
@@ -35,11 +38,16 @@ export interface RunnerModel {
 }
 
 export interface ObstacleModel {
+  readonly slotId?: number;
+  generation?: number;
+  motionRevision?: number;
   active: boolean;
   kind: ObstacleKind;
   source: ObstacleSource;
   x: number;
   y: number;
+  previousX?: number;
+  previousY?: number;
   width: number;
   height: number;
   /** Stable authored look for mechanically identical overhead obstacles. */
@@ -53,12 +61,17 @@ export interface ObstacleModel {
 }
 
 export interface PackageModel {
+  readonly slotId?: number;
+  generation?: number;
+  motionRevision?: number;
   active: boolean;
   kind: PackageKind;
   /** Gameplay class; independent from the transparent bounds of its artwork. */
   collectibleClass: CollectibleClass;
   x: number;
   y: number;
+  previousX?: number;
+  previousY?: number;
   size: number;
   phase: number;
   /** Product category used by fact triggers (typed collectibles). */
@@ -84,6 +97,8 @@ export interface BossModel {
   phaseSecondsRemaining: number;
   x: number;
   y: number;
+  previousX?: number;
+  previousY?: number;
   width: number;
   height: number;
 }
@@ -102,6 +117,7 @@ export interface RenderScene {
   elapsedSeconds: number;
   distancePixels: number;
   speed: number;
+  interpolationAlpha?: number;
   reducedMotion: boolean;
   decorationQuality?: "full" | "reduced";
   impact: boolean;
@@ -132,5 +148,6 @@ export interface RenderScene {
   storyClimax?: Readonly<StoryClimaxModel>;
   obstacleTransformations?: readonly Readonly<StoryObstacleTransformation>[];
   milestoneCelebration?: Readonly<MilestoneCelebrationSnapshot> | null;
+  celebration?: Readonly<CelebrationState> | null;
   authoredWave?: Readonly<AuthoredWaveProgressSnapshot> | null;
 }

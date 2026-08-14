@@ -7,29 +7,20 @@ import {
 } from "../src/game/milestone-celebration";
 import { createRunnerModel } from "../src/game/physics";
 import { WarehouseRenderer } from "../src/game/renderer";
+import { renderWorld } from "./helpers/render-world";
+import { CelebrationManager } from "../src/game/celebration-manager";
 import type { RenderScene } from "../src/game/types";
 
-function renderingHarness(reducedMotion: boolean): {
-  context: CanvasRenderingContext2D;
-  rotate: ReturnType<typeof vi.fn>;
-  scene: RenderScene;
-} {
-  const rotate = vi.fn();
-  const target: Record<PropertyKey, unknown> = {
-    rotate,
-    createLinearGradient: () => ({ addColorStop(): void {} })
-  };
-  const context = new Proxy(target, {
-    get(record, key) {
-      if (key in record) return record[key];
-      return (): void => {};
-    },
-    set(record, key, value) {
-      record[key] = value;
-      return true;
-    }
-  }) as unknown as CanvasRenderingContext2D;
-  const scene: RenderScene = {
+function createCelebrationScene(
+  reducedMotion: boolean,
+  threshold: number,
+  isRecord = false,
+): RenderScene {
+  const manager = new CelebrationManager();
+  manager.trigger({ threshold, isRecord, playerX: 142, playerY: 400 });
+  manager.update(0.15);
+
+  return {
     state: "running",
     runner: createRunnerModel(),
     obstacles: [],
@@ -54,17 +45,8 @@ function renderingHarness(reducedMotion: boolean): {
     },
     cutscene: null,
     activePowerUps: [],
-    milestoneCelebration: {
-      threshold: 100,
-      kind: "order-confetti",
-      intensity: 1,
-      durationSeconds: 1.35,
-      remainingSeconds: 0.8,
-      progress: 0.4,
-      text: "100 PACZEK!"
-    }
+    celebration: manager.getState()
   };
-  return { context, rotate, scene };
 }
 
 describe("order milestone celebrations", () => {
@@ -145,14 +127,34 @@ describe("order milestone celebrations", () => {
   });
 
   it("removes moving particles for reduced motion", () => {
-    const animated = renderingHarness(false);
-    const reduced = renderingHarness(true);
+    const animatedScene = createCelebrationScene(false, 100);
+    const reducedScene = createCelebrationScene(true, 100);
     const renderer = new WarehouseRenderer();
 
-    renderer.render(animated.context, 960, 540, animated.scene);
-    renderer.render(reduced.context, 960, 540, reduced.scene);
+    const rotate = vi.fn();
+    const animatedTarget: Record<PropertyKey, unknown> = {
+      rotate,
+      createLinearGradient: () => ({ addColorStop(): void {} })
+    };
+    const animatedContext = new Proxy(animatedTarget, {
+      get(record, key) { if (key in record) return record[key]; return (): void => {}; },
+      set(record, key, value) { record[key] = value; return true; }
+    }) as unknown as CanvasRenderingContext2D;
 
-    expect(animated.rotate).toHaveBeenCalled();
-    expect(reduced.rotate).not.toHaveBeenCalled();
+    const reducedRotate = vi.fn();
+    const reducedTarget: Record<PropertyKey, unknown> = {
+      rotate: reducedRotate,
+      createLinearGradient: () => ({ addColorStop(): void {} })
+    };
+    const reducedContext = new Proxy(reducedTarget, {
+      get(record, key) { if (key in record) return record[key]; return (): void => {}; },
+      set(record, key, value) { record[key] = value; return true; }
+    }) as unknown as CanvasRenderingContext2D;
+
+    renderWorld(renderer, animatedContext, 960, 540, animatedScene);
+    renderWorld(renderer, reducedContext, 960, 540, reducedScene);
+
+    expect(rotate).toHaveBeenCalled();
+    expect(reducedRotate).not.toHaveBeenCalled();
   });
 });

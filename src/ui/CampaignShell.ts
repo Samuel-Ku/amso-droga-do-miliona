@@ -1,11 +1,14 @@
 import "../styles/campaign.css";
-import { AMSO_LOGO_DATA_URI } from "./brandLogo";
 import type { ControlMethod, GameSnapshot } from "../game/contracts";
-import { WorldVisualLayer } from "../visuals/WorldVisualLayer";
+import { WorldAssetStore, WorldVisualLayer } from "../visuals/WorldVisualLayer";
+import {
+  WorldGeometryCoordinator,
+  type GeometryDiagnostics,
+  type WorldGeometryConsumer
+} from "../visuals/WorldGeometryCoordinator";
 import { sceneVisualState } from "../visuals/scene-manifest";
 import { milestoneLayoutForViewport } from "./milestone-layout";
 import {
-  fullscreenPreferenceFromElement,
   formatAuthoredWaveHud,
   formatPowerUpHud,
   formatStoryControlsHud,
@@ -15,11 +18,57 @@ import {
   StoryContinuationGate,
   type CampaignStorySceneInput
 } from "./story-presentation";
+import { RecordBoard } from "./record-board";
+import { NamePrompt } from "./name-prompt";
+import {
+  RecordsClient,
+  RecordsNameTakenError,
+  RecordsNameValidationError
+} from "../records-client";
+import {
+  PLAYER_NAME_DISALLOWED_MESSAGE,
+  PLAYER_NAME_TOO_LONG_MESSAGE
+} from "../moderation/player-name-policy";
+import type { PlayerProfileStore } from "../profile";
+import type { QualityCommitContext } from "../performance/visual-quality-coordinator";
+import { DecodedImageStore } from "../assets/DecodedImageStore";
+import { GAME_INSTRUCTION_COPY } from "../config/game-instructions-copy";
+import {
+  createCampaignI18n,
+  localizeElementTree,
+  type CampaignI18n,
+  type CampaignLocale
+} from "../localization";
+import {
+  VERCEL_LANGUAGE_OPTIONS,
+  VERCEL_LANGUAGE_SELECTOR_LABELS
+} from "../localization/vercel-locale";
 
 export type { CampaignStoryScene, CampaignStorySceneInput } from "./story-presentation";
 
-const MAIN_LOCKUP_PATH = "/assets/milion-runner/brand/mz-main-lockup-v1.avif";
-const COMPACT_LOCKUP_PATH = "/assets/milion-runner/brand/mz-compact-lockup-v1.avif";
+interface CampaignLockups {
+  readonly main: string;
+  readonly compact: string;
+}
+
+const POLISH_LOCKUPS: CampaignLockups = Object.freeze({
+  main: "/assets/milion-runner/brand/mz-main-lockup-v1.webp",
+  compact: "/assets/milion-runner/brand/mz-compact-lockup-v1.webp"
+});
+const LOCALIZED_LOCKUPS: Readonly<Record<Exclude<CampaignLocale, "pl">, CampaignLockups>> = Object.freeze({
+  de: { main: "/assets/milion-runner/brand/mz-main-lockup-de-v1.webp", compact: "/assets/milion-runner/brand/mz-compact-lockup-de-v1.webp" },
+  en: { main: "/assets/milion-runner/brand/mz-main-lockup-en-v1.webp", compact: "/assets/milion-runner/brand/mz-compact-lockup-en-v1.webp" },
+  es: { main: "/assets/milion-runner/brand/mz-main-lockup-es-v1.webp", compact: "/assets/milion-runner/brand/mz-compact-lockup-es-v1.webp" },
+  cs: { main: "/assets/milion-runner/brand/mz-main-lockup-cs-v1.webp", compact: "/assets/milion-runner/brand/mz-compact-lockup-cs-v1.webp" },
+  it: { main: "/assets/milion-runner/brand/mz-main-lockup-it-v1.webp", compact: "/assets/milion-runner/brand/mz-compact-lockup-it-v1.webp" },
+  fr: { main: "/assets/milion-runner/brand/mz-main-lockup-fr-v1.webp", compact: "/assets/milion-runner/brand/mz-compact-lockup-fr-v1.webp" },
+  uk: { main: "/assets/milion-runner/brand/mz-main-lockup-uk-v1.webp", compact: "/assets/milion-runner/brand/mz-compact-lockup-uk-v1.webp" }
+});
+
+function campaignLockups(i18n: CampaignI18n): CampaignLockups {
+  if (i18n.locale === "pl") return POLISH_LOCKUPS;
+  return LOCALIZED_LOCKUPS[i18n.locale];
+}
 
 export type CampaignMode = "story" | "challenge";
 
@@ -65,25 +114,19 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   fullscreenExit: "Wyjdź z pełnego",
   cssGameModeEnter: "Tryb gry",
   cssGameModeExit: "Wyjdź z trybu gry",
-  hudPackages: "Paczki",
   hudScore: "Wynik",
   pauseAction: "Pauza",
   storyMode: "Droga do Miliona",
   challengeMode: "Szybki start — Tryb Wyzwania",
+  challengeCta: "Szybki start",
   landingEyebrow: "Jubileuszowa historia AMSO",
   landingTitle: "AMSO —",
   landingTitleAccent: "Droga do Miliona",
-  landingLead: "Jedna paczka rozpoczęła historię. Przebiegnij z nami drogę do zamówienia nr 1 000 000.",
   landingMeta: "Około 6 minut · historia w Twoim tempie · skok i ślizg",
-  startStory: "Rozpocznij historię",
+  startStory: "Zagraj z historią AMSO",
   choosePath: "Wybierz swoją drogę",
-  replayStory: "Pełna historia i instrukcja",
-  orientationEyebrow: "Szerszy kadr",
-  orientationTitle: "Chcesz zobaczyć więcej historii?",
-  orientationBody: "Obróć telefon i włącz pełny ekran. Możesz też grać pionowo.",
-  orientationFullscreen: "Włącz pełny ekran",
+  replayStory: "Powtórz historię AMSO",
   orientationFocus: "Włącz tryb gry",
-  orientationPortrait: "Zostań w pionie",
   loading: "Przygotowujemy pierwszą paczkę…",
   errorEyebrow: "Trasa chwilowo niedostępna",
   errorTitle: "Nie udało się przygotować gry.",
@@ -110,11 +153,9 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   challengeResultTitle: "Koniec próby",
   resultBest: "Rekord",
   resultDistance: "Przebyta droga",
-  resultWarranty: "Gwarancja 48 M uratowała bieg",
-  powerupWarranty: "GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania.",
-  powerupWarrantyHud: "GWARANCJA 48 M ×1",
-  warrantyConsumed: "GWARANCJA 48 M zadziałała — próba trwa dalej.",
-  controlsHud: "Skok: W/↑/Spacja/tap · Ślizg: S/↓",
+  powerupWarranty: "GWARANCJA AMSO CARE — uratuje jedną próbę w Trybie Wyzwania.",
+  powerupWarrantyHud: "GWARANCJA AMSO CARE ×1",
+  warrantyConsumed: "GWARANCJA AMSO CARE zadziałała — próba trwa dalej.",
   retryChallenge: "Spróbuj jeszcze raz",
   shareResult: "Udostępnij wynik",
   shareLead: "Wybierz, gdzie chcesz udostępnić kartę wyniku.",
@@ -131,6 +172,9 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
   instagram: "Instagram",
   narrowTitle: "Potrzebujemy trochę więcej miejsca.",
   narrowBody: "Obróć urządzenie, żeby rozpocząć grę.",
+  orientationHint: "Do gry potrzebny jest tryb poziomy",
+  orientationPromptTitle: "Obróć telefon, aby zagrać",
+  orientationPromptBody: "Gra „Droga do Miliona” działa w trybie poziomym.",
   footerTagline: "AMSO. Sprzęt z przeszłością. Na przyszłość.",
   footerCampaign: "Strona kampanii",
 } as const;
@@ -138,6 +182,12 @@ export const DEFAULT_CAMPAIGN_SHELL_COPY = {
 export type CampaignShellCopy = {
   [Key in keyof typeof DEFAULT_CAMPAIGN_SHELL_COPY]: string;
 };
+
+type CampaignOrientationState =
+  | { phase: "idle" }
+  | { phase: "blocked-before-start"; request: CampaignStartRequest }
+  | { phase: "playing" }
+  | { phase: "paused-by-orientation" };
 
 export interface CampaignShellCallbacks {
   onStart(request: CampaignStartRequest): void;
@@ -151,18 +201,31 @@ export interface CampaignShellCallbacks {
   onMuteChange(muted: boolean): void;
   onFullscreenPreferenceChange(choice: "fullscreen" | "portrait"): void;
   onStoryContinue(sceneId: string): void;
+  onLanguageChange?(locale: CampaignLocale): void;
   onShare?(platform: CampaignSharePlatform, method: CampaignShareMethod): void;
 }
+
+const STORY_FULLSCREEN_DEADLINE_MS = 400;
+const STORY_VIEWPORT_PAINT_DEADLINE_MS = 100;
 
 export interface CampaignShellOptions {
   canonicalUrl?: string;
   campaignUrl?: string;
   fullStoryUrl?: string;
   copy?: Partial<CampaignShellCopy>;
+  recordsClient?: RecordsClient;
+  profile?: PlayerProfileStore;
+  qaDpr?: 1 | 2;
+  qaBadgeText?: string;
+  decodedImageStore?: DecodedImageStore;
+  i18n?: CampaignI18n;
+  keyboardProfile?: "vercel";
+  languageSelector?: boolean;
 }
 
 export interface CampaignShareCardOptions {
   canonicalUrl: string;
+  i18n?: CampaignI18n;
   title?: string;
   scoreLabel?: string;
   ordersLabel?: string;
@@ -177,10 +240,10 @@ export interface CampaignShareRequest extends CampaignShareCardOptions {
 
 type CampaignShareResult = CampaignShareRequest["result"];
 
-const integerFormatter = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
+const DEFAULT_I18N = createCampaignI18n("pl");
 
-function formatInteger(value: number): string {
-  return integerFormatter.format(Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0);
+function formatInteger(value: number, i18n: CampaignI18n = DEFAULT_I18N): string {
+  return i18n.formatInteger(value);
 }
 
 export function campaignVisualStateAtProgress(
@@ -200,8 +263,8 @@ export function campaignVisualStateAtProgress(
 
 export function isCampaignViewportTooNarrow(width: number, height: number): boolean {
   const landscape = width > height;
-  if (landscape) return width < 640 || height < 280;
-  return width < 390;
+  if (landscape) return width < 600 || height < 220;
+  return width < 280 || height < 400;
 }
 
 function requiredElement<T extends Element>(root: ParentNode, selector: string): T {
@@ -224,15 +287,7 @@ function canonicalPageUrl(): string {
   return url.href;
 }
 
-function isMobileLayout(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  const coarsePointer = window.matchMedia?.("(pointer: coarse)").matches ?? false;
-  return coarsePointer || navigator.maxTouchPoints > 0;
-}
-
-function loadShareCardLockup(): Promise<HTMLImageElement | null> {
+function loadShareCardLockup(source: string): Promise<HTMLImageElement | null> {
   const image = document.createElement("img");
   image.alt = "";
   image.decoding = "async";
@@ -252,7 +307,7 @@ function loadShareCardLockup(): Promise<HTMLImageElement | null> {
     timeout = window.setTimeout(() => finish(null), 2_500);
     image.onload = () => finish(image.naturalWidth > 0 ? image : null);
     image.onerror = () => finish(null);
-    image.src = COMPACT_LOCKUP_PATH;
+    image.src = source;
 
     if (image.complete) {
       finish(image.naturalWidth > 0 ? image : null);
@@ -265,9 +320,17 @@ function drawShareCardLockup(
   lockup: HTMLImageElement | null,
 ): void {
   if (lockup !== null) {
-    const lockupWidth = 430;
-    const lockupHeight = lockupWidth * (lockup.naturalHeight / lockup.naturalWidth);
-    context.drawImage(lockup, 596, 43, lockupWidth, lockupHeight);
+    const boxX = 596;
+    const boxWidth = 430;
+    const boxHeight = 270;
+    const scale = Math.min(
+      boxWidth / lockup.naturalWidth,
+      boxHeight / lockup.naturalHeight
+    );
+    const lockupWidth = lockup.naturalWidth * scale;
+    const lockupHeight = lockup.naturalHeight * scale;
+    const lockupX = boxX + ((boxWidth - lockupWidth) / 2);
+    context.drawImage(lockup, lockupX, 43, lockupWidth, lockupHeight);
     return;
   }
 
@@ -294,6 +357,7 @@ function drawShareCard(
   options: CampaignShareCardOptions,
   lockup: HTMLImageElement | null,
 ): void {
+  const i18n = options.i18n ?? DEFAULT_I18N;
   const { canvas } = context;
   context.fillStyle = "#faf7f0";
   context.fillRect(0, 0, canvas.width, canvas.height);
@@ -309,20 +373,20 @@ function drawShareCard(
   context.fillRect(0, 22, canvas.width, 296);
   context.fillStyle = "#faf7f0";
   context.font = "800 26px system-ui, sans-serif";
-  context.fillText("KARTA WYNIKU", 72, 99);
+  context.fillText(i18n.translate("KARTA WYNIKU"), 72, 99);
   context.font = "950 58px system-ui, sans-serif";
-  context.fillText(options.title ?? "Droga do Miliona", 72, 170, 470);
+  context.fillText(options.title ?? i18n.translate("Droga do Miliona"), 72, 170, 470);
   context.fillStyle = "#d8d2c8";
   context.font = "650 24px system-ui, sans-serif";
-  context.fillText("Jubileuszowa gra", 72, 222);
+  context.fillText(i18n.translate("Jubileuszowa gra"), 72, 222);
   drawShareCardLockup(context, lockup);
 
   context.fillStyle = "#45413b";
   context.font = "750 29px system-ui, sans-serif";
-  context.fillText(options.scoreLabel ?? "MÓJ WYNIK", 72, 407);
+  context.fillText(options.scoreLabel ?? i18n.translate("MÓJ WYNIK"), 72, 407);
   context.fillStyle = "#171717";
   context.font = "950 142px system-ui, sans-serif";
-  context.fillText(formatInteger(result.score), 66, 548, 940);
+  context.fillText(formatInteger(result.score, options.i18n), 66, 548, 940);
 
   context.fillStyle = brandGradient;
   context.fillRect(72, 581, 936, 12);
@@ -333,10 +397,10 @@ function drawShareCard(
   context.fill();
   context.fillStyle = "#d8d2c8";
   context.font = "800 28px system-ui, sans-serif";
-  context.fillText(options.ordersLabel ?? "ZREALIZOWANE ZAMÓWIENIA", 120, 705);
+  context.fillText(options.ordersLabel ?? i18n.translate("ZREALIZOWANE ZAMÓWIENIA"), 120, 705);
   context.fillStyle = "#faf7f0";
   context.font = "950 78px system-ui, sans-serif";
-  context.fillText(formatInteger(result.orders), 120, 797, 560);
+  context.fillText(formatInteger(result.orders, options.i18n), 120, 797, 560);
 
   context.fillStyle = brandGradient;
   context.beginPath();
@@ -350,11 +414,11 @@ function drawShareCard(
 
   context.fillStyle = "#171717";
   context.font = "900 50px system-ui, sans-serif";
-  context.fillText(options.callToAction ?? "Teraz Twoja kolej.", 72, 978, 936);
+  context.fillText(options.callToAction ?? i18n.translate("Teraz Twoja kolej."), 72, 978, 936);
   context.fillStyle = "#45413b";
   context.font = "650 27px system-ui, sans-serif";
   const publicationText = options.publicationText
-    ?? "Sprawdź, jak daleko dojdziesz w Drodze do Miliona.";
+    ?? i18n.translate("Sprawdź, jak daleko dojdziesz w Drodze do Miliona.");
   context.fillText(publicationText, 72, 1034, 936);
 
   context.fillStyle = "#171717";
@@ -393,7 +457,7 @@ export async function createCampaignShareCard(
   if (context === null) {
     throw new Error("share_card_canvas_unavailable");
   }
-  const lockup = await loadShareCardLockup();
+  const lockup = await loadShareCardLockup(campaignLockups(options.i18n ?? DEFAULT_I18N).compact);
   drawShareCard(context, result, options, lockup);
   return canvasToBlob(canvas);
 }
@@ -411,14 +475,15 @@ function downloadBlob(blob: Blob, filename: string): void {
 }
 
 export async function shareCampaignResult(request: CampaignShareRequest): Promise<CampaignShareMethod> {
-  const text = request.publicationText ?? "Sprawdź, jak daleko dojdziesz w Drodze do Miliona.";
+  const i18n = request.i18n ?? DEFAULT_I18N;
+  const text = request.publicationText ?? i18n.translate("Sprawdź, jak daleko dojdziesz w Drodze do Miliona.");
   const blob = await createCampaignShareCard(request.result, request);
   const filename = `amso-droga-do-miliona-${Math.floor(request.result.score)}.png`;
   const file = typeof File === "function"
     ? new File([blob], filename, { type: "image/png" })
     : null;
   const shareData: ShareData = {
-    title: request.title ?? "AMSO — Droga do Miliona",
+    title: request.title ?? `AMSO — ${i18n.translate("Droga do Miliona")}`,
     text,
     url: request.canonicalUrl,
     ...(file === null ? {} : { files: [file] }),
@@ -466,9 +531,10 @@ export class CampaignShell {
   private readonly root: HTMLElement;
   private readonly stage: HTMLElement;
   private readonly worldVisualLayer: WorldVisualLayer;
+  private readonly worldGeometryCoordinator: WorldGeometryCoordinator;
   private readonly landingScreen: HTMLElement;
   private readonly landingActions: HTMLElement;
-  private readonly orientationScreen: HTMLElement;
+  private readonly orientationPrompt: HTMLElement;
   private readonly loadingScreen: HTMLElement;
   private readonly loadingText: HTMLElement;
   private readonly loadingProgress: HTMLProgressElement;
@@ -506,277 +572,388 @@ export class CampaignShell {
   private readonly sharePanel: HTMLElement;
   private readonly shareStatus: HTMLElement;
   private readonly tooNarrow: HTMLElement;
+  private readonly recordsClient: RecordsClient | null;
+  private readonly profile: PlayerProfileStore | null;
+  private readonly landingRecords: RecordBoard | null;
+  private readonly resultRecords: RecordBoard | null;
+  private readonly namePrompt: NamePrompt | null;
   private readonly canonicalUrl: string;
   private readonly campaignUrl: string;
   private readonly fullStoryUrl: string;
   private readonly copy: CampaignShellCopy;
+  private readonly i18n: CampaignI18n;
   private activeMode: CampaignMode | null = null;
-  private pendingStart: CampaignStartRequest | null = null;
-  private fullscreenPromptSeen = false;
-  private fullscreenPreference: "fullscreen" | "portrait" | null = null;
+  private orientationState: CampaignOrientationState = { phase: "idle" };
+  private orientationDebounceTimer: ReturnType<typeof setTimeout> | undefined;
   private muted = false;
   private lastWaveFeedbackKey = "";
+  private lastHudPackages: number | null = null;
+  private lastHudScore: number | null = null;
+  private lastHudCombo: number | null = null;
+  private lastHudPowerUpsKey = "";
+  private lastHudControlsKey = "";
+  private lastHudEpochKey = "";
+  private lastMilestoneKey = "";
   private paused = false;
   private trustCorridor = false;
   private tooNarrowActive = false;
   private activeModalScreen: HTMLElement | null = null;
+  private activeOverlay: HTMLElement | null = null;
+  private overlayTrigger: HTMLElement | null = null;
+  private sharePanelOriginParent: HTMLElement | null = null;
+  private sharePanelOriginNextSibling: ChildNode | null = null;
   private destroyed = false;
   private pointerStartY: number | null = null;
   private pointerSwipedDown = false;
   private challengeResult: CampaignChallengeResult | null = null;
   private lastCountdownValue: CampaignStoryCountdownValue | null = null;
+  private storyVisualOriginDistance: number | null = null;
+  private latestVisualDistance = 0;
+  private storyPresentationRevision = 0;
+  private landingStartRevision = 0;
+  private abandonPendingFullscreen = false;
+  private exitingAbandonedFullscreen = false;
   private readonly storyContinuationGate = new StoryContinuationGate();
   private readonly orientationQuery: MediaQueryList | null;
+  private readonly layoutObserver: ResizeObserver | null;
+  private readonly keyboardProfile: "vercel";
 
   public constructor(
     host: HTMLElement,
     private readonly callbacks: CampaignShellCallbacks,
     options: CampaignShellOptions = {},
   ) {
+    this.keyboardProfile = options.keyboardProfile ?? "vercel";
+    this.i18n = options.i18n ?? DEFAULT_I18N;
+    const lockups = campaignLockups(this.i18n);
     this.canonicalUrl = options.canonicalUrl ?? canonicalPageUrl();
-    this.campaignUrl = options.campaignUrl ?? "/milion";
+    this.campaignUrl = options.campaignUrl ?? "/million";
     this.fullStoryUrl = options.fullStoryUrl ?? this.campaignUrl;
-    this.copy = { ...DEFAULT_CAMPAIGN_SHELL_COPY, ...options.copy };
+    this.copy = Object.fromEntries(
+      Object.entries({ ...DEFAULT_CAMPAIGN_SHELL_COPY, ...options.copy })
+        .map(([key, value]) => [key, this.i18n.translate(value)])
+    ) as CampaignShellCopy;
+    const languageSelector = options.languageSelector === true
+      ? `
+          <label class="amso-million-runner-2026__language-control">
+            <span class="amso-million-runner-2026__sr-only">${VERCEL_LANGUAGE_SELECTOR_LABELS[this.i18n.locale]}</span>
+            <span class="amso-million-runner-2026__language-flag" aria-hidden="true">
+              ${VERCEL_LANGUAGE_OPTIONS.find(({ locale }) => locale === this.i18n.locale)?.flag ?? "🌐"}
+            </span>
+            <select
+              class="amso-million-runner-2026__language-select"
+              data-campaign-language
+              aria-label="${VERCEL_LANGUAGE_SELECTOR_LABELS[this.i18n.locale]}"
+            >
+              ${VERCEL_LANGUAGE_OPTIONS.map(({ locale, flag, label }) =>
+                `<option value="${locale}"${locale === this.i18n.locale ? " selected" : ""}>${flag} ${label}</option>`
+              ).join("")}
+            </select>
+          </label>`
+      : "";
     this.root = document.createElement("div");
-    this.root.className = "amso-campaign";
+    this.root.className = "amso-million-runner-2026";
     this.root.dataset.view = "landing";
     this.root.innerHTML = `
-      <div class="amso-campaign__backdrop" aria-hidden="true"></div>
-      <header class="amso-campaign__header">
-        <a class="amso-campaign__brand" data-campaign-link>
-          <img class="amso-campaign__brand-logo" src="${AMSO_LOGO_DATA_URI}" alt="AMSO" />
-          <span class="amso-campaign__brand-edition" data-campaign-copy="brandEdition">Droga do Miliona</span>
+      <div class="amso-million-runner-2026__backdrop" aria-hidden="true"></div>
+      <header class="amso-million-runner-2026__header">
+        <a class="amso-million-runner-2026__brand" data-campaign-link>
+          <img class="amso-million-runner-2026__brand-logo" src="${lockups.compact}" alt="AMSO — ${this.copy.brandEdition}" width="1973" height="1138" />
         </a>
-        <div class="amso-campaign__tools">
-          <button class="amso-campaign__icon-button" type="button" data-campaign-mute aria-pressed="false">
+        <div class="amso-million-runner-2026__tools">
+          ${languageSelector}
+          <button class="amso-million-runner-2026__icon-button" type="button" data-campaign-mute aria-pressed="false">
             <span aria-hidden="true" data-campaign-mute-icon>♪</span>
-            <span class="amso-campaign__tool-label" data-campaign-mute-label data-campaign-copy="soundOn">Wycisz</span>
+            <span class="amso-million-runner-2026__tool-label" data-campaign-mute-label data-campaign-copy="soundOn">Wycisz</span>
           </button>
-          <button class="amso-campaign__icon-button" type="button" data-campaign-fullscreen aria-pressed="false">
+          <button class="amso-million-runner-2026__icon-button" type="button" data-campaign-fullscreen aria-pressed="false">
             <span aria-hidden="true">⛶</span>
-            <span class="amso-campaign__tool-label" data-campaign-copy="fullscreenEnter">Pełny ekran</span>
+            <span class="amso-million-runner-2026__tool-label" data-campaign-copy="fullscreenEnter">Pełny ekran</span>
           </button>
         </div>
       </header>
 
-      <main class="amso-campaign__main">
-        <section class="amso-campaign__stage" data-campaign-stage>
-          <div class="amso-campaign__world-visual" data-campaign-world-visual aria-hidden="true"></div>
+      <div class="amso-million-runner-2026__main">
+        <section class="amso-million-runner-2026__stage" data-campaign-stage>
+          <div class="amso-million-runner-2026__world-visual" data-campaign-world-visual aria-hidden="true"></div>
           <canvas
-            class="amso-campaign__canvas"
+            class="amso-million-runner-2026__canvas"
             data-campaign-canvas
             width="960"
             height="540"
             tabindex="-1"
             aria-hidden="true"
-            aria-label="Pole gry. W lub strzałka w górę oraz Spacja lub tapnięcie wykonują skok. S lub strzałka w dół oraz przesunięcie w dół wykonują ślizg."
+            aria-label="Pole gry. ${this.keyboardInstruction(GAME_INSTRUCTION_COPY.jump)} ${this.keyboardInstruction(GAME_INSTRUCTION_COPY.slide)}"
           ></canvas>
-          <div class="amso-campaign__milestone-message" data-campaign-milestone-message hidden aria-hidden="true"></div>
-          <section class="amso-campaign__hud" data-campaign-hud hidden aria-label="Wynik biegu">
-            <div class="amso-campaign__hud-context">
+          <div class="amso-million-runner-2026__milestone-message" data-campaign-milestone-message hidden aria-hidden="true"></div>
+          <section class="amso-million-runner-2026__hud" data-campaign-hud hidden aria-label="Wynik biegu">
+            <div class="amso-million-runner-2026__hud-context" hidden>
               <strong data-campaign-hud-mode></strong>
               <span data-campaign-hud-epoch></span>
               <span data-campaign-hud-objective hidden></span>
               <span data-campaign-hud-controls hidden></span>
               <span data-campaign-hud-powerups hidden></span>
-              <span class="amso-campaign__hud-notice" data-campaign-hud-notice hidden role="status"></span>
+              <span class="amso-million-runner-2026__hud-notice" data-campaign-hud-notice hidden role="status"></span>
             </div>
-            <div class="amso-campaign__hud-stats">
-              <span><small data-campaign-copy="hudPackages">Paczki</small> <strong data-campaign-hud-packages>0</strong></span>
+            <div class="amso-million-runner-2026__hud-stats">
+              <span><small data-campaign-hud-orders-label>${GAME_INSTRUCTION_COPY.hudOrdersLabel}</small> <strong data-campaign-hud-packages>0</strong></span>
               <span><small data-campaign-copy="hudScore">Wynik</small> <strong data-campaign-hud-score>0</strong></span>
               <span><small>SERIA</small> <strong data-campaign-hud-combo>×1</strong></span>
             </div>
-            <button class="amso-campaign__pause-button" type="button" data-campaign-pause data-campaign-copy="pauseAction">Pauza</button>
+            <button class="amso-million-runner-2026__pause-button" type="button" data-campaign-pause data-campaign-copy="pauseAction">Pauza</button>
           </section>
 
-          <section class="amso-campaign__screen amso-campaign__screen--landing" data-campaign-landing>
-            <div class="amso-campaign__landing-copy">
-              <p class="amso-campaign__eyebrow" data-campaign-copy="landingEyebrow">Jubileuszowa historia AMSO</p>
+          <section class="amso-million-runner-2026__screen amso-million-runner-2026__screen--landing" data-campaign-landing>
+            <div class="amso-million-runner-2026__landing-copy">
+              <p class="amso-million-runner-2026__eyebrow" data-campaign-copy="landingEyebrow">Jubileuszowa historia AMSO</p>
               <h1><span data-campaign-copy="landingTitleAccent">Droga do Miliona</span></h1>
-              <p class="amso-campaign__lead" data-campaign-copy="landingLead">Jedna paczka rozpoczęła historię. Przebiegnij z nami drogę do zamówienia nr 1 000 000.</p>
-              <p class="amso-campaign__meta" data-campaign-copy="landingMeta">Około 6 minut · historia w Twoim tempie · skok i ślizg</p>
-              <details class="amso-campaign__how-to">
-                <summary>Jak działa gra?</summary>
+              <p class="amso-million-runner-2026__lead amso-million-runner-2026__landing-goal--desktop" data-campaign-landing-goal="desktop">${GAME_INSTRUCTION_COPY.landingGoal}</p>
+              <p class="amso-million-runner-2026__lead amso-million-runner-2026__landing-goal--mobile" data-campaign-landing-goal="mobile">${GAME_INSTRUCTION_COPY.mobileLandingGoal}</p>
+              <p class="amso-million-runner-2026__meta" data-campaign-copy="landingMeta">Około 6 minut · historia w Twoim tempie · skok i ślizg</p>
+              <div class="amso-million-runner-2026__landing-cta-group">
+                <div class="amso-million-runner-2026__landing-actions" data-campaign-landing-actions></div>
+                <p class="amso-million-runner-2026__orientation-hint" aria-hidden="true">
+                  <span aria-hidden="true">↻</span>
+                  <span data-campaign-copy="orientationHint">Do gry potrzebny jest tryb poziomy</span>
+                </p>
+              </div>
+              <div data-campaign-landing-records></div>
+              <details class="amso-million-runner-2026__how-to">
+                <summary data-campaign-how-to-trigger aria-controls="amso-million-runner-2026-how-to-panel">Jak działa gra?</summary>
                 <div>
-                  <p><strong>Historia i bieg przeplatają się.</strong> Gdy pojawia się karta historii, trasa jest bezpieczna i niczego nie musisz omijać ani zbierać.</p>
-                  <p><strong>Skacz</strong> dotykiem lub Spacją. <strong>Ślizg</strong> wykonaj gestem w dół albo klawiszem ↓.</p>
-                  <p><strong>Urządzenia i paczki realizują zamówienia.</strong> Bonus zawsze pokazuje swoje działanie, a kolejne czyste akcje budują <strong>SERIĘ ×N</strong>.</p>
+                  <p>${GAME_INSTRUCTION_COPY.modeDifference}</p>
+                  <p>${GAME_INSTRUCTION_COPY.storySafety}</p>
+                  <p>${this.keyboardInstruction(GAME_INSTRUCTION_COPY.controls)}</p>
+                  <p>${GAME_INSTRUCTION_COPY.ordersAndCombo}</p>
                 </div>
               </details>
-              <div class="amso-campaign__landing-actions" data-campaign-landing-actions></div>
             </div>
-            <div class="amso-campaign__landing-art" aria-hidden="true">
-              <img class="amso-campaign__main-lockup" src="${MAIN_LOCKUP_PATH}" alt="" width="1600" height="1460" />
+            <div class="amso-million-runner-2026__landing-art" aria-hidden="true">
+              <img class="amso-million-runner-2026__main-lockup" src="${lockups.main}" alt="" width="1600" height="1460" />
             </div>
           </section>
 
-          <section
-            class="amso-campaign__screen amso-campaign__screen--dialog"
-            data-campaign-orientation
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="amso-campaign-orientation-title"
-            hidden
-          >
-            <div class="amso-campaign__card">
-              <p class="amso-campaign__eyebrow" data-campaign-copy="orientationEyebrow">Szerszy kadr</p>
-              <h2 id="amso-campaign-orientation-title" data-campaign-copy="orientationTitle">Chcesz zobaczyć więcej historii?</h2>
-              <p data-campaign-copy="orientationBody">Obróć telefon i włącz pełny ekran. Możesz też grać pionowo.</p>
-              <div class="amso-campaign__actions">
-                <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-enter-fullscreen data-campaign-copy="orientationFullscreen">Włącz pełny ekran</button>
-                <button class="amso-campaign__button amso-campaign__button--secondary" type="button" data-campaign-stay-portrait data-campaign-copy="orientationPortrait">Zostań w pionie</button>
+          <div class="amso-million-runner-2026__overlay" id="amso-million-runner-2026-how-to-panel" data-campaign-how-to-panel hidden role="dialog" aria-modal="true" aria-labelledby="amso-million-runner-2026-how-to-title">
+            <div class="amso-million-runner-2026__overlay-card">
+              <button class="amso-million-runner-2026__overlay-close" type="button" data-campaign-close-overlay aria-label="Zamknij instrukcję">×</button>
+              <h2 id="amso-million-runner-2026-how-to-title">Jak działa gra?</h2>
+              <div class="amso-million-runner-2026__overlay-copy">
+                <p>${GAME_INSTRUCTION_COPY.modeDifference}</p>
+                <p>${GAME_INSTRUCTION_COPY.storySafety}</p>
+                <p>${this.keyboardInstruction(GAME_INSTRUCTION_COPY.controls)}</p>
+                <p>${GAME_INSTRUCTION_COPY.ordersAndCombo}</p>
               </div>
             </div>
-          </section>
+          </div>
 
-          <section class="amso-campaign__screen amso-campaign__screen--dialog" data-campaign-loading hidden>
-            <div class="amso-campaign__card amso-campaign__card--loading">
-              <img class="amso-campaign__compact-lockup" src="${COMPACT_LOCKUP_PATH}" alt="" width="1600" height="924" />
-              <span class="amso-campaign__loading-package" aria-hidden="true"></span>
+          <div
+            class="amso-million-runner-2026__orientation-prompt"
+            data-campaign-orientation-prompt
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="amso-million-runner-2026-orientation-title"
+            aria-describedby="amso-million-runner-2026-orientation-desc"
+            hidden
+          >
+            <div class="amso-million-runner-2026__orientation-prompt-content">
+              <svg class="amso-million-runner-2026__orientation-icon" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <g class="amso-million-runner-2026__orientation-icon__group">
+                  <rect x="35" y="10" width="50" height="100" rx="10" fill="none" stroke="currentColor" stroke-width="3"/>
+                  <rect x="40" y="18" width="40" height="84" rx="4" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+                </g>
+                <path d="M104 85 A48 48 0 0 0 104 35" fill="none" stroke="var(--campaign-orange)" stroke-width="4" stroke-linecap="round" class="amso-million-runner-2026__orientation-arrow"/>
+                <polygon points="108,33 100,39 106,27" fill="var(--campaign-orange)" class="amso-million-runner-2026__orientation-arrow-head"/>
+              </svg>
+              <h2 id="amso-million-runner-2026-orientation-title" data-campaign-copy="orientationPromptTitle">Obróć telefon, aby zagrać</h2>
+              <p id="amso-million-runner-2026-orientation-desc" data-campaign-copy="orientationPromptBody">Gra „Droga do Miliona” działa w trybie poziomym.</p>
+            </div>
+          </div>
+
+          <section class="amso-million-runner-2026__screen amso-million-runner-2026__screen--dialog" data-campaign-loading hidden>
+            <div class="amso-million-runner-2026__card amso-million-runner-2026__card--loading">
+              <img class="amso-million-runner-2026__compact-lockup" src="${lockups.compact}" alt="" width="1600" height="924" />
+              <span class="amso-million-runner-2026__loading-package" aria-hidden="true"></span>
               <h2 data-campaign-loading-text data-campaign-copy="loading">Przygotowujemy pierwszą paczkę…</h2>
               <progress data-campaign-loading-progress max="1"></progress>
             </div>
           </section>
 
-          <section class="amso-campaign__screen amso-campaign__screen--dialog" data-campaign-error hidden>
-            <div class="amso-campaign__card">
-              <p class="amso-campaign__eyebrow" data-campaign-copy="errorEyebrow">Trasa chwilowo niedostępna</p>
+          <section class="amso-million-runner-2026__screen amso-million-runner-2026__screen--dialog" data-campaign-error hidden>
+            <div class="amso-million-runner-2026__card">
+              <p class="amso-million-runner-2026__eyebrow" data-campaign-copy="errorEyebrow">Trasa chwilowo niedostępna</p>
               <h2 data-campaign-copy="errorTitle">Nie udało się przygotować gry.</h2>
               <p data-campaign-error-text data-campaign-copy="errorBody">Sprawdź połączenie i spróbuj ponownie.</p>
-              <div class="amso-campaign__actions">
-                <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-retry data-campaign-copy="retry">Spróbuj ponownie</button>
-                <a class="amso-campaign__button amso-campaign__button--secondary" data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
+              <div class="amso-million-runner-2026__actions">
+                <button class="amso-million-runner-2026__button amso-million-runner-2026__button--primary" type="button" data-campaign-retry data-campaign-copy="retry">Spróbuj ponownie</button>
+                <a class="amso-million-runner-2026__button amso-million-runner-2026__button--secondary" data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
               </div>
             </div>
           </section>
 
           <section
-            class="amso-campaign__screen amso-campaign__screen--dialog"
+            class="amso-million-runner-2026__screen amso-million-runner-2026__screen--dialog"
             data-campaign-pause-screen
             role="dialog"
             aria-modal="true"
-            aria-labelledby="amso-campaign-pause-title"
+            aria-labelledby="amso-million-runner-2026-pause-title"
             hidden
           >
-            <div class="amso-campaign__card">
-              <p class="amso-campaign__eyebrow" data-campaign-copy="pauseEyebrow">Bezpieczny przystanek</p>
-              <h2 id="amso-campaign-pause-title" data-campaign-copy="pauseTitle">Gra wstrzymana</h2>
+            <div class="amso-million-runner-2026__card">
+              <p class="amso-million-runner-2026__eyebrow" data-campaign-copy="pauseEyebrow">Bezpieczny przystanek</p>
+              <h2 id="amso-million-runner-2026-pause-title" data-campaign-copy="pauseTitle">Gra wstrzymana</h2>
               <p data-campaign-copy="pauseBody">Twój postęp jest bezpieczny.</p>
-              <div class="amso-campaign__pause-bonuses" aria-label="Bonusy">
+              <div class="amso-million-runner-2026__pause-bonuses" aria-label="Bonusy">
                 <strong>Bonusy</strong>
                 <span><b>×2 WYNIK</b> — przez 7 s podwaja punkty za zamówienia.</span>
-                <span data-campaign-copy="powerupWarranty">GWARANCJA 48 M — uratuje jedną próbę w Trybie Wyzwania.</span>
+                 <span data-campaign-copy="powerupWarranty">GWARANCJA AMSO CARE — uratuje jedną próbę w Trybie Wyzwania.</span>
               </div>
-              <div class="amso-campaign__actions">
-                <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-resume data-campaign-copy="resume">Wznów</button>
-                <button class="amso-campaign__button amso-campaign__button--secondary" type="button" data-campaign-menu data-campaign-copy="returnToMenu">Wróć do menu</button>
+              <div class="amso-million-runner-2026__actions">
+                <button class="amso-million-runner-2026__button amso-million-runner-2026__button--primary" type="button" data-campaign-resume data-campaign-copy="resume">Wznów</button>
+                <button class="amso-million-runner-2026__button amso-million-runner-2026__button--secondary" type="button" data-campaign-menu data-campaign-copy="returnToMenu">Wróć do menu</button>
               </div>
             </div>
           </section>
 
-          <section class="amso-campaign__screen amso-campaign__screen--result" data-campaign-story-result hidden>
-            <div class="amso-campaign__result-card">
-              <img class="amso-campaign__result-lockup amso-campaign__result-lockup--main" src="${MAIN_LOCKUP_PATH}" alt="" width="1600" height="1460" />
-              <p class="amso-campaign__eyebrow" data-campaign-copy="storyResultEyebrow">Dziękujemy za wspólną drogę</p>
+          <section class="amso-million-runner-2026__screen amso-million-runner-2026__screen--result" data-campaign-story-result hidden>
+            <div class="amso-million-runner-2026__result-card">
+              <img class="amso-million-runner-2026__result-lockup amso-million-runner-2026__result-lockup--main" src="${lockups.main}" alt="" width="1600" height="1460" />
+              <p class="amso-million-runner-2026__eyebrow" data-campaign-copy="storyResultEyebrow">Dziękujemy za wspólną drogę</p>
               <h2 data-campaign-copy="storyResultTitle">Twoja Droga do Miliona</h2>
-              <div class="amso-campaign__result-grid">
+              <div class="amso-million-runner-2026__result-grid">
                 <span><small data-campaign-copy="resultPackages">Zrealizowane zamówienia</small> <strong data-campaign-story-packages>0</strong></span>
                 <span><small data-campaign-copy="resultScore">Wynik</small> <strong data-campaign-story-score>0</strong></span>
                 <span><small data-campaign-copy="resultCombo">Najlepsza seria</small> <strong data-campaign-story-combo>×1</strong></span>
               </div>
-              <p class="amso-campaign__result-intro" data-campaign-copy="storyResultIntro">Biegnij do pierwszego niezabezpieczonego zderzenia i ustanów rekord.</p>
-              <div class="amso-campaign__actions">
-                <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-start-challenge data-campaign-copy="startChallenge">Gramy dalej — tryb wyzwania</button>
-                <a class="amso-campaign__button amso-campaign__button--secondary" data-campaign-full-story data-campaign-copy="fullStory">Poznaj pełną historię AMSO</a>
-                <a class="amso-campaign__text-link" data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
+              <p class="amso-million-runner-2026__result-intro" data-campaign-copy="storyResultIntro">Biegnij do pierwszego niezabezpieczonego zderzenia i ustanów rekord.</p>
+              <div class="amso-million-runner-2026__actions">
+                <button class="amso-million-runner-2026__button amso-million-runner-2026__button--primary" type="button" data-campaign-start-challenge data-campaign-copy="startChallenge">Gramy dalej — tryb wyzwania</button>
+                <a class="amso-million-runner-2026__button amso-million-runner-2026__button--secondary" data-campaign-full-story data-campaign-copy="fullStory">Poznaj pełną historię AMSO</a>
+                <a class="amso-million-runner-2026__text-link" data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
               </div>
             </div>
           </section>
 
-          <section class="amso-campaign__screen amso-campaign__screen--result" data-campaign-challenge-result hidden>
-            <div class="amso-campaign__result-card">
-              <img class="amso-campaign__result-lockup" src="${COMPACT_LOCKUP_PATH}" alt="" width="1600" height="924" />
-              <p class="amso-campaign__eyebrow" data-campaign-copy="challengeResultEyebrow">Próba Miliona</p>
+          <section class="amso-million-runner-2026__screen amso-million-runner-2026__screen--result" data-campaign-challenge-result hidden>
+            <div class="amso-million-runner-2026__result-card">
+              <img class="amso-million-runner-2026__result-lockup" src="${lockups.compact}" alt="" width="1600" height="924" />
+              <p class="amso-million-runner-2026__eyebrow" data-campaign-copy="challengeResultEyebrow">Próba Miliona</p>
               <h2 data-campaign-copy="challengeResultTitle">Koniec próby</h2>
-              <div class="amso-campaign__result-grid amso-campaign__result-grid--challenge">
-                <span><small data-campaign-copy="resultPackages">Zrealizowane zamówienia</small> <strong data-campaign-challenge-packages>0</strong></span>
-                <span><small>Wynik łączny</small> <strong data-campaign-challenge-total>0</strong></span>
-                <span><small>Wynik wyzwania</small> <strong data-campaign-challenge-score>0</strong></span>
-                <span><small data-campaign-challenge-best-label>Twój rekord wyzwania</small> <strong data-campaign-challenge-best>0</strong></span>
-                <span><small data-campaign-copy="resultDistance">Przebyta droga</small> <strong><i data-campaign-challenge-distance>0</i> m</strong></span>
-                <span data-campaign-challenge-saves-stat><small data-campaign-copy="resultWarranty">Gwarancja 48 M uratowała bieg</small> <strong data-campaign-challenge-saves>0</strong></span>
+              <div class="amso-million-runner-2026__result-grid amso-million-runner-2026__result-grid--challenge">
+                <span data-campaign-result-metric="orders" role="group">
+                  <small class="amso-million-runner-2026__result-label--desktop" data-campaign-copy="resultPackages">Zrealizowane zamówienia</small>
+                  <small class="amso-million-runner-2026__result-label--mobile" data-campaign-mobile-label="orders" aria-hidden="true">Zamówienia</small>
+                  <strong data-campaign-challenge-packages>0</strong>
+                </span>
+                <span data-campaign-result-metric="total" role="group">
+                  <small>Wynik łączny</small>
+                  <strong data-campaign-challenge-total>0</strong>
+                </span>
+                <span data-campaign-result-metric="challenge" role="group">
+                  <small>Wynik wyzwania</small>
+                  <strong data-campaign-challenge-score>0</strong>
+                </span>
+                <span data-campaign-result-metric="best" role="group">
+                  <small class="amso-million-runner-2026__result-label--desktop" data-campaign-challenge-best-label>Twój rekord wyzwania</small>
+                  <small class="amso-million-runner-2026__result-label--mobile" data-campaign-mobile-label="best" aria-hidden="true">Rekord</small>
+                  <strong data-campaign-challenge-best>0</strong>
+                </span>
+                <span data-campaign-result-metric="distance" role="group">
+                  <small data-campaign-copy="resultDistance">Przebyta droga</small>
+                  <strong><i data-campaign-challenge-distance>0</i> m</strong>
+                </span>
               </div>
-              <div class="amso-campaign__actions">
-                <button class="amso-campaign__button amso-campaign__button--primary" type="button" data-campaign-restart-challenge data-campaign-copy="retryChallenge">Spróbuj jeszcze raz</button>
-                <button class="amso-campaign__button amso-campaign__button--secondary" type="button" data-campaign-toggle-share data-campaign-copy="shareResult">Udostępnij wynik</button>
-                <button class="amso-campaign__text-link" type="button" data-campaign-restart-story data-campaign-copy="replayStory">Przejdź historię ponownie</button>
-                <a class="amso-campaign__text-link" data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
+              <div class="amso-million-runner-2026__actions amso-million-runner-2026__result-actions" data-campaign-result-actions>
+                <button class="amso-million-runner-2026__button amso-million-runner-2026__button--primary" type="button" data-campaign-restart-challenge data-campaign-copy="retryChallenge">Spróbuj jeszcze raz</button>
+                <button class="amso-million-runner-2026__button amso-million-runner-2026__button--secondary" type="button" data-campaign-toggle-share data-campaign-copy="shareResult" aria-expanded="false" aria-controls="amso-million-runner-2026-share-panel">Udostępnij wynik</button>
               </div>
-              <div class="amso-campaign__share-panel" data-campaign-share-panel hidden>
-                <img class="amso-campaign__share-lockup" src="${COMPACT_LOCKUP_PATH}" alt="" width="1600" height="924" />
+              <div class="amso-million-runner-2026__share-panel" id="amso-million-runner-2026-share-panel" data-campaign-share-panel hidden role="region" aria-label="Udostępnij wynik">
+                <button class="amso-million-runner-2026__overlay-close" type="button" data-campaign-close-overlay aria-label="Zamknij udostępnianie">×</button>
+                <img class="amso-million-runner-2026__share-lockup" src="${lockups.compact}" alt="" width="1600" height="924" />
                 <p><strong data-campaign-copy="shareTurn">Teraz Twoja kolej.</strong> <span data-campaign-copy="shareLead">Wybierz, gdzie chcesz udostępnić kartę wyniku.</span></p>
-                <div class="amso-campaign__share-actions">
+                <div class="amso-million-runner-2026__share-actions">
                   <button type="button" data-campaign-share="facebook" data-campaign-copy="facebook">Facebook</button>
                   <button type="button" data-campaign-share="instagram" data-campaign-copy="instagram">Instagram</button>
                 </div>
-                <p class="amso-campaign__share-status" data-campaign-share-status role="status"></p>
+                <p class="amso-million-runner-2026__share-status" data-campaign-share-status role="status"></p>
               </div>
+              <div data-campaign-result-records></div>
+              <a class="amso-million-runner-2026__text-link amso-million-runner-2026__result-exit" data-campaign-result-exit data-campaign-link data-campaign-copy="campaignBack">Wróć na stronę kampanii</a>
             </div>
           </section>
 
-          <section class="amso-campaign__story-presentation" data-campaign-story-presentation hidden>
-            <div class="amso-campaign__story-scrim" aria-hidden="true"></div>
+          <section class="amso-million-runner-2026__story-presentation" data-campaign-story-presentation hidden>
+            <div class="amso-million-runner-2026__story-scrim" aria-hidden="true"></div>
 
             <article
-              class="amso-campaign__story-scene-card"
+              class="amso-million-runner-2026__story-scene-card"
               data-campaign-story-scene
               role="dialog"
               aria-modal="true"
-              aria-labelledby="amso-campaign-story-scene-title"
-              aria-describedby="amso-campaign-story-scene-body amso-campaign-story-visual-description"
+              aria-labelledby="amso-million-runner-2026-story-scene-title"
+              aria-describedby="amso-million-runner-2026-story-scene-body amso-million-runner-2026-story-visual-description"
             >
-              <img class="amso-campaign__story-final-lockup" src="${MAIN_LOCKUP_PATH}" alt="" width="1600" height="1460" />
-              <p class="amso-campaign__story-scene-eyebrow" data-campaign-story-scene-eyebrow hidden></p>
-              <h2 id="amso-campaign-story-scene-title" data-campaign-story-scene-title></h2>
-              <div id="amso-campaign-story-scene-body" class="amso-campaign__story-scene-body" data-campaign-story-scene-body tabindex="0"></div>
-              <p id="amso-campaign-story-visual-description" class="amso-campaign__sr-only" data-campaign-story-visual-description></p>
+              <img class="amso-million-runner-2026__story-final-lockup" src="${lockups.main}" alt="" width="1600" height="1460" />
+              <p class="amso-million-runner-2026__story-scene-eyebrow" data-campaign-story-scene-eyebrow hidden></p>
+              <h2 id="amso-million-runner-2026-story-scene-title" data-campaign-story-scene-title></h2>
+              <div id="amso-million-runner-2026-story-scene-body" class="amso-million-runner-2026__story-scene-body" data-campaign-story-scene-body tabindex="0"></div>
+              <p id="amso-million-runner-2026-story-visual-description" class="amso-million-runner-2026__sr-only" data-campaign-story-visual-description></p>
               <button
-                class="amso-campaign__button amso-campaign__button--primary amso-campaign__story-continue"
+                class="amso-million-runner-2026__button amso-million-runner-2026__button--primary amso-million-runner-2026__story-continue"
                 type="button"
                 data-campaign-story-continue
               >Dalej</button>
             </article>
 
-            <div class="amso-campaign__story-countdown" data-campaign-story-countdown hidden tabindex="-1" role="status" aria-live="assertive" aria-atomic="true">
+            <div class="amso-million-runner-2026__story-countdown" data-campaign-story-countdown hidden tabindex="-1" role="status" aria-live="assertive" aria-atomic="true">
               <p data-campaign-story-countdown-label>Wracamy do gry</p>
               <strong data-campaign-story-countdown-value>3</strong>
             </div>
           </section>
 
-          <section class="amso-campaign__too-narrow" data-campaign-too-narrow hidden>
+          <section class="amso-million-runner-2026__too-narrow" data-campaign-too-narrow hidden>
             <strong data-campaign-copy="narrowTitle">Potrzebujemy trochę więcej miejsca.</strong>
             <span data-campaign-copy="narrowBody">Obróć urządzenie, żeby rozpocząć grę.</span>
           </section>
         </section>
-      </main>
+      </div>
 
-      <footer class="amso-campaign__footer">
+      <footer class="amso-million-runner-2026__footer">
         <span data-campaign-copy="footerTagline">AMSO. Sprzęt z przeszłością. Na przyszłość.</span>
         <a data-campaign-link data-campaign-copy="footerCampaign">Strona kampanii</a>
       </footer>
 
-      <div class="amso-campaign__sr-only" data-campaign-live aria-live="polite" aria-atomic="true"></div>
+      <div class="amso-million-runner-2026__sr-only" data-campaign-live aria-live="polite" aria-atomic="true"></div>
     `;
+    const mountedLanguageSelector = this.root.querySelector<HTMLSelectElement>(
+      "[data-campaign-language]"
+    );
+    if (mountedLanguageSelector !== null) mountedLanguageSelector.value = this.i18n.locale;
+    localizeElementTree(this.root, this.i18n);
     host.replaceChildren(this.root);
 
     this.stage = requiredElement(this.root, "[data-campaign-stage]");
     this.worldVisualLayer = new WorldVisualLayer(
-      requiredElement(this.root, "[data-campaign-world-visual]")
+      requiredElement(this.root, "[data-campaign-world-visual]"),
+      options.decodedImageStore ? new WorldAssetStore(options.decodedImageStore) : undefined,
+      this.i18n
     );
+    this.worldGeometryCoordinator = new WorldGeometryCoordinator(
+      this.stage,
+      this.worldVisualLayer,
+      undefined,
+      options.qaDpr ?? null
+    );
+    if (options.qaBadgeText) {
+      const badge = document.createElement("aside");
+      badge.className = "amso-million-runner-2026__qa-badge";
+      badge.dataset.qaBadge = "performance";
+      badge.textContent = options.qaBadgeText;
+      this.root.append(badge);
+    }
     this.canvas = requiredElement<HTMLCanvasElement>(this.root, "[data-campaign-canvas]");
     this.landingScreen = requiredElement(this.root, "[data-campaign-landing]");
     this.landingActions = requiredElement(this.root, "[data-campaign-landing-actions]");
-    this.orientationScreen = requiredElement(this.root, "[data-campaign-orientation]");
+    this.orientationPrompt = requiredElement(this.root, "[data-campaign-orientation-prompt]");
     this.loadingScreen = requiredElement(this.root, "[data-campaign-loading]");
     this.loadingText = requiredElement(this.root, "[data-campaign-loading-text]");
     this.loadingProgress = requiredElement(this.root, "[data-campaign-loading-progress]");
@@ -812,11 +989,45 @@ export class CampaignShell {
     this.sharePanel = requiredElement(this.root, "[data-campaign-share-panel]");
     this.shareStatus = requiredElement(this.root, "[data-campaign-share-status]");
     this.tooNarrow = requiredElement(this.root, "[data-campaign-too-narrow]");
+    this.recordsClient = options.recordsClient ?? null;
+    this.profile = options.profile ?? null;
+    if (this.recordsClient) {
+      const landingHost = this.root.querySelector<HTMLElement>("[data-campaign-landing-records]");
+      const resultHost = this.root.querySelector<HTMLElement>("[data-campaign-result-records]");
+      this.landingRecords = landingHost
+        ? new RecordBoard(landingHost, this.recordsClient, {
+            context: "landing",
+            i18n: this.i18n
+          })
+        : null;
+      this.resultRecords = resultHost
+        ? new RecordBoard(resultHost, this.recordsClient, {
+            context: "result",
+            i18n: this.i18n
+          })
+        : null;
+      this.resultRecords?.setPlayerId(this.profile?.playerId ?? null);
+      this.namePrompt = new NamePrompt(this.root, this.i18n);
+    } else {
+      this.landingRecords = null;
+      this.resultRecords = null;
+      this.namePrompt = null;
+    }
     this.presentationBackground = [
-      requiredElement(this.root, ".amso-campaign__header"),
-      requiredElement(this.root, ".amso-campaign__footer")
+      requiredElement(this.root, ".amso-million-runner-2026__header"),
+      requiredElement(this.root, ".amso-million-runner-2026__footer")
     ];
     this.orientationQuery = window.matchMedia?.("(orientation: landscape)") ?? null;
+    this.updateResponsiveLayout(this.root.getBoundingClientRect().width || window.innerWidth);
+    if (typeof ResizeObserver === "function") {
+      this.layoutObserver = new ResizeObserver((entries) => {
+        const width = entries[0]?.contentRect.width;
+        if (width !== undefined) this.updateResponsiveLayout(width);
+      });
+      this.layoutObserver.observe(this.root);
+    } else {
+      this.layoutObserver = null;
+    }
 
     this.applyCopy();
     this.updateFullscreenControl();
@@ -837,15 +1048,20 @@ export class CampaignShell {
     if (this.destroyed) return;
     this.activeMode = null;
     this.challengeResult = null;
-    this.fullscreenPreference = options.fullscreenPreference;
-    this.fullscreenPromptSeen = options.fullscreenPreference !== null;
+    this.resetStoryVisualClock();
+    this.orientationState = { phase: "idle" };
     this.setMuted(options.muted, false);
     this.applyWorldVisual("first-mile", "story.first_package", "landing");
     this.setView("landing", this.landingScreen);
     this.renderLandingActions(options);
     this.canvas.tabIndex = -1;
     this.landingActions.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
-    this.announce("Gra gotowa. Wybierz swoją drogę.");
+    this.announce(this.i18n.translate("Gra gotowa. Wybierz swoją drogę."));
+    void this.refreshLandingRecords();
+  }
+
+  private refreshLandingRecords(): void {
+    if (this.landingRecords) void this.landingRecords.refresh();
   }
 
   public showLoading(progress?: number, label?: string): void {
@@ -864,6 +1080,18 @@ export class CampaignShell {
     this.announce(loadingLabel);
   }
 
+  public waitForWorldPresentation(): Promise<void> {
+    return this.worldVisualLayer.waitForCurrentPresentation();
+  }
+
+  public prepareChallengeWorlds(): Promise<void> {
+    return this.worldVisualLayer.prepareChallengeWorlds();
+  }
+
+  public isDecodeSafePhase(): boolean {
+    return this.root.dataset.view !== "game";
+  }
+
   public showError(message?: string): void {
     if (this.destroyed) return;
     const errorMessage = message ?? this.copy.errorBody;
@@ -880,7 +1108,9 @@ export class CampaignShell {
     this.activeMode = mode;
     this.lastWaveFeedbackKey = "";
     this.paused = false;
+    this.worldVisualLayer.setPaused(false);
     this.challengeResult = null;
+    this.resetStoryVisualClock();
     this.hideScreens();
     this.root.dataset.view = "game";
     this.root.dataset.mode = mode;
@@ -904,22 +1134,27 @@ export class CampaignShell {
     const scene = snapshotStoryScene(input);
     const wasGame = this.root.dataset.view === "game";
     const isNewScene = this.storyContinuationGate.arm(scene.presentationId);
+    const presentationRevision = isNewScene
+      ? ++this.storyPresentationRevision
+      : this.storyPresentationRevision;
     if (wasGame) this.callbacks.onSlide(false, "keyboard");
 
     this.activeMode = "story";
+    this.storyVisualOriginDistance = null;
     this.root.dataset.mode = "story";
     this.root.dataset.view = "story_scene";
     const visualState = sceneVisualState(scene.visualStateId);
     this.applyWorldVisual(visualState.worldId, visualState.stateId, "story");
+    this.worldVisualLayer.setParallaxDistance(0, false);
     this.storyPresentation.dataset.state = "scene";
     this.storyPresentation.dataset.copyPlacement = visualState.copyPlacement;
-    this.storyPresentation.hidden = false;
+    if (isNewScene) this.storyPresentation.hidden = true;
     this.storySceneCard.hidden = false;
     this.storyCountdown.hidden = true;
     this.hud.hidden = true;
     this.canvas.tabIndex = -1;
     this.canvas.setAttribute("aria-hidden", "true");
-    this.setScreenModal(this.storyPresentation);
+    if (isNewScene) this.storyContinueButton.disabled = true;
 
     if (!isNewScene) return;
 
@@ -940,17 +1175,26 @@ export class CampaignShell {
     this.storyContinueButton.textContent = scene.continueLabel;
     this.storyContinueButton.dataset.sceneId = scene.sceneId;
     this.storyContinueButton.dataset.presentationId = scene.presentationId;
-    this.storyContinueButton.disabled = false;
-    this.storySceneBody.focus({ preventScroll: true });
-    this.announce([
+    const announcement = [
       scene.eyebrow, scene.title, ...scene.body, scene.action, scene.finalFrame
-    ].filter(Boolean).join(". "));
+    ].filter(Boolean).join(". ");
+    void this.worldVisualLayer.waitForCurrentPresentation().then(() => {
+      if (this.destroyed || presentationRevision !== this.storyPresentationRevision ||
+          this.root.dataset.view !== "story_scene") return;
+      this.storyContinueButton.disabled = false;
+      this.storyPresentation.hidden = false;
+      this.setScreenModal(this.storyPresentation);
+      this.storySceneBody.focus({ preventScroll: true });
+      this.announce(announcement);
+    });
   }
 
   /** Gives the world camera its full 720 ms hand-off before the 3–2–1 starts. */
   public showStoryReframe(): void {
     if (this.destroyed) return;
+    this.storyPresentationRevision++;
     this.worldVisualLayer.setPhase("game");
+    this.worldVisualLayer.setParallaxDistance(0, false);
     this.root.dataset.view = "story_reframe";
     this.storyPresentation.dataset.state = "reframe";
     this.storyPresentation.hidden = false;
@@ -974,6 +1218,9 @@ export class CampaignShell {
     label = this.copy.storyCountdownLabel
   ): void {
     if (this.destroyed) return;
+    if (this.storyVisualOriginDistance === null) {
+      this.storyVisualOriginDistance = this.latestVisualDistance;
+    }
     this.worldVisualLayer.setPhase("game");
     this.root.dataset.view = "story_countdown";
     this.storyPresentation.dataset.state = "countdown";
@@ -1018,6 +1265,7 @@ export class CampaignShell {
   public setPaused(paused: boolean): void {
     if (this.destroyed || this.activeMode === null) return;
     this.paused = paused;
+    this.worldVisualLayer.setPaused(paused);
     this.pauseScreen.hidden = !paused;
     this.root.toggleAttribute("data-paused", paused);
     this.canvas.tabIndex = paused ? -1 : 0;
@@ -1039,18 +1287,19 @@ export class CampaignShell {
       snapshot.visualNextStateId,
       snapshot.visualProgress,
     );
-    this.applyWorldVisual(
-      snapshot.visualWorldId,
-      displayedVisualStateId,
-      this.root.dataset.view === "story_scene" ? "story" : "game",
-      this.activeMode === "challenge" ? "offscreen" : "story-linked"
-    );
+    const view = this.root.dataset.view;
+    // A final simulation snapshot can already point at the next story world
+    // while the current play surface remains visible. Keep the fully painted
+    // panel until handleStoryUpdate installs the narrative scene.
+    if (!(this.activeMode === "story" && view === "game" && snapshot.authoredWave?.completed === true)) {
+      this.applyWorldVisual(
+        snapshot.visualWorldId,
+        displayedVisualStateId,
+        view === "story_scene" ? "story" : "game",
+        this.activeMode === "challenge" ? "offscreen" : "story-linked"
+      );
+    }
     this.worldVisualLayer.setCounterValue(snapshot.millionCounterValue);
-    this.worldVisualLayer.setParallaxDistance(
-      snapshot.backgroundTravelPixels ?? 0,
-      this.root.dataset.view === "game" && !this.paused,
-      snapshot.reducedMotion === true
-    );
     this.showMilestoneCelebration(
       snapshot.milestoneCelebration ?? null,
       snapshot.reducedMotion === true
@@ -1061,40 +1310,105 @@ export class CampaignShell {
         `${waveResult.attempts}:${waveResult.passed}:${snapshot.authoredWave?.wavesCompleted}`;
       if (key !== this.lastWaveFeedbackKey) {
         this.lastWaveFeedbackKey = key;
-        this.showPickupNotice(waveResult.perfect
+        this.showPickupNotice(this.i18n.translate(waveResult.perfect
           ? "PERFEKCJA · bonus za pełną trasę"
           : waveResult.passed
             ? "FALA ZALICZONA"
-            : "POWTÓRZ FALĘ");
+            : "POWTÓRZ FALĘ"));
       }
     }
-    this.hudPackages.textContent = formatInteger(snapshot.packagesCollected);
-    this.hudScore.textContent = formatInteger(snapshot.score);
-    this.hudCombo.textContent = `×${formatInteger(snapshot.combo)}`;
-    const activePowerUps = formatPowerUpHud(
-      snapshot.activePowerUps,
-      snapshot.activePowerUpStatuses,
-      { gwarancja_48: this.copy.powerupWarrantyHud }
-    );
-    this.hudPowerUps.textContent = activePowerUps;
-    this.hudPowerUps.hidden = activePowerUps.length === 0;
-    const controls = formatStoryControlsHud(
-      snapshot.storyObjectiveSegmentId,
-      snapshot.authoredWave,
-      this.copy.controlsHud
-    );
-    this.hudControls.textContent = controls ?? "";
-    this.hudControls.hidden = controls === null;
+    if (snapshot.packagesCollected !== this.lastHudPackages) {
+      this.lastHudPackages = snapshot.packagesCollected;
+      this.hudPackages.textContent = formatInteger(snapshot.packagesCollected, this.i18n);
+    }
+    if (snapshot.score !== this.lastHudScore) {
+      this.lastHudScore = snapshot.score;
+      this.hudScore.textContent = formatInteger(snapshot.score, this.i18n);
+    }
+    if (snapshot.combo !== this.lastHudCombo) {
+      this.lastHudCombo = snapshot.combo;
+      this.hudCombo.textContent = `×${formatInteger(snapshot.combo, this.i18n)}`;
+    }
+    const powerUpsKey = `${snapshot.activePowerUps.join(",")}|` +
+      snapshot.activePowerUpStatuses.map(({ kind, remainingSeconds }) =>
+        `${kind}:${remainingSeconds}`
+      ).join(",");
+    if (powerUpsKey !== this.lastHudPowerUpsKey) {
+      this.lastHudPowerUpsKey = powerUpsKey;
+      const activePowerUps = formatPowerUpHud(
+        snapshot.activePowerUps,
+        snapshot.activePowerUpStatuses,
+        { gwarancja_48: this.copy.powerupWarrantyHud },
+        this.i18n.translate
+      );
+      this.hudPowerUps.textContent = activePowerUps;
+      this.hudPowerUps.hidden = activePowerUps.length === 0;
+    }
+    const controlsKey = `${snapshot.storyObjectiveSegmentId ?? ""}|` +
+      `${snapshot.authoredWave?.microlevelId ?? ""}|` +
+      `${snapshot.authoredWave?.currentWaveId ?? ""}|` +
+      `${snapshot.authoredWave?.attemptsOnCurrentWave ?? ""}`;
+    if (controlsKey !== this.lastHudControlsKey) {
+      this.lastHudControlsKey = controlsKey;
+      const controls = formatStoryControlsHud(
+        snapshot.storyObjectiveSegmentId,
+        snapshot.authoredWave,
+        this.keyboardInstruction(GAME_INSTRUCTION_COPY.compactControls)
+      );
+      this.hudControls.textContent = controls ?? "";
+      this.hudControls.hidden = controls === null;
+    }
     if (this.activeMode === "story") {
       const progress = snapshot.epochIndexMax > 0
         ? `${snapshot.epochIndex + 1}/${snapshot.epochIndexMax + 1}`
         : "";
-      this.hudEpoch.textContent = [snapshot.epochName, progress].filter(Boolean).join(" · ");
+      const epoch = [snapshot.epochName, progress].filter(Boolean).join(" · ");
+      if (epoch !== this.lastHudEpochKey) {
+        this.lastHudEpochKey = epoch;
+        this.hudEpoch.textContent = epoch;
+      }
       this.showStoryObjective(
-        formatAuthoredWaveHud(snapshot.authoredWave) ??
-          formatStoryObjectiveHud(snapshot.storyObjectives, snapshot.activeStoryOrderTypes)
+        formatAuthoredWaveHud(snapshot.authoredWave, this.i18n.translate) ??
+          formatStoryObjectiveHud(
+            snapshot.storyObjectives,
+            snapshot.activeStoryOrderTypes,
+            this.i18n.translate
+          )
       );
     }
+  }
+
+  /** Hot-path DOM write driven by RunnerGame's sole visual clock. */
+  public updateVisualFrame(
+    visualDistancePixels: number,
+    _interpolationAlpha: number,
+    reducedMotion: boolean
+  ): void {
+    if (this.destroyed) return;
+    this.latestVisualDistance = visualDistancePixels;
+    const view = this.root.dataset.view;
+    const holdsAuthoredStoryFrame =
+      view === "story_scene" || view === "story_reframe" || view === "story_countdown";
+    if (view === "story_countdown" && this.storyVisualOriginDistance === null) {
+      this.storyVisualOriginDistance = visualDistancePixels;
+    }
+    const localVisualDistance = this.storyVisualOriginDistance === null
+      ? visualDistancePixels
+      : Math.max(0, visualDistancePixels - this.storyVisualOriginDistance);
+    this.worldVisualLayer.setParallaxDistance(
+      holdsAuthoredStoryFrame ? 0 : localVisualDistance,
+      view === "game" && !this.paused,
+      reducedMotion
+    );
+  }
+
+  public qualityCommitContext(): QualityCommitContext {
+    const world = this.worldVisualLayer.qualityBoundaryState;
+    return {
+      ...world,
+      celebrationActive: !this.milestoneMessage.hidden,
+      cutsceneOverlayActive: this.root.dataset.view === "story_scene"
+    };
   }
 
   public showMilestoneCelebration(
@@ -1102,6 +1416,11 @@ export class CampaignShell {
     reducedMotion = false
   ): void {
     if (this.destroyed) return;
+    const key = celebration === null || celebration === undefined
+      ? ""
+      : `${celebration.text}|${celebration.kind}|${celebration.intensity}|${reducedMotion}`;
+    if (key === this.lastMilestoneKey) return;
+    this.lastMilestoneKey = key;
     if (celebration === null || celebration === undefined) {
       this.milestoneMessage.hidden = true;
       this.milestoneMessage.textContent = "";
@@ -1149,14 +1468,14 @@ export class CampaignShell {
     if (this.destroyed) return;
     this.activeMode = "story";
     this.applyWorldVisual("million-finale", "story.million_finale", "result");
-    requiredElement(this.storyResultScreen, "[data-campaign-story-packages]").textContent = formatInteger(result.orders);
-    requiredElement(this.storyResultScreen, "[data-campaign-story-score]").textContent = formatInteger(result.score);
-    requiredElement(this.storyResultScreen, "[data-campaign-story-combo]").textContent = `×${formatInteger(result.bestCombo)}`;
+    requiredElement(this.storyResultScreen, "[data-campaign-story-packages]").textContent = formatInteger(result.orders, this.i18n);
+    requiredElement(this.storyResultScreen, "[data-campaign-story-score]").textContent = formatInteger(result.score, this.i18n);
+    requiredElement(this.storyResultScreen, "[data-campaign-story-combo]").textContent = `×${formatInteger(result.bestCombo, this.i18n)}`;
     this.setView("story_result", this.storyResultScreen);
     requiredElement<HTMLButtonElement>(this.storyResultScreen, "[data-campaign-start-challenge]").focus({ preventScroll: true });
     this.announce(
-      `${this.copy.storyResultTitle}. ${this.copy.resultPackages}: ${formatInteger(result.orders)}. ` +
-      `${this.copy.resultScore}: ${formatInteger(result.score)}.`
+      `${this.copy.storyResultTitle}. ${this.copy.resultPackages}: ${formatInteger(result.orders, this.i18n)}. ` +
+      `${this.copy.resultScore}: ${formatInteger(result.score, this.i18n)}.`
     );
   }
 
@@ -1165,24 +1484,86 @@ export class CampaignShell {
     this.activeMode = "challenge";
     this.applyWorldVisual("million-finale", "story.million_finale", "result");
     this.challengeResult = result;
-    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-packages]").textContent = formatInteger(result.orders);
-    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-total]").textContent = formatInteger(result.totalScore);
-    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-score]").textContent = formatInteger(result.challengeScore);
-    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-best]").textContent = formatInteger(result.bestScore);
-    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-best-label]").textContent =
-      result.firstChallengeResult ? "Pierwszy wynik wyzwania" : "Twój rekord wyzwania";
-    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-distance]").textContent = formatInteger(result.distanceM);
-    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-saves]").textContent = formatInteger(result.warrantySaves);
-    requiredElement<HTMLElement>(this.challengeResultScreen, "[data-campaign-challenge-saves-stat]").hidden = result.warrantySaves === 0;
+    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-packages]").textContent = formatInteger(result.orders, this.i18n);
+    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-total]").textContent = formatInteger(result.totalScore, this.i18n);
+    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-score]").textContent = formatInteger(result.challengeScore, this.i18n);
+    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-best]").textContent = formatInteger(result.bestScore, this.i18n);
+    const bestLabel = this.i18n.translate(
+      result.firstChallengeResult ? "Pierwszy wynik wyzwania" : "Twój rekord wyzwania"
+    );
+    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-best-label]").textContent = bestLabel;
+    requiredElement(this.challengeResultScreen, "[data-campaign-challenge-distance]").textContent = formatInteger(result.distanceM, this.i18n);
+    requiredElement(this.challengeResultScreen, "[data-campaign-result-metric='orders']")
+      .setAttribute("aria-label", `${this.copy.resultPackages}: ${formatInteger(result.orders, this.i18n)}`);
+    requiredElement(this.challengeResultScreen, "[data-campaign-result-metric='total']")
+      .setAttribute("aria-label", `${this.i18n.translate("Wynik łączny")}: ${formatInteger(result.totalScore, this.i18n)}`);
+    requiredElement(this.challengeResultScreen, "[data-campaign-result-metric='challenge']")
+      .setAttribute("aria-label", `${this.i18n.translate("Wynik wyzwania")}: ${formatInteger(result.challengeScore, this.i18n)}`);
+    requiredElement(this.challengeResultScreen, "[data-campaign-result-metric='best']")
+      .setAttribute("aria-label", `${bestLabel}: ${formatInteger(result.bestScore, this.i18n)}`);
+    requiredElement(this.challengeResultScreen, "[data-campaign-result-metric='distance']")
+      .setAttribute("aria-label", `${this.copy.resultDistance}: ${this.i18n.formatMetres(result.distanceM)}`);
     this.sharePanel.hidden = true;
     this.shareStatus.textContent = "";
+    requiredElement<HTMLButtonElement>(this.challengeResultScreen, "[data-campaign-toggle-share]")
+      .setAttribute("aria-expanded", "false");
     this.setView("challenge_result", this.challengeResultScreen);
     requiredElement<HTMLButtonElement>(this.challengeResultScreen, "[data-campaign-restart-challenge]").focus({ preventScroll: true });
     this.announce(
-      `${this.copy.challengeResultTitle}. Wynik łączny: ${formatInteger(result.totalScore)}. ` +
-      `Wynik wyzwania: ${formatInteger(result.challengeScore)}. ` +
-      `${this.copy.resultPackages}: ${formatInteger(result.orders)}.`
+      `${this.copy.challengeResultTitle}. ${this.i18n.translate("Wynik łączny")}: ${formatInteger(result.totalScore, this.i18n)}. ` +
+      `${this.i18n.translate("Wynik wyzwania")}: ${formatInteger(result.challengeScore, this.i18n)}. ` +
+      `${this.copy.resultPackages}: ${formatInteger(result.orders, this.i18n)}.`
     );
+    void this.syncChallengeRecord(result.challengeScore, result.orders);
+  }
+
+  private async syncChallengeRecord(challengeScore: number, orders: number): Promise<void> {
+    if (!this.recordsClient || !this.profile || !this.resultRecords || !this.namePrompt) return;
+    const score = Math.round(challengeScore);
+    if (this.profile.playerName === null && score > this.profile.submittedBestScore) {
+      const answer = await this.namePrompt.ask("");
+      if (answer.skipped) {
+        await this.resultRecords.refresh();
+        return;
+      }
+      this.profile.setPlayerName(answer.name);
+    }
+
+    for (;;) {
+      try {
+        const { board, playerEntry, submitted } = await this.recordsClient.submitIfBest(
+          this.profile,
+          score,
+          orders
+        );
+        this.resultRecords.setHighlight(this.profile.playerName);
+        this.resultRecords.renderFrom(board, playerEntry);
+        if (submitted) this.announce(this.i18n.translate("Wpisano Cię na tablicę rekordów!"));
+        return;
+      } catch (error) {
+        if (!(error instanceof RecordsNameTakenError) &&
+            !(error instanceof RecordsNameValidationError)) {
+          await this.resultRecords.refresh();
+          return;
+        }
+        const rejectedName = this.profile.playerName ?? "";
+        this.profile.setPlayerName(null);
+        const message = error instanceof RecordsNameValidationError
+          ? this.i18n.translate(error.reason === "too_long"
+            ? PLAYER_NAME_TOO_LONG_MESSAGE
+            : PLAYER_NAME_DISALLOWED_MESSAGE)
+          : this.i18n.translate("Ta nazwa jest już zajęta. Wybierz inną.");
+        const answer = await this.namePrompt.ask(
+          rejectedName,
+          message
+        );
+        if (answer.skipped) {
+          await this.resultRecords.refresh();
+          return;
+        }
+        this.profile.setPlayerName(answer.name);
+      }
+    }
   }
 
   public setMuted(muted: boolean, notify = true): void {
@@ -1198,9 +1579,24 @@ export class CampaignShell {
     if (!this.destroyed) this.liveRegion.textContent = message;
   }
 
+  public attachGameGeometry(game: WorldGeometryConsumer, onReady?: () => void): () => void {
+    return this.worldGeometryCoordinator.attachGame(game, onReady);
+  }
+
+  public get geometryDiagnostics(): Readonly<GeometryDiagnostics> {
+    return this.worldGeometryCoordinator.diagnostics;
+  }
+
   public destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.landingStartRevision += 1;
+    this.layoutObserver?.disconnect();
+    this.worldGeometryCoordinator.destroy();
+    this.worldVisualLayer.destroy();
+    if (this.orientationDebounceTimer !== undefined) {
+      window.clearTimeout(this.orientationDebounceTimer);
+    }
     document.removeEventListener("keydown", this.handleKeydown, true);
     document.removeEventListener("keyup", this.handleKeyup, true);
     document.removeEventListener("visibilitychange", this.handleVisibilityChange);
@@ -1208,6 +1604,7 @@ export class CampaignShell {
     window.removeEventListener("resize", this.handleResize);
     this.orientationQuery?.removeEventListener?.("change", this.handleOrientationChange);
     this.root.removeEventListener("click", this.handleClick);
+    this.root.removeEventListener("change", this.handleChange);
     this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
     this.canvas.removeEventListener("pointermove", this.handlePointerMove);
     this.canvas.removeEventListener("pointerup", this.handlePointerUp);
@@ -1217,6 +1614,7 @@ export class CampaignShell {
 
   private installListeners(): void {
     this.root.addEventListener("click", this.handleClick);
+    this.root.addEventListener("change", this.handleChange);
     this.canvas.addEventListener("pointerdown", this.handlePointerDown);
     this.canvas.addEventListener("pointermove", this.handlePointerMove);
     this.canvas.addEventListener("pointerup", this.handlePointerUp);
@@ -1229,6 +1627,18 @@ export class CampaignShell {
     this.orientationQuery?.addEventListener?.("change", this.handleOrientationChange);
   }
 
+  private readonly handleChange = (event: Event): void => {
+    const select = event.target instanceof HTMLSelectElement &&
+      event.target.matches("[data-campaign-language]")
+      ? event.target
+      : null;
+    if (select === null) return;
+    const locale = VERCEL_LANGUAGE_OPTIONS.find(({ locale }) => locale === select.value)?.locale;
+    if (locale !== undefined && locale !== this.i18n.locale) {
+      this.callbacks.onLanguageChange?.(locale);
+    }
+  };
+
   private applyCopy(): void {
     this.root.querySelectorAll<HTMLElement>("[data-campaign-copy]").forEach((element) => {
       const key = element.dataset.campaignCopy;
@@ -1239,59 +1649,113 @@ export class CampaignShell {
   }
 
   private renderLandingActions(options: CampaignLandingOptions): void {
+    this.landingStartRevision += 1;
     this.landingActions.replaceChildren();
     if (options.challengeUnlocked) {
       const heading = document.createElement("h2");
       heading.textContent = this.copy.choosePath;
       const storyButton = this.createActionButton(this.copy.replayStory, true);
-      storyButton.addEventListener("click", () => this.queueStart({ mode: "story", restartStory: true }), { once: true });
-      const challengeButton = this.createActionButton(this.copy.challengeMode, false);
-      challengeButton.addEventListener("click", () => this.queueStart({ mode: "challenge", restartStory: false }), { once: true });
-      this.landingActions.append(heading, storyButton, challengeButton);
+      storyButton.addEventListener("click", () => {
+        this.startStoryFromGesture({ mode: "story", restartStory: true });
+      }, { once: true });
+      const challengeButton = this.createActionButton(this.copy.challengeCta, true);
+      challengeButton.addEventListener("click", () => {
+        this.landingStartRevision += 1;
+        this.queueStart({ mode: "challenge", restartStory: false });
+      }, { once: true });
+      storyButton.className = "amso-million-runner-2026__button amso-million-runner-2026__button--secondary";
+      this.landingActions.append(heading, challengeButton, storyButton);
       return;
     }
 
     const startButton = this.createActionButton(this.copy.startStory, true);
-    startButton.addEventListener("click", () => this.queueStart({ mode: "story", restartStory: false }), { once: true });
+    startButton.addEventListener("click", () => {
+      this.startStoryFromGesture({ mode: "story", restartStory: false });
+    }, { once: true });
     this.landingActions.append(startButton);
+  }
+
+  private startStoryFromGesture(request: CampaignStartRequest): void {
+    const revision = ++this.landingStartRevision;
+    this.landingActions.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
+      button.disabled = true;
+    });
+    void this.settleFullscreenViewport().then(() => {
+      if (this.destroyed || revision !== this.landingStartRevision) return;
+      this.queueStart(request);
+    });
+  }
+
+  private async settleFullscreenViewport(): Promise<void> {
+    const fullscreenAttempt = this.enterFullscreen();
+    let deadlineTimer: number | undefined;
+    const outcome = await Promise.race([
+      fullscreenAttempt.then(() => "settled" as const),
+      new Promise<"timeout">((resolve) => {
+        deadlineTimer = window.setTimeout(() => resolve("timeout"), STORY_FULLSCREEN_DEADLINE_MS);
+      })
+    ]);
+    if (deadlineTimer !== undefined) window.clearTimeout(deadlineTimer);
+    if (this.destroyed) return;
+    if (outcome === "timeout" && document.fullscreenElement !== this.root) {
+      this.abandonPendingFullscreen = true;
+      this.setCssGameMode(true);
+      void fullscreenAttempt.then(() => {
+        if (this.destroyed || !this.abandonPendingFullscreen) return;
+        if (document.fullscreenElement === this.root) {
+          this.exitAbandonedFullscreen();
+        } else {
+          this.abandonPendingFullscreen = false;
+        }
+      });
+    }
+    await this.waitForViewportPaint();
+  }
+
+  private async waitForViewportPaint(): Promise<void> {
+    if (typeof window.requestAnimationFrame !== "function") return;
+    let paintTimer: number | undefined;
+    await Promise.race([
+      new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => resolve());
+        });
+      }),
+      new Promise<void>((resolve) => {
+        paintTimer = window.setTimeout(resolve, STORY_VIEWPORT_PAINT_DEADLINE_MS);
+      })
+    ]);
+    if (paintTimer !== undefined) window.clearTimeout(paintTimer);
+  }
+
+  private exitAbandonedFullscreen(): void {
+    if (this.exitingAbandonedFullscreen || document.fullscreenElement !== this.root) return;
+    this.exitingAbandonedFullscreen = true;
+    void document.exitFullscreen?.().catch(() => undefined).finally(() => {
+      if (document.fullscreenElement !== this.root) {
+        this.exitingAbandonedFullscreen = false;
+        this.abandonPendingFullscreen = false;
+        this.updateFullscreenControl();
+      }
+    });
   }
 
   private createActionButton(label: string, primary: boolean): HTMLButtonElement {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `amso-campaign__button amso-campaign__button--${primary ? "primary" : "secondary"}`;
+    button.className = `amso-million-runner-2026__button amso-million-runner-2026__button--${primary ? "primary" : "secondary"}`;
     button.textContent = label;
     return button;
   }
 
   private queueStart(request: CampaignStartRequest): void {
-    if (!this.fullscreenPromptSeen && isMobileLayout()) {
-      this.fullscreenPromptSeen = true;
-      this.pendingStart = request;
-      this.setView("orientation", this.orientationScreen);
-      requiredElement<HTMLButtonElement>(this.orientationScreen, "[data-campaign-enter-fullscreen]").focus({ preventScroll: true });
+    if (this.orientationQuery?.matches) {
+      this.orientationState = { phase: "playing" };
+      this.callbacks.onStart(request);
       return;
     }
-    if (this.fullscreenPreference === "fullscreen" && isMobileLayout() &&
-        document.fullscreenElement === null) {
-      void this.enterFullscreen().finally(() => this.callbacks.onStart(request));
-      return;
-    }
-    this.callbacks.onStart(request);
-  }
-
-  private dispatchPendingStart(choice: "fullscreen" | "portrait"): void {
-    this.rememberFullscreenPreference(choice);
-    const request = this.pendingStart;
-    this.pendingStart = null;
-    if (request !== null) this.callbacks.onStart(request);
-  }
-
-  private rememberFullscreenPreference(choice: "fullscreen" | "portrait"): void {
-    const changed = !this.fullscreenPromptSeen || this.fullscreenPreference !== choice;
-    this.fullscreenPromptSeen = true;
-    this.fullscreenPreference = choice;
-    if (changed) this.callbacks.onFullscreenPreferenceChange(choice);
+    this.orientationState = { phase: "blocked-before-start", request };
+    this.showOrientationPrompt();
   }
 
   private fullscreenApiAvailable(): boolean {
@@ -1305,24 +1769,28 @@ export class CampaignShell {
     this.updateFullscreenControl();
   }
 
+  private showOrientationPrompt(): void {
+    this.orientationPrompt.hidden = false;
+    this.orientationPrompt.focus({ preventScroll: true });
+    this.setScreenModal(this.orientationPrompt);
+  }
+
+  private hideOrientationPrompt(): void {
+    this.orientationPrompt.hidden = true;
+    this.setScreenModal(null);
+  }
+
   private updateFullscreenControl(): void {
     const fullscreen = document.fullscreenElement === this.root;
     const cssGameMode = this.root.dataset.cssGameMode === "true";
     this.fullscreenButton.setAttribute("aria-pressed", String(fullscreen || cssGameMode));
-    requiredElement(this.fullscreenButton, ".amso-campaign__tool-label").textContent = fullscreen
+    requiredElement(this.fullscreenButton, ".amso-million-runner-2026__tool-label").textContent = fullscreen
       ? this.copy.fullscreenExit
       : cssGameMode
         ? this.copy.cssGameModeExit
         : this.fullscreenApiAvailable()
           ? this.copy.fullscreenEnter
           : this.copy.cssGameModeEnter;
-    const orientationAction = requiredElement<HTMLElement>(
-      this.orientationScreen,
-      "[data-campaign-enter-fullscreen]"
-    );
-    orientationAction.textContent = this.fullscreenApiAvailable()
-      ? this.copy.orientationFullscreen
-      : this.copy.orientationFocus;
   }
 
   private async enterFullscreen(): Promise<void> {
@@ -1333,6 +1801,9 @@ export class CampaignShell {
     try {
       if (document.fullscreenElement == null) {
         await this.root.requestFullscreen({ navigationUI: "hide" });
+      }
+      if (document.fullscreenElement !== this.root) {
+        this.setCssGameMode(true);
       }
     } catch {
       this.setCssGameMode(true);
@@ -1349,20 +1820,15 @@ export class CampaignShell {
       } else {
         await this.enterFullscreen();
       }
-      if (document.fullscreenElement != null || this.fullscreenApiAvailable()) {
-        this.rememberFullscreenPreference(
-          fullscreenPreferenceFromElement(document.fullscreenElement, this.root)
-        );
-      }
       this.updateFullscreenControl();
     })();
   }
 
   private hideScreens(): void {
+    this.closeOverlay(false);
     this.setScreenModal(null);
     [
       this.landingScreen,
-      this.orientationScreen,
       this.loadingScreen,
       this.errorScreen,
       this.pauseScreen,
@@ -1381,7 +1847,7 @@ export class CampaignShell {
     this.trustCorridor = false;
     this.canvas.tabIndex = -1;
     this.canvas.setAttribute("aria-hidden", "true");
-    if (visibleScreen === this.orientationScreen) this.setScreenModal(visibleScreen);
+    if (visibleScreen === this.orientationPrompt) this.setScreenModal(visibleScreen);
   }
 
   private hideStoryPresentation(): void {
@@ -1406,7 +1872,11 @@ export class CampaignShell {
   }
 
   private applyModalInertState(): void {
-    const screen = this.tooNarrowActive ? this.tooNarrow : this.activeModalScreen;
+    const screen = this.tooNarrowActive
+      ? this.tooNarrow
+      : !this.orientationPrompt.hidden
+        ? this.orientationPrompt
+        : this.activeModalScreen;
     const active = screen !== null;
     for (const region of this.presentationBackground) region.inert = active;
     for (const child of this.stage.children) {
@@ -1416,8 +1886,9 @@ export class CampaignShell {
   }
 
   private activeKeyboardDialog(): HTMLElement | null {
+    if (this.activeOverlay) return this.activeOverlay;
     if (!this.pauseScreen.hidden) return this.pauseScreen;
-    if (!this.orientationScreen.hidden) return this.orientationScreen;
+    if (!this.orientationPrompt.hidden) return this.orientationPrompt;
     return null;
   }
 
@@ -1458,26 +1929,33 @@ export class CampaignShell {
       phase,
       transitionMode
     });
-    this.root.dataset.visualWorld = state.worldId;
-    this.root.dataset.visualState = state.stateId;
-    this.root.dataset.copyPlacement = state.copyPlacement;
+    if (this.root.dataset.visualWorld !== state.worldId) {
+      this.root.dataset.visualWorld = state.worldId;
+    }
+    if (this.root.dataset.visualState !== state.stateId) {
+      this.root.dataset.visualState = state.stateId;
+    }
+    if (this.root.dataset.copyPlacement !== state.copyPlacement) {
+      this.root.dataset.copyPlacement = state.copyPlacement;
+    }
   }
 
   private readonly handleClick = (event: MouseEvent): void => {
-    const target = event.target instanceof Element ? event.target.closest<HTMLElement>("button, a") : null;
+    const target = event.target instanceof Element
+      ? event.target.closest<HTMLElement>("button, a, summary")
+      : null;
     if (target === null) return;
-    if (target.matches("[data-campaign-story-continue]")) {
+    if (target.matches("[data-campaign-how-to-trigger]") && this.root.dataset.mobileLayout === "true") {
+      event.preventDefault();
+      this.openOverlay(requiredElement(this.root, "[data-campaign-how-to-panel]"), target);
+    } else if (target.matches("[data-campaign-close-overlay]")) {
+      this.closeOverlay();
+    } else if (target.matches("[data-campaign-story-continue]")) {
       this.tryContinueStory();
     } else if (target.matches("[data-campaign-mute]")) {
       this.setMuted(!this.muted);
     } else if (target.matches("[data-campaign-fullscreen]")) {
       this.toggleFullscreen();
-    } else if (target.matches("[data-campaign-enter-fullscreen]")) {
-      void this.enterFullscreen().finally(() => this.dispatchPendingStart(
-        fullscreenPreferenceFromElement(document.fullscreenElement, this.root)
-      ));
-    } else if (target.matches("[data-campaign-stay-portrait]")) {
-      this.dispatchPendingStart("portrait");
     } else if (target.matches("[data-campaign-pause]")) {
       this.callbacks.onPause("user");
     } else if (target.matches("[data-campaign-resume]")) {
@@ -1490,11 +1968,14 @@ export class CampaignShell {
       this.callbacks.onStart({ mode: "challenge", restartStory: false });
     } else if (target.matches("[data-campaign-restart-challenge]")) {
       this.callbacks.onRestart("challenge");
-    } else if (target.matches("[data-campaign-restart-story]")) {
-      this.callbacks.onRestart("story");
     } else if (target.matches("[data-campaign-toggle-share]")) {
-      this.sharePanel.hidden = !this.sharePanel.hidden;
-      if (!this.sharePanel.hidden) requiredElement<HTMLButtonElement>(this.sharePanel, "[data-campaign-share]").focus({ preventScroll: true });
+      if (this.root.dataset.mobileLayout === "true") {
+        this.openOverlay(this.sharePanel, target);
+      } else {
+        this.sharePanel.hidden = !this.sharePanel.hidden;
+        target.setAttribute("aria-expanded", String(!this.sharePanel.hidden));
+        if (!this.sharePanel.hidden) requiredElement<HTMLButtonElement>(this.sharePanel, "[data-campaign-share]").focus({ preventScroll: true });
+      }
     } else if (target.matches("[data-campaign-share]")) {
       const platform = target.dataset.campaignShare;
       if (platform === "facebook" || platform === "instagram") {
@@ -1502,6 +1983,51 @@ export class CampaignShell {
       }
     }
   };
+
+  private openOverlay(overlay: HTMLElement, trigger: HTMLElement): void {
+    this.closeOverlay(false);
+    this.activeOverlay = overlay;
+    this.overlayTrigger = trigger;
+    overlay.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+    if (overlay === this.sharePanel) {
+      this.sharePanelOriginParent = this.sharePanel.parentElement;
+      this.sharePanelOriginNextSibling = this.sharePanel.nextSibling;
+      this.stage.append(this.sharePanel);
+      this.sharePanel.setAttribute("role", "dialog");
+      this.sharePanel.setAttribute("aria-modal", "true");
+      this.setScreenModal(this.sharePanel);
+    } else {
+      this.setScreenModal(overlay);
+    }
+    overlay.querySelector<HTMLElement>("button, [tabindex]:not([tabindex='-1'])")
+      ?.focus({ preventScroll: true });
+  }
+
+  private closeOverlay(restoreFocus = true): void {
+    const overlay = this.activeOverlay;
+    const trigger = this.overlayTrigger;
+    if (!overlay) return;
+    overlay.hidden = true;
+    trigger?.setAttribute("aria-expanded", "false");
+    if (overlay === this.sharePanel) {
+      this.setScreenModal(null);
+      const parent = this.sharePanelOriginParent;
+      const next = this.sharePanelOriginNextSibling;
+      if (parent) {
+        parent.insertBefore(this.sharePanel, next?.parentNode === parent ? next : null);
+      }
+      this.sharePanel.setAttribute("role", "region");
+      this.sharePanel.removeAttribute("aria-modal");
+      this.sharePanelOriginParent = null;
+      this.sharePanelOriginNextSibling = null;
+    } else {
+      this.setScreenModal(null);
+    }
+    this.activeOverlay = null;
+    this.overlayTrigger = null;
+    if (restoreFocus) trigger?.focus({ preventScroll: true });
+  }
 
   private async handleShare(platform: CampaignSharePlatform): Promise<void> {
     if (this.challengeResult === null) return;
@@ -1514,8 +2040,10 @@ export class CampaignShell {
           orders: this.challengeResult.orders
         },
         canonicalUrl: this.canonicalUrl,
-        scoreLabel: this.copy.shareScoreLabel.toLocaleUpperCase("pl-PL"),
-        ordersLabel: this.copy.resultPackages.toLocaleUpperCase("pl-PL"),
+        i18n: this.i18n,
+        title: this.copy.brandEdition,
+        scoreLabel: this.copy.shareScoreLabel.toLocaleUpperCase(this.i18n.intlLocale),
+        ordersLabel: this.copy.resultPackages.toLocaleUpperCase(this.i18n.intlLocale),
         callToAction: this.copy.shareTurn,
         publicationText: this.copy.sharePublication,
       });
@@ -1568,6 +2096,11 @@ export class CampaignShell {
 
   private readonly handleKeydown = (event: KeyboardEvent): void => {
     const activeDialog = this.activeKeyboardDialog();
+    if (activeDialog !== null && event.key === "Escape" && this.activeOverlay) {
+      event.preventDefault();
+      this.closeOverlay();
+      return;
+    }
     if (activeDialog !== null && event.key === "Tab") {
       const focusable = [...activeDialog.querySelectorAll<HTMLElement>(
         'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
@@ -1610,9 +2143,10 @@ export class CampaignShell {
     if (!this.canControl() || event.repeat) return;
     const interactive = event.target instanceof Element && event.target.closest("button, a, input") !== null;
     if (interactive) return;
-    const jump = event.code === "Space" || event.key === " " ||
-      event.code === "ArrowUp" || event.code === "KeyW";
-    const slide = event.code === "ArrowDown" || event.code === "KeyS";
+    const jump = event.code === "Space" || event.key === " " || event.code === "KeyW" ||
+      (this.keyboardProfile === "vercel" && event.code === "ArrowUp");
+    const slide = event.code === "KeyS" ||
+      (this.keyboardProfile === "vercel" && event.code === "ArrowDown");
     if (jump) {
       event.preventDefault();
       this.callbacks.onJump("keyboard");
@@ -1622,8 +2156,17 @@ export class CampaignShell {
     }
   };
 
+  private keyboardInstruction(source: string): string {
+    const localized = this.i18n.translate(source);
+    if (this.keyboardProfile !== "vercel") return localized;
+    return localized
+      .replace(/\bW\b/u, "W/↑")
+      .replace(/\bS\b/u, "S/↓");
+  }
+
   private readonly handleKeyup = (event: KeyboardEvent): void => {
-    if (this.activeMode !== null && (event.code === "ArrowDown" || event.code === "KeyS")) {
+    if (this.activeMode !== null && (event.code === "KeyS" ||
+        (this.keyboardProfile === "vercel" && event.code === "ArrowDown"))) {
       this.callbacks.onSlide(false, "keyboard");
     }
   };
@@ -1637,11 +2180,18 @@ export class CampaignShell {
 
   private readonly handleFullscreenChange = (): void => {
     const fullscreen = document.fullscreenElement === this.root;
+    if (this.abandonPendingFullscreen) {
+      if (fullscreen) {
+        this.exitAbandonedFullscreen();
+      } else if (this.exitingAbandonedFullscreen) {
+        this.exitingAbandonedFullscreen = false;
+        this.abandonPendingFullscreen = false;
+      }
+      this.updateFullscreenControl();
+      return;
+    }
     if (fullscreen) this.setCssGameMode(false);
     this.updateFullscreenControl();
-    this.rememberFullscreenPreference(
-      fullscreenPreferenceFromElement(document.fullscreenElement, this.root)
-    );
     if (this.canControl()) {
       this.paused = true;
       this.callbacks.onPause("layout_change");
@@ -1649,16 +2199,56 @@ export class CampaignShell {
   };
 
   private readonly handleOrientationChange = (): void => {
-    if (this.canControl()) {
-      this.paused = true;
-      this.callbacks.onPause("layout_change");
+    const isLandscape = this.orientationQuery?.matches ?? true;
+    if (!isLandscape) {
+      if (this.orientationState.phase === "blocked-before-start" ||
+          this.orientationState.phase === "playing") {
+        if (this.orientationState.phase === "playing" && this.canControl()) {
+          this.orientationState = { phase: "paused-by-orientation" };
+          this.callbacks.onPause("layout_change");
+        }
+        this.showOrientationPrompt();
+      }
+      return;
     }
+    window.clearTimeout(this.orientationDebounceTimer);
+    this.orientationDebounceTimer = setTimeout(() => {
+      this.hideOrientationPrompt();
+      if (this.orientationState.phase === "blocked-before-start") {
+        const request = this.orientationState.request;
+        this.orientationState = { phase: "playing" };
+        this.callbacks.onStart(request);
+        return;
+      }
+      if (this.orientationState.phase === "paused-by-orientation") {
+        this.orientationState = { phase: "playing" };
+        this.callbacks.onResume();
+      }
+    }, 300);
   };
 
   private readonly handleResize = (): void => {
+    this.updateResponsiveLayout(this.root.getBoundingClientRect().width || window.innerWidth);
     this.applyMilestoneLayout();
     this.updateNarrowState();
   };
+
+  private updateResponsiveLayout(width: number): void {
+    const height = this.root.getBoundingClientRect().height || window.innerHeight;
+    const coarse = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
+    const compact = width <= 600 || (width > height && height <= 500 && coarse);
+    this.resultRecords?.setCompact(compact);
+    if (compact) {
+      this.root.dataset.mobileLayout = "true";
+      return;
+    }
+    delete this.root.dataset.mobileLayout;
+  }
+
+  private resetStoryVisualClock(): void {
+    this.storyVisualOriginDistance = null;
+    this.latestVisualDistance = 0;
+  }
 
   private applyMilestoneLayout(): void {
     const layout = milestoneLayoutForViewport(window.innerWidth, window.innerHeight);

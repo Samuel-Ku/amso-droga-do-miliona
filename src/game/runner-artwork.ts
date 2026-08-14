@@ -39,6 +39,8 @@ export const OVERHEAD_VARIANT_ASSET_PATHS = [
   "/assets/milion-runner/obstacles/overhead-door.webp",
   "/assets/milion-runner/obstacles/overhead-conveyor.webp"
 ] as const;
+
+const OVERHEAD_RAIL_INSET_RATIOS = [0.095, 0.05, 0.095] as const;
 export const COURIER_SPRITE_FRAME_COUNT = 8;
 export const COURIER_CROUCH_SPRITE_FRAME_COUNT = 8;
 export const COURIER_JUMP_SPRITE_FRAME_COUNT = 8;
@@ -102,6 +104,19 @@ export function courierCrouchFrameOffsetX(frame: number): number {
 }
 
 type ArtworkImageFactory = () => HTMLImageElement;
+type ArtworkWarmupCanvasFactory = () => HTMLCanvasElement;
+const warmedCanvasImages = new WeakSet<HTMLImageElement>();
+
+export interface RunnerArtworkAssets {
+  readonly orders?: HTMLImageElement;
+  readonly powerUps?: HTMLImageElement;
+  readonly courier?: HTMLImageElement;
+  readonly courierCrouch?: HTMLImageElement;
+  readonly courierJump?: HTMLImageElement;
+  readonly obstacles?: Partial<Readonly<Record<ObstacleKind, HTMLImageElement>>>;
+  readonly overheadVariants?: readonly HTMLImageElement[];
+  readonly parcelFrames?: readonly HTMLImageElement[];
+}
 
 function browserImageFactory(): HTMLImageElement | null {
   const Constructor = globalThis.Image;
@@ -129,36 +144,99 @@ export class RunnerArtwork {
   private readonly courierJump: HTMLImageElement | null;
   private readonly obstacles: Readonly<Record<ObstacleKind, HTMLImageElement | null>>;
   private readonly overheadVariants: readonly (HTMLImageElement | null)[];
-  private readonly parcelFrames: readonly (HTMLImageElement | null)[];
+  private readonly parcelFrames: (HTMLImageElement | null)[];
+  private firstFramePrepared = false;
 
-  public constructor(factory?: ArtworkImageFactory) {
-    this.orders = loadImage(ORDER_ATLAS_PATH, factory);
-    this.powerUps = loadImage(POWER_UP_ATLAS_PATH, factory);
-    this.courier = loadImage(COURIER_SPRITE_PATH, factory);
-    this.courierCrouch = loadImage(COURIER_CROUCH_SPRITE_PATH, factory);
-    this.courierJump = loadImage(COURIER_JUMP_SPRITE_PATH, factory);
+  public constructor(source: ArtworkImageFactory | RunnerArtworkAssets = {}) {
+    const factory = typeof source === "function" ? source : undefined;
+    const assets = typeof source === "function" ? undefined : source;
+    this.orders = assets?.orders ?? (factory ? loadImage(ORDER_ATLAS_PATH, factory) : null);
+    this.powerUps = assets?.powerUps ?? (factory ? loadImage(POWER_UP_ATLAS_PATH, factory) : null);
+    this.courier = assets?.courier ?? (factory ? loadImage(COURIER_SPRITE_PATH, factory) : null);
+    this.courierCrouch = assets?.courierCrouch ?? (factory ? loadImage(COURIER_CROUCH_SPRITE_PATH, factory) : null);
+    this.courierJump = assets?.courierJump ?? (factory ? loadImage(COURIER_JUMP_SPRITE_PATH, factory) : null);
     this.obstacles = {
-      "box-stack": loadImage(OBSTACLE_ASSET_PATHS["box-stack"], factory),
-      pallet: loadImage(OBSTACLE_ASSET_PATHS.pallet, factory),
-      trolley: loadImage(OBSTACLE_ASSET_PATHS.trolley, factory),
-      overhead: loadImage(OBSTACLE_ASSET_PATHS.overhead, factory)
+      "box-stack": assets?.obstacles?.["box-stack"] ?? (factory ? loadImage(OBSTACLE_ASSET_PATHS["box-stack"], factory) : null),
+      pallet: assets?.obstacles?.pallet ?? (factory ? loadImage(OBSTACLE_ASSET_PATHS.pallet, factory) : null),
+      trolley: assets?.obstacles?.trolley ?? (factory ? loadImage(OBSTACLE_ASSET_PATHS.trolley, factory) : null),
+      overhead: assets?.obstacles?.overhead ?? (factory ? loadImage(OBSTACLE_ASSET_PATHS.overhead, factory) : null)
     };
-    this.overheadVariants = [
+    this.overheadVariants = assets?.overheadVariants ?? [
       this.obstacles.overhead,
-      ...OVERHEAD_VARIANT_ASSET_PATHS.slice(1).map((path) => loadImage(path, factory))
+      ...(factory ? OVERHEAD_VARIANT_ASSET_PATHS.slice(1).map((path) => loadImage(path, factory)) : [])
     ];
-    this.parcelFrames = PARCEL_CELEBRATION_FRAME_PATHS.map((path) => loadImage(path, factory));
+    this.parcelFrames = assets?.parcelFrames !== undefined
+      ? [...assets.parcelFrames]
+      : (factory ? PARCEL_CELEBRATION_FRAME_PATHS.map((path) => loadImage(path, factory)) : []);
+    while (this.parcelFrames.length < PARCEL_CELEBRATION_FRAME_PATHS.length) {
+      this.parcelFrames.push(null);
+    }
+  }
+
+  /** Installs a non-critical frame decoded later by the session asset queue. */
+  public installParcelFrame(index: number, image: HTMLImageElement): void {
+    if (!Number.isInteger(index) || index < 0 || index >= this.parcelFrames.length) return;
+    this.parcelFrames[index] = image;
+  }
+
+  /** Uploads every critical raster through Canvas before the first visible gameplay frame. */
+  public prepareForFirstFrame(
+    canvasFactory: ArtworkWarmupCanvasFactory = () => document.createElement("canvas")
+  ): void {
+    if (this.firstFramePrepared) return;
+    const images = [...new Set([
+      this.orders,
+      this.powerUps,
+      this.courier,
+      this.courierCrouch,
+      this.courierJump,
+      ...Object.values(this.obstacles),
+      ...this.overheadVariants
+    ])];
+    if (images.some((image) => !drawable(image))) {
+      throw new Error("critical_runner_artwork_missing");
+    }
+    const pendingImages = images.filter((image) => !warmedCanvasImages.has(image!));
+    if (pendingImages.length === 0) {
+      this.firstFramePrepared = true;
+      return;
+    }
+    const canvas = canvasFactory();
+    canvas.width = 64;
+    canvas.height = 64;
+    try {
+      const context = canvas.getContext("2d");
+      if (context === null) throw new Error("critical_runner_artwork_warmup_failed");
+      for (const image of pendingImages) {
+        context.drawImage(image!, 0, 0, canvas.width, canvas.height);
+        context.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      for (const image of pendingImages) warmedCanvasImages.add(image!);
+      this.firstFramePrepared = true;
+    } finally {
+      canvas.width = 0;
+      canvas.height = 0;
+    }
+  }
+
+  public hasOverheadArtwork(visualVariant: number): boolean {
+    const image = this.overheadVariants[
+      Math.abs(Math.floor(visualVariant)) % this.overheadVariants.length
+    ] ?? this.obstacles.overhead;
+    return drawable(image);
   }
 
   public drawObstacle(
     context: CanvasRenderingContext2D,
-    obstacle: Readonly<ObstacleModel>
+    obstacle: Readonly<ObstacleModel>,
+    ceilingY = 0
   ): boolean {
     if (!obstacle.active) return true;
+    const overheadVariantIndex = obstacle.kind === "overhead"
+      ? Math.abs(Math.floor(obstacle.visualVariant ?? 0)) % this.overheadVariants.length
+      : 0;
     const image = obstacle.kind === "overhead"
-      ? this.overheadVariants[
-        Math.abs(Math.floor(obstacle.visualVariant ?? 0)) % this.overheadVariants.length
-      ] ?? this.obstacles.overhead
+      ? this.overheadVariants[overheadVariantIndex] ?? this.obstacles.overhead
       : this.obstacles[obstacle.kind];
     if (!drawable(image)) return false;
 
@@ -173,13 +251,13 @@ export class RunnerArtwork {
       const drawHeight = drawWidth * image.naturalHeight / image.naturalWidth;
       const drawX = obstacle.x - (drawWidth - obstacle.width) / 2;
       const drawY = obstacle.y + obstacle.height - drawHeight - OVERHEAD.visualLift;
-      const railInset = drawWidth * 0.095;
+      const railInset = drawWidth * (OVERHEAD_RAIL_INSET_RATIOS[overheadVariantIndex] ?? 0.095);
       context.strokeStyle = "#2d343b";
       context.lineWidth = 5;
       context.beginPath();
-      context.moveTo(drawX + railInset, 0);
+      context.moveTo(drawX + railInset, ceilingY);
       context.lineTo(drawX + railInset, drawY + drawHeight * 0.28);
-      context.moveTo(drawX + drawWidth - railInset, 0);
+      context.moveTo(drawX + drawWidth - railInset, ceilingY);
       context.lineTo(drawX + drawWidth - railInset, drawY + drawHeight * 0.28);
       context.stroke();
       context.drawImage(image, drawX, drawY, drawWidth, drawHeight);

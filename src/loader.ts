@@ -318,6 +318,9 @@ function loadStyle(
       return Promise.resolve();
     }
     const style = documentReference.createElement("style");
+    const nonce = documentReference.currentScript?.nonce ??
+      documentReference.querySelector<HTMLScriptElement>("script[nonce]")?.nonce ?? "";
+    if (nonce !== "") style.nonce = nonce;
     style.dataset.amsoMillionRunnerStyle = "";
     style.textContent = inlinedStyle;
     documentReference.head.append(style);
@@ -371,41 +374,55 @@ interface LoadingShell {
   remove(): void;
 }
 
+const LOADING_SHELL_COPY = {
+  pl: ["Ładowanie gry Droga do Miliona", "Przygotowujemy trasę…", "Anuluj"],
+  de: ["Der Weg zur Million wird geladen", "Wir bereiten die Strecke vor…", "Abbrechen"],
+  en: ["Loading Road to a Million", "Preparing the route…", "Cancel"],
+  es: ["Cargando Camino al millón", "Estamos preparando la ruta…", "Cancelar"],
+  cs: ["Načítání Cesty k milionu", "Připravujeme trasu…", "Zrušit"],
+  it: ["Caricamento della Strada verso il milione", "Stiamo preparando il percorso…", "Annulla"],
+  fr: ["Chargement d’En route vers le million", "Nous préparons le parcours…", "Annuler"],
+  uk: ["Завантаження «Шляху до мільйона»", "Готуємо маршрут…", "Скасувати"]
+} as const;
+
 function createLoadingShell(
   documentReference: Document,
   trigger: HTMLElement,
   onCancel: () => void
 ): LoadingShell {
+  const locale = documentReference.documentElement.lang.trim().toLowerCase().split("-")[0];
+  const copy = LOADING_SHELL_COPY[locale as keyof typeof LOADING_SHELL_COPY] ??
+    LOADING_SHELL_COPY.en;
   const root = documentReference.createElement("div");
-  root.className = "amso-runner-loading-shell";
+  root.className = "amso-million-runner-2026-loading-shell";
   root.setAttribute("role", "dialog");
   root.setAttribute("aria-modal", "true");
-  root.setAttribute("aria-label", "Ładowanie gry Droga do Miliona");
+  root.setAttribute("aria-label", copy[0]);
   root.style.cssText =
     "position:fixed;inset:0;z-index:2147482001;display:grid;place-items:center;padding:24px;" +
     "background:#061426;color:#fff;font-family:system-ui,sans-serif;text-align:center";
 
   const card = documentReference.createElement("div");
-  card.className = "amso-runner-loading-shell__card";
+  card.className = "amso-million-runner-2026-loading-shell__card";
   card.style.cssText =
     "display:grid;gap:14px;min-width:min(340px,90vw);padding:30px;border:1px solid #ffffff26;" +
     "border-radius:20px;background:#0b2038;box-shadow:0 22px 70px #0008";
 
   const brand = documentReference.createElement("strong");
-  brand.className = "amso-runner-loading-shell__brand";
+  brand.className = "amso-million-runner-2026-loading-shell__brand";
   brand.textContent = "AMSO";
   brand.style.cssText = "color:#ff6b00;font-size:28px;letter-spacing:-1px";
 
   const status = documentReference.createElement("p");
-  status.className = "amso-runner-loading-shell__status";
+  status.className = "amso-million-runner-2026-loading-shell__status";
   status.setAttribute("role", "status");
-  status.textContent = "Przygotowujemy trasę…";
+  status.textContent = copy[1];
   status.style.cssText = "margin:0;font-weight:750";
 
   const cancel = documentReference.createElement("button");
-  cancel.className = "amso-runner-loading-shell__cancel";
+  cancel.className = "amso-million-runner-2026-loading-shell__cancel";
   cancel.type = "button";
-  cancel.textContent = "Anuluj";
+  cancel.textContent = copy[2];
   cancel.style.cssText =
     "min-height:44px;padding:0 18px;border:1px solid #ffffff4d;border-radius:10px;" +
     "background:transparent;color:#fff;font:inherit;font-weight:750;cursor:pointer";

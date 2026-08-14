@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createCampaignI18n } from "../src/localization";
 import { createCampaignShareCard } from "../src/ui/CampaignShell";
 
 interface ShareCardHarness {
@@ -7,7 +8,10 @@ interface ShareCardHarness {
   image: HTMLImageElement;
 }
 
-function installShareCardHarness(imageLoads: boolean): ShareCardHarness {
+function installShareCardHarness(
+  imageLoads: boolean,
+  dimensions = { width: 1600, height: 924 }
+): ShareCardHarness {
   const drawImage = vi.fn();
   const fillText = vi.fn();
   const gradient = { addColorStop: vi.fn() };
@@ -17,8 +21,8 @@ function installShareCardHarness(imageLoads: boolean): ShareCardHarness {
     alt: "",
     decoding: "auto",
     complete: false,
-    naturalWidth: imageLoads ? 1600 : 0,
-    naturalHeight: imageLoads ? 924 : 0,
+    naturalWidth: imageLoads ? dimensions.width : 0,
+    naturalHeight: imageLoads ? dimensions.height : 0,
     onload: null,
     onerror: null,
     get src() {
@@ -72,20 +76,35 @@ afterEach(() => {
 });
 
 describe("campaign result share card brand", () => {
-  it("renders the real compact MZ lockup when the image is available", async () => {
-    const harness = installShareCardHarness(true);
+  it("renders the localized lockup for an international result card", async () => {
+    const harness = installShareCardHarness(true, { width: 1973, height: 1138 });
 
     const card = await createCampaignShareCard(
       { score: 1_234_567, orders: 42 },
-      { canonicalUrl: "https://example.com/gra" },
+      { canonicalUrl: "https://amso.eu/en/million", i18n: createCampaignI18n("en") },
     );
 
     expect(card.type).toBe("image/png");
-    expect(harness.image.src).toBe("/assets/milion-runner/brand/mz-compact-lockup-v1.avif");
+    expect(harness.image.src).toBe("/assets/milion-runner/brand/mz-compact-lockup-en-v1.webp");
     expect(harness.drawImage).toHaveBeenCalledTimes(1);
     const [image, x, y, width, height] = harness.drawImage.mock.calls[0] ?? [];
-    expect([image, x, y, width]).toEqual([harness.image, 596, 43, 430]);
-    expect(height).toBeCloseTo(248.325);
+    expect(image).toBe(harness.image);
+    expect(x).toBe(596);
+    expect(y).toBe(43);
+    expect(width).toBe(430);
+    expect(height).toBeCloseTo(248.02, 1);
+  });
+
+  it("keeps the Polish compact lockup for a Polish result card", async () => {
+    const harness = installShareCardHarness(true);
+
+    await createCampaignShareCard(
+      { score: 1_234_567, orders: 42 },
+      { canonicalUrl: "https://amso.pl/million", i18n: createCampaignI18n("pl") },
+    );
+
+    expect(harness.image.src).toBe("/assets/milion-runner/brand/mz-compact-lockup-v1.webp");
+    expect(harness.drawImage).toHaveBeenCalledTimes(1);
   });
 
   it("falls back without drawing a fake AMSO wordmark", async () => {
