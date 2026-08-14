@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   aggregateRuntimeReadiness,
+  artifactFingerprint,
   assessSixtySecondEvidence,
   buildFourCycleQualification
 } from "../scripts/runtime-readiness-policy.mjs";
@@ -102,6 +103,40 @@ describe("runtime readiness policy", () => {
     expect(assessSixtySecondEvidence(sixtySecondEvidence(), provenance)).toEqual([]);
   });
 
+  it("compares only the contracted HTML, JS/CSS and seven world assets", () => {
+    const withRouteSpecificAsset = {
+      ...provenance,
+      assetIdentities: [...provenance.assetIdentities, {
+        url: "https://game.amso.pl/assets/milion-runner/orders/parcel-01.webp",
+        status: 200,
+        bytes: 10,
+        sha256: "f".repeat(64)
+      }]
+    };
+    expect(artifactFingerprint(withRouteSpecificAsset)).toBe(artifactFingerprint(provenance));
+  });
+
+  it("rejects malformed source and HTML identities", () => {
+    expect(artifactFingerprint({ ...provenance, sourceIdentity: "" })).toBeNull();
+    expect(artifactFingerprint({ ...provenance, htmlSha256: "not-a-sha256" })).toBeNull();
+  });
+
+  it("requires one contracted asset for each world number from 01 through 07", () => {
+    const repeatedWorldOne = {
+      ...provenance,
+      assetIdentities: [
+        ...assetIdentities.filter(({ url }) => !url.includes("/worlds/")),
+        ...Array.from({ length: 7 }, (_, index) => ({
+          url: `https://game.amso.pl/assets/milion-runner/worlds/world-01-variant-${index}.webp`,
+          status: 200,
+          bytes: 10,
+          sha256: String(index + 1).repeat(64)
+        }))
+      ]
+    };
+    expect(artifactFingerprint(repeatedWorldOne)).toBeNull();
+  });
+
   it("requires four ordered seven-world cycles and rejects a missing 7 to 1 destination", () => {
     const qualified = buildFourCycleQualification(fourCycleRun(), provenance);
     expect(qualified.cycles).toHaveLength(4);
@@ -125,8 +160,19 @@ describe("runtime readiness policy", () => {
   it("requires observed lifecycle state transitions, not geometry-only booleans", () => {
     const run = fourCycleRun();
     run.lifecycleObservations.fullscreen = [];
-    expect(buildFourCycleQualification(run, provenance).releaseGate.reasons)
-      .toContain("four-cycle-lifecycle-observation-incomplete:fullscreen");
+    expect(buildFourCycleQualification(run, provenance).releaseGate).toMatchObject({
+      status: "incomplete",
+      reasons: expect.arrayContaining(["four-cycle-lifecycle-observation-incomplete:fullscreen"])
+    });
+  });
+
+  it("fails a lifecycle check that was observed but did not preserve geometry", () => {
+    const run = fourCycleRun();
+    run.lifecycleChecks.fullscreenPassed = false;
+    expect(buildFourCycleQualification(run, provenance).releaseGate).toMatchObject({
+      status: "failed",
+      reasons: expect.arrayContaining(["four-cycle-lifecycle-failed:fullscreenPassed"])
+    });
   });
 
   it("allows the one asset and first presentation decode per source and role", () => {

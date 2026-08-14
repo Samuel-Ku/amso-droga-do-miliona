@@ -1,6 +1,8 @@
 import { REQUIRED_WORLD_SEAM_DESTINATIONS } from "./performance-transition-policy.mjs";
 
 const WORLD_ASSET_PATTERN = /\/world-0[1-7][^/]*\.webp(?:\?|$)/u;
+const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
+const REQUIRED_WORLD_NUMBERS = new Set(["01", "02", "03", "04", "05", "06", "07"]);
 const MAX_EVIDENCE_AGE_MS = 24 * 60 * 60 * 1_000;
 
 function freshnessReason(evidence, prefix) {
@@ -21,19 +23,24 @@ function stable(value) {
 }
 
 export function artifactFingerprint(provenance) {
-  if (!provenance || typeof provenance.sourceIdentity !== "string" ||
-      typeof provenance.htmlSha256 !== "string" || !Array.isArray(provenance.assetIdentities)) return null;
+  if (!provenance || !SHA256_PATTERN.test(provenance.sourceIdentity ?? "") ||
+      !SHA256_PATTERN.test(provenance.htmlSha256 ?? "") ||
+      !Array.isArray(provenance.assetIdentities)) return null;
   const assets = provenance.assetIdentities.map(({ url, status, bytes, sha256 }) => ({
     path: (() => { try { return new URL(url).pathname; } catch { return url; } })(),
     status, bytes, sha256
-  })).sort((left, right) => left.path.localeCompare(right.path));
+  })).filter(({ path }) => /\.js$/u.test(path) || /\.css$/u.test(path) ||
+    WORLD_ASSET_PATTERN.test(path)).sort((left, right) => left.path.localeCompare(right.path));
   const hasScript = assets.some(({ path, status }) => status === 200 && /\.js$/u.test(path));
   const hasStyle = assets.some(({ path, status }) => status === 200 && /\.css$/u.test(path));
-  const worldCount = new Set(assets.filter(({ path, status }) => status === 200 &&
-    WORLD_ASSET_PATTERN.test(path)).map(({ path }) => path)).size;
-  if (!hasScript || !hasStyle || worldCount < 7 || assets.some(({ status, bytes, sha256 }) =>
+  const worldNumbers = new Set(assets.filter(({ path, status }) => status === 200 &&
+    WORLD_ASSET_PATTERN.test(path)).map(({ path }) => path.match(/\/world-(0[1-7])/u)?.[1])
+    .filter(Boolean));
+  const hasEveryWorld = worldNumbers.size === REQUIRED_WORLD_NUMBERS.size &&
+    [...REQUIRED_WORLD_NUMBERS].every((worldNumber) => worldNumbers.has(worldNumber));
+  if (!hasScript || !hasStyle || !hasEveryWorld || assets.some(({ status, bytes, sha256 }) =>
     status !== 200 || !Number.isFinite(bytes) || bytes <= 0 || typeof sha256 !== "string" ||
-    sha256.length !== 64)) return null;
+    !SHA256_PATTERN.test(sha256))) return null;
   return JSON.stringify(stable({
     sourceIdentity: provenance.sourceIdentity,
     htmlSha256: provenance.htmlSha256,
@@ -139,6 +146,7 @@ function cycleFrameSummary(frameTimeline, cycle) {
 
 export function buildFourCycleQualification(evidence, expectedProvenance) {
   const reasons = [];
+  const incompleteReasons = [];
   if (!evidence || evidence.schema !== "amso-performance-run-v1" ||
       evidence.configuration?.scenarioId !== "four-cycle-memory-v1") {
     reasons.push("four-cycle-schema-or-scenario-invalid");
@@ -174,30 +182,31 @@ export function buildFourCycleQualification(evidence, expectedProvenance) {
     reasons.push("four-cycle-active-image-node");
   }
   if (browserFailureCount(evidence) !== 0) reasons.push("four-cycle-browser-errors");
-  for (const [name, passed] of Object.entries(evidence?.lifecycleChecks ?? {})) {
-    if (passed !== true) reasons.push(`four-cycle-lifecycle-failed:${name}`);
-  }
-  if (["visibilityResumePassed", "resizePassed", "orientationPassed", "fullscreenPassed"]
-    .some((name) => evidence?.lifecycleChecks?.[name] !== true)) {
-    reasons.push("four-cycle-lifecycle-incomplete");
-  }
   const lifecycleObservations = evidence?.lifecycleObservations;
   const observedInOrder = (name, first, second) => {
     const values = lifecycleObservations?.[name] ?? [];
     const firstIndex = values.findIndex(first);
     return firstIndex >= 0 && values.findIndex(second, firstIndex + 1) > firstIndex;
   };
-  if (!observedInOrder("visibility", ({ hidden }) => hidden === true,
-    ({ hidden }) => hidden === false)) {
-    reasons.push("four-cycle-lifecycle-observation-incomplete:visibility");
+  const observedLifecycle = {
+    visibilityResumePassed: observedInOrder("visibility", ({ hidden }) => hidden === true,
+      ({ hidden }) => hidden === false),
+    orientationPassed: observedInOrder("orientation", ({ portrait }) => portrait === true,
+      ({ portrait }) => portrait === false),
+    fullscreenPassed: observedInOrder("fullscreen", ({ entered }) => entered === true,
+      ({ entered }) => entered === false)
+  };
+  if (evidence?.lifecycleChecks?.resizePassed !== true) {
+    reasons.push("four-cycle-lifecycle-failed:resizePassed");
   }
-  if (!observedInOrder("orientation", ({ portrait }) => portrait === true,
-    ({ portrait }) => portrait === false)) {
-    reasons.push("four-cycle-lifecycle-observation-incomplete:orientation");
-  }
-  if (!observedInOrder("fullscreen", ({ entered }) => entered === true,
-    ({ entered }) => entered === false)) {
-    reasons.push("four-cycle-lifecycle-observation-incomplete:fullscreen");
+  for (const [checkName, observationPassed] of Object.entries(observedLifecycle)) {
+    const observationName = checkName === "visibilityResumePassed" ? "visibility"
+      : checkName === "orientationPassed" ? "orientation" : "fullscreen";
+    if (!observationPassed) {
+      incompleteReasons.push(`four-cycle-lifecycle-observation-incomplete:${observationName}`);
+    } else if (evidence?.lifecycleChecks?.[checkName] !== true) {
+      reasons.push(`four-cycle-lifecycle-failed:${checkName}`);
+    }
   }
   reasons.push(...frameReasons(evidence, "four-cycle"));
   const cycleFrames = (evidence?.cycleResults ?? []).map((cycle) =>
@@ -232,7 +241,7 @@ export function buildFourCycleQualification(evidence, expectedProvenance) {
   const processMemoryAvailable = evidence?.memory?.available === true &&
     Number.isFinite(evidence.memory.maximumMb);
   if (processMemoryAvailable && evidence.memory.maximumMb > 220) reasons.push("four-cycle-memory-over-220mb");
-  const incompleteReasons = processMemoryAvailable ? [] : ["physical-process-memory-evidence-unavailable"];
+  if (!processMemoryAvailable) incompleteReasons.push("physical-process-memory-evidence-unavailable");
   const status = reasons.length > 0 ? "failed" : incompleteReasons.length > 0 ? "incomplete" : "passed";
   return {
     schema: "amso-four-cycle-memory-v1",

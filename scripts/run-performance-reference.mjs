@@ -6,6 +6,7 @@ import http from "node:http";
 import { createHash } from "node:crypto";
 import { chromium, webkit } from "playwright";
 import {
+  EXPECTED_CAMPAIGN_ASSETS,
   headersForPerformanceRequest,
   isExpectedPerformanceRequest
 } from "./performance-request-policy.mjs";
@@ -773,13 +774,16 @@ try {
   const rawHtml = deployedArtifactBody ?? Buffer.from("");
   const artifactSourceIdentity = rawHtml.toString("utf8")
     .match(/<meta name="amso-build-source" content="([a-f0-9]{64})">/u)?.[1] ?? null;
-  const assetUrls = [...new Set(runtime.resourceTimings.map(({ resource }) => resource)
+  const requiredWorldAssetUrls = [...EXPECTED_CAMPAIGN_ASSETS]
+    .filter((assetPath) => /\/world-0[1-7][^/]*\.webp$/u.test(assetPath))
+    .map((assetPath) => new URL(assetPath, targetUrl.origin).href);
+  const assetUrls = [...new Set([...runtime.resourceTimings.map(({ resource }) => resource)
     .filter((resource) => {
       try {
         const candidate = new URL(resource);
         return candidate.origin === targetUrl.origin && /\.(?:js|css|webp)(?:\?|$)/u.test(candidate.href);
       } catch { return false; }
-    }))].sort();
+    }), ...requiredWorldAssetUrls])].sort();
   const assetIdentities = await Promise.all(assetUrls.map(async (assetUrl) => {
     const response = await fetch(assetUrl);
     const bytes = Buffer.from(await response.arrayBuffer());
